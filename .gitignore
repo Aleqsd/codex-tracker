@@ -13,7 +13,10 @@ work/
 .env*
 auth.json
 settings.json
+preferences.json
 snapshots.json
+usage/
+last-result.json
 initial-accounts.json
 vault/
 runtime/

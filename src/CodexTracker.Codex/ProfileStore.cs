@@ -7,6 +7,10 @@ namespace CodexTracker.Codex;
 
 internal sealed record StoredSettings(List<AccountProfile> Accounts, Guid? SelectedAccountId,
     bool OnboardingComplete, List<Guid>? DetectedAccountIds = null);
+internal sealed record AccountTelemetry(IReadOnlyList<UsageSample> Samples, QuotaAlertState Alerts, Guid? AccountId = null)
+{
+    public static AccountTelemetry Empty { get; } = new(Array.Empty<UsageSample>(), new());
+}
 
 // Only display metadata is persisted. Legacy credential vaults are never opened or modified.
 internal sealed class ProfileStore(string root) : IDisposable
@@ -15,6 +19,7 @@ internal sealed class ProfileStore(string root) : IDisposable
     private readonly string _root = Path.GetFullPath(root);
     private FileStream? _lease;
     private string Runtime => Path.Combine(_root, "observer-runtime");
+    private string Usage => Path.Combine(_root, "usage");
 
     public void Open()
     {
@@ -22,6 +27,7 @@ internal sealed class ProfileStore(string root) : IDisposable
         try { _lease = new FileStream(Path.Combine(_root, ".lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
         catch (IOException) { throw new TrackerException("Codex Tracker est déjà ouvert. Fermez l'autre instance avant de continuer."); }
         SecureDirectory(Runtime);
+        SecureDirectory(Usage);
         foreach (var directory in Directory.EnumerateDirectories(Runtime))
         {
             try { DeleteRuntime(directory); }
@@ -60,6 +66,32 @@ internal sealed class ProfileStore(string root) : IDisposable
 
     public void SaveSettings(StoredSettings settings) => AtomicWrite(Path.Combine(_root, "settings.json"), JsonSerializer.SerializeToUtf8Bytes(settings, Json));
     public void SaveSnapshots(Dictionary<Guid, AccountSnapshot> snapshots) => AtomicWrite(Path.Combine(_root, "snapshots.json"), JsonSerializer.SerializeToUtf8Bytes(snapshots, Json));
+
+    public AccountTelemetry LoadTelemetry(Guid accountId, DateTimeOffset now)
+    {
+        var path = Path.Combine(Usage, $"{accountId:D}.json");
+        if (!File.Exists(path)) return AccountTelemetry.Empty;
+        try
+        {
+            if (new FileInfo(path).Length > 64_000_000) return AccountTelemetry.Empty;
+            var telemetry = JsonSerializer.Deserialize<AccountTelemetry>(File.ReadAllText(path), Json);
+            if (telemetry?.Samples is null || (telemetry.AccountId is { } owner && owner != accountId)) return AccountTelemetry.Empty;
+            var samples = telemetry.Samples.Where(s => s is not null && s.AccountId == accountId && UsageAnalytics.IsValid(s) &&
+                    s.Timestamp >= now - UsageAnalytics.Retention && s.Timestamp <= now + TimeSpan.FromMinutes(1))
+                .OrderBy(s => s.Timestamp).DistinctBy(s => s.Timestamp).TakeLast(UsageAnalytics.MaximumSamplesPerAccount).ToList().AsReadOnly();
+            var alerts = telemetry.Samples.All(s => s is not null && s.AccountId == accountId) ? telemetry.Alerts ?? new() : new();
+            return new(samples, new(ValidateAlertState(alerts.Weekly), ValidateAlertState(alerts.Short)), accountId);
+        }
+        catch (JsonException) { return AccountTelemetry.Empty; }
+    }
+
+    public void SaveTelemetry(Guid accountId, AccountTelemetry telemetry) =>
+        AtomicWrite(Path.Combine(Usage, $"{accountId:D}.json"), JsonSerializer.SerializeToUtf8Bytes(telemetry with { AccountId = accountId }, Json));
+
+    public void DeleteTelemetry(Guid accountId) => File.Delete(Path.Combine(Usage, $"{accountId:D}.json"));
+
+    private static QuotaWindowAlertState? ValidateAlertState(QuotaWindowAlertState? state) => state is not null &&
+        double.IsFinite(state.Remaining) && state.Remaining is >= 0 and <= 100 ? state with { NotifiedThresholdMask = state.NotifiedThresholdMask & 7 } : null;
 
     public string CreateRuntime()
     {

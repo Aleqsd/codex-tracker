@@ -182,6 +182,7 @@ public sealed class TrackerServiceTests
             Assert.Equal("a@example.test", active.Profile.Email);
             Assert.Equal(80, active.Snapshot!.Weekly!.RemainingPercent);
             Assert.Empty(acceptedOldResults);
+            Assert.DoesNotContain(service.GetHistory(active.Profile.Id), sample => sample.WeeklyRemaining == 1);
         }
         finally
         {

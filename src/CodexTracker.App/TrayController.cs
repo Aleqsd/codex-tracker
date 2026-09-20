@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
+using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using Color = System.Drawing.Color;
 using Pen = System.Drawing.Pen;
@@ -14,19 +15,52 @@ internal sealed class TrayController : IDisposable
     private readonly MainWindow _window;
     private readonly ITrackerService _service;
     private readonly Func<Task> _exit;
+    private readonly PreferencesStore _preferences;
+    private readonly TrayPeekWindow _peek;
+    private readonly DispatcherTimer _hoverDelay = new() { Interval = TimeSpan.FromMilliseconds(450) };
+    private readonly DispatcherTimer _presence = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly DispatcherTimer _notifications = new() { Interval = TimeSpan.FromMilliseconds(650) };
+    private readonly Dictionary<(Guid, UsageWindowKind), QuotaNotification> _pendingNotifications = new();
+    private System.Drawing.Point _hoverPoint;
+    private DateTimeOffset? _leftPeekAt;
+    private DateTimeOffset _peekUpdatedAt;
+    private string? _menuKey;
+    private int _updateQueued;
     private Icon? _icon;
     private string? _iconKey;
     private bool _disposed;
 
-    public TrayController(MainWindow window, ITrackerService service, Func<Task> exit)
+    public TrayController(MainWindow window, ITrackerService service, PreferencesStore preferences, Func<Task> exit)
     {
-        _window = window; _service = service; _exit = exit;
+        _window = window; _service = service; _exit = exit; _preferences = preferences;
+        _peek = new TrayPeekWindow(_window.ShowPanel);
         _tray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
-        _tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) _window.Dispatcher.Invoke(_window.ShowPanel); };
+        _tray.MouseClick += (_, e) =>
+        {
+            HidePeek();
+            if (e.Button == Forms.MouseButtons.Left) _window.Dispatcher.Invoke(_window.ShowPanel);
+        };
+        _tray.MouseMove += (_, _) => OnTrayHover();
+        _tray.BalloonTipClicked += (_, _) => _window.ShowPanel();
+        _hoverDelay.Tick += (_, _) => ShowPeek();
+        _presence.Tick += (_, _) => CheckPeekPresence();
+        _notifications.Tick += (_, _) => ShowNotifications();
         service.Changed += Changed;
+        service.Notification += Notified;
+        preferences.Changed += PreferencesChanged;
+        window.Theme.Changed += Changed;
         Update(); _tray.Visible = true;
     }
-    private void Changed(object? sender, EventArgs e) => _window.Dispatcher.InvokeAsync(Update);
+    private void Changed(object? sender, EventArgs e)
+    {
+        if (Interlocked.Exchange(ref _updateQueued, 1) != 0) return;
+        _window.Dispatcher.InvokeAsync(() => { Interlocked.Exchange(ref _updateQueued, 0); Update(); });
+    }
+    private void PreferencesChanged(object? sender, EventArgs e)
+    {
+        if (!_preferences.Current.HoverPreview) HidePeek();
+        Update();
+    }
     private void Update()
     {
         if (_disposed) return;
@@ -34,26 +68,40 @@ internal sealed class TrayController : IDisposable
         var account = state.SelectedAccount;
         double? remaining = account?.Snapshot?.Weekly?.RemainingPercent;
         string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
-        var color = remaining is null ? Color.FromArgb(163, 163, 163) : remaining > 20 ? Color.FromArgb(240, 240, 236) : remaining >= 10 ? Color.FromArgb(199, 170, 117) : Color.FromArgb(207, 142, 142);
-        string key = number + color.ToArgb();
+        var dark = _window.Theme.IsDark;
+        var color = remaining is null ? Color.FromArgb(140, 140, 140) : remaining > 20 ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(40, 40, 40)) : remaining >= 10 ? (dark ? Color.FromArgb(199, 170, 117) : Color.FromArgb(147, 103, 30)) : (dark ? Color.FromArgb(207, 142, 142) : Color.FromArgb(178, 68, 68));
+        string key = number + color.ToArgb() + dark;
         if (_iconKey != key)
         {
-            var old = _icon; _icon = CreateIcon(number, color); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
+            var old = _icon; _icon = RenderIcon(number, color, dark); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
         }
-        var text = account is null ? "Codex Tracker · en attente d’un compte Codex" : $"{account.Profile.Email}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(!account.IsActiveInCodex ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(account.Snapshot?.Weekly?.ResetsAt)}";
-        _tray.Text = text.Length <= 127 ? text : text[..124] + "…";
-        var menu = new Forms.ContextMenuStrip { BackColor = Color.FromArgb(36, 36, 36), ForeColor = Color.FromArgb(240, 240, 236), ShowImageMargin = false, Renderer = new DarkMenuRenderer() };
-        menu.Items.Add("Ouvrir Codex Tracker", null, (_, _) => _window.ShowPanel());
-        menu.Items.Add(new Forms.ToolStripSeparator());
+        var text = account is null ? "Codex Tracker · en attente d’un compte Codex" : $"{PrivacyText.Account(account.Profile, state, _preferences.Current.PrivacyMode)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(!account.IsActiveInCodex ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(account.Snapshot?.Weekly?.ResetsAt)}";
+        _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
+        _peek.Update(state, _preferences.Current);
+        var menuKey = state.SelectedAccountId + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActiveInCodex + ":" + a.Profile.Email));
+        if (menuKey == _menuKey || _tray.ContextMenuStrip?.Visible == true) return;
+        _menuKey = menuKey;
+        var background = dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
+        var foreground = dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(35, 35, 35);
+        var menu = new Forms.ContextMenuStrip { BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
+        menu.Opening += (_, _) => HidePeek();
+        menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
+        menu.Items.Add("Ouvrir le suivi", null, (_, _) => _window.ShowPanel());
+        var accountsMenu = new Forms.ToolStripMenuItem("Compte dans l’icône") { BackColor = background, ForeColor = foreground };
+        accountsMenu.DropDown.BackColor = background; accountsMenu.DropDown.ForeColor = foreground;
+        accountsMenu.DropDown.Renderer = menu.Renderer;
         foreach (var item in state.Accounts)
         {
-            var label = item.Profile.Email + (item.IsActiveInCodex ? " · actif" : item.Snapshot is null ? " · à détecter" : " · dernier relevé");
-            var accountItem = new Forms.ToolStripMenuItem(label) { Checked = item.Profile.Id == state.SelectedAccountId, Enabled = !state.IsBusy };
+            var label = PrivacyText.Account(item.Profile, state, _preferences.Current.PrivacyMode) + (item.IsActiveInCodex ? " · actif" : "");
+            var accountItem = new Forms.ToolStripMenuItem(label) { Checked = item.Profile.Id == state.SelectedAccountId };
             accountItem.Click += async (_, _) => await SafeAsync(() => _service.SelectAccountAsync(item.Profile.Id));
-            menu.Items.Add(accountItem);
+            accountsMenu.DropDownItems.Add(accountItem);
         }
+        menu.Items.Add(accountsMenu);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Détecter le compte Codex", null, async (_, _) => await SafeAsync(() => _service.ImportCurrentAccountAsync()));
+        var privacy = new Forms.ToolStripMenuItem("Masquer les adresses") { Checked = _preferences.Current.PrivacyMode };
+        privacy.Click += async (_, _) => await SafeAsync(() => { _preferences.Update(p => p with { PrivacyMode = !p.PrivacyMode }); return Task.CompletedTask; });
+        menu.Items.Add(privacy);
         menu.Items.Add("Actualiser", null, async (_, _) => await _window.RefreshAsync());
         menu.Items.Add("Réglages", null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
         menu.Items.Add("Quitter", null, async (_, _) => await _exit());
@@ -64,16 +112,97 @@ internal sealed class TrayController : IDisposable
         try { await operation(); }
         catch (Exception error) { _window.ShowPanel(); _window.ShowMessage("Action impossible", error.Message); }
     }
+
+    private void OnTrayHover()
+    {
+        if (_disposed || !_preferences.Current.HoverPreview || _tray.ContextMenuStrip?.Visible == true) return;
+        _hoverPoint = Forms.Cursor.Position;
+        _leftPeekAt = null;
+        if (!_peek.IsVisible && !_hoverDelay.IsEnabled) _hoverDelay.Start();
+    }
+
+    private void ShowPeek()
+    {
+        _hoverDelay.Stop();
+        if (_disposed || !_preferences.Current.HoverPreview || _tray.ContextMenuStrip?.Visible == true) return;
+        var cursor = Forms.Cursor.Position;
+        if (Math.Abs(cursor.X - _hoverPoint.X) > 22 || Math.Abs(cursor.Y - _hoverPoint.Y) > 22) return;
+        _peek.Update(_service.State, _preferences.Current);
+        _peekUpdatedAt = DateTimeOffset.UtcNow;
+        _peek.ShowNear(cursor);
+        _tray.Text = "";
+        _presence.Start();
+    }
+
+    private void CheckPeekPresence()
+    {
+        if (!_peek.IsVisible) { _presence.Stop(); Update(); return; }
+        if (DateTimeOffset.UtcNow - _peekUpdatedAt >= TimeSpan.FromSeconds(1))
+        {
+            _peek.Update(_service.State, _preferences.Current);
+            _peekUpdatedAt = DateTimeOffset.UtcNow;
+        }
+        var cursor = Forms.Cursor.Position;
+        var nearTray = Math.Abs(cursor.X - _hoverPoint.X) <= 22 && Math.Abs(cursor.Y - _hoverPoint.Y) <= 22;
+        if (nearTray || _peek.ContainsScreenPoint(cursor)) { _leftPeekAt = null; return; }
+        _leftPeekAt ??= DateTimeOffset.UtcNow;
+        if (DateTimeOffset.UtcNow - _leftPeekAt >= TimeSpan.FromMilliseconds(350)) HidePeek();
+    }
+
+    private void HidePeek()
+    {
+        _hoverDelay.Stop(); _presence.Stop(); _leftPeekAt = null;
+        if (_peek.IsVisible) { _peek.Hide(); if (!_disposed) Update(); }
+    }
+
+    private void Notified(object? sender, QuotaNotification notification) => _window.Dispatcher.InvokeAsync(() =>
+    {
+        if (_disposed || !NotificationPolicy.IsEnabled(notification, _preferences.Current)) return;
+        var key = (notification.AccountId, notification.Window);
+        if (!_pendingNotifications.TryGetValue(key, out var previous) || notification.Kind == NotificationKind.Reset ||
+            previous.Kind == NotificationKind.Reset || notification.Threshold < previous.Threshold)
+            _pendingNotifications[key] = notification;
+        if (!_notifications.IsEnabled) _notifications.Start();
+    });
+
+    private void ShowNotifications()
+    {
+        _notifications.Stop();
+        if (_disposed) return;
+        var pending = _pendingNotifications.Values.Where(n => NotificationPolicy.IsEnabled(n, _preferences.Current)).ToArray();
+        _pendingNotifications.Clear();
+        if (pending.Length == 0) return;
+        var latest = pending.OrderByDescending(n => n.Kind == NotificationKind.Threshold).ThenBy(n => n.Threshold ?? 100).First();
+        var (title, body) = NotificationPolicy.Compose(latest, _service.State);
+        if (pending.Length > 1) body += $"\n{pending.Length - 1} autre événement dans le suivi.";
+        _tray.ShowBalloonTip(5000, title, body, latest.Kind == NotificationKind.Reset ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Warning);
+    }
+
+    internal void SavePeekScreenshot(string path, double dpi = 96)
+    {
+        _peek.Update(_service.State, _preferences.Current);
+        _peek.ShowNear(Forms.Cursor.Position);
+        _peek.SaveScreenshot(path, dpi);
+        _peek.Hide();
+    }
+
+    internal void ShowTestNotification()
+    {
+        if (!_disposed) _tray.ShowBalloonTip(5000, "Codex Tracker", "Les alertes de quota et de reset apparaîtront ici.", Forms.ToolTipIcon.Info);
+    }
     internal static Icon CreateIcon(string number, Color color)
+        => RenderIcon(number, color, true);
+
+    private static Icon RenderIcon(string number, Color color, bool dark)
     {
         using var bitmap = new Bitmap(64, 64);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.SmoothingMode = SmoothingMode.AntiAlias; graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         graphics.Clear(Color.Transparent);
-        using var background = new SolidBrush(Color.FromArgb(29, 29, 29));
+        using var background = new SolidBrush(dark ? Color.FromArgb(29, 29, 29) : Color.FromArgb(245, 245, 242));
         graphics.FillEllipse(background, 0, 0, 64, 64);
         var ring = new RectangleF(3, 3, 58, 58);
-        using var track = new Pen(Color.FromArgb(79, 79, 79), 4.5f);
+        using var track = new Pen(dark ? Color.FromArgb(79, 79, 79) : Color.FromArgb(186, 186, 182), 4.5f);
         graphics.DrawEllipse(track, ring);
         var known = int.TryParse(number, out var remaining);
         if (known && remaining > 0)
@@ -96,7 +225,7 @@ internal sealed class TrayController : IDisposable
             fontSize--;
         }
         using var font = new Font("Segoe UI", fontSize, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
-        using var foreground = new SolidBrush(known ? Color.FromArgb(240, 240, 236) : color);
+        using var foreground = new SolidBrush(known ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(35, 35, 35)) : color);
         graphics.DrawString(number, font, foreground, new RectangleF(0, -1, 64, 64), format);
         IntPtr handle = bitmap.GetHicon();
         try { using var unmanaged = Icon.FromHandle(handle); return (Icon)unmanaged.Clone(); }
@@ -104,19 +233,22 @@ internal sealed class TrayController : IDisposable
     }
     public void Dispose()
     {
-        _disposed = true; _service.Changed -= Changed; _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
+        _disposed = true; _service.Changed -= Changed; _service.Notification -= Notified;
+        _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
+        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _pendingNotifications.Clear(); _peek.Close();
+        _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
     }
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);
     private sealed class DarkMenuRenderer : Forms.ToolStripProfessionalRenderer
     {
-        public DarkMenuRenderer() : base(new DarkColors()) { }
+        public DarkMenuRenderer(bool dark) : base(new DarkColors(dark)) { }
     }
-    private sealed class DarkColors : Forms.ProfessionalColorTable
+    private sealed class DarkColors(bool dark) : Forms.ProfessionalColorTable
     {
-        public override Color MenuItemSelected => Color.FromArgb(58, 58, 58);
-        public override Color MenuItemBorder => Color.FromArgb(85, 85, 85);
-        public override Color ToolStripDropDownBackground => Color.FromArgb(36, 36, 36);
-        public override Color MenuBorder => Color.FromArgb(65, 65, 65);
+        public override Color MenuItemSelected => dark ? Color.FromArgb(58, 58, 58) : Color.FromArgb(231, 231, 229);
+        public override Color MenuItemBorder => dark ? Color.FromArgb(85, 85, 85) : Color.FromArgb(204, 204, 200);
+        public override Color ToolStripDropDownBackground => dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
+        public override Color MenuBorder => dark ? Color.FromArgb(65, 65, 65) : Color.FromArgb(215, 215, 212);
         public override Color ImageMarginGradientBegin => ToolStripDropDownBackground;
         public override Color ImageMarginGradientMiddle => ToolStripDropDownBackground;
         public override Color ImageMarginGradientEnd => ToolStripDropDownBackground;

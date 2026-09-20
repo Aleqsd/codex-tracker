@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using CodexTracker.App.Updates;
 
 namespace CodexTracker.App;
 
@@ -13,10 +14,12 @@ public partial class App : System.Windows.Application
     private HwndSource? _messageSource;
     private static readonly uint ExitMessage = RegisterWindowMessage("CodexTracker.RequestExit.v1");
     internal bool IsDemo { get; private set; }
+    internal void ShowTestNotification() => _tray?.ShowTestNotification();
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (await UpdateBootstrap.TryHandleAsync(e.Args)) { Shutdown(); return; }
         IsDemo = e.Args.Contains("--demo");
         if (e.Args.Contains("--exit"))
         {
@@ -35,14 +38,24 @@ public partial class App : System.Windows.Application
         try
         {
             _service = IsDemo ? new DemoTrackerService() : new Codex.TrackerService();
-            var window = new MainWindow(_service, IsDemo);
+            var preferences = new PreferencesStore(persistent: !IsDemo);
+            if (IsDemo)
+            {
+                int themeArgument = Array.IndexOf(e.Args, "--theme");
+                if (themeArgument >= 0 && themeArgument + 1 < e.Args.Length)
+                    preferences.Update(p => p with { ThemeMode = e.Args[themeArgument + 1] == "light" ? CodexTracker.App.ThemeMode.Light : CodexTracker.App.ThemeMode.Dark });
+                if (e.Args.Contains("--privacy")) preferences.Update(p => p with { PrivacyMode = true });
+            }
+            var window = new MainWindow(_service, IsDemo, preferences, new UpdateService());
             MainWindow = window;
             var handle = new WindowInteropHelper(window).EnsureHandle();
             _messageSource = HwndSource.FromHwnd(handle);
             _messageSource?.AddHook(HandleWindowMessage);
-            _tray = new TrayController(window, _service, ExitAsync);
+            _tray = new TrayController(window, _service, preferences, ExitAsync);
             if (!e.Args.Contains("--background") || IsDemo) window.Show();
             await window.InitializeAsync();
+            if (_exiting) return;
+            UpdateBootstrap.MarkHealthy(e.Args);
             if (!window.IsVisible && (!_service.State.OnboardingComplete || _service.State.Accounts.Count == 0)) window.ShowPanel();
             int imageArgument = Array.IndexOf(e.Args, "--screenshot");
             if (imageArgument >= 0 && imageArgument + 1 < e.Args.Length)
@@ -54,6 +67,20 @@ public partial class App : System.Windows.Application
                 window.ShowPanel();
                 await Task.Delay(450);
                 window.SaveScreenshot(Path.GetFullPath(e.Args[imageArgument + 1]), dpi);
+            }
+            int peekArgument = Array.IndexOf(e.Args, "--peek-screenshot");
+            if (peekArgument >= 0 && peekArgument + 1 < e.Args.Length)
+            {
+                if (!IsDemo) throw new InvalidOperationException("--peek-screenshot nécessite --demo.");
+                _tray.SavePeekScreenshot(Path.GetFullPath(e.Args[peekArgument + 1]));
+            }
+            foreach (var option in new[] { "--details-screenshot", "--settings-screenshot" })
+            {
+                int argument = Array.IndexOf(e.Args, option);
+                if (argument < 0 || argument + 1 >= e.Args.Length) continue;
+                if (!IsDemo) throw new InvalidOperationException($"{option} nécessite --demo.");
+                if (option == "--details-screenshot") window.SaveDetailsScreenshot(Path.GetFullPath(e.Args[argument + 1]), 96);
+                else window.SaveSettingsScreenshot(Path.GetFullPath(e.Args[argument + 1]), 96);
             }
             if (e.Args.Contains("--smoke-test")) { await Task.Delay(400); await ExitAsync(); }
         }

@@ -1,22 +1,25 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
-using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace CodexTracker.App;
 
 internal static class Display
 {
-    public static readonly Brush Green = Brush("#A4BEAD"), Orange = Brush("#C7AA75"), Red = Brush("#CF8E8E"), Muted = Brush("#A3A3A3");
-    public static Brush Brush(string color) { var b = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!; b.Freeze(); return b; }
-    public static Brush QuotaBrush(double? value) => value is null ? Muted : value > 20 ? Green : value >= 10 ? Orange : Red;
+    public static Brush Green => ThemeManager.GetBrush("GoodBrush");
+    public static Brush Orange => ThemeManager.GetBrush("WarningBrush");
+    public static Brush Red => ThemeManager.GetBrush("DangerBrush");
+    public static Brush Muted => ThemeManager.GetBrush("MutedBrush");
+    public static Brush Brush(string color) { var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!; brush.Freeze(); return brush; }
+    public static Brush QuotaBrush(double? value) => value is null ? Muted : value < 10 ? Red : value <= 20 ? Orange : ThemeManager.GetBrush("TextBrush");
     public static string Percent(double? value) => value is null ? "—" : $"{Math.Floor(value.Value):0}%";
     public static string Exact(DateTimeOffset? date) => date?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("fr-FR")) ?? "Indisponible";
     public static string Zone(DateTimeOffset? date)
     {
         if (date is null) return "Date non communiquée";
-        var localId = TimeZoneInfo.Local.Id;
-        var zone = TimeZoneInfo.TryConvertWindowsIdToIanaId(localId, out var iana) ? iana : localId;
+        string local = TimeZoneInfo.Local.Id;
+        string zone = TimeZoneInfo.TryConvertWindowsIdToIanaId(local, out var iana) ? iana : local;
         return $"{zone} · UTC{date.Value.ToLocalTime():zzz}";
     }
     public static string Countdown(DateTimeOffset? date)
@@ -29,98 +32,89 @@ internal static class Display
         return $"Dans {left.Minutes} min {left.Seconds:00} s";
     }
     public static string Duration(int? minutes) => minutes switch { null => "Fenêtre inconnue", 10080 => "Semaine", 300 => "5 heures", >= 1440 => $"{minutes / 1440.0:0.#} jours", >= 60 => $"{minutes / 60.0:0.#} heures", _ => $"{minutes} min" };
+    public static string Age(DateTimeOffset timestamp)
+    {
+        var age = DateTimeOffset.UtcNow - timestamp;
+        return age.TotalMinutes < 1 ? "à l’instant" : age.TotalHours < 1 ? $"il y a {(int)age.TotalMinutes} min" : age.TotalDays < 1 ? $"il y a {(int)age.TotalHours} h" : $"il y a {(int)age.TotalDays} j";
+    }
+    public static string SafeText(string? text, bool privacy) => privacy ? Regex.Replace(text ?? "", @"[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+", "[compte masqué]", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)) : text ?? "";
 }
 
+internal sealed record SortChoice(SortMode Value, string Label) { public override string ToString() => Label; }
 internal sealed class AccountViewModel : INotifyPropertyChanged
 {
+    private AccountState _account;
+    private TrackerState _state;
+    private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
+    public AccountViewModel(AccountState account, TrackerState state, PreferencesStore preferences) { _account = account; _state = state; _preferences = preferences; }
+    public void Update(AccountState account, TrackerState state) { _account = account; _state = state; Tick(); }
     public void Tick() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
-    private readonly AccountState _account;
-    private readonly TrackerState _state;
-    private QuotaWindow? ShortWindow => _account.Snapshot?.Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows.Where(w => !w.IsWeekly).OrderBy(w => w.WindowDurationMins ?? int.MaxValue).FirstOrDefault();
-    public AccountViewModel(AccountState account, TrackerState state) { _account = account; _state = state; }
     public Guid Id => _account.Profile.Id;
-    public string Email => _account.Profile.Email;
-    public string Initials => new string(Email.Split('@')[0].Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => char.ToUpperInvariant(s[0])).ToArray());
+    public string Email => PrivacyText.Account(_account.Profile, _state, _preferences.Current.PrivacyMode);
+    public string Initials => _preferences.Current.PrivacyMode ? Email.Replace("Compte ", "") : new string(_account.Profile.Email.Split('@')[0].Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => char.ToUpperInvariant(s[0])).ToArray());
     public bool IsActive => _account.IsActiveInCodex;
     public bool IsSelected => Id == _state.SelectedAccountId;
     public bool IsIdle => !_state.IsBusy;
     public bool CanSelect => !IsSelected && IsIdle;
     public bool CanRemove => IsIdle && !IsActive;
-    public string SelectButtonText => IsSelected ? "✓  Dans l’icône" : "Afficher dans l’icône";
-    public string Plan => _account.Snapshot?.PlanType?.ToLowerInvariant() switch
-    {
-        "pro" or "prolite" => "PRO",
-        "plus" => "PLUS",
-        "free" => "FREE",
-        string other => other.ToUpperInvariant(),
-        _ => _account.IsConnected ? "OFFRE INDISPONIBLE" : "À DÉTECTER"
-    };
-    public string PlanBadge => _account.Snapshot?.PlanMultiplier is int multiplier ? $"{Plan} · {multiplier}×" : Plan;
-    public Brush PlanForeground => Plan switch { "PRO" => Display.Brush("#D6D6D6"), "PLUS" => Display.Brush("#D6D6D6"), "FREE" => Display.Brush("#C3C3C3"), _ => Display.Muted };
-    public Brush PlanBackground => Plan switch { "PRO" => Display.Brush("#353535"), "PLUS" => Display.Brush("#353535"), _ => Display.Brush("#353535") };
+    public string SelectGlyph => IsSelected ? "●" : "○";
+    public string SelectButtonText => IsSelected ? "Dans l’icône" : "Afficher dans l’icône";
+    public string Plan => _account.Snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", string other => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(other), _ => _account.IsConnected ? "Offre inconnue" : "À détecter" };
+    public string PlanBadge => _account.Snapshot?.PlanMultiplier is int multiplier ? $"{Plan} {multiplier}×" : Plan;
+    public string CompactStatus => HasError ? "à vérifier" : IsActive ? "actif" : _account.Snapshot is not null ? Display.Age(_account.Snapshot.FetchedAt) : "à détecter";
+    public string RowSubtitle => $"{PlanBadge} · {CompactStatus}";
+    public string SummaryLabel => IsActive ? "Compte actif dans Codex" : "Dernier relevé disponible";
+    public string WeeklyNumber => Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent);
+    public double WeeklyPercent => _account.Snapshot?.Weekly?.RemainingPercent ?? 0;
+    public Brush WeeklyBrush => Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
+    public Brush CardBorder => ThemeManager.GetBrush(IsSelected ? "FocusBrush" : "LineBrush");
+    public Brush RowBackground => ThemeManager.GetBrush(IsSelected ? "PanelBrush" : "BackgroundBrush");
+    public string ShortWindowRemaining => Display.Percent(_account.Snapshot?.Short?.RemainingPercent);
+    public string ShortSummary => $"5 h : {ShortWindowRemaining}";
+    public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetCountdown => Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetCompact => ResetCountdown.Replace("Dans ", "");
+    public string ResetHint => $"{ResetExact}\n{ResetZone}";
+    public string SummaryReset => $"Reset hebdomadaire {ResetCountdown.ToLowerInvariant()}";
+    public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
+    public string ReserveSummary => _account.Snapshot?.AvailableResetCredits is int count ? $"{count} reset{(count == 1 ? "" : "s")} en réserve" : "Réserve indisponible";
     public string SubscriptionSummary
     {
         get
         {
-            var snapshot = _account.Snapshot;
-            if (snapshot?.SubscriptionStartedAt is null && snapshot?.SubscriptionEndsAt is null) return "Période d’abonnement : indisponible";
-            string start = snapshot?.SubscriptionStartedAt is DateTimeOffset begin ? begin.ToLocalTime().ToString("dd/MM/yyyy") : "début indisponible";
-            string end = snapshot?.SubscriptionEndsAt is DateTimeOffset finish ? finish.ToLocalTime().ToString("dd/MM/yyyy") : "fin indisponible";
-            return $"Période d’abonnement : {start} → {end}";
+            if (_account.Snapshot?.SubscriptionStartedAt is null && _account.Snapshot?.SubscriptionEndsAt is null) return "Période indisponible";
+            string start = _account.Snapshot?.SubscriptionStartedAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? "début inconnu";
+            string end = _account.Snapshot?.SubscriptionEndsAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? "fin inconnue";
+            return $"{start} → {end}";
         }
     }
-    public string SubscriptionDetails => $"Période d’abonnement active\nDébut : {Display.Exact(_account.Snapshot?.SubscriptionStartedAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionStartedAt)}\nFin : {Display.Exact(_account.Snapshot?.SubscriptionEndsAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionEndsAt)}\nDates de la période communiquée par Codex.";
-    public string WeeklyNumber => Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent);
-    public double WeeklyPercent => _account.Snapshot?.Weekly?.RemainingPercent ?? 0;
-    public Brush WeeklyBrush => Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
-    public Brush CardBorder => IsSelected ? Display.Brush("#606060") : Display.Brush("#373737");
-    public Brush AvatarBackground => IsSelected ? Display.Brush("#3B3B3B") : Display.Brush("#303030");
-    public Brush AvatarForeground => Display.Brush("#D3D3D3");
-    public string ShortWindowLabel => ShortWindow is null ? "AUTRE FENÊTRE" : Display.Duration(ShortWindow.WindowDurationMins).ToUpperInvariant();
-    public string ShortWindowRemaining => Display.Percent(ShortWindow?.RemainingPercent);
-    public double ShortWindowPercent => ShortWindow?.RemainingPercent ?? 0;
-    public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCountdown => Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCountdownWithZone => $"{ResetCountdown} · {_account.Snapshot?.Weekly?.ResetsAt?.ToLocalTime().ToString("zzz") ?? "—"}";
-    public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
-    public string ReserveSummary => _account.Snapshot?.AvailableResetCredits is int n ? $"↺  {n} reset{(n == 1 ? "" : "s")} en réserve" : "↺  Réserve non communiquée";
-    private DateTimeOffset? FirstExpiry => _account.Snapshot?.ResetCredits?.Where(c => c.ExpiresAt is not null).Select(c => c.ExpiresAt).Order().FirstOrDefault();
-    public string CreditExpirySummary => FirstExpiry is null ? "Expiration non fournie" : $"Expire le {FirstExpiry.Value.ToLocalTime():dd/MM/yyyy}";
-    public string CreditDetails => _account.Snapshot?.ResetCredits is { Count: > 0 } credits ? string.Join("\n", credits.Select(c => $"{c.Title ?? "Crédit"} · expire : {Display.Exact(c.ExpiresAt)} ({Display.Zone(c.ExpiresAt)})")) : "Aucune expiration communiquée par Codex.";
+    public string SubscriptionDetails => $"Période d’abonnement active\nDébut : {Display.Exact(_account.Snapshot?.SubscriptionStartedAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionStartedAt)}\nFin : {Display.Exact(_account.Snapshot?.SubscriptionEndsAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionEndsAt)}";
+    public string CreditDetails => _account.Snapshot?.ResetCredits is { Count: > 0 } credits ? string.Join("\n", credits.Select(c => $"{Display.SafeText(c.Title ?? "Crédit", _preferences.Current.PrivacyMode)} · expire le {Display.Exact(c.ExpiresAt)}\n{Display.Zone(c.ExpiresAt)}")) : "Aucune expiration communiquée par Codex.";
     public bool HasError => !string.IsNullOrWhiteSpace(_account.Error);
-    public string Error => _account.Error ?? "";
-    public Brush FreshnessBrush => HasError || (IsActive && _account.IsStale) ? Display.Orange : Display.Muted;
+    public string Error => Display.SafeText(_account.Error, _preferences.Current.PrivacyMode);
     public string Freshness
     {
         get
         {
             if (_account.IsRefreshing) return "Actualisation en cours…";
-            if (_account.Snapshot is null) return _account.IsConnected ? "Compte détecté · en attente des quotas" : "Ouvrez ce compte dans Codex : il apparaîtra automatiquement ici";
-            var age = DateTimeOffset.UtcNow - _account.Snapshot.FetchedAt;
-            var text = age.TotalMinutes < 1 ? "à l’instant" : age.TotalMinutes < 60 ? $"il y a {(int)age.TotalMinutes} min" : $"le {Display.Exact(_account.Snapshot.FetchedAt)}";
-            if (!IsActive) return $"Dernier relevé {text} · quota figé tant que ce compte est inactif";
-            return $"{(_account.IsStale ? "Dernières données connues" : "Mis à jour")} {text}";
+            if (_account.Snapshot is null) return "Ouvrez ce compte dans Codex pour détecter ses quotas.";
+            return IsActive ? $"Mis à jour {Display.Age(_account.Snapshot.FetchedAt)}" : $"Dernier relevé {Display.Age(_account.Snapshot.FetchedAt)} · quota figé tant que ce compte est inactif";
         }
     }
     public string AllDetails
     {
         get
         {
-            var multiplier = _account.Snapshot?.PlanMultiplier is int value ? $"{value}×" : "non communiqué";
-            var lines = new List<string> { Email, $"Offre : {Plan}", $"Multiplicateur : {multiplier}", SubscriptionDetails, "" };
-            lines.Add(IsActive ? "Compte actif dans Codex · actualisation automatique." : "Compte inactif · les quotas affichés correspondent au dernier relevé. Ouvrez ce compte dans Codex pour les actualiser.");
-            lines.Add("");
+            var lines = new List<string> { Email, $"Offre : {PlanBadge}", SubscriptionDetails, "", Freshness, "" };
             foreach (var bucket in _account.Snapshot?.Buckets ?? [])
             {
-                lines.Add(bucket.Name ?? bucket.Id);
-                foreach (var window in bucket.Windows)
-                    lines.Add($"  {Display.Duration(window.WindowDurationMins)} : {Display.Percent(window.RemainingPercent)} restant\n  Reset : {Display.Exact(window.ResetsAt)}\n  {Display.Zone(window.ResetsAt)} · {Display.Countdown(window.ResetsAt)}");
+                lines.Add(Display.SafeText(bucket.Name ?? bucket.Id, _preferences.Current.PrivacyMode));
+                foreach (var window in bucket.Windows) lines.Add($"{Display.Duration(window.WindowDurationMins)} : {Display.Percent(window.RemainingPercent)} restant\nReset : {Display.Exact(window.ResetsAt)}\n{Display.Zone(window.ResetsAt)} · {Display.Countdown(window.ResetsAt)}");
                 lines.Add("");
             }
             lines.Add(ReserveSummary); lines.Add(CreditDetails);
-            lines.Add(""); lines.Add(Freshness);
             if (HasError) lines.Add(Error);
             return string.Join("\n", lines);
         }
@@ -129,25 +123,40 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
 
 internal sealed class DashboardViewModel : INotifyPropertyChanged
 {
+    private TrackerState _state = new([], null);
+    private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
-    private TrackerState _state = new([], null);
+    public IReadOnlyList<SortChoice> SortChoices { get; } = [new(SortMode.Active, "Compte actif"), new(SortMode.Quota, "Quota restant"), new(SortMode.Reset, "Prochain reset"), new(SortMode.Plan, "Type d’offre")];
+    public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; }
     public bool IsDemo { get; }
-    public DashboardViewModel(bool isDemo) => IsDemo = isDemo;
-    public AccountViewModel? Selected => Accounts.FirstOrDefault(a => a.IsSelected);
-    public bool HasSelected => Selected is not null;
+    public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive) ?? Accounts.FirstOrDefault(a => a.IsSelected) ?? Accounts.FirstOrDefault();
+    public bool HasActive => Active is not null;
     public bool IsEmpty => Accounts.Count == 0;
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
-    public Brush StatusBrush => _state.IsBusy ? Display.Orange : Display.Green;
-    public string StatusText => _state.StatusMessage ?? (_state.IsBusy ? "Lecture du compte Codex…" : $"{(IsDemo ? "Démonstration · " : "")}Détection automatique toutes les 2 secondes · quotas actifs toutes les 2 minutes");
+    public bool IsPrivate => _preferences.Current.PrivacyMode;
+    public string PrivacyLabel => IsPrivate ? "Identités masquées" : "Masquer les identités";
+    public string PrivacyGlyph => IsPrivate ? "◉" : "◎";
+    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : "MutedBrush");
+    public string StatusText => Display.SafeText(_state.StatusMessage ?? (_state.IsBusy ? "Actualisation…" : IsDemo ? "Démonstration · données fictives" : "Détection automatique · toutes les 2 secondes"), IsPrivate);
     public void Tick() { foreach (var account in Accounts) account.Tick(); }
     public void Update(TrackerState state)
     {
         _state = state;
-        Accounts.Clear();
-        foreach (var a in state.Accounts) Accounts.Add(new AccountViewModel(a, state));
+        var source = state.Accounts.Select((account, index) => (account, index));
+        var sorted = _preferences.Current.SortMode switch
+        {
+            SortMode.Quota => source.OrderBy(a => a.account.Snapshot?.Weekly?.RemainingPercent ?? double.MaxValue).ThenBy(a => a.index),
+            SortMode.Reset => source.OrderBy(a => a.account.Snapshot?.Weekly?.ResetsAt ?? DateTimeOffset.MaxValue).ThenBy(a => a.index),
+            SortMode.Plan => source.OrderBy(a => a.account.Snapshot?.PlanType ?? "zzz", StringComparer.OrdinalIgnoreCase).ThenBy(a => a.index),
+            _ => source.OrderByDescending(a => a.account.IsActiveInCodex).ThenBy(a => a.index)
+        };
+        var ordered = sorted.Select(a => a.account).ToArray();
+        var existing = Accounts.ToDictionary(a => a.Id);
+        var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences); }).ToArray();
+        if (!Accounts.Select(a => a.Id).SequenceEqual(next.Select(a => a.Id))) { Accounts.Clear(); foreach (var vm in next) Accounts.Add(vm); }
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     }
 }

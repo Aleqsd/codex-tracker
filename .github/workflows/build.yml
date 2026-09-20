@@ -22,12 +22,16 @@ jobs:
       - name: Publish portable Windows app
         shell: pwsh
         run: ./scripts/publish.ps1
+      - name: Build per-user Windows installer
+        shell: pwsh
+        run: ./scripts/build-installer.ps1 -InstallCompiler
       - uses: actions/upload-artifact@v7
         with:
           name: CodexTracker-win-x64
           path: |
             artifacts/*.zip
             artifacts/*.sha256
+            artifacts/*-Setup.exe
       - uses: actions/upload-artifact@v7
         if: always()
         with:

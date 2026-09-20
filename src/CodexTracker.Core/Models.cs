@@ -14,6 +14,8 @@ public sealed record AccountSnapshot(string Email, string? PlanType, IReadOnlyLi
 {
     public QuotaWindow? Weekly => Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows
         .Where(w => w.IsWeekly).OrderBy(w => w.RemainingPercent).FirstOrDefault();
+    public QuotaWindow? Short => Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows
+        .Where(w => w.WindowDurationMins == 300).OrderBy(w => w.RemainingPercent).FirstOrDefault();
 }
 public sealed record AccountState(AccountProfile Profile, AccountSnapshot? Snapshot = null,
     bool IsActiveInCodex = false, bool IsConnected = false, bool IsRefreshing = false,
@@ -30,7 +32,10 @@ public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? Se
 public interface ITrackerService : IAsyncDisposable
 {
     event EventHandler? Changed;
+    event EventHandler<QuotaNotification>? Notification;
     TrackerState State { get; }
+    IReadOnlyList<UsageSample> GetHistory(Guid accountId);
+    UsageForecast GetForecast(Guid accountId);
     Task InitializeAsync(CancellationToken cancellationToken = default);
     Task RefreshAsync(CancellationToken cancellationToken = default);
     Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default);

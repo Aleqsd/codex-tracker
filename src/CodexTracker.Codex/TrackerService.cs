@@ -29,6 +29,7 @@ public sealed class TrackerService : ITrackerService
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ConcurrentDictionary<long, Task> _requests = new();
+    private readonly ConcurrentDictionary<Guid, AccountTelemetry> _telemetry = new();
     private CancellationTokenSource _identityLifetime = new();
     private AuthFileMonitor? _monitor;
     private Task? _timer;
@@ -39,7 +40,11 @@ public sealed class TrackerService : ITrackerService
     private string? _accountId;
     private bool _initialized;
     private bool _disposed;
+    private long _notificationBaselineGeneration = -1;
+    private sealed record ActiveObservation(Guid AccountId, DateTimeOffset StartedAt);
+    private ActiveObservation? _activeObservation;
     public event EventHandler? Changed;
+    public event EventHandler<QuotaNotification>? Notification;
     public TrackerState State { get; private set; } = new([], null, StatusMessage: "Détection du compte Codex…");
 
     public TrackerService(string? authFilePath = null, TrackerServiceOptions? options = null, IAccountUsageReader? reader = null)
@@ -60,6 +65,7 @@ public sealed class TrackerService : ITrackerService
             _store.Open();
             var settings = _store.LoadSettings();
             var snapshots = _store.LoadSnapshots();
+            foreach (var profile in settings.Accounts) _telemetry[profile.Id] = _store.LoadTelemetry(profile.Id, DateTimeOffset.UtcNow);
             Set(State with
             {
                 Accounts = settings.Accounts.Select(p => new AccountState(p,
@@ -99,6 +105,22 @@ public sealed class TrackerService : ITrackerService
 
     public Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default) => RefreshAsync(cancellationToken);
 
+    public IReadOnlyList<UsageSample> GetHistory(Guid accountId) => _telemetry.TryGetValue(accountId, out var telemetry)
+        ? telemetry.Samples : Array.Empty<UsageSample>();
+
+    public UsageForecast GetForecast(Guid accountId)
+    {
+        var state = State.Accounts.FirstOrDefault(a => a.Profile.Id == accountId);
+        var observation = _activeObservation;
+        if (state is not { IsActiveInCodex: true } || observation is null || observation.AccountId != accountId)
+            return new(null, null, "Ouvrez ce compte dans Codex pour estimer sa consommation actuelle.");
+        if (state.Error is not null) return new(null, null, "L'estimation est suspendue jusqu'au prochain relevé disponible.");
+        var now = DateTimeOffset.UtcNow;
+        var since = observation.StartedAt > now.AddHours(-1) ? observation.StartedAt : now.AddHours(-1);
+        var samples = GetHistory(accountId).Where(s => s.Timestamp >= since).ToArray();
+        return UsageAnalytics.Estimate(samples, now);
+    }
+
     private async Task DetectAsync(CancellationToken cancellationToken)
     {
         // Serialise only local reads and state changes; a slow quota request cannot block detection.
@@ -120,6 +142,8 @@ public sealed class TrackerService : ITrackerService
             _identityLifetime.Dispose();
             _identityLifetime = new();
             _generation++;
+            _notificationBaselineGeneration = -1;
+            _activeObservation = null;
             _activeKey = key;
             _accountId = identity?.AccountId;
             _refresh = null;
@@ -135,6 +159,7 @@ public sealed class TrackerService : ITrackerService
                 }
                 accounts[index] = accounts[index] with { IsActiveInCodex = true, IsConnected = true, Error = null };
                 selected = accounts[index].Profile.Id;
+                _activeObservation = new(selected.Value, DateTimeOffset.UtcNow);
             }
             Set(State with { Accounts = accounts.ToArray(), SelectedAccountId = selected, IsBusy = false,
                 StatusMessage = identity is null ? warning : "Compte Codex détecté · lecture des quotas…" });
@@ -148,7 +173,9 @@ public sealed class TrackerService : ITrackerService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_disposed || _activeKey is null || _accountId is null) return Task.CompletedTask;
+            if (_disposed) return Task.CompletedTask;
+            PruneOldHistory(DateTimeOffset.UtcNow);
+            if (_activeKey is null || _accountId is null) return Task.CompletedTask;
             if (_refresh is { IsCompleted: false }) return _refresh;
             var active = State.Accounts.Single(a => a.IsActiveInCodex);
             var sequence = ++_requestSequence;
@@ -168,6 +195,7 @@ public sealed class TrackerService : ITrackerService
         request.CancelAfter(_options.RequestTimeout);
         AccountSnapshot? snapshot = null;
         string? error = null;
+        IReadOnlyList<QuotaNotification> notifications = Array.Empty<QuotaNotification>();
         try
         {
             await _gate.WaitAsync(request.Token);
@@ -201,6 +229,13 @@ public sealed class TrackerService : ITrackerService
                     {
                         if (generation == _generation)
                         {
+                            var previousSnapshot = State.Accounts.FirstOrDefault(a => a.Profile.Id == profile.Id)?.Snapshot;
+                            if (snapshot is not null && previousSnapshot is not null && snapshot.FetchedAt < previousSnapshot.FetchedAt)
+                            {
+                                snapshot = null;
+                                error = "Un relevé plus ancien a été ignoré. Les dernières données sont conservées.";
+                            }
+                            if (snapshot is not null) notifications = RecordObservation(profile, snapshot, generation);
                             Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsRefreshing = false, Error = error });
                             Set(State with { IsBusy = false, StatusMessage = error ?? "À jour · changements de compte détectés automatiquement" });
                             Save();
@@ -212,6 +247,38 @@ public sealed class TrackerService : ITrackerService
                 catch (OperationCanceledException) { }
                 catch (Exception ex) when (IsRecoverable(ex)) { /* Retain the in-memory state if disk becomes unavailable. */ }
             }
+            foreach (var notification in notifications) Notification?.Invoke(this, notification);
+        }
+    }
+
+    private IReadOnlyList<QuotaNotification> RecordObservation(AccountProfile profile, AccountSnapshot snapshot, long generation)
+    {
+        var previous = _telemetry.GetValueOrDefault(profile.Id) ?? AccountTelemetry.Empty;
+        var samples = UsageAnalytics.Append(previous.Samples, UsageAnalytics.FromSnapshot(profile.Id, snapshot));
+        var evaluation = QuotaAlertEvaluator.Observe(profile, snapshot, previous.Alerts,
+            suppressNotifications: _notificationBaselineGeneration != generation);
+        _notificationBaselineGeneration = generation;
+        var current = new AccountTelemetry(samples, evaluation.State);
+        _telemetry[profile.Id] = current;
+        try
+        {
+            // Persist deduplication before publishing events: restarting cannot replay an alert.
+            _store.SaveTelemetry(profile.Id, current);
+            return evaluation.Notifications;
+        }
+        catch (Exception ex) when (IsRecoverable(ex)) { return Array.Empty<QuotaNotification>(); }
+    }
+
+    private void PruneOldHistory(DateTimeOffset now)
+    {
+        var cutoff = now - UsageAnalytics.Retention;
+        foreach (var (id, telemetry) in _telemetry)
+        {
+            if (telemetry.Samples.Count == 0 || telemetry.Samples[0].Timestamp >= cutoff) continue;
+            var pruned = telemetry with { Samples = telemetry.Samples.Where(s => s.Timestamp >= cutoff).ToList().AsReadOnly() };
+            _telemetry[id] = pruned;
+            try { _store.SaveTelemetry(id, pruned); }
+            catch (Exception ex) when (IsRecoverable(ex)) { }
         }
     }
 
@@ -230,6 +297,8 @@ public sealed class TrackerService : ITrackerService
         {
             if (State.Accounts.Any(a => a.Profile.Id == id && a.IsActiveInCodex))
                 throw new TrackerException("Le compte actif est suivi automatiquement. Changez de compte dans Codex avant de le retirer.");
+            _store.DeleteTelemetry(id);
+            _telemetry.TryRemove(id, out _);
             Set(State with { Accounts = State.Accounts.Where(a => a.Profile.Id != id).ToArray(),
                 SelectedAccountId = State.SelectedAccountId == id ? State.Accounts.FirstOrDefault(a => a.IsActiveInCodex)?.Profile.Id : State.SelectedAccountId });
         }, cancellationToken);
