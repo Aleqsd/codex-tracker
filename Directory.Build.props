@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <Version>0.1.0</Version>
+    <Authors>Aleqsd</Authors>
+    <RepositoryUrl>https://github.com/Aleqsd/codex-tracker</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Product>Codex Tracker</Product>
+    <Description>Suivi local des quotas Codex depuis la barre des tâches Windows.</Description>
+  </PropertyGroup>
+</Project>

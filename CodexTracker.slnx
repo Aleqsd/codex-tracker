@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodexTracker.App/CodexTracker.App.csproj" />
+    <Project Path="src/CodexTracker.Codex/CodexTracker.Codex.csproj" />
+    <Project Path="src/CodexTracker.Core/CodexTracker.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CodexTracker.Tests/CodexTracker.Tests.csproj" />
+  </Folder>
+</Solution>

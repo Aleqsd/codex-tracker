@@ -1,0 +1,35 @@
+name: Windows build and tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore CodexTracker.slnx
+      - name: Build
+        run: dotnet build CodexTracker.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx"
+      - name: Publish portable Windows app
+        shell: pwsh
+        run: ./scripts/publish.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CodexTracker-win-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: tests/**/TestResults/*.trx
