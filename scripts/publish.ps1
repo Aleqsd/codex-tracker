@@ -13,6 +13,9 @@ if (Test-Path -LiteralPath (Join-Path $repoRoot 'docs/dashboard.png')) {
     New-Item -ItemType Directory -Path (Join-Path $publishRoot 'docs') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/dashboard.png') -Destination (Join-Path $publishRoot 'docs/dashboard.png')
     Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/VALIDATION.md') -Destination (Join-Path $publishRoot 'docs/VALIDATION.md')
+    if (Test-Path -LiteralPath (Join-Path $repoRoot 'docs/tray-ring.png')) {
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/tray-ring.png') -Destination (Join-Path $publishRoot 'docs/tray-ring.png')
+    }
 }
 $zipPath = Join-Path $repoRoot "artifacts/CodexTracker-$Version-win-x64.zip"
 Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $zipPath -Force
