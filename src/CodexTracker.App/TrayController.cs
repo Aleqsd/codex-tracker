@@ -4,6 +4,7 @@ using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using Forms = System.Windows.Forms;
 using Color = System.Drawing.Color;
+using Pen = System.Drawing.Pen;
 
 namespace CodexTracker.App;
 
@@ -33,7 +34,7 @@ internal sealed class TrayController : IDisposable
         var account = state.SelectedAccount;
         double? remaining = account?.Snapshot?.Weekly?.RemainingPercent;
         string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
-        var color = remaining is null ? Color.FromArgb(163, 163, 163) : remaining > 20 ? Color.FromArgb(164, 190, 173) : remaining >= 10 ? Color.FromArgb(199, 170, 117) : Color.FromArgb(207, 142, 142);
+        var color = remaining is null ? Color.FromArgb(163, 163, 163) : remaining > 20 ? Color.FromArgb(240, 240, 236) : remaining >= 10 ? Color.FromArgb(199, 170, 117) : Color.FromArgb(207, 142, 142);
         string key = number + color.ToArgb();
         if (_iconKey != key)
         {
@@ -70,21 +71,32 @@ internal sealed class TrayController : IDisposable
         graphics.SmoothingMode = SmoothingMode.AntiAlias; graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         graphics.Clear(Color.Transparent);
         using var background = new SolidBrush(Color.FromArgb(29, 29, 29));
-        // The digits are the tray's primary information: use almost the full
-        // 64px canvas so they remain readable when Explorer reduces it to 16px.
         graphics.FillEllipse(background, 0, 0, 64, 64);
+        var ring = new RectangleF(3, 3, 58, 58);
+        using var track = new Pen(Color.FromArgb(79, 79, 79), 4.5f);
+        graphics.DrawEllipse(track, ring);
+        var known = int.TryParse(number, out var remaining);
+        if (known && remaining > 0)
+        {
+            using var progress = new Pen(color, 4.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            // A closed ellipse avoids a seam at 100%; 0% keeps only the empty track.
+            if (remaining >= 100) graphics.DrawEllipse(progress, ring);
+            else graphics.DrawArc(progress, ring, -90, Math.Clamp(remaining, 0, 100) * 3.6f);
+        }
         using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
         format.Alignment = StringAlignment.Center; format.LineAlignment = StringAlignment.Center;
         format.FormatFlags |= StringFormatFlags.NoWrap;
-        float fontSize = number.Length == 3 ? 36 : number.Length == 1 ? 50 : 46;
+        // Reserve the centre for the number. Three digits must fit inside the ring,
+        // including when Explorer scales the icon down to 16 physical pixels.
+        float fontSize = number.Length == 3 ? 28 : number.Length == 1 ? 38 : 35;
         while (fontSize > 20)
         {
             using var candidate = new Font("Segoe UI", fontSize, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
-            if (graphics.MeasureString(number, candidate, int.MaxValue, format).Width <= 60) break;
+            if (graphics.MeasureString(number, candidate, int.MaxValue, format).Width <= 44) break;
             fontSize--;
         }
         using var font = new Font("Segoe UI", fontSize, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
-        using var foreground = new SolidBrush(color);
+        using var foreground = new SolidBrush(known ? Color.FromArgb(240, 240, 236) : color);
         graphics.DrawString(number, font, foreground, new RectangleF(0, -1, 64, 64), format);
         IntPtr handle = bitmap.GetHicon();
         try { using var unmanaged = Icon.FromHandle(handle); return (Icon)unmanaged.Clone(); }

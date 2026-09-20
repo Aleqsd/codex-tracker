@@ -54,7 +54,7 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             await client.RequestAsync("initialize", new
             {
-                clientInfo = new { name = "codex_tracker", title = "Codex Tracker", version = "0.2.0" },
+                clientInfo = new { name = "codex_tracker", title = "Codex Tracker", version = "0.2.1" },
                 capabilities = new { experimentalApi = true }
             }, cancellationToken);
             await client.SendAsync(new { method = "initialized", @params = new { } }, cancellationToken);

@@ -2,7 +2,7 @@
 
 Vos quotas Codex, directement dans la barre des tâches Windows.
 
-L’icône affiche le **pourcentage hebdomadaire restant**. Un clic ouvre un tableau de bord sombre avec vos comptes, offres, périodes d’abonnement, quotas, dates de reset et resets en réserve.
+L’icône affiche le **pourcentage hebdomadaire restant au centre d’un anneau de progression**. Un clic ouvre un tableau de bord sombre avec vos comptes, offres, périodes d’abonnement, quotas, dates de reset et resets en réserve.
 
 ![Tableau de bord avec comptes fictifs](docs/dashboard.png)
 
@@ -26,7 +26,7 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les au
 ## Lire le tableau de bord
 
 - **Hebdomadaire** : quota restant de la fenêtre de 10 080 minutes du bucket `codex`. Une limite de cinq heures n’est jamais présentée comme une limite hebdomadaire.
-- **Vert** au-dessus de 20 %, **orange** entre 10 et 20 %, **rouge** sous 10 %. La valeur reste lisible sans dépendre uniquement de la couleur.
+- **Dans l’icône** : nombre blanc cassé, anneau clair au-dessus de 20 %, orange entre 10 et 20 %, rouge sous 10 %. Le tableau de bord conserve son vert discret au-dessus de 20 %. La valeur reste lisible sans dépendre uniquement de la couleur.
 - **Offre** : badges Free, Plus, Pro et autres offres renvoyées par Codex. Les valeurs `prolite` et `pro` correspondent respectivement à Pro **5×** et Pro **20×**, conformément à l’interface Codex actuelle. Une offre inconnue reste affichée telle quelle.
 - **Période d’abonnement** : début et fin de période active lorsqu’ils sont présents dans les métadonnées de session Codex. Ce ne sont pas nécessairement la date de souscription initiale ni une échéance de paiement. Les dates absentes restent indisponibles.
 - **Resets en réserve** : compteur `availableCount` fourni par Codex, accompagné des expirations disponibles. Le nombre d’éléments détaillés ne remplace jamais le compteur serveur.

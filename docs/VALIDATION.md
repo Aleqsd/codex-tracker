@@ -1,4 +1,4 @@
-# Validation de la version 0.2.0
+# Validation de la version 0.2.1
 
 Contrôles effectués sur Windows 11 x64, le 20 septembre 2026.
 
@@ -11,6 +11,7 @@ Contrôles effectués sur Windows 11 x64, le 20 septembre 2026.
 | Persistance des credentials | Aucun fichier de session créé dans les données du tracker ; runtime temporaire nettoyé après collecte réelle |
 | Démonstration WPF et fermeture par `--exit` | Testées sur un véritable processus de l’application |
 | Rendus WPF 96, 144 et 192 DPI | Inspectés visuellement ; ce contrôle ne change pas les réglages DPI de Windows |
+| Icône anneau 16, 20, 24 et 32 pixels | Valeurs 0, 8, 10, 20, 21, 72, 99, 100 et inconnue vérifiées dans le [rendu de contrôle](tray-ring.png) |
 
 Les tests automatisés utilisent des comptes fictifs. Ils couvrent notamment les changements A → B → A, la détection pendant une requête lente, le rejet d’une ancienne réponse après changement de génération, le refus d’un relevé d’un autre compte, la disparition et le remplacement atomique de la session, la recréation du dossier, la déduplication des notifications et la conservation des derniers relevés. Un test garde le fichier de session ouvert en refusant toute écriture.
 
