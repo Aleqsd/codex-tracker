@@ -17,4 +17,5 @@ snapshots.json
 initial-accounts.json
 vault/
 runtime/
+observer-runtime/
 pending-desktop-switch.bin

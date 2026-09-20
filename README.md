@@ -2,7 +2,7 @@
 
 Vos quotas Codex, directement dans la barre des tâches Windows.
 
-Une icône affiche le **pourcentage hebdomadaire restant** du compte suivi. Un clic ouvre un tableau de bord sombre avec tous vos comptes, abonnements, quotas, dates de reset et resets en réserve.
+L’icône affiche le **pourcentage hebdomadaire restant**. Un clic ouvre un tableau de bord sombre avec vos comptes, offres, périodes d’abonnement, quotas, dates de reset et resets en réserve.
 
 ![Tableau de bord avec comptes fictifs](docs/dashboard.png)
 
@@ -10,38 +10,38 @@ Une icône affiche le **pourcentage hebdomadaire restant** du compte suivi. Un c
 
 1. Téléchargez le ZIP `CodexTracker-…-win-x64.zip` depuis les [Releases](https://github.com/Aleqsd/codex-tracker/releases).
 2. Extrayez-le dans un dossier permanent et lancez `CodexTracker.exe`.
-3. Le compte Codex actuellement connecté est détecté. Ajoutez vos autres adresses, puis cliquez sur **Connecter** pour chacune.
+3. Utilisez normalement Codex : le tracker détecte son compte ouvert. Chaque autre compte est ajouté automatiquement lorsque vous l’ouvrez dans Codex.
 4. Dans les paramètres Windows de la barre des tâches, rendez l’icône Codex Tracker visible près de l’horloge.
 
-Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaires. Le runtime .NET est inclus dans le ZIP. Le lancement avec Windows est facultatif, depuis les réglages du tracker.
+Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaires. Le runtime .NET est inclus. Le démarrage avec Windows est facultatif, depuis les réglages du tracker.
+
+## Détection automatique
+
+Changez de compte **dans Codex**. Le tracker observe son fichier de session en lecture seule, détecte le nouveau compte, sélectionne son quota dans l’icône et actualise ses données. Les changements de fichier sont surveillés immédiatement, avec un contrôle de secours toutes les deux secondes et une stabilisation de 300 ms. Une écriture transitoire ou une connexion réseau lente peut prolonger l’affichage des quotas.
+
+Le bouton **Détecter le compte Codex** déclenche une vérification immédiate. Aucune connexion OAuth, bascule ni fermeture de Codex n’est effectuée par le tracker.
+
+Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. **Afficher dans l’icône** permet de consulter un ancien relevé ; au prochain changement de compte dans Codex, l’icône suit à nouveau le compte actif.
 
 ## Lire le tableau de bord
 
 - **Hebdomadaire** : quota restant de la fenêtre de 10 080 minutes du bucket `codex`. Une limite de cinq heures n’est jamais présentée comme une limite hebdomadaire.
 - **Vert** au-dessus de 20 %, **orange** entre 10 et 20 %, **rouge** sous 10 %. La valeur reste lisible sans dépendre uniquement de la couleur.
-- **Compte suivi** : celui dont le quota est affiché dans l’icône. Le sélectionner ne change pas le compte utilisé dans Codex.
-- **Compte actif** : session détectée dans le cache de Codex. Pendant une bascule, son activation dans l’application reste à vérifier.
-- **Resets en réserve** : nombre fourni par Codex, accompagné des expirations disponibles. Les détails peuvent être partiels ; leur longueur ne remplace jamais le compteur serveur.
-- Les dates utilisent le fuseau horaire Windows avec décalage UTC. Le compte à rebours complète l’heure exacte ; il ne remplace pas une confirmation de reset par le serveur.
-- Actualisation toutes les deux minutes. En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
-
-## Changer de compte
-
-**Utiliser dans Codex** est distinct de **Afficher dans l’icône**. Une confirmation précède la fermeture et la relance, car du travail peut être interrompu. Le tracker ne force pas l’arrêt d’un processus qui refuse de quitter.
-
-L’adaptateur de bascule cible la version Windows `26.915.4065.0` de Codex/ChatGPT, avec une session ChatGPT gérée dans `auth.json`. Il est désactivé pour les autres versions et modes de connexion. Il n’existe pas d’API publique de bascule à laquelle cet adaptateur puisse se connecter sur cette version.
-
-Le tracker sauvegarde la session précédente sous forme chiffrée, attend la fermeture de l’application et de ses processus enfants, remplace atomiquement le cache de connexion puis relance Codex. **Une écriture du cache ne suffit pas à prouver une connexion.** Vérifiez l’adresse dans le menu du compte de Codex et confirmez dans le tracker, ou choisissez **Restaurer la session précédente**. La sauvegarde reste disponible tant que la vérification n’est pas terminée.
-
-Les projets, conversations et réglages Codex ne sont pas déplacés. Un seul programme renouvelle les tokens d’une session : Codex pour le compte actif, le tracker pour les comptes inactifs. Si le token actif a expiré et que Codex ne l’a pas encore renouvelé, le tracker conserve les dernières données et signale leur état.
+- **Offre** : badges Free, Plus, Pro et autres offres renvoyées par Codex. Les valeurs `prolite` et `pro` correspondent respectivement à Pro **5×** et Pro **20×**, conformément à l’interface Codex actuelle. Une offre inconnue reste affichée telle quelle.
+- **Période d’abonnement** : début et fin de période active lorsqu’ils sont présents dans les métadonnées de session Codex. Ce ne sont pas nécessairement la date de souscription initiale ni une échéance de paiement. Les dates absentes restent indisponibles.
+- **Resets en réserve** : compteur `availableCount` fourni par Codex, accompagné des expirations disponibles. Le nombre d’éléments détaillés ne remplace jamais le compteur serveur.
+- Les dates précises utilisent le fuseau horaire Windows et son décalage UTC. Le compte à rebours complète l’heure exacte ; il ne confirme pas un reset tant que le serveur n’a pas actualisé la valeur.
+- En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
 
 ## Données locales
 
-Les profils, réglages, résultats en cache et sessions sont stockés sous `%LOCALAPPDATA%\CodexTracker`. Les sessions conservées et la sauvegarde de bascule sont protégées par Windows DPAPI pour l’utilisateur courant. Les profils de travail temporaires nécessaires à la CLI sont limités par les permissions Windows puis nettoyés.
+Les profils, réglages et derniers relevés sont stockés sous `%LOCALAPPDATA%\CodexTracker`, avec des permissions limitées à l’utilisateur Windows. Le tracker lit `%USERPROFILE%\.codex\auth.json` sans jamais le modifier. Il utilise uniquement le jeton d’accès courant en mémoire dans un processus Codex isolé avec un stockage de connexion `ephemeral` ; il ne conserve pas de session et ne renouvelle aucun jeton. Codex reste responsable de sa connexion. Si elle a expiré, ouvrez Codex pour la rétablir.
 
-L’application ne possède pas de serveur de synchronisation et n’envoie pas vos comptes à ce dépôt. Les connexions passent par Codex et les services OpenAI. Aucun mot de passe n’est demandé au tracker. Les journaux applicatifs n’enregistrent pas de tokens. Les exemples et captures de ce dépôt utilisent uniquement des comptes fictifs.
+Les anciens coffres et sauvegardes de la version 0.1 ne sont ni utilisés ni modifiés lors de la mise à jour. Les métadonnées et derniers relevés sont conservés. Les nouveaux profils de travail temporaires sont nettoyés après collecte.
 
-Pour préconfigurer localement une première installation, créez `%LOCALAPPDATA%\CodexTracker\initial-accounts.json` avec un tableau d’adresses, par exemple `["demo@example.test"]`. Ce fichier n’est lu que si les réglages n’existent pas encore. Ne le placez pas dans le dépôt.
+L’application ne possède pas de serveur de synchronisation et n’envoie pas vos comptes à ce dépôt. Les requêtes de quota passent par Codex et les services OpenAI. Aucun mot de passe n’est demandé au tracker. Les journaux applicatifs n’enregistrent pas de tokens. Les exemples et captures de ce dépôt utilisent uniquement des comptes fictifs.
+
+Pour préconfigurer localement une première installation, créez `%LOCALAPPDATA%\CodexTracker\initial-accounts.json` avec un tableau d’adresses, par exemple `["demo@example.test"]`. Ce fichier est facultatif, lu uniquement si les réglages n’existent pas encore, et doit rester hors du dépôt. Ces comptes restent « À détecter » jusqu’à leur ouverture dans Codex.
 
 ## Développer
 
@@ -55,12 +55,12 @@ dotnet run --project src/CodexTracker.App -- --demo
 ./scripts/publish.ps1
 ```
 
-La solution sépare `Core` (modèle et interprétation des quotas), `Codex` (protocole, sessions et bascule) et `App` (interface WPF et zone de notification). Les tests emploient des données fictives et un faux environnement desktop : ils ne ferment jamais votre application Codex.
+La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocole en lecture seule) et `App` (WPF et zone de notification). Les tests utilisent des sessions fictives et ne modifient jamais votre connexion Codex. Ils couvrent les réponses de quotas, valeurs absentes, dates et changements d’heure, changements de fichiers, isolation des comptes et réponses réseau tardives. Les contrôles réels et leurs limites sont détaillés dans [VALIDATION.md](docs/VALIDATION.md).
 
-Les contrôles automatisés couvrent les réponses de quotas, les valeurs manquantes, les dates, l’isolation des comptes et les transactions de bascule. Un essai OAuth et un aller-retour réel entre deux comptes nécessitent leur connexion interactive et une vérification du compte affiché. Ils ne doivent pas être confondus avec les tests simulés.
+Pour quitter une instance existante avant une mise à jour : `CodexTracker.exe --exit`. Le mode démonstration se ferme séparément avec `CodexTracker.exe --demo --exit`.
 
 ## Références
 
-[App Server Codex](https://learn.chatgpt.com/docs/app-server) · [Authentification Codex](https://learn.chatgpt.com/docs/auth) · [Zone de notification Windows](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area)
+[App Server Codex](https://learn.chatgpt.com/docs/app-server) · [Authentification Codex](https://learn.chatgpt.com/docs/auth) · [Offres Codex](https://learn.chatgpt.com/docs/pricing) · [Zone de notification Windows](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area)
 
 Projet indépendant, sans affiliation avec OpenAI. Licence MIT.

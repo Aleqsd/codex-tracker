@@ -5,7 +5,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace CodexTracker.Codex;
 
-// A crashed tracker must not leave an orphan collector rotating tokens in a recoverable profile.
+// A crashed tracker must not leave an orphan collector holding its in-memory access token.
 internal sealed class ChildProcessJob : IDisposable
 {
     private readonly SafeFileHandle _handle;

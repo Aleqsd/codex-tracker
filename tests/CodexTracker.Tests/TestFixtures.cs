@@ -5,7 +5,7 @@ namespace CodexTracker.Tests;
 
 internal static class TestFixtures
 {
-    public static byte[] Auth(string email = "demo@example.test", string marker = "fixture")
+    public static byte[] Auth(string email = "demo@example.test", string marker = "fixture", string? refreshMarker = null)
     {
         var claims = new Dictionary<string, object>
         {
@@ -25,7 +25,7 @@ internal static class TestFixtures
             tokens = new
             {
                 access_token = jwt,
-                refresh_token = "not-a-real-refresh-token-" + marker,
+                refresh_token = "not-a-real-refresh-token-" + (refreshMarker ?? marker),
                 id_token = jwt,
                 account_id = "test-account-" + marker
             }

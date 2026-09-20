@@ -7,7 +7,7 @@ namespace CodexTracker.App;
 
 internal static class Display
 {
-    public static readonly Brush Green = Brush("#66E0CB"), Orange = Brush("#FFC46C"), Red = Brush("#FF8191"), Muted = Brush("#92A4BD");
+    public static readonly Brush Green = Brush("#A4BEAD"), Orange = Brush("#C7AA75"), Red = Brush("#CF8E8E"), Muted = Brush("#A3A3A3");
     public static Brush Brush(string color) { var b = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!; b.Freeze(); return b; }
     public static Brush QuotaBrush(double? value) => value is null ? Muted : value > 20 ? Green : value >= 10 ? Orange : Red;
     public static string Percent(double? value) => value is null ? "—" : $"{Math.Floor(value.Value):0}%";
@@ -46,18 +46,37 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public bool IsSelected => Id == _state.SelectedAccountId;
     public bool IsIdle => !_state.IsBusy;
     public bool CanSelect => !IsSelected && IsIdle;
-    public bool CanConnect => IsIdle;
-    public bool CanSwitch => _state.CanSwitch && _account.IsConnected && !IsActive && IsIdle;
-    public string SwitchHint => !_state.CanSwitch ? _state.SwitchUnavailableReason ?? "Bascule indisponible sur cette version de Codex." : IsActive ? "Ce compte est déjà actif dans Codex." : !_account.IsConnected ? "Connectez ce compte avant de l’utiliser." : "Codex sera fermé puis relancé après votre confirmation.";
+    public bool CanRemove => IsIdle && !IsActive;
     public string SelectButtonText => IsSelected ? "✓  Dans l’icône" : "Afficher dans l’icône";
-    public string ConnectButtonText => _account.IsConnected ? "Reconnecter" : "Connecter";
-    public string Plan => _account.Snapshot?.PlanType?.ToUpperInvariant() ?? (_account.IsConnected ? "OFFRE INDISPONIBLE" : "NON CONNECTÉ");
+    public string Plan => _account.Snapshot?.PlanType?.ToLowerInvariant() switch
+    {
+        "pro" or "prolite" => "PRO",
+        "plus" => "PLUS",
+        "free" => "FREE",
+        string other => other.ToUpperInvariant(),
+        _ => _account.IsConnected ? "OFFRE INDISPONIBLE" : "À DÉTECTER"
+    };
+    public string PlanBadge => _account.Snapshot?.PlanMultiplier is int multiplier ? $"{Plan} · {multiplier}×" : Plan;
+    public Brush PlanForeground => Plan switch { "PRO" => Display.Brush("#D6D6D6"), "PLUS" => Display.Brush("#D6D6D6"), "FREE" => Display.Brush("#C3C3C3"), _ => Display.Muted };
+    public Brush PlanBackground => Plan switch { "PRO" => Display.Brush("#353535"), "PLUS" => Display.Brush("#353535"), _ => Display.Brush("#353535") };
+    public string SubscriptionSummary
+    {
+        get
+        {
+            var snapshot = _account.Snapshot;
+            if (snapshot?.SubscriptionStartedAt is null && snapshot?.SubscriptionEndsAt is null) return "Période d’abonnement : indisponible";
+            string start = snapshot?.SubscriptionStartedAt is DateTimeOffset begin ? begin.ToLocalTime().ToString("dd/MM/yyyy") : "début indisponible";
+            string end = snapshot?.SubscriptionEndsAt is DateTimeOffset finish ? finish.ToLocalTime().ToString("dd/MM/yyyy") : "fin indisponible";
+            return $"Période d’abonnement : {start} → {end}";
+        }
+    }
+    public string SubscriptionDetails => $"Période d’abonnement active\nDébut : {Display.Exact(_account.Snapshot?.SubscriptionStartedAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionStartedAt)}\nFin : {Display.Exact(_account.Snapshot?.SubscriptionEndsAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionEndsAt)}\nDates de la période communiquée par Codex.";
     public string WeeklyNumber => Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent);
     public double WeeklyPercent => _account.Snapshot?.Weekly?.RemainingPercent ?? 0;
     public Brush WeeklyBrush => Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
-    public Brush CardBorder => IsSelected ? Display.Brush("#3D6B65") : Display.Brush("#253247");
-    public Brush AvatarBackground => IsSelected ? Display.Brush("#21423F") : Display.Brush("#24314B");
-    public Brush AvatarForeground => IsSelected ? Display.Green : Display.Brush("#AABFEB");
+    public Brush CardBorder => IsSelected ? Display.Brush("#606060") : Display.Brush("#373737");
+    public Brush AvatarBackground => IsSelected ? Display.Brush("#3B3B3B") : Display.Brush("#303030");
+    public Brush AvatarForeground => Display.Brush("#D3D3D3");
     public string ShortWindowLabel => ShortWindow is null ? "AUTRE FENÊTRE" : Display.Duration(ShortWindow.WindowDurationMins).ToUpperInvariant();
     public string ShortWindowRemaining => Display.Percent(ShortWindow?.RemainingPercent);
     public double ShortWindowPercent => ShortWindow?.RemainingPercent ?? 0;
@@ -72,15 +91,16 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string CreditDetails => _account.Snapshot?.ResetCredits is { Count: > 0 } credits ? string.Join("\n", credits.Select(c => $"{c.Title ?? "Crédit"} · expire : {Display.Exact(c.ExpiresAt)} ({Display.Zone(c.ExpiresAt)})")) : "Aucune expiration communiquée par Codex.";
     public bool HasError => !string.IsNullOrWhiteSpace(_account.Error);
     public string Error => _account.Error ?? "";
-    public Brush FreshnessBrush => _account.IsStale ? Display.Orange : Display.Muted;
+    public Brush FreshnessBrush => HasError || (IsActive && _account.IsStale) ? Display.Orange : Display.Muted;
     public string Freshness
     {
         get
         {
             if (_account.IsRefreshing) return "Actualisation en cours…";
-            if (_account.Snapshot is null) return _account.IsConnected ? "En attente des données" : "Connectez ce compte pour afficher ses quotas";
+            if (_account.Snapshot is null) return _account.IsConnected ? "Compte détecté · en attente des quotas" : "Ouvrez ce compte dans Codex : il apparaîtra automatiquement ici";
             var age = DateTimeOffset.UtcNow - _account.Snapshot.FetchedAt;
             var text = age.TotalMinutes < 1 ? "à l’instant" : age.TotalMinutes < 60 ? $"il y a {(int)age.TotalMinutes} min" : $"le {Display.Exact(_account.Snapshot.FetchedAt)}";
+            if (!IsActive) return $"Dernier relevé {text} · quota figé tant que ce compte est inactif";
             return $"{(_account.IsStale ? "Dernières données connues" : "Mis à jour")} {text}";
         }
     }
@@ -88,7 +108,10 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     {
         get
         {
-            var lines = new List<string> { Email, $"Offre : {Plan}", "" };
+            var multiplier = _account.Snapshot?.PlanMultiplier is int value ? $"{value}×" : "non communiqué";
+            var lines = new List<string> { Email, $"Offre : {Plan}", $"Multiplicateur : {multiplier}", SubscriptionDetails, "" };
+            lines.Add(IsActive ? "Compte actif dans Codex · actualisation automatique." : "Compte inactif · les quotas affichés correspondent au dernier relevé. Ouvrez ce compte dans Codex pour les actualiser.");
+            lines.Add("");
             foreach (var bucket in _account.Snapshot?.Buckets ?? [])
             {
                 lines.Add(bucket.Name ?? bucket.Id);
@@ -117,10 +140,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
-    public bool HasPendingSwitch => _state.PendingSwitchEmail is not null;
-    public string PendingSwitchMessage => $"Codex a été relancé. Vérifiez que {_state.PendingSwitchEmail} est affiché dans le menu du compte.";
     public Brush StatusBrush => _state.IsBusy ? Display.Orange : Display.Green;
-    public string StatusText => _state.StatusMessage ?? (_state.IsBusy ? "Synchronisation en cours…" : $"{(IsDemo ? "Données de démonstration · " : "")}Actualisation automatique toutes les 2 minutes");
+    public string StatusText => _state.StatusMessage ?? (_state.IsBusy ? "Lecture du compte Codex…" : $"{(IsDemo ? "Démonstration · " : "")}Détection automatique toutes les 2 secondes · quotas actifs toutes les 2 minutes");
     public void Tick() { foreach (var account in Accounts) account.Tick(); }
     public void Update(TrackerState state)
     {

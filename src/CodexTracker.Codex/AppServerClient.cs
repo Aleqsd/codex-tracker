@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
-using System.Threading.Channels;
 
 namespace CodexTracker.Codex;
 
@@ -10,8 +9,6 @@ internal sealed class AppServerClient : IAsyncDisposable
     private readonly Process _process;
     private readonly ChildProcessJob _job;
     private readonly ConcurrentDictionary<long, TaskCompletionSource<JsonElement>> _pending = new();
-    private readonly Channel<(string Method, JsonElement Parameters)> _notifications = Channel.CreateBounded<(string, JsonElement)>(
-        new BoundedChannelOptions(64) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = true });
     private readonly SemaphoreSlim _write = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Func<CancellationToken, Task<object>>? _rereadDesktopTokens;
@@ -33,7 +30,8 @@ internal sealed class AppServerClient : IAsyncDisposable
             WorkingDirectory = home
         };
         start.ArgumentList.Add("-c");
-        start.ArgumentList.Add($"cli_auth_credentials_store=\"{(externalAuth ? "ephemeral" : "file")}\"");
+        // Compatibility parameter retained for callers; there is no managed-auth mode in the tracker.
+        start.ArgumentList.Add("cli_auth_credentials_store=\"ephemeral\"");
         start.ArgumentList.Add("app-server");
         start.Environment["CODEX_HOME"] = home;
         // Isolate credentials and state even when the tracker inherits a developer shell environment.
@@ -56,7 +54,7 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             await client.RequestAsync("initialize", new
             {
-                clientInfo = new { name = "codex_tracker", title = "Codex Tracker", version = "0.1.0" },
+                clientInfo = new { name = "codex_tracker", title = "Codex Tracker", version = "0.2.0" },
                 capabilities = new { experimentalApi = true }
             }, cancellationToken);
             await client.SendAsync(new { method = "initialized", @params = new { } }, cancellationToken);
@@ -67,6 +65,21 @@ internal sealed class AppServerClient : IAsyncDisposable
 
     public async Task<JsonElement> RequestAsync(string method, object parameters, CancellationToken cancellationToken)
     {
+        if (method == "account/read") parameters = new { refreshToken = false };
+        else if (method == "account/login/start")
+        {
+            var supplied = JsonSerializer.SerializeToElement(parameters);
+            if (AuthDocument.Read(supplied, "type") != "chatgptAuthTokens")
+                throw new TrackerException("Codex Tracker accepte uniquement la session déjà ouverte dans Codex.");
+            parameters = new
+            {
+                type = "chatgptAuthTokens", accessToken = AuthDocument.Read(supplied, "accessToken"),
+                chatgptAccountId = AuthDocument.Read(supplied, "chatgptAccountId"),
+                chatgptPlanType = AuthDocument.Read(supplied, "chatgptPlanType")
+            };
+        }
+        else if (method is not "initialize" and not "account/rateLimits/read")
+            throw new TrackerException("Cette opération ne fait pas partie du suivi en lecture seule.");
         var id = Interlocked.Increment(ref _id);
         var completion = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = completion;
@@ -76,16 +89,6 @@ internal sealed class AppServerClient : IAsyncDisposable
             return await completion.Task.WaitAsync(cancellationToken);
         }
         finally { _pending.TryRemove(id, out _); }
-    }
-
-    public async Task<JsonElement> WaitForLoginAsync(string loginId, CancellationToken cancellationToken)
-    {
-        await foreach (var notification in _notifications.Reader.ReadAllAsync(cancellationToken))
-        {
-            if (notification.Method == "account/login/completed" &&
-                AuthDocument.Read(notification.Parameters, "loginId") == loginId) return notification.Parameters;
-        }
-        throw new TrackerException("Le service Codex s'est arrêté pendant la connexion.");
     }
 
     private async Task SendAsync(object message, CancellationToken cancellationToken)
@@ -107,17 +110,15 @@ internal sealed class AppServerClient : IAsyncDisposable
                 if (root.TryGetProperty("method", out var method))
                 {
                     var methodName = method.GetString() ?? "";
-                    var parameters = root.TryGetProperty("params", out var p) ? p.Clone() : default;
                     if (root.TryGetProperty("id", out var requestId))
                         await HandleServerRequestAsync(requestId.Clone(), methodName);
-                    else _notifications.Writer.TryWrite((methodName, parameters));
                 }
                 else if (root.TryGetProperty("id", out var id) && id.TryGetInt64(out var requestId) && _pending.TryRemove(requestId, out var completion))
                 {
                     if (root.TryGetProperty("error", out var error))
                     {
                         var code = error.TryGetProperty("code", out var c) && c.TryGetInt32(out var number) ? number : 0;
-                        completion.TrySetException(new TrackerException($"Codex n'a pas pu répondre (RPC {code}). Actualisez ou reconnectez ce compte."));
+                        completion.TrySetException(new TrackerException($"Codex n'a pas pu répondre (RPC {code}). Actualisez ou vérifiez ce compte dans Codex."));
                     }
                     else if (root.TryGetProperty("result", out var result)) completion.TrySetResult(result.Clone());
                     else completion.TrySetException(new TrackerException("Réponse Codex incompatible."));
@@ -128,7 +129,6 @@ internal sealed class AppServerClient : IAsyncDisposable
         finally
         {
             foreach (var completion in _pending.Values) completion.TrySetException(new TrackerException("Le service Codex s'est arrêté. Actualisez pour réessayer."));
-            _notifications.Writer.TryComplete();
         }
     }
 
@@ -138,7 +138,13 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             try
             {
-                var tokens = await _rereadDesktopTokens(_lifetime.Token);
+                var supplied = JsonSerializer.SerializeToElement(await _rereadDesktopTokens(_lifetime.Token));
+                var tokens = new
+                {
+                    accessToken = AuthDocument.Read(supplied, "accessToken"),
+                    chatgptAccountId = AuthDocument.Read(supplied, "chatgptAccountId"),
+                    chatgptPlanType = AuthDocument.Read(supplied, "chatgptPlanType")
+                };
                 await SendAsync(new { id, result = tokens }, _lifetime.Token);
                 return;
             }

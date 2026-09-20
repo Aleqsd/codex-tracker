@@ -1,16 +1,18 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace CodexTracker.Codex;
 
-// JWT claims are identity hints only. The app-server must confirm the account before a login is saved.
-internal sealed record AuthDocument(string Email, string AccountId, string AccessToken, string? PlanType)
+// JWT claims describe the locally observed session; authentication remains owned by the Codex app.
+internal sealed record AuthDocument(string Email, string AccountId, string AccessToken, string? PlanType,
+    DateTimeOffset? SubscriptionStartedAt = null, DateTimeOffset? SubscriptionEndsAt = null)
 {
     public static AuthDocument Parse(byte[] json)
     {
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("tokens", out var tokens) || tokens.ValueKind != JsonValueKind.Object)
             throw new TrackerException("Cette session ne contient pas de connexion ChatGPT gérée par Codex.");
-        var access = Read(tokens, "access_token") ?? throw new TrackerException("La session Codex est incomplète. Reconnectez ce compte.");
+        var access = Read(tokens, "access_token") ?? throw new TrackerException("La session Codex est incomplète. Ouvrez ce compte dans Codex pour l'actualiser.");
         var id = Read(tokens, "id_token");
         using var claims = ParseClaims(id ?? access);
         using var accessClaims = ParseClaims(access);
@@ -20,8 +22,27 @@ internal sealed record AuthDocument(string Email, string AccountId, string Acces
         var plan = Nested(claims.RootElement, "https://api.openai.com/auth", "chatgpt_plan_type")
             ?? Nested(accessClaims.RootElement, "https://api.openai.com/auth", "chatgpt_plan_type");
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(accountId))
-            throw new TrackerException("L'identité de cette session Codex est indisponible. Reconnectez ce compte.");
-        return new(email, accountId, access, plan);
+            throw new TrackerException("L'identité de cette session est indisponible. Ouvrez ce compte dans Codex pour l'actualiser.");
+        // These fields describe the active subscription period, never token issuance or token expiry.
+        var startedAt = id is null ? null : ReadSubscriptionTimestamp(claims.RootElement, "chatgpt_subscription_active_start");
+        var endsAt = id is null ? null : ReadSubscriptionTimestamp(claims.RootElement, "chatgpt_subscription_active_until");
+        return new(email, accountId, access, plan, startedAt, endsAt);
+    }
+
+    internal static int? PlanMultiplier(string? plan) => plan?.Trim().ToLowerInvariant() switch
+    {
+        "prolite" => 5,
+        "pro" => 20,
+        _ => null
+    };
+
+    private static DateTimeOffset? ReadSubscriptionTimestamp(JsonElement claims, string name)
+    {
+        var value = Nested(claims, "https://api.openai.com/auth", name);
+        // Require ISO 8601 with an explicit offset; ambiguous local dates and numeric epochs stay unknown.
+        string[] formats = ["yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'"];
+        return DateTimeOffset.TryParseExact(value, formats, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed) ? parsed : null;
     }
 
     private static JsonDocument ParseClaims(string token)

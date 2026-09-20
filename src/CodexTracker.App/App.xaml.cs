@@ -10,12 +10,20 @@ public partial class App : System.Windows.Application
     private ITrackerService? _service;
     private TrayController? _tray;
     private bool _exiting;
+    private HwndSource? _messageSource;
+    private static readonly uint ExitMessage = RegisterWindowMessage("CodexTracker.RequestExit.v1");
     internal bool IsDemo { get; private set; }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         IsDemo = e.Args.Contains("--demo");
+        if (e.Args.Contains("--exit"))
+        {
+            var running = FindWindow(null, IsDemo ? "Codex Tracker (démo)" : "Codex Tracker");
+            if (running != IntPtr.Zero) PostMessage(running, ExitMessage, IntPtr.Zero, IntPtr.Zero);
+            Shutdown(); return;
+        }
         if (e.Args.Contains("--screenshot")) RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         _mutex = new Mutex(true, IsDemo ? "Local\\CodexTracker.Demo" : "Local\\CodexTracker", out bool created);
         if (!created)
@@ -29,6 +37,9 @@ public partial class App : System.Windows.Application
             _service = IsDemo ? new DemoTrackerService() : new Codex.TrackerService();
             var window = new MainWindow(_service, IsDemo);
             MainWindow = window;
+            var handle = new WindowInteropHelper(window).EnsureHandle();
+            _messageSource = HwndSource.FromHwnd(handle);
+            _messageSource?.AddHook(HandleWindowMessage);
             _tray = new TrayController(window, _service, ExitAsync);
             if (!e.Args.Contains("--background") || IsDemo) window.Show();
             await window.InitializeAsync();
@@ -48,6 +59,7 @@ public partial class App : System.Windows.Application
         }
         catch (Exception error)
         {
+            if (_exiting) return;
             System.Windows.MessageBox.Show($"Codex Tracker n’a pas pu démarrer.\n\n{error.Message}", "Codex Tracker", MessageBoxButton.OK, MessageBoxImage.Error);
             await ExitAsync();
         }
@@ -57,14 +69,26 @@ public partial class App : System.Windows.Application
     {
         if (_exiting) return;
         _exiting = true;
+        _messageSource?.RemoveHook(HandleWindowMessage);
         if (MainWindow is MainWindow window) window.PrepareExit();
         _tray?.Dispose();
-        if (_service is not null) await _service.DisposeAsync();
-        _mutex?.Dispose();
-        Shutdown();
+        try { if (_service is not null) await _service.DisposeAsync(); }
+        finally { _mutex?.Dispose(); Shutdown(); }
+    }
+
+    private IntPtr HandleWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if ((uint)message == ExitMessage)
+        {
+            handled = true;
+            Dispatcher.InvokeAsync(async () => await ExitAsync());
+        }
+        return IntPtr.Zero;
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string windowName);
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int command);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint RegisterWindowMessage(string message);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint message, IntPtr wParam, IntPtr lParam);
 }

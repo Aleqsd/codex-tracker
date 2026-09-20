@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -72,68 +71,11 @@ public partial class MainWindow : Window
     private async void Select_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.SelectAccountAsync(Id(sender), _lifetime.Token));
     private async void Import_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.ImportCurrentAccountAsync(_lifetime.Token));
     private async void Onboarding_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.CompleteOnboardingAsync(_lifetime.Token));
-    private async void Add_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new TrackerDialog(this, "Ajouter un compte", "Saisissez l’adresse du compte ChatGPT à suivre. Vous pourrez ensuite vous connecter dans votre navigateur.", "Ajouter", "Annuler", withInput: true);
-        dialog.Input!.ToolTip = "Adresse e-mail du compte";
-        if (dialog.ShowDialog() != true) return;
-        string email = dialog.Input.Text.Trim();
-        if (!System.Net.Mail.MailAddress.TryCreate(email, out var parsed) || parsed.Address != email || !email.Contains('.')) { ShowMessage("Adresse non valide", "Saisissez une adresse e-mail complète."); return; }
-        await RunAsync(() => _service.AddAccountAsync(email, _lifetime.Token));
-    }
     private async void Remove_Click(object sender, RoutedEventArgs e)
     {
         var id = Id(sender); var account = _service.State.Accounts.First(a => a.Profile.Id == id);
-        var dialog = new TrackerDialog(this, "Retirer ce compte du suivi ?", $"{account.Profile.Email}\n\nLa copie locale de sa session sera supprimée du tracker. Votre compte ChatGPT reste disponible.", "Retirer du suivi", "Annuler");
+        var dialog = new TrackerDialog(this, "Retirer ce compte du suivi ?", $"{account.Profile.Email}\n\nSon dernier relevé sera supprimé du tracker. Il réapparaîtra automatiquement la prochaine fois que vous ouvrirez ce compte dans Codex.", "Retirer du suivi", "Annuler");
         if (dialog.ShowDialog() == true) await RunAsync(() => _service.RemoveAccountAsync(id, _lifetime.Token));
-    }
-    private async void Switch_Click(object sender, RoutedEventArgs e) => await SwitchAsync(Id(sender));
-    internal void RequestSwitch(Guid id) => _ = SwitchAsync(id);
-    private async Task SwitchAsync(Guid id)
-    {
-        var account = _service.State.Accounts.First(a => a.Profile.Id == id);
-        var dialog = new TrackerDialog(this, "Changer de compte dans Codex ?", $"Codex va être fermé puis relancé avec {account.Profile.Email}.\n\nLes tâches en cours peuvent être interrompues. Leur activité ne peut pas être vérifiée depuis le tracker.", "Interrompre et changer", "Annuler");
-        if (dialog.ShowDialog() != true) return;
-        await RunAsync(async () =>
-        {
-            var result = await _service.SwitchAccountAsync(id, true, _lifetime.Token);
-            ShowMessage(result.NeedsUserVerification ? "Vérification requise dans Codex" : result.Success ? "Compte changé" : "Bascule non effectuée", result.Message);
-        });
-    }
-    private async void VerifySwitch_Click(object sender, RoutedEventArgs e) => await ConfirmSwitchAsync(true);
-    private async void RestoreSwitch_Click(object sender, RoutedEventArgs e) => await ConfirmSwitchAsync(false);
-    private async Task ConfirmSwitchAsync(bool accepted) => await RunAsync(async () =>
-    {
-        var result = await _service.ConfirmSwitchAsync(accepted, _lifetime.Token);
-        if (!result.Success) ShowMessage(result.NeedsUserVerification ? "Vérification encore requise" : "Bascule", result.Message);
-    });
-    private async void Connect_Click(object sender, RoutedEventArgs e)
-    {
-        Guid id = Id(sender); var account = _service.State.Accounts.First(a => a.Profile.Id == id);
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-        var dialog = new TrackerDialog(this, "Connectez votre compte", $"Connexion de {account.Profile.Email}…\n\nUne fenêtre de navigateur va s’ouvrir. Vérifiez que vous choisissez cette adresse avant de valider.", null, "Annuler la connexion");
-        Exception? failure = null; bool completed = false;
-        async Task ConnectAsync()
-        {
-            try
-            {
-                await _service.ConnectAccountAsync(id, prompt => Dispatcher.Invoke(() =>
-                {
-                    dialog.SetMessage($"Terminez la connexion de {account.Profile.Email} dans votre navigateur.\n\n{(prompt.UserCode is not null ? "Code : " + prompt.UserCode + "\n\n" : "")}Le tracker vérifie l’adresse avant de conserver la session.");
-                    Process.Start(new ProcessStartInfo(prompt.Url.AbsoluteUri) { UseShellExecute = true });
-                }), cancellation.Token);
-                completed = true;
-            }
-            catch (OperationCanceledException) { }
-            catch (Exception error) { failure = error; }
-            finally { if (dialog.IsVisible) dialog.Close(); }
-        }
-        Task? connection = null;
-        dialog.Loaded += (_, _) => connection = ConnectAsync();
-        dialog.ShowDialog();
-        if (!completed) cancellation.Cancel();
-        if (connection is not null) await connection;
-        if (failure is not null) ShowMessage("Connexion impossible", failure.Message);
     }
     private void Details_Click(object sender, RoutedEventArgs e)
     {
@@ -143,7 +85,7 @@ public partial class MainWindow : Window
     internal void ShowMessage(string title, string message) => new TrackerDialog(this, title, message, "Fermer", null).ShowDialog();
     public void ShowSettings()
     {
-        var dialog = new TrackerDialog(this, "À votre rythme", "Le tracker s’actualise toutes les deux minutes et après la sortie de veille. Fermer le panneau conserve l’icône près de l’horloge.", "Enregistrer", "Annuler");
+        var dialog = new TrackerDialog(this, "À votre rythme", "Le tracker détecte les changements de compte toutes les deux secondes et actualise les quotas du compte actif toutes les deux minutes. Fermer le panneau conserve l’icône près de l’horloge.", "Enregistrer", "Annuler");
         var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, Margin = new Thickness(0, 16, 0, 10), IsEnabled = !_model.IsDemo };
         dialog.Extra.Children.Add(startup);
         var hint = new TextBlock { Text = "Pour toujours voir le quota : ouvrez ^ près de l’horloge, puis faites glisser l’icône du tracker dans la zone visible.", TextWrapping = TextWrapping.Wrap, Foreground = Display.Muted, FontSize = 12, Margin = new Thickness(0, 10, 0, 0) };
