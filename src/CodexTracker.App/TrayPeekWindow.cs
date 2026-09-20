@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
-using Forms = System.Windows.Forms;
 using DrawingPoint = System.Drawing.Point;
 
 namespace CodexTracker.App;
@@ -19,6 +18,7 @@ internal sealed class TrayPeekWindow : Window
     private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBlock _status = new() { FontSize = 10, Margin = new Thickness(0, 0, 0, 10) };
     private DrawingPoint _anchor;
+    private bool _positionQueued, _positioning, _closed;
 
     public TrayPeekWindow(Action open)
     {
@@ -35,7 +35,8 @@ internal sealed class TrayPeekWindow : Window
         var border = new Border { Padding = new Thickness(19), BorderThickness = new Thickness(1) };
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
         border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
-        var content = new StackPanel(); border.Child = content; Content = border;
+        var content = new StackPanel(); border.Child = content;
+        Content = new ScrollViewer { Content = border, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Muted(_status); Muted(_plan); Muted(_reset); Muted(_freshness);
         content.Children.Add(_status);
         var heading = new Grid(); heading.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) }); heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -54,6 +55,9 @@ internal sealed class TrayPeekWindow : Window
             var hwnd = new WindowInteropHelper(this).Handle;
             int rounded = 2; DwmSetWindowAttribute(hwnd, 33, ref rounded, sizeof(int));
         };
+        DpiChanged += (_, _) => QueuePosition();
+        SizeChanged += (_, _) => { if (!_positioning) QueuePosition(); };
+        Closed += (_, _) => _closed = true;
     }
 
     private static StackPanel Metric(string name, TextBlock number, ProgressBar bar)
@@ -91,35 +95,49 @@ internal sealed class TrayPeekWindow : Window
 
     public void ShowNear(DrawingPoint cursor)
     {
+        if (_closed) return;
         _anchor = cursor;
         var hwnd = new WindowInteropHelper(this).EnsureHandle();
         // Place the HWND on the destination monitor before measuring its physical size.
-        SetWindowPos(hwnd, new IntPtr(-1), cursor.X, cursor.Y, 0, 0, 0x0010 | 0x0001);
+        WindowsLifecycle.MoveToMonitor(hwnd, new(cursor.X, cursor.Y));
+        FitToMonitor();
         Show(); UpdateLayout(); Position();
-        Dispatcher.BeginInvoke(Position, System.Windows.Threading.DispatcherPriority.Loaded);
+        QueuePosition();
     }
-
+    private void QueuePosition()
+    {
+        if (_closed || _positionQueued || !IsVisible) return;
+        _positionQueued = true;
+        Dispatcher.InvokeAsync(() => { _positionQueued = false; if (!_closed && IsVisible) Position(); }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+    private void FitToMonitor()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        var work = WindowsLifecycle.WorkArea(new PixelPoint(_anchor.X, _anchor.Y));
+        var scale = WindowsLifecycle.Scale(handle);
+        MaxWidth = Math.Max(1, work.Width / scale - 20); MaxHeight = Math.Max(1, work.Height / scale - 20);
+        Width = Math.Min(322, MaxWidth);
+    }
     private void Position()
     {
+        if (_closed || !IsVisible || _positioning) return;
+        _positioning = true;
+        try
+        {
         var hwnd = new WindowInteropHelper(this).Handle;
-        var screen = Forms.Screen.FromPoint(_anchor);
-        var work = screen.WorkingArea;
-        var scale = Math.Max(1, GetDpiForWindow(hwnd)) / 96.0;
-        var width = (int)Math.Ceiling(ActualWidth * scale); var height = (int)Math.Ceiling(ActualHeight * scale);
-        var gap = (int)Math.Ceiling(10 * scale);
-        int left = _anchor.X - width / 2, top = _anchor.Y - height - gap;
-        if (_anchor.Y < work.Top) top = work.Top + gap;
-        if (_anchor.X < work.Left) left = work.Left + gap;
-        if (_anchor.X > work.Right) left = work.Right - width - gap;
-        left = Math.Clamp(left, work.Left + gap, Math.Max(work.Left + gap, work.Right - width - gap));
-        top = Math.Clamp(top, work.Top + gap, Math.Max(work.Top + gap, work.Bottom - height - gap));
-        SetWindowPos(hwnd, new IntPtr(-1), left, top, 0, 0, 0x0010 | 0x0001);
+        FitToMonitor(); UpdateLayout();
+        var work = WindowsLifecycle.WorkArea(new PixelPoint(_anchor.X, _anchor.Y));
+        var scale = WindowsLifecycle.Scale(hwnd);
+        var bounds = WindowPlacement.Peek(new(_anchor.X, _anchor.Y), WindowPlacement.ToPixels(ActualWidth, ActualHeight, scale), work, scale);
+        WindowsLifecycle.Move(hwnd, bounds, topmost: true);
+        }
+        finally { _positioning = false; }
     }
 
     public bool ContainsScreenPoint(DrawingPoint point)
     {
-        if (!IsVisible || !GetWindowRect(new WindowInteropHelper(this).Handle, out var bounds)) return false;
-        return point.X >= bounds.Left - 5 && point.X <= bounds.Right + 5 && point.Y >= bounds.Top - 5 && point.Y <= bounds.Bottom + 5;
+        if (!IsVisible || WindowsLifecycle.Bounds(new WindowInteropHelper(this).Handle) is not PixelRect bounds) return false;
+        return point.X >= bounds.X - 5 && point.X <= bounds.Right + 5 && point.Y >= bounds.Y - 5 && point.Y <= bounds.Bottom + 5;
     }
 
     internal void SaveScreenshot(string path, double dpi = 96)
@@ -132,9 +150,5 @@ internal sealed class TrayPeekWindow : Window
         using var file = File.Create(path); encoder.Save(file);
     }
 
-    [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left, Top, Right, Bottom; }
-    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rectangle);
-    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 }

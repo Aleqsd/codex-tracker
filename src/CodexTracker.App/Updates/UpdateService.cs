@@ -16,7 +16,7 @@ namespace CodexTracker.App.Updates;
 public sealed record UpdateRelease(string Version, string Tag, Uri NotesUrl, Uri DownloadUrl, Uri ChecksumUrl, long Size);
 public sealed record UpdateOutcome(DateTimeOffset At, bool Success, string Message);
 
-public sealed class UpdateService : IDisposable
+public sealed partial class UpdateService : IDisposable
 {
     private const string Repository = "/Aleqsd/codex-tracker";
     private readonly HttpClient _client;
@@ -25,7 +25,7 @@ public sealed class UpdateService : IDisposable
     internal static string UpdatesRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexTracker", "updates");
 
     public UpdateService() : this(typeof(UpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0", null) { }
-    internal UpdateService(string version, HttpClient? client)
+    internal UpdateService(string version, HttpClient? client, string? cachePath = null, Func<DateTimeOffset>? clock = null)
     {
         CurrentVersion = SemanticVersion.Parse(version)?.Text ?? "0.0.0";
         _ownsClient = client is null;
@@ -35,6 +35,9 @@ public sealed class UpdateService : IDisposable
         }) { Timeout = TimeSpan.FromMinutes(5) };
         if (_client.DefaultRequestHeaders.Authorization is not null)
             throw new InvalidOperationException("Le service de mise à jour n’utilise aucun jeton d’authentification.");
+        _clock = clock ?? (() => DateTimeOffset.UtcNow);
+        _cachePath = cachePath ?? (_ownsClient ? Path.Combine(UpdatesRoot, "release-cache.json") : null);
+        _cache = LoadCheckCache();
         if (_ownsClient) CleanupOldStages();
     }
 
@@ -50,22 +53,10 @@ public sealed class UpdateService : IDisposable
 
     public async Task<UpdateRelease?> CheckAsync(CancellationToken cancellationToken = default)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
-        UpdateRelease? best = null;
-        // The list endpoint includes prereleases. GitHub's /latest endpoint would omit this project's previews.
-        for (var page = 1; page <= 5; page++)
-        {
-            var uri = new Uri($"https://api.github.com/repos{Repository}/releases?per_page=100&page={page}");
-            using var response = await GetAsync(uri, false, timeout.Token);
-            var bytes = await ReadBoundedAsync(response, 4 * 1024 * 1024, timeout.Token);
-            using var document = JsonDocument.Parse(bytes);
-            if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("La réponse de GitHub est invalide.");
-            var candidate = SelectRelease(document.RootElement, CurrentVersion);
-            if (candidate is not null && (best is null || SemanticVersion.Parse(candidate.Version)!.CompareTo(SemanticVersion.Parse(best.Version)) > 0)) best = candidate;
-            if (document.RootElement.GetArrayLength() < 100) break;
-        }
-        return best;
+        var result = await CheckDetailedAsync(cancellationToken).ConfigureAwait(false);
+        // The legacy API cannot express stale data. Never turn a failed check into "up to date".
+        if (!result.IsVerifiedNow) throw new IOException(result.Message);
+        return result.Release;
     }
 
     internal static UpdateRelease? SelectRelease(JsonElement releases, string currentVersion)
@@ -78,6 +69,7 @@ public sealed class UpdateService : IDisposable
                 !row.TryGetProperty("tag_name", out var tagNode) || tagNode.ValueKind != JsonValueKind.String ||
                 !row.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) continue;
             var tag = tagNode.GetString()!;
+            if (tag.Length > 256) continue;
             var version = SemanticVersion.Parse(tag);
             if (version is null || version.CompareTo(current) <= 0 || best is not null && version.CompareTo(SemanticVersion.Parse(best.Version)) <= 0) continue;
             var name = $"CodexTracker-{version.Text}-win-x64.zip";
@@ -262,5 +254,14 @@ public sealed class UpdateService : IDisposable
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
     }
 
-    public void Dispose() { if (_ownsClient) _client.Dispose(); }
+    public void Dispose()
+    {
+        lock (_checkGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _checksLifetime.Cancel();
+        }
+        if (_ownsClient) _client.Dispose();
+    }
 }

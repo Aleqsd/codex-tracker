@@ -14,6 +14,9 @@ internal sealed class SettingsWindow : ThemedWindow
     private readonly ComboBox _themeSelector;
     private readonly TextBlock _updateStatus;
     private readonly Button _check, _install;
+    private readonly System.Windows.Threading.DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private DateTimeOffset? _nextCheckAt;
+    private bool _updateBusy;
     private UpdateRelease? _release;
     private bool _syncing, _closed;
     private readonly bool _demo;
@@ -49,10 +52,24 @@ internal sealed class SettingsWindow : ThemedWindow
         var actions = new WrapPanel();
         _check = new Button { Content = "Rechercher une mise à jour", IsEnabled = !demo, Margin = new Thickness(0, 0, 8, 0) }; _check.Click += async (_, _) => await CheckAsync(); actions.Children.Add(_check);
         _install = new Button { Content = "Installer et relancer", Visibility = Visibility.Collapsed, Style = (Style)FindResource("PrimaryButton") }; _install.Click += async (_, _) => await InstallAsync(); actions.Children.Add(_install); Body.Children.Add(actions);
+        var releases = new Button { Content = "Voir les versions sur GitHub ↗", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0, 8, 0, 1), FontSize = 11 };
+        releases.Click += (_, _) =>
+        {
+            try { Process.Start(new ProcessStartInfo(UpdateService.ReleasesPage.AbsoluteUri) { UseShellExecute = true }); }
+            catch (Exception error) { ShowError(error.Message); }
+        };
+        Body.Children.Add(releases);
+        if (!demo && updates.ReadCachedCheck() is { } cached)
+        {
+            ShowCheckResult(cached);
+            if (lastUpdate is { Success: false }) _updateStatus.Text = Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) + "\n" + _updateStatus.Text;
+        }
+        _updateTimer.Tick += (_, _) => SyncUpdateButton();
+        _updateTimer.Start();
         var quit = new Button { Content = "Quitter Codex Tracker", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-10, 19, 0, 0) };
         quit.Click += async (_, _) => await ((App)System.Windows.Application.Current).ExitAsync(); Body.Children.Add(quit);
         preferences.Changed += PreferencesChanged;
-        Closed += (_, _) => { _closed = true; _lifetime.Cancel(); preferences.Changed -= PreferencesChanged; };
+        Closed += (_, _) => { _closed = true; _updateTimer.Stop(); _lifetime.Cancel(); preferences.Changed -= PreferencesChanged; };
         Sync();
     }
     private void Section(string title, bool separator = false)
@@ -87,22 +104,40 @@ internal sealed class SettingsWindow : ThemedWindow
     private async Task CheckAsync()
     {
         if (_demo) return;
-        _check.IsEnabled = false; _install.Visibility = Visibility.Collapsed; _updateStatus.Text = "Recherche en cours…";
+        _updateBusy = true; SyncUpdateButton(); _install.Visibility = Visibility.Collapsed; _updateStatus.Text = "Recherche en cours…";
         try
         {
-            _release = await _updates.CheckAsync(_lifetime.Token);
+            var result = await _updates.CheckDetailedAsync(_lifetime.Token);
             if (_closed) return;
-            _updateStatus.Text = _release is null ? "Vous utilisez la dernière version publiée." : $"Version {_release.Version} disponible. Le tracker sera relancé après l’installation.";
-            _install.Visibility = _release is null ? Visibility.Collapsed : Visibility.Visible;
+            ShowCheckResult(result);
         }
         catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Recherche annulée."; }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
-        finally { if (!_closed) _check.IsEnabled = true; }
+        finally { _updateBusy = false; if (!_closed) SyncUpdateButton(); }
+    }
+    private void ShowCheckResult(UpdateCheckResult result)
+    {
+        _release = result.Release; _nextCheckAt = result.NextCheckAt;
+        var text = result.IsVerifiedNow
+            ? _release is null ? "Vous utilisez la dernière version publiée." : $"Version {_release.Version} disponible."
+            : result.Message + (_release is null ? " La version actuelle n’a pas été revérifiée." : $" Version {_release.Version} connue dans le cache.");
+        if (result.VerifiedAt is { } checkedAt)
+            text += $"\n{(result.IsVerifiedNow ? "Vérifié" : "Cache vérifié")} le {checkedAt.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
+        if (result.NextCheckAt is { } next && next > DateTimeOffset.UtcNow)
+            text += $"\nNouvelle vérification possible dès le {next.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
+        _updateStatus.Text = text;
+        _install.Visibility = _release is null ? Visibility.Collapsed : Visibility.Visible;
+        SyncUpdateButton();
+    }
+    private void SyncUpdateButton()
+    {
+        _check.IsEnabled = !_demo && !_updateBusy && !(_nextCheckAt > DateTimeOffset.UtcNow);
+        _check.ToolTip = _nextCheckAt > DateTimeOffset.UtcNow ? $"Disponible à {_nextCheckAt.Value.ToLocalTime():HH:mm:ss}." : null;
     }
     private async Task InstallAsync()
     {
         if (_release is null || _demo) return;
-        _check.IsEnabled = false; _install.IsEnabled = false; _updateStatus.Text = "Téléchargement et vérification de la mise à jour…";
+        _updateBusy = true; SyncUpdateButton(); _install.IsEnabled = false; _updateStatus.Text = "Téléchargement et vérification de la mise à jour…";
         try
         {
             await _updates.StageAndLaunchAsync(_release, Environment.ProcessId, _lifetime.Token);
@@ -110,6 +145,6 @@ internal sealed class SettingsWindow : ThemedWindow
         }
         catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Installation annulée."; }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
-        finally { if (!_closed) { _check.IsEnabled = true; _install.IsEnabled = true; } }
+        finally { _updateBusy = false; if (!_closed) { SyncUpdateButton(); _install.IsEnabled = true; } }
     }
 }

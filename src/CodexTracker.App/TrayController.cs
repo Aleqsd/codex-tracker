@@ -20,6 +20,7 @@ internal sealed class TrayController : IDisposable
     private readonly DispatcherTimer _hoverDelay = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _presence = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly DispatcherTimer _notifications = new() { Interval = TimeSpan.FromMilliseconds(650) };
+    private readonly DispatcherTimer _shellRecovery = new() { Interval = TimeSpan.FromMilliseconds(750) };
     private readonly Dictionary<(Guid, UsageWindowKind), QuotaNotification> _pendingNotifications = new();
     private System.Drawing.Point _hoverPoint;
     private DateTimeOffset? _leftPeekAt;
@@ -28,7 +29,7 @@ internal sealed class TrayController : IDisposable
     private int _updateQueued;
     private Icon? _icon;
     private string? _iconKey;
-    private bool _disposed;
+    private bool _disposed, _suspended;
 
     public TrayController(MainWindow window, ITrackerService service, PreferencesStore preferences, Func<Task> exit)
     {
@@ -45,6 +46,14 @@ internal sealed class TrayController : IDisposable
         _hoverDelay.Tick += (_, _) => ShowPeek();
         _presence.Tick += (_, _) => CheckPeekPresence();
         _notifications.Tick += (_, _) => ShowNotifications();
+        _shellRecovery.Tick += (_, _) =>
+        {
+            _shellRecovery.Stop();
+            if (_disposed || _suspended) return;
+            // NotifyIcon already processes TaskbarCreated. Reassert the same icon ID
+            // after Explorer settles, covering a shell which was not ready on broadcast.
+            _tray.Visible = false; _tray.Visible = true; Update();
+        };
         service.Changed += Changed;
         service.Notification += Notified;
         preferences.Changed += PreferencesChanged;
@@ -58,8 +67,32 @@ internal sealed class TrayController : IDisposable
     }
     private void PreferencesChanged(object? sender, EventArgs e)
     {
+        if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(() => PreferencesChanged(sender, e)); return; }
+        if (_disposed) return;
         if (!_preferences.Current.HoverPreview) HidePeek();
         Update();
+    }
+    internal void HandleEnvironmentChanged(bool taskbarCreated = false)
+    {
+        if (_disposed || _window.Dispatcher.HasShutdownStarted) return;
+        if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(() => HandleEnvironmentChanged(taskbarCreated)); return; }
+        HidePeek(); _tray.ContextMenuStrip?.Close();
+        _menuKey = null; Update();
+        if (taskbarCreated && !_suspended) { _shellRecovery.Stop(); _shellRecovery.Start(); }
+    }
+    internal void OnSuspend()
+    {
+        if (_disposed || _window.Dispatcher.HasShutdownStarted) return;
+        if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(OnSuspend); return; }
+        _suspended = true;
+        HidePeek(); _tray.ContextMenuStrip?.Close(); _shellRecovery.Stop();
+        _notifications.Stop(); _pendingNotifications.Clear();
+    }
+    internal void OnResume()
+    {
+        if (_disposed || _window.Dispatcher.HasShutdownStarted) return;
+        if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(OnResume); return; }
+        _suspended = false; HandleEnvironmentChanged(taskbarCreated: true);
     }
     private void Update()
     {
@@ -115,7 +148,7 @@ internal sealed class TrayController : IDisposable
 
     private void OnTrayHover()
     {
-        if (_disposed || !_preferences.Current.HoverPreview || _tray.ContextMenuStrip?.Visible == true) return;
+        if (_disposed || _suspended || !_preferences.Current.HoverPreview || _tray.ContextMenuStrip?.Visible == true) return;
         _hoverPoint = Forms.Cursor.Position;
         _leftPeekAt = null;
         if (!_peek.IsVisible && !_hoverDelay.IsEnabled) _hoverDelay.Start();
@@ -124,7 +157,7 @@ internal sealed class TrayController : IDisposable
     private void ShowPeek()
     {
         _hoverDelay.Stop();
-        if (_disposed || !_preferences.Current.HoverPreview || _tray.ContextMenuStrip?.Visible == true) return;
+        if (_disposed || _suspended || !_preferences.Current.HoverPreview || _tray.ContextMenuStrip?.Visible == true) return;
         var cursor = Forms.Cursor.Position;
         if (Math.Abs(cursor.X - _hoverPoint.X) > 22 || Math.Abs(cursor.Y - _hoverPoint.Y) > 22) return;
         _peek.Update(_service.State, _preferences.Current);
@@ -157,7 +190,7 @@ internal sealed class TrayController : IDisposable
 
     private void Notified(object? sender, QuotaNotification notification) => _window.Dispatcher.InvokeAsync(() =>
     {
-        if (_disposed || !NotificationPolicy.IsEnabled(notification, _preferences.Current)) return;
+        if (_disposed || _suspended || !NotificationPolicy.IsEnabled(notification, _preferences.Current)) return;
         var key = (notification.AccountId, notification.Window);
         if (!_pendingNotifications.TryGetValue(key, out var previous) || notification.Kind == NotificationKind.Reset ||
             previous.Kind == NotificationKind.Reset || notification.Threshold < previous.Threshold)
@@ -168,7 +201,7 @@ internal sealed class TrayController : IDisposable
     private void ShowNotifications()
     {
         _notifications.Stop();
-        if (_disposed) return;
+        if (_disposed || _suspended) return;
         var pending = _pendingNotifications.Values.Where(n => NotificationPolicy.IsEnabled(n, _preferences.Current)).ToArray();
         _pendingNotifications.Clear();
         if (pending.Length == 0) return;
@@ -233,9 +266,10 @@ internal sealed class TrayController : IDisposable
     }
     public void Dispose()
     {
+        if (_disposed) return;
         _disposed = true; _service.Changed -= Changed; _service.Notification -= Notified;
         _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
-        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _pendingNotifications.Clear(); _peek.Close();
+        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _pendingNotifications.Clear(); _peek.Close();
         _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
     }
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);

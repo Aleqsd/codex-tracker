@@ -17,6 +17,8 @@ Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaire
 
 Une version portable ZIP est également disponible : extrayez-la dans un dossier permanent puis lancez `CodexTracker.exe`. Dans **Réglages → Mises à jour**, vous pouvez rechercher une version, la télécharger puis relancer le tracker. Le téléchargement utilise le dépôt public, vérifie l’empreinte SHA-256 et conserve une copie de secours jusqu’au démarrage réussi de la nouvelle version. Cette opération ne ferme pas Codex.
 
+Le résultat de la recherche est conservé localement avec sa date. Les vérifications simultanées sont regroupées, et le bouton attend au moins cinq minutes après une vérification réussie. Si GitHub limite les requêtes, le tracker respecte le délai annoncé, même après redémarrage ; une erreur réseau déclenche aussi un délai progressif. Un ancien résultat reste explicitement présenté comme un cache, sans annoncer que l’application est à jour. Le lien **Voir les versions sur GitHub** reste accessible pour consulter la Release manuellement.
+
 ## Détection automatique
 
 Changez de compte **dans Codex**. Le tracker observe son fichier de session en lecture seule, détecte le nouveau compte, sélectionne son quota dans l’icône et actualise ses données. Les changements de fichier sont surveillés immédiatement, avec un contrôle de secours toutes les deux secondes et une stabilisation de 300 ms. Une écriture transitoire ou une connexion réseau lente peut prolonger l’affichage des quotas.
@@ -24,6 +26,8 @@ Changez de compte **dans Codex**. Le tracker observe son fichier de session en l
 Le bouton d’actualisation déclenche une vérification immédiate. Aucune connexion OAuth, bascule ni fermeture de Codex n’est effectuée par le tracker.
 
 Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. **Afficher dans l’icône** permet de consulter un ancien relevé ; au prochain changement de compte dans Codex, l’icône suit à nouveau le compte actif.
+
+À la sortie de veille, le tracker abandonne les anciennes requêtes et relit l’identité active avant de collecter les quotas. Le premier relevé de reprise reste silencieux et redémarre la période d’observation utilisée pour les prévisions. Les fenêtres sont ramenées dans la zone utile après un changement d’affichage ; l’aperçu se recale selon le moniteur et son DPI. L’icône est réaffirmée après une recréation de la barre des tâches.
 
 ## Lire le tableau de bord
 
@@ -40,13 +44,19 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les au
 
 ## Historique et notifications
 
-Chaque compte conserve jusqu’à 90 jours de relevés locaux. Les graphiques proposent les dernières 24 heures ou les 7 derniers jours, pour la semaine ou la fenêtre de 5 heures. Les interruptions de collecte et changements de période coupent la courbe : aucune consommation n’est inventée pendant l’absence du compte. L’historique commence avec cette version et ne reconstitue pas les périodes antérieures.
+Chaque compte conserve jusqu’à 90 jours de relevés locaux. Les graphiques proposent les dernières 24 heures ou les 7 derniers jours, pour la semaine ou la fenêtre de 5 heures. Les interruptions de collecte et changements de période coupent la courbe : aucune consommation n’est inventée pendant l’absence du compte. L’historique est disponible depuis la version 0.3 et reste conservé lors des mises à jour ; les périodes antérieures à son activation ne sont pas reconstituées.
 
 Une estimation d’épuisement apparaît après au moins 15 minutes de relevés récents et continus, si leur évolution est suffisamment régulière. Elle indique la première fenêtre susceptible de s’épuiser, au rythme observé, avant son prochain reset. Un compte inactif, des données insuffisantes ou un rythme trop irrégulier restent sans estimation.
 
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
 
 Le bouton **Tester une notification** permet de vérifier leur affichage. Les paramètres de notifications et le mode de concentration de Windows s’appliquent.
+
+## Aide au choix du compte
+
+Une suggestion discrète apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails. Le changement de compte se fait toujours dans Codex.
+
+Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée. Le mode confidentialité s’applique aussi au conseil et à son infobulle.
 
 ## Données locales
 
@@ -77,7 +87,7 @@ La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocol
 
 Pour quitter une instance existante avant une mise à jour : `CodexTracker.exe --exit`. Le mode démonstration se ferme séparément avec `CodexTracker.exe --demo --exit`.
 
-Les captures automatisées sont réservées aux comptes fictifs : `CodexTracker.exe --demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test`. Les options `--theme light`, `--privacy`, `--peek-screenshot`, `--details-screenshot` et `--settings-screenshot` permettent de contrôler les autres états sans exporter les comptes réels.
+Les captures automatisées sont réservées aux comptes fictifs : `CodexTracker.exe --demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test`. Les options `--demo-advice`, `--theme light`, `--privacy`, `--peek-screenshot`, `--details-screenshot` et `--settings-screenshot` permettent de contrôler les autres états sans exporter les comptes réels.
 
 ## Références
 

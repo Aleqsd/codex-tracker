@@ -36,7 +36,6 @@ public partial class MainWindow : Window
         _clockTimer.Tick += (_, _) => _model.Tick();
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
-        SystemEvents.PowerModeChanged += PowerModeChanged;
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Hide(); if (e.Key == Key.F5) _ = RefreshAsync(); };
     }
     public async Task InitializeAsync()
@@ -53,15 +52,14 @@ public partial class MainWindow : Window
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
     private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
-    private void PowerModeChanged(object sender, PowerModeChangedEventArgs e) { if (e.Mode == PowerModes.Resume) Dispatcher.InvokeAsync(async () => await RefreshAsync()); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; Hide(); } }
-    public void ShowPanel() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Activate(); }
+    public void ShowPanel() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Ui.EnsureWindowVisible(this); Activate(); }
     public void PrepareExit()
     {
         _canClose = true; _lifetime.Cancel(); _clockTimer.Stop();
         foreach (Window child in OwnedWindows.Cast<Window>().ToArray()) child.Close();
         _service.Changed -= Service_Changed; _preferences.Changed -= Preferences_Changed; Theme.Changed -= Theme_Changed;
-        SystemEvents.PowerModeChanged -= PowerModeChanged; Theme.Dispose(); _updates.Dispose();
+        Theme.Dispose(); _updates.Dispose();
     }
     private void ApplyChrome()
     {
@@ -103,6 +101,10 @@ public partial class MainWindow : Window
     private async void Import_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.ImportCurrentAccountAsync(_lifetime.Token));
     private async void Onboarding_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.CompleteOnboardingAsync(_lifetime.Token));
     private void Details_Click(object sender, RoutedEventArgs e) => OpenHistory(Id(sender));
+    private void Advice_Click(object sender, RoutedEventArgs e)
+    {
+        if (_model.AdviceAccountId is Guid id) OpenHistory(id);
+    }
     internal HistoryWindow OpenHistory(Guid id)
     {
         var existing = OwnedWindows.OfType<HistoryWindow>().FirstOrDefault(w => w.AccountId == id);

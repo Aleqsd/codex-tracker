@@ -128,7 +128,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
     public IReadOnlyList<SortChoice> SortChoices { get; } = [new(SortMode.Active, "Compte actif"), new(SortMode.Quota, "Quota restant"), new(SortMode.Reset, "Prochain reset"), new(SortMode.Plan, "Type d’offre")];
-    public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; }
+    public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow); }
     public bool IsDemo { get; }
     public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive) ?? Accounts.FirstOrDefault(a => a.IsSelected) ?? Accounts.FirstOrDefault();
     public bool HasActive => Active is not null;
@@ -141,10 +141,30 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public string PrivacyGlyph => IsPrivate ? "◉" : "◎";
     public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : "MutedBrush");
     public string StatusText => Display.SafeText(_state.StatusMessage ?? (_state.IsBusy ? "Actualisation…" : IsDemo ? "Démonstration · données fictives" : "Détection automatique · toutes les 2 secondes"), IsPrivate);
-    public void Tick() { foreach (var account in Accounts) account.Tick(); }
+    private AccountAdvice Advice { get; set; }
+    public Guid? AdviceAccountId => Advice.Kind == AccountAdviceKind.VerifyInCodex ? Advice.AccountId : null;
+    public bool HasAdvice => AdviceAccountId is not null;
+    public string AdviceTitle
+    {
+        get
+        {
+            var account = _state.Accounts.FirstOrDefault(a => a.Profile.Id == AdviceAccountId);
+            return account is null ? "" : "À vérifier dans Codex : " + PrivacyText.Account(account.Profile, _state, IsPrivate);
+        }
+    }
+    public string AdviceAge => Advice.ObservedAt is { } at ? $"Relevé {Display.Age(at)} · quota actuel à confirmer" : "";
+    public string AdviceHint => $"{Advice.Reason}\nRelevé : {Display.Exact(Advice.ObservedAt)}\n{Display.Zone(Advice.ObservedAt)}";
+    public void Tick()
+    {
+        foreach (var account in Accounts) account.Tick();
+        Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow);
+        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId) })
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+    }
     public void Update(TrackerState state)
     {
         _state = state;
+        Advice = AccountAdvisor.Evaluate(state, DateTimeOffset.UtcNow);
         var source = state.Accounts.Select((account, index) => (account, index));
         var sorted = _preferences.Current.SortMode switch
         {

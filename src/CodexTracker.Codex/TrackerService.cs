@@ -40,6 +40,7 @@ public sealed class TrackerService : ITrackerService
     private string? _accountId;
     private bool _initialized;
     private bool _disposed;
+    private bool _suspended;
     private long _notificationBaselineGeneration = -1;
     private sealed record ActiveObservation(Guid AccountId, DateTimeOffset StartedAt);
     private ActiveObservation? _activeObservation;
@@ -105,6 +106,49 @@ public sealed class TrackerService : ITrackerService
 
     public Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default) => RefreshAsync(cancellationToken);
 
+    public async Task SuspendAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_disposed || _suspended) return;
+            _suspended = true;
+            RestartObservation();
+            Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
+                StatusMessage = "Suivi en pause pendant la veille" });
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task ResumeAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_disposed) throw new OperationCanceledException("Codex Tracker se ferme.");
+            _suspended = false;
+            RestartObservation();
+            if (!_initialized) return;
+            var active = State.Accounts.FirstOrDefault(a => a.IsActiveInCodex);
+            if (active is not null) _activeObservation = new(active.Profile.Id, DateTimeOffset.UtcNow);
+            Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
+                StatusMessage = "Sortie de veille · vérification du compte Codex…" });
+        }
+        finally { _gate.Release(); }
+        await RefreshAsync(cancellationToken);
+    }
+
+    private void RestartObservation()
+    {
+        _identityLifetime.Cancel();
+        _identityLifetime.Dispose();
+        _identityLifetime = new();
+        _generation++;
+        _notificationBaselineGeneration = -1;
+        _activeObservation = null;
+        _refresh = null;
+    }
+
     public IReadOnlyList<UsageSample> GetHistory(Guid accountId) => _telemetry.TryGetValue(accountId, out var telemetry)
         ? telemetry.Samples : Array.Empty<UsageSample>();
 
@@ -128,6 +172,7 @@ public sealed class TrackerService : ITrackerService
         try
         {
             RequireInitialized();
+            if (_suspended) return;
             AuthDocument? identity = null;
             string? warning = null;
             try { identity = await CurrentAccountUsageReader.ReadIdentityAsync(_authPath, cancellationToken); }
@@ -173,7 +218,7 @@ public sealed class TrackerService : ITrackerService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_disposed) return Task.CompletedTask;
+            if (_disposed || _suspended) return Task.CompletedTask;
             PruneOldHistory(DateTimeOffset.UtcNow);
             if (_activeKey is null || _accountId is null) return Task.CompletedTask;
             if (_refresh is { IsCompleted: false }) return _refresh;
@@ -247,7 +292,11 @@ public sealed class TrackerService : ITrackerService
                 catch (OperationCanceledException) { }
                 catch (Exception ex) when (IsRecoverable(ex)) { /* Retain the in-memory state if disk becomes unavailable. */ }
             }
-            foreach (var notification in notifications) Notification?.Invoke(this, notification);
+            foreach (var notification in notifications)
+            {
+                if (generation != _generation || _suspended || _disposed) break;
+                Notification?.Invoke(this, notification);
+            }
         }
     }
 

@@ -12,12 +12,30 @@ internal static class Ui
     {
         var handle = new WindowInteropHelper(window).Handle;
         if (handle == IntPtr.Zero) return;
-        var area = System.Windows.Forms.Screen.FromHandle(handle).WorkingArea;
-        var dpi = VisualTreeHelper.GetDpi(window);
-        double width = Math.Max(160, area.Width / dpi.DpiScaleX - 24);
-        double height = Math.Max(120, area.Height / dpi.DpiScaleY - 24);
+        var bounds = WindowsLifecycle.Bounds(handle); if (bounds is null) return;
+        var area = WindowsLifecycle.WorkArea(bounds.Value); var scale = WindowsLifecycle.Scale(handle);
+        double width = Math.Max(1, area.Width / scale - 24);
+        double height = Math.Max(1, area.Height / scale - 24);
         window.MinWidth = Math.Min(window.MinWidth, width); window.MinHeight = Math.Min(window.MinHeight, height);
         window.Width = Math.Min(window.Width, width); window.Height = Math.Min(window.Height, height);
+    }
+    public static void EnsureWindowVisible(Window window)
+    {
+        // Preserve minimized/maximized state; ShowPanel calls this after restoration.
+        if (window.WindowState != WindowState.Normal) return;
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle == IntPtr.Zero || WindowsLifecycle.Bounds(handle) is not PixelRect bounds) return;
+        var work = WindowsLifecycle.WorkArea(bounds); var scale = WindowsLifecycle.Scale(handle);
+        var fitted = WindowPlacement.Constrain(bounds, work, (int)Math.Ceiling(12 * scale));
+        window.MinWidth = Math.Min(window.MinWidth, fitted.Width / scale);
+        window.MinHeight = Math.Min(window.MinHeight, fitted.Height / scale);
+        if (fitted != bounds) WindowsLifecycle.Move(handle, fitted);
+    }
+    public static void HandleEnvironmentChanged(Window root)
+    {
+        if (root.Dispatcher.HasShutdownStarted) return;
+        EnsureWindowVisible(root);
+        foreach (Window child in root.OwnedWindows.Cast<Window>().ToArray()) HandleEnvironmentChanged(child);
     }
     public static TextBlock Text(string text, double size = 12, string brush = "TextBrush")
     {
@@ -61,6 +79,8 @@ internal class ThemedWindow : Window
         var scroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetRow(scroll, 1); root.Children.Add(scroll);
         frame.Child = root; Content = frame;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); }; theme.Changed += ThemeChanged;
+        Loaded += (_, _) => Ui.EnsureWindowVisible(this);
+        DpiChanged += (_, _) => Dispatcher.InvokeAsync(() => Ui.EnsureWindowVisible(this), System.Windows.Threading.DispatcherPriority.Loaded);
         Closed += (_, _) => theme.Changed -= ThemeChanged;
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
     }
