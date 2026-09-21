@@ -149,8 +149,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
     public bool IsPrivate => _preferences.Current.PrivacyMode;
-    public string PrivacyLabel => IsPrivate ? "Identités masquées" : "Masquer les identités";
-    public string PrivacyGlyph => IsPrivate ? "◉" : "◎";
+    public string PrivacyLabel => IsPrivate ? "Afficher les identités" : "Masquer les identités";
+
     public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : "MutedBrush");
     public string StatusText => Display.SafeText(_state.StatusMessage ?? (_state.IsBusy ? "Actualisation…" : IsDemo ? "Démonstration · données fictives" : "Détection automatique · toutes les 2 secondes"), IsPrivate);
     private AccountAdvice Advice { get; set; }
