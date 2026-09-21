@@ -2,6 +2,10 @@
 
 Bouton **Réduire** lisible dans la barre d’état, en bas à droite. Le bouton supérieur reste disponible. Deux contrôles WPF supplémentaires vérifient sa visibilité et la réduction dans la barre des tâches : 291 tests métier, 73 contrôles WPF et 14 contrôles MCP réussis. Aperçus Comptes clair/sombre et compact, dont rendu compact à 200 % ; tour GIF actualisé avec données fictives.
 
+La [CI du commit 84b7de1](https://github.com/Aleqsd/codex-tracker/actions/runs/35628091198) est verte. La [Release 0.8.1](https://github.com/Aleqsd/codex-tracker/releases/tag/v0.8.1) contient trois assets dont les empreintes GitHub correspondent aux fichiers locaux. Les 14 tests MCP passent sur le binaire autonome. Installation silencieuse réelle depuis 0.8.0 : code 0, binaire identique, profils/préférences/identifiants/historiques conservés, version Windows et raccourci vérifiés, processus relancé et réactif.
+
+La [PR WinGet #438574](https://github.com/microsoft/winget-pkgs/pull/438574) pointe maintenant vers 0.8.1. Le CLA a été explicitement accepté par le contributeur, puis validé par Microsoft. Les contrôles techniques de 0.8.0 avaient réussi ; les contrôles du nouveau manifeste/binaire sont relancés. Cela ne constitue pas encore une publication dans le catalogue.
+
 # Validation de la version 0.8.0
 
 - 291 tests métier : ajout de 12 cas sur la semaine locale, les frontières d’année, les heures répétées et sautées, les valeurs inconnues, l’isolation des comptes et la réserve prioritaire. Aucune échéance récurrente n’est inventée.
