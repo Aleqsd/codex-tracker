@@ -8,6 +8,10 @@ L’icône affiche le **pourcentage hebdomadaire restant avec une fine jauge hor
 
 ## Installer
 
+![Assistant d’installation Codex Tracker](docs/installer.png)
+
+L’assistant suit le thème clair ou sombre de Windows, avec un accueil personnalisé et un parcours court : accueil, démarrage facultatif avec Windows, installation.
+
 1. Téléchargez `CodexTracker-…-Setup.exe` depuis les [Releases](https://github.com/Aleqsd/codex-tracker/releases).
 2. Lancez l’installateur : il installe l’application pour votre utilisateur, sans droits administrateur, et crée son raccourci. La désinstallation depuis les paramètres Windows conserve vos données de suivi.
 3. Utilisez normalement Codex : le tracker détecte son compte ouvert. Chaque autre compte est ajouté automatiquement lorsque vous l’ouvrez dans Codex.

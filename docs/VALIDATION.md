@@ -9,6 +9,8 @@ Contrôles Windows 11 x64 du 21 septembre 2026, comptes fictifs uniquement dans 
 - Captures réelles du rendu WPF clair/sombre et petits formats ; rendu de l’agenda à 96, 144 et 192 DPI (100/150/200 %). Ces captures de rendu ne remplacent pas un déplacement manuel entre écrans de DPI différents.
 - Les sorties de veille du moteur sont simulées par horloge injectable. La livraison réelle par les prestataires nécessite les identifiants de l’utilisateur et un test manuel volontaire ; elle n’est pas déclarée validée ici.
 
+- Assistant Inno Setup personnalisé : compilation du mode moderne dynamique, inspection du véritable accueil sombre et de la page des options. Artwork original généré par `installer/GenerateArtwork.ps1`. Aucun écran d’installation fictif.
+
 ## Validations des versions précédentes
 
 # Validation de la version 0.5.0
