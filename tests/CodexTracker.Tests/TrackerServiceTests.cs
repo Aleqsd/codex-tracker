@@ -110,7 +110,7 @@ public sealed class TrackerServiceTests
     }
 
     [Fact]
-    public async Task SelectingHistorySurvivesTokenRotationAndThenFollowsAnActualAccountChange()
+    public async Task ActiveAccountSurvivesTokenRotationAndFollowsAccountChanges()
     {
         using var directory = new TestDirectory();
         var authPath = directory.File("auth.json");
@@ -120,11 +120,11 @@ public sealed class TrackerServiceTests
         var aId = Assert.Single(service.State.Accounts).Profile.Id;
         await File.WriteAllBytesAsync(authPath, TestFixtures.Auth("b@example.test", "b"));
         await service.RefreshAsync();
-        await service.SelectAccountAsync(aId);
+        var bId = service.State.ActiveAccount!.Profile.Id;
 
         await File.WriteAllBytesAsync(authPath, TestFixtures.Auth("b@example.test", "b", "rotated"));
         await service.RefreshAsync();
-        Assert.Equal(aId, service.State.SelectedAccountId);
+        Assert.Equal(bId, service.State.SelectedAccountId);
         Assert.Equal("b@example.test", Assert.Single(service.State.Accounts, a => a.IsActiveInCodex).Profile.Email);
 
         await File.WriteAllBytesAsync(authPath, TestFixtures.Auth("c@example.test", "c"));

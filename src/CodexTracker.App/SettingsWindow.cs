@@ -33,7 +33,6 @@ internal sealed class SettingsWindow : ThemedWindow
         _themeSelector = new ComboBox { ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, "Comme Windows"), new ThemeChoice(AppThemeMode.Light, "Clair"), new ThemeChoice(AppThemeMode.Dark, "Sombre") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         Grid.SetColumn(_themeSelector, 1); themeRow.Children.Add(_themeSelector); Body.Children.Add(themeRow);
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
-        Toggle("Masquer les identités", "Remplace les adresses par Compte 01, Compte 02…", p => p.PrivacyMode, (p, value) => p with { PrivacyMode = value });
         Toggle("Aperçu au survol de l’icône", "Le quota et le prochain reset, sans ouvrir le panneau.", p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
         Section("Actualisation", true);
         _refreshSelector = Choice("Compte actif", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));

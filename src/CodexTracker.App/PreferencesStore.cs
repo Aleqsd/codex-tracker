@@ -10,7 +10,7 @@ internal sealed record AccountAppearance(string? Name = null, string? AvatarFile
 
 internal sealed record TrackerPreferences
 {
-    public bool PrivacyMode { get; init; }
+    [JsonIgnore] public bool PrivacyMode => false; // Legacy preference is ignored.
     public ThemeMode ThemeMode { get; init; } = ThemeMode.System;
     public SortMode SortMode { get; init; } = SortMode.Active;
     public bool Alert20 { get; init; } = true;
@@ -55,8 +55,8 @@ internal sealed class PreferencesStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            // An unreadable preference file must not expose account names on screen.
-            Current = new() { PrivacyMode = true };
+            // Keep safe defaults without rewriting an unreadable file.
+            Current = new();
         }
     }
 
@@ -94,7 +94,6 @@ internal sealed class PreferencesStore
 internal static class PrivacyText
 {
     public static string Account(AccountProfile profile, TrackerState state, TrackerPreferences preferences) =>
-        preferences.PrivacyMode ? Account(profile, state, true) :
         preferences.Appearances.GetValueOrDefault(profile.Id)?.Name is { Length: > 0 } name ? name : profile.Email;
     public static string Email(string email, bool privacy) => privacy ? "Compte masqué" : email;
     public static string Account(AccountProfile profile, TrackerState state, bool privacy)

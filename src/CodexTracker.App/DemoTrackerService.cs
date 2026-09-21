@@ -51,7 +51,6 @@ internal sealed class DemoTrackerService : ITrackerService
     public Task ResumeAsync(CancellationToken cancellationToken = default) => RefreshAsync(cancellationToken);
     public Task RefreshAsync(CancellationToken cancellationToken = default) { State = State with { Accounts = State.Accounts.Select(a => !a.IsActiveInCodex ? a : a with { Snapshot = a.Snapshot is null ? null : a.Snapshot with { FetchedAt = DateTimeOffset.UtcNow } }).ToArray() }; Notify(); return Task.CompletedTask; }
     public Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default) { State = State with { Accounts = State.Accounts.Where(a => a.Profile.Id != id).ToArray(), SelectedAccountId = State.SelectedAccountId == id ? State.Accounts.FirstOrDefault(a => a.Profile.Id != id)?.Profile.Id : State.SelectedAccountId }; Notify(); return Task.CompletedTask; }
-    public Task SelectAccountAsync(Guid id, CancellationToken cancellationToken = default) { State = State with { SelectedAccountId = id }; Notify(); return Task.CompletedTask; }
     public Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task CompleteOnboardingAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;

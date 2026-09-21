@@ -26,7 +26,8 @@ public sealed record AccountState(AccountProfile Profile, AccountSnapshot? Snaps
 public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? SelectedAccountId,
     bool IsBusy = false, string? StatusMessage = null, bool OnboardingComplete = false)
 {
-    public AccountState? SelectedAccount => Accounts.FirstOrDefault(a => a.Profile.Id == SelectedAccountId);
+    public AccountState? ActiveAccount => Accounts.FirstOrDefault(a => a.IsActiveInCodex);
+    public AccountState? SelectedAccount => ActiveAccount;
 }
 
 public interface ITrackerService : IAsyncDisposable
@@ -41,7 +42,6 @@ public interface ITrackerService : IAsyncDisposable
     Task SuspendAsync(CancellationToken cancellationToken = default);
     Task ResumeAsync(CancellationToken cancellationToken = default);
     Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default);
-    Task SelectAccountAsync(Guid id, CancellationToken cancellationToken = default);
     Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default);
     Task CompleteOnboardingAsync(CancellationToken cancellationToken = default);
 }

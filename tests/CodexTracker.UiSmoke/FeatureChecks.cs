@@ -24,6 +24,7 @@ internal static class FeatureChecks
     {
         var testRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "CodexTrackerUiTests"));
         var directory = Path.Combine(testRoot, Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "preferences.json"), "{\"privacyMode\":true}");
         var preferences = new PreferencesStore(dataDirectory: directory);
         var id = service.State.Accounts[0].Profile.Id;
         var theme = window.Theme;
@@ -45,7 +46,7 @@ internal static class FeatureChecks
             var appearance = persisted.Current.Appearances[id]; File.Delete(source);
             Check(appearance.Name == "Studio" && AvatarStore.Load(directory, appearance.AvatarFile) is not null, "Name and copied avatar survive restart and source removal");
             var vm = new AccountViewModel(service.State.Accounts[0], service.State, preferences);
-            Check(vm.Email == "Studio" && vm.HasAvatar, "Account presentation uses its saved name and photo");
+            Check(vm.Email == "Studio" && vm.HasAvatar, "Account names and photos stay visible despite the old privacy setting");
             Check(AvatarStore.Load(directory, "../source.png") is null, "Avatar lookup cannot escape its local directory");
             var other = new AccountViewModel(service.State.Accounts[1], service.State, preferences);
             Check(!other.HasAvatar && other.Email != "Studio", "Avatar and alias remain isolated between accounts");
@@ -53,11 +54,12 @@ internal static class FeatureChecks
             Field<TextBox>(cancelled, "_name").Text = "Discarded"; cancelled.Close();
             Check(preferences.Current.Appearances[id].Name == "Studio", "Closing personalization discards the unsaved name");
 
-            var privateEditor = new AccountAppearanceWindow(window, preferences, id, theme); privateEditor.Show();
-            preferences.Update(p => p with { PrivacyMode = true }); await Task.Delay(100);
-            Check(vm.Avatar is null && !vm.Email.Contains("Studio") && !Field<Button>(privateEditor, "_save").IsEnabled &&
-                !Field<TextBox>(privateEditor, "_name").IsVisible, "Privacy hides aliases, photos and open editing controls"); privateEditor.Close();
-            preferences.Update(p => p with { PrivacyMode = false });
+            Check(window.FindName("PrivacyButton") is null && !Tree(window).OfType<Button>().Any(b => b.ToolTip?.ToString()?.Contains("Afficher dans l’icône") == true),
+                "Dashboard no longer exposes privacy or account selection controls");
+            var inactive = service.State with { Accounts = service.State.Accounts.Select(a => a with { IsActiveInCodex = false }).ToArray() };
+            var dashboard = new DashboardViewModel(true, preferences); dashboard.Update(inactive);
+            Check(inactive.ActiveAccount is null && inactive.SelectedAccount is null && dashboard.Active is null,
+                "Missing active account never falls back to the formerly selected account");
             var settings = new SettingsWindow(window, preferences, new UpdateService(), theme, true); settings.Show();
             Field<ComboBox>(settings, "_refreshSelector").SelectedValue = 1;
             var adaptive = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Adapter à mon activité");
@@ -74,8 +76,8 @@ internal static class FeatureChecks
             Check(!Field<Button>(calendar, "_google").IsEnabled, "Calendar guides export before opening Google import");
             var icsPath = Path.Combine(directory, "calendar.ics"); calendar.ExportToFile(icsPath);
             var ics = File.ReadAllText(icsPath);
-            Check(ics.Contains("BEGIN:VEVENT") && !ics.Contains("example.com") && Field<Button>(calendar, "_google").IsEnabled,
-                "Calendar writes an anonymous ICS and enables the Google import action"); calendar.Close();
+            Check(ics.Contains("BEGIN:VEVENT") && ics.Contains("Studio") && Field<Button>(calendar, "_google").IsEnabled,
+                "Calendar writes account display names to ICS and enables the Google import action"); calendar.Close();
 
             var missing = Path.Combine(directory, "avatars", appearance.AvatarFile!); AvatarStore.Remove(directory, appearance.AvatarFile);
             Check(!File.Exists(missing) && AvatarStore.Load(directory, appearance.AvatarFile) is null, "Removing an avatar restores the initials fallback");

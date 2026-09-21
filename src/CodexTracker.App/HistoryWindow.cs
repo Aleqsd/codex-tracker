@@ -14,7 +14,7 @@ internal sealed class HistoryWindow : ThemedWindow
     private readonly TextBlock _name, _subtitle, _freshness, _period, _forecast, _forecastHint, _historyHint, _error;
     private readonly UsageChart _chart;
     private readonly ComboBox _periodSelector, _windowSelector;
-    private readonly Button _select, _remove;
+    private readonly Button _remove;
     private readonly TextBlock _details;
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(1) };
     private AccountViewModel? _model;
@@ -51,7 +51,6 @@ internal sealed class HistoryWindow : ThemedWindow
         calendar.Click += (_, _) => new CalendarWindow(this, service, preferences, theme, AccountId).ShowDialog(); personal.Children.Add(calendar); Body.Children.Add(personal);
         var expander = new Expander { Header = "Dates exactes et détails", Content = _details, Margin = new Thickness(0, 15, 0, 0) }; expander.SetResourceReference(ForegroundProperty, "TextBrush"); Body.Children.Add(expander);
         var actions = new Grid { Margin = new Thickness(0, 17, 0, 0) }; actions.ColumnDefinitions.Add(new ColumnDefinition()); actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        _select = new Button { Content = "Afficher dans l’icône", HorizontalAlignment = HorizontalAlignment.Left }; _select.Click += async (_, _) => await SelectAsync(); actions.Children.Add(_select);
         _remove = new Button { Content = "Retirer du suivi", Style = (Style)FindResource("QuietButton") }; _remove.Click += async (_, _) => await RemoveAsync(); Grid.SetColumn(_remove, 1); actions.Children.Add(_remove); Body.Children.Add(actions);
         _periodSelector.SelectionChanged += (_, _) => DrawChart(); _windowSelector.SelectionChanged += (_, _) => DrawChart();
         service.Changed += Changed; preferences.Changed += Changed; theme.Changed += Changed;
@@ -74,7 +73,7 @@ internal sealed class HistoryWindow : ThemedWindow
         var vm = new AccountViewModel(account, _service.State, _preferences); _model = vm; DataContext = vm;
         _name.Text = vm.Email; _subtitle.Text = vm.PlanBadge; _freshness.Text = vm.Freshness;
         _period.Text = $"Période d’abonnement : {vm.SubscriptionSummary}"; _period.ToolTip = vm.SubscriptionDetails;
-        _details.Text = vm.AllDetails; _select.IsEnabled = vm.CanSelect; _select.Content = vm.SelectButtonText; _remove.IsEnabled = vm.CanRemove;
+        _details.Text = vm.AllDetails; _remove.IsEnabled = vm.CanRemove;
         _error.Text = vm.Error; _error.Visibility = vm.HasError ? Visibility.Visible : Visibility.Collapsed;
         var forecast = _service.GetForecast(AccountId); _currentForecast = forecast;
         _forecast.ToolTip = forecast.EstimatedExhaustionAt is DateTimeOffset time ? $"Épuisement estimé : {Display.Exact(time)}\n{Display.Zone(time)}" : null;
@@ -96,11 +95,6 @@ internal sealed class HistoryWindow : ThemedWindow
         _chart.Samples = samples; _chart.Hours = hours; _chart.Window = window; _chart.InvalidateVisual();
         int count = samples.Count(s => s.Timestamp >= cutoff && (window == UsageWindowKind.Weekly ? s.WeeklyRemaining : s.ShortRemaining) is not null);
         _historyHint.Text = count == 0 ? "Aucun relevé sur cette période. L’historique se construit quand le compte est actif." : $"{count} relevés · les interruptions et les resets restent visibles dans la courbe.";
-    }
-    private async Task SelectAsync()
-    {
-        try { await _service.SelectAccountAsync(AccountId); }
-        catch (Exception error) { if (!_closed) ShowError(error.Message); }
     }
     private async Task RemoveAsync()
     {

@@ -74,7 +74,7 @@ public sealed class TrackerService : ITrackerService
                 Accounts = settings.Accounts.Select(p => new AccountState(p,
                     snapshots.TryGetValue(p.Id, out var snapshot) && SameEmail(snapshot.Email, p.Email) ? snapshot : null,
                     IsConnected: settings.DetectedAccountIds?.Contains(p.Id) == true || snapshots.ContainsKey(p.Id))).ToArray(),
-                SelectedAccountId = settings.SelectedAccountId,
+                SelectedAccountId = null,
                 OnboardingComplete = settings.OnboardingComplete
             });
             _initialized = true;
@@ -332,15 +332,6 @@ public sealed class TrackerService : ITrackerService
             try { _store.SaveTelemetry(id, pruned); }
             catch (Exception ex) when (IsRecoverable(ex)) { }
         }
-    }
-
-    public async Task SelectAccountAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        await ChangeAsync(() =>
-        {
-            if (!State.Accounts.Any(a => a.Profile.Id == id)) throw new TrackerException("Ce compte n'existe plus.");
-            Set(State with { SelectedAccountId = id });
-        }, cancellationToken);
     }
 
     public async Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default)

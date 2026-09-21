@@ -70,12 +70,6 @@ public partial class MainWindow : Window
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Hide_Click(object sender, RoutedEventArgs e) => Hide();
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
-    private void Privacy_Click(object sender, RoutedEventArgs e) => UpdatePreferences(p => p with { PrivacyMode = !p.PrivacyMode });
-    private void UpdatePreferences(Func<TrackerPreferences, TrackerPreferences> update)
-    {
-        try { _preferences.Update(update); }
-        catch (Exception error) { ShowMessage("Réglage non enregistré", error.Message); }
-    }
     public async Task RefreshAsync()
     {
         if (_refreshing || _service.State.IsBusy) return;
@@ -92,7 +86,6 @@ public partial class MainWindow : Window
         catch (Exception error) { if (!_canClose) ShowMessage("L’action n’a pas abouti", error.Message); }
     }
     private static Guid Id(object sender) => (Guid)((FrameworkElement)sender).Tag;
-    private async void Select_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.SelectAccountAsync(Id(sender), _lifetime.Token));
     private async void Import_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.ImportCurrentAccountAsync(_lifetime.Token));
     private async void Onboarding_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.CompleteOnboardingAsync(_lifetime.Token));
     private void Details_Click(object sender, RoutedEventArgs e) => OpenHistory(Id(sender));

@@ -67,12 +67,9 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string IdentityHint => _preferences.Current.PrivacyMode ? Email : _account.Profile.Email;
     public string Initials => _preferences.Current.PrivacyMode ? Email.Replace("Compte ", "") : new string(Email.Split('@')[0].Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => char.ToUpperInvariant(s[0])).ToArray());
     public bool IsActive => _account.IsActiveInCodex;
-    public bool IsSelected => Id == _state.SelectedAccountId;
+    public bool IsSelected => IsActive;
     public bool IsIdle => !_state.IsBusy;
-    public bool CanSelect => !IsSelected && IsIdle;
     public bool CanRemove => IsIdle && !IsActive;
-    public string SelectGlyph => IsSelected ? "●" : "○";
-    public string SelectButtonText => IsSelected ? "Dans l’icône" : "Afficher dans l’icône";
     public string Plan => _account.Snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", string other => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(other), _ => _account.IsConnected ? "Offre inconnue" : "À détecter" };
     public string PlanBadge => _account.Snapshot?.PlanMultiplier is int multiplier ? $"{Plan} {multiplier}×" : Plan;
     public string CompactStatus => HasError ? "à vérifier" : IsActive ? "actif" : _account.Snapshot is not null ? Display.Age(_account.Snapshot.FetchedAt) : "à détecter";
@@ -145,17 +142,15 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
     public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow); }
     public bool IsDemo { get; }
-    public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive) ?? Accounts.FirstOrDefault(a => a.IsSelected) ?? Accounts.FirstOrDefault();
+    public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive);
     public bool HasActive => Active is not null;
     public bool IsEmpty => Accounts.Count == 0;
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
-    public bool IsPrivate => _preferences.Current.PrivacyMode;
-    public string PrivacyLabel => IsPrivate ? "Afficher les identités" : "Masquer les identités";
 
     public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : "MutedBrush");
-    public string StatusText => Display.SafeText(_state.StatusMessage ?? (_state.IsBusy ? "Actualisation…" : IsDemo ? "Démonstration · données fictives" : "Détection automatique · toutes les 2 secondes"), IsPrivate);
+    public string StatusText => Display.SafeText(_state.StatusMessage ?? (_state.IsBusy ? "Actualisation…" : IsDemo ? "Démonstration · données fictives" : "Détection automatique · toutes les 2 secondes"), false);
     private AccountAdvice Advice { get; set; }
     public Guid? AdviceAccountId => Advice.Kind == AccountAdviceKind.VerifyInCodex ? Advice.AccountId : null;
     public bool HasAdvice => AdviceAccountId is not null;

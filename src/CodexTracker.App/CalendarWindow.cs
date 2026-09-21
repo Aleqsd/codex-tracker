@@ -14,7 +14,7 @@ internal sealed class CalendarWindow : ThemedWindow
     private bool _closed;
     private IReadOnlyList<CalendarEntry> Entries() => CalendarExport.Entries(
         _accountId is { } id ? _service.State with { Accounts = _service.State.Accounts.Where(a => a.Profile.Id == id).ToArray() } : _service.State,
-        p => PrivacyText.Account(p, _service.State, true), DateTimeOffset.UtcNow);
+        p => PrivacyText.Account(p, _service.State, _preferences.Current), DateTimeOffset.UtcNow);
 
     public CalendarWindow(Window owner, ITrackerService service, PreferencesStore preferences, ThemeManager theme, Guid? accountId = null)
         : base(owner, "Exporter vers un calendrier", theme, 530, 510)
@@ -23,7 +23,7 @@ internal sealed class CalendarWindow : ThemedWindow
         _status = Ui.Text("", 11); _status.Margin = new Thickness(0, 15, 0, 0);
         Body.Children.Add(Ui.Text("Les prochaines échéances connues", 16));
         _summary = Ui.Text("", 12, "MutedBrush"); _summary.Margin = new Thickness(0, 12, 0, 20); Body.Children.Add(_summary);
-        Body.Children.Add(Ui.Text("Le fichier utilise Compte 01, Compte 02… pour préserver les identités. Il contient les resets semaine et 5 heures, ainsi que les expirations des resets en réserve.", 12, "MutedBrush"));
+        Body.Children.Add(Ui.Text("Le fichier reprend les noms de vos comptes et les dates connues : resets semaine et 5 heures, expirations des réserves.", 12, "MutedBrush"));
         _export = new Button { Content = "1. Enregistrer le fichier .ics", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 20, 0, 10) };
         _export.Click += (_, _) => Export(); Body.Children.Add(_export);
         _google = new Button { Content = "2. Ouvrir l’import Google Calendar ↗", HorizontalAlignment = HorizontalAlignment.Left, IsEnabled = false };

@@ -10,8 +10,8 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Historique après collecte réelle | Premier point enregistré ; aucune prévision inventée à partir de ce seul point |
 | Intégrité de la session active | Empreinte SHA-256 du cache inchangée avant/après la collecte |
 | Persistance des credentials | Aucun fichier de session créé dans les données du tracker ; runtime temporaire nettoyé après collecte |
-| Démonstration WPF | Vrais processus, captures clair/sombre et identités masquées, détails et réglages |
-| Interactions WPF en démonstration | 24 contrôles réussis : espace de dessin sans rognage des deux icônes, boutons vectoriels de confidentialité et réglages, œil barré synchronisé, badges de réserve, infobulle ouverte avec dates et fuseau, ordre actif en premier sans menu de tri, thèmes à chaud, confidentialité dans les fenêtres ouvertes et le conseil, menus, graphique, minuterie et arrêt |
+| Démonstration WPF | Vrais processus, captures fictives clair/sombre, personnalisation, détails et calendrier |
+| Interactions WPF en démonstration | 21 contrôles dans la CI : activation depuis l’arrière-plan, avatars, noms persistants, annulation, options de fréquence, libellés, export calendrier et suppression des anciennes commandes de confidentialité/sélection |
 | Rendus WPF 96, 144 et 192 DPI | Contrôle des dimensions et lisibilité ; ces rendus ne changent pas les réglages DPI de Windows |
 | Icône transparente claire et sombre | Valeurs 0, 8, 10, 20, 21, 72, 99, 100 et inconnue aux tailles 16, 20, 24 et 32 pixels dans le [rendu de contrôle](tray-minimal.png) |
 | Installateur Windows | Installation, mise à niveau et désinstallation réelles dans un dossier isolé ; arrêt gracieux de l’application de test et conservation du témoin de données privées |
@@ -22,7 +22,7 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 ## Ajouts de la version 0.5
 
 - 212 tests métier réussis, dont la persistance des noms, l’isolation, les valeurs par défaut, le retour de la fréquence adaptative, les changements de fréquence dans le collecteur réel, les rappels d’expiration avec déduplication persistante et l’export calendrier.
-- 13 nouveaux contrôles WPF : copie et recadrage d’image, nom et photo après redémarrage, suppression de l’original, isolation des comptes, annulation, confidentialité à chaud, saisie des options, export réel `.ics`, étape Google et rejet d’image invalide. Les 7 contrôles WPF de réouverture depuis l’arrière-plan passent également.
+- 14 nouveaux contrôles WPF : copie et recadrage d’image, nom et photo après redémarrage, suppression de l’original, isolation des comptes, annulation, prise en compte des anciens réglages désactivés, saisie des options, export réel `.ics`, étape Google, suivi du compte actif et rejet d’image invalide. Les 7 contrôles WPF de réouverture depuis l’arrière-plan passent également.
 - L’export couvre les deux occurrences de 02:30 lors du passage à l’heure d’hiver, l’échappement des caractères et retours à la ligne, le pliage UTF-8 à 75 octets et les dates absentes/passées. L’import Google suit le parcours documenté ; aucun événement n’a été ajouté à un agenda réel pendant la validation.
 - Le mode adaptatif se base sur l’inactivité clavier/souris Windows. Les durées sont simulées dans les tests ; aucun réglage de veille Windows n’est modifié.
 

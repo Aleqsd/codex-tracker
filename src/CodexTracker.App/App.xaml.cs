@@ -65,7 +65,6 @@ public partial class App : System.Windows.Application
                 int themeArgument = Array.IndexOf(e.Args, "--theme");
                 if (themeArgument >= 0 && themeArgument + 1 < e.Args.Length)
                     preferences.Update(p => p with { ThemeMode = e.Args[themeArgument + 1] == "light" ? CodexTracker.App.ThemeMode.Light : CodexTracker.App.ThemeMode.Dark });
-                if (e.Args.Contains("--privacy")) preferences.Update(p => p with { PrivacyMode = true });
             }
             var window = new MainWindow(_service, IsDemo, preferences, new UpdateService());
             MainWindow = window;

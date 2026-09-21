@@ -23,7 +23,7 @@ public sealed class PersonalizationAndCalendarTests
         var restarted = new PreferencesStore(dataDirectory: directory.Root);
         Assert.Equal(5, restarted.Current.RefreshMinutes); Assert.True(restarted.Current.AdaptiveRefresh); Assert.Equal(72, restarted.Current.ExpiryLeadHours);
         Assert.Equal("Travail", PrivacyText.Account(Profile, State(null), restarted.Current));
-        Assert.Equal("Compte 01", PrivacyText.Account(Profile, State(null), restarted.Current with { PrivacyMode = true }));
+        Assert.False(restarted.Current.PrivacyMode);
         Assert.Equal("private@example.test", Profile.Email);
         var other = new AccountProfile(Guid.NewGuid(), "other@example.test");
         Assert.Equal(other.Email, PrivacyText.Account(other, State(null), restarted.Current));

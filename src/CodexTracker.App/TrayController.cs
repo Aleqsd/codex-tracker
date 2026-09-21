@@ -101,7 +101,7 @@ internal sealed class TrayController : IDisposable
     {
         if (_disposed) return;
         var state = _service.State;
-        var account = state.SelectedAccount;
+        var account = state.ActiveAccount;
         double? remaining = account?.Snapshot?.Weekly?.RemainingPercent;
         string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
         var dark = _window.Theme.IsDark;
@@ -114,7 +114,7 @@ internal sealed class TrayController : IDisposable
         var text = account is null ? "Codex Tracker · en attente d’un compte Codex" : $"{PrivacyText.Account(account.Profile, state, _preferences.Current)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(!account.IsActiveInCodex ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(account.Snapshot?.Weekly?.ResetsAt)}";
         _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
         _peek.Update(state, _preferences.Current);
-        var menuKey = state.SelectedAccountId + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActiveInCodex + ":" + a.Profile.Email));
+        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActiveInCodex + ":" + a.Profile.Email));
         if (menuKey == _menuKey || _tray.ContextMenuStrip?.Visible == true) return;
         _menuKey = menuKey;
         var background = dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
@@ -123,21 +123,6 @@ internal sealed class TrayController : IDisposable
         menu.Opening += (_, _) => HidePeek();
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
         menu.Items.Add("Ouvrir le suivi", null, (_, _) => _window.ShowPanel());
-        var accountsMenu = new Forms.ToolStripMenuItem("Compte dans l’icône") { BackColor = background, ForeColor = foreground };
-        accountsMenu.DropDown.BackColor = background; accountsMenu.DropDown.ForeColor = foreground;
-        accountsMenu.DropDown.Renderer = menu.Renderer;
-        foreach (var item in state.Accounts)
-        {
-            var label = PrivacyText.Account(item.Profile, state, _preferences.Current) + (item.IsActiveInCodex ? " · actif" : "");
-            var accountItem = new Forms.ToolStripMenuItem(label) { Checked = item.Profile.Id == state.SelectedAccountId };
-            accountItem.Click += async (_, _) => await SafeAsync(() => _service.SelectAccountAsync(item.Profile.Id));
-            accountsMenu.DropDownItems.Add(accountItem);
-        }
-        menu.Items.Add(accountsMenu);
-        menu.Items.Add(new Forms.ToolStripSeparator());
-        var privacy = new Forms.ToolStripMenuItem("Masquer les adresses") { Checked = _preferences.Current.PrivacyMode };
-        privacy.Click += async (_, _) => await SafeAsync(() => { _preferences.Update(p => p with { PrivacyMode = !p.PrivacyMode }); return Task.CompletedTask; });
-        menu.Items.Add(privacy);
         menu.Items.Add("Actualiser", null, async (_, _) => await _window.RefreshAsync());
         menu.Items.Add("Réglages", null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
         menu.Items.Add("Quitter", null, async (_, _) => await _exit());
@@ -220,7 +205,7 @@ internal sealed class TrayController : IDisposable
             });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
-        var name = PrivacyText.Account(account.Profile, state, true);
+        var name = PrivacyText.Account(account.Profile, state, _preferences.Current);
         _tray.ShowBalloonTip(8000, "Réserve bientôt expirée",
             $"{name} · {group.Length} échéance(s) de réserve\nExpiration : {Display.Exact(group[0].ExpiresAt)}\nRelevé : {Display.Exact(group[0].ObservedAt)}\nVérifiez leur disponibilité dans Codex.", Forms.ToolTipIcon.Info);
     }
@@ -233,7 +218,7 @@ internal sealed class TrayController : IDisposable
         _pendingNotifications.Clear();
         if (pending.Length == 0) return;
         var latest = pending.OrderByDescending(n => n.Kind == NotificationKind.Threshold).ThenBy(n => n.Threshold ?? 100).First();
-        var (title, body) = NotificationPolicy.Compose(latest, _service.State);
+        var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current);
         if (pending.Length > 1) body += $"\n{pending.Length - 1} autre événement dans le suivi.";
         _tray.ShowBalloonTip(5000, title, body, latest.Kind == NotificationKind.Reset ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Warning);
     }

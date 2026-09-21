@@ -11,13 +11,13 @@ public sealed class PreferencesTests
     {
         using var directory = new TestDirectory();
         var preferences = new PreferencesStore(dataDirectory: directory.Root);
-        preferences.Update(p => p with { PrivacyMode = true, ThemeMode = ThemeMode.Light, SortMode = SortMode.Reset, Alert10 = false });
+        preferences.Update(p => p with { ThemeMode = ThemeMode.Light, SortMode = SortMode.Reset, Alert10 = false });
         var persisted = File.ReadAllText(directory.File("preferences.json"));
         var demo = new PreferencesStore(false, directory.Root);
-        demo.Update(p => p with { ThemeMode = ThemeMode.Dark, PrivacyMode = false });
+        demo.Update(p => p with { ThemeMode = ThemeMode.Dark });
         Assert.Equal(persisted, File.ReadAllText(directory.File("preferences.json")));
         var restarted = new PreferencesStore(dataDirectory: directory.Root);
-        Assert.True(restarted.Current.PrivacyMode);
+        Assert.False(restarted.Current.PrivacyMode);
         Assert.Equal(ThemeMode.Light, restarted.Current.ThemeMode);
         Assert.Equal(SortMode.Reset, restarted.Current.SortMode);
         Assert.False(restarted.Current.Alert10);
@@ -26,12 +26,12 @@ public sealed class PreferencesTests
     [Theory]
     [InlineData("{broken")]
     [InlineData("null")]
-    public void CorruptedPreferencesFailClosedForPrivacy(string content)
+    public void CorruptedPreferencesKeepDefaultsWithoutRewritingTheFile(string content)
     {
         using var directory = new TestDirectory();
         File.WriteAllText(directory.File("preferences.json"), content);
         var preferences = new PreferencesStore(dataDirectory: directory.Root);
-        Assert.True(preferences.Current.PrivacyMode);
+        Assert.False(preferences.Current.PrivacyMode);
         Assert.Equal(content, File.ReadAllText(directory.File("preferences.json")));
     }
 
@@ -47,17 +47,17 @@ public sealed class PreferencesTests
     }
 
     [Fact]
-    public void SystemNotificationNeverContainsAnAddressEvenWhenPrivacyIsOff()
+    public void SystemNotificationUsesTheAccountDisplayName()
     {
         var profile = new AccountProfile(Guid.NewGuid(), "private@example.test");
         var state = new TrackerState([new(profile)], profile.Id);
         var threshold = new QuotaNotification(profile.Id, profile.Email, NotificationKind.Threshold, 10, DateTimeOffset.UtcNow);
         var (title, body) = NotificationPolicy.Compose(threshold, state);
-        Assert.DoesNotContain(profile.Email, title + body);
-        Assert.Contains("Compte 01", body);
+        Assert.Contains(profile.Email, title + body);
+        Assert.Contains(profile.Email, body);
         var reset = threshold with { Kind = NotificationKind.Reset, Threshold = null, Window = UsageWindowKind.Short };
         var resetMessage = NotificationPolicy.Compose(reset, state);
-        Assert.DoesNotContain(profile.Email, resetMessage.Title + resetMessage.Body);
+        Assert.Contains(profile.Email, resetMessage.Title + resetMessage.Body);
         Assert.Contains("5 heures", resetMessage.Body);
         Assert.False(NotificationPolicy.IsEnabled(reset, new() { ResetNotifications = false }));
     }

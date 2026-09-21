@@ -25,14 +25,13 @@ Changez de compte **dans Codex**. Le tracker observe son fichier de session en l
 
 Le bouton d’actualisation déclenche une vérification immédiate. Aucune connexion OAuth, bascule ni fermeture de Codex n’est effectuée par le tracker.
 
-Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par défaut. Dans **Réglages → Actualisation**, choisissez 1, 2 ou 5 minutes. Le mode adaptatif, facultatif, passe à 10 minutes après 5 minutes sans activité clavier ou souris, puis reprend la fréquence choisie à votre retour. Les changements sont appliqués sans redémarrage ; si le dernier relevé dépasse déjà le délai choisi, une collecte démarre au prochain contrôle (environ une seconde). L’actualisation manuelle et la détection des changements de compte restent immédiates. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. **Afficher dans l’icône** permet de consulter un ancien relevé ; au prochain changement de compte dans Codex, l’icône suit à nouveau le compte actif.
+Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par défaut. Dans **Réglages → Actualisation**, choisissez 1, 2 ou 5 minutes. Le mode adaptatif, facultatif, passe à 10 minutes après 5 minutes sans activité clavier ou souris, puis reprend la fréquence choisie à votre retour. Les changements sont appliqués sans redémarrage ; si le dernier relevé dépasse déjà le délai choisi, une collecte démarre au prochain contrôle (environ une seconde). L’actualisation manuelle et la détection des changements de compte restent immédiates. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. L’icône suit uniquement le compte actif détecté dans Codex. Sans compte actif, elle affiche une valeur indisponible ; aucun ancien relevé ne le remplace.
 
 À la sortie de veille, le tracker abandonne les anciennes requêtes et relit l’identité active avant de collecter les quotas. Le premier relevé de reprise reste silencieux et redémarre la période d’observation utilisée pour les prévisions. Les fenêtres sont ramenées dans la zone utile après un changement d’affichage ; l’aperçu se recale selon le moniteur et son DPI. L’icône est réaffirmée après une recréation de la barre des tâches.
 
 ## Lire le tableau de bord
 
 - La vue principale présente le compte actif puis une ligne par compte. Le compte actif reste automatiquement en tête ; les autres gardent un ordre stable. Le bouton **…** ouvre les détails et l’historique.
-- **Confidentialité** remplace les adresses par des alias stables dans les écrans, menus et aperçus. Les notifications Windows utilisent toujours ces alias pour éviter de laisser des adresses dans les notifications conservées par le système.
 - Les thèmes clair et sombre suivent Windows, avec un choix manuel dans les réglages. Le dessin de l’icône s’adapte également au thème.
 - **Hebdomadaire** : quota restant de la fenêtre de 10 080 minutes du bucket `codex`. Une limite de cinq heures n’est jamais présentée comme une limite hebdomadaire.
 - **Dans l’icône** : chiffre monochrome lisible et jauge fine. La jauge reste neutre au-dessus de 20 %, orange entre 10 et 20 %, rouge sous 10 %. La valeur reste lisible sans dépendre uniquement de la couleur.
@@ -44,9 +43,9 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 
 ## Personnalisation et calendrier
 
-Dans les **détails d’un compte (···) → Nom et avatar…**, choisissez un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Le mode confidentialité masque également les noms personnalisés et les photos.
+Dans les **détails d’un compte (···) → Nom et avatar…**, choisissez un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Les noms et les photos restent visibles. Le bouton de confidentialité et la sélection manuelle du compte de l’icône ont été retirés ; les anciens réglages correspondants sont ignorés.
 
-**Réglages → Calendrier → Exporter les échéances…** crée un fichier `.ics` pour tous les comptes. L’action dans les détails limite l’export au compte ouvert. Seuls les prochains resets semaine/5 heures et les expirations de réserve connues sont exportés ; aucune récurrence n’est inventée. Les événements durent cinq minutes, ne bloquent pas la disponibilité et utilisent des libellés anonymes **Compte 01…**, des dates UTC et la date du relevé.
+**Réglages → Calendrier → Exporter les échéances…** crée un fichier `.ics` pour tous les comptes. L’action dans les détails limite l’export au compte ouvert. Seuls les prochains resets semaine/5 heures et les expirations de réserve connues sont exportés ; aucune récurrence n’est inventée. Les événements durent cinq minutes, ne bloquent pas la disponibilité et reprennent les noms affichés des comptes, des dates UTC et la date du relevé.
 
 Pour **Google Calendar**, enregistrez le fichier puis cliquez sur **Ouvrir l’import Google Calendar**. Dans le navigateur, sélectionnez le `.ics`, choisissez le calendrier de destination et cliquez sur **Importer**, comme décrit dans [l’aide Google](https://support.google.com/calendar/answer/37118?hl=fr). Le tracker ne demande pas d’accès à votre compte Google. Cet import est ponctuel : les événements ne suivent pas les changements ultérieurs, et il faut éviter les imports répétés. Les identifiants d’événement restent stables pour une même échéance.
 
@@ -58,7 +57,7 @@ Une estimation d’épuisement apparaît après au moins 15 minutes de relevés 
 
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
 
-Les **rappels d’expiration des réserves** sont activés par défaut, 24 heures avant l’échéance connue ; le délai est réglable à 3 ou 7 jours. Ils sont contrôlés chaque minute, regroupés par compte et mémorisés avant affichage pour ne pas se répéter après redémarrage. Une réserve inconnue, nulle ou déjà expirée ne déclenche rien. Les comptes inactifs peuvent produire un rappel basé sur leur dernier relevé daté : il faut vérifier la disponibilité du reset dans Codex. Les notifications restent anonymes.
+Les **rappels d’expiration des réserves** sont activés par défaut, 24 heures avant l’échéance connue ; le délai est réglable à 3 ou 7 jours. Ils sont contrôlés chaque minute, regroupés par compte et mémorisés avant affichage pour ne pas se répéter après redémarrage. Une réserve inconnue, nulle ou déjà expirée ne déclenche rien. Les comptes inactifs peuvent produire un rappel basé sur leur dernier relevé daté : il faut vérifier la disponibilité du reset dans Codex. Les notifications affichent le nom personnalisé du compte, ou son adresse si aucun nom n’est défini.
 
 Le bouton **Tester une notification** permet de vérifier leur affichage. Les paramètres de notifications et le mode de concentration de Windows s’appliquent.
 
@@ -66,7 +65,7 @@ Le bouton **Tester une notification** permet de vérifier leur affichage. Les pa
 
 Une suggestion discrète apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails. Le changement de compte se fait toujours dans Codex.
 
-Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée. Le mode confidentialité s’applique aussi au conseil et à son infobulle.
+Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée.
 
 ## Données locales
 
@@ -97,7 +96,7 @@ La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocol
 
 Pour quitter une instance existante avant une mise à jour : `CodexTracker.exe --exit`. Le mode démonstration se ferme séparément avec `CodexTracker.exe --demo --exit`.
 
-Les captures automatisées sont réservées aux comptes fictifs : `CodexTracker.exe --demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test`. Les options `--demo-advice`, `--theme light`, `--privacy`, `--peek-screenshot`, `--details-screenshot` et `--settings-screenshot` permettent de contrôler les autres états sans exporter les comptes réels.
+Les captures automatisées sont réservées aux comptes fictifs : `CodexTracker.exe --demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test`. Les options `--demo-advice`, `--theme light`, `--peek-screenshot`, `--details-screenshot` et `--settings-screenshot` permettent de contrôler les autres états sans exporter les comptes réels.
 
 ## Références
 

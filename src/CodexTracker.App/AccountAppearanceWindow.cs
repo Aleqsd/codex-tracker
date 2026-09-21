@@ -10,7 +10,6 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
     private readonly TextBox _name;
     private readonly Border _preview;
     private readonly StackPanel _form = new();
-    private readonly TextBlock _privacyHint;
     private readonly Button _save;
     private BitmapSource? _image;
     private bool _imageChanged;
@@ -21,7 +20,6 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
         _preferences = preferences; _id = id;
         var appearance = preferences.Current.Appearances.GetValueOrDefault(id) ?? new();
         _image = AvatarStore.Load(preferences.DataDirectory, appearance.AvatarFile);
-        _privacyHint = Ui.Text("Désactivez le mode confidentialité pour personnaliser ce compte.", 12, "MutedBrush"); Body.Children.Add(_privacyHint);
         _preview = new Border { Width = 64, Height = 64, CornerRadius = new CornerRadius(16), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
         _form.Children.Add(_preview); UpdatePreview();
         var actions = new WrapPanel();
@@ -36,14 +34,6 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
         _form.Children.Add(_name); _form.Children.Add(Ui.Text("Laissez vide pour afficher l’adresse. L’identité de connexion reste inchangée.", 11, "MutedBrush")); Body.Children.Add(_form);
         _save = new Button { Content = "Enregistrer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0) };
         _save.Click += (_, _) => Save(); Body.Children.Add(_save);
-        preferences.Changed += Changed; Closed += (_, _) => preferences.Changed -= Changed; SyncPrivacy();
-    }
-    private void Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(SyncPrivacy);
-    private void SyncPrivacy()
-    {
-        bool hidden = _preferences.Current.PrivacyMode;
-        _form.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
-        _privacyHint.Visibility = hidden ? Visibility.Visible : Visibility.Collapsed; _save.IsEnabled = !hidden;
     }
     private void UpdatePreview() => _preview.Background = _image is null ? ThemeManager.GetBrush("AvatarBrush") : new ImageBrush(_image) { Stretch = Stretch.UniformToFill };
     private void ChooseImage()
@@ -55,7 +45,6 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
     }
     private void Save()
     {
-        if (_preferences.Current.PrivacyMode) return;
         var old = _preferences.Current.Appearances.GetValueOrDefault(_id) ?? new(); string? created = null;
         try
         {

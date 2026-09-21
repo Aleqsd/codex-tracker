@@ -76,7 +76,7 @@ internal sealed class TrayPeekWindow : Window
 
     public void Update(TrackerState state, TrackerPreferences preferences)
     {
-        var account = state.SelectedAccount;
+        var account = state.ActiveAccount;
         var snapshot = account?.Snapshot;
         var weekly = snapshot?.Weekly;
         var shortWindow = snapshot?.Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows.FirstOrDefault(w => w.WindowDurationMins == 300);

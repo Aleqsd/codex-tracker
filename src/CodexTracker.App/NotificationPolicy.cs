@@ -13,11 +13,11 @@ internal static class NotificationPolicy
             _ => false
         };
 
-    public static (string Title, string Body) Compose(QuotaNotification notification, TrackerState state)
+    public static (string Title, string Body) Compose(QuotaNotification notification, TrackerState state, TrackerPreferences? preferences = null)
     {
         var account = state.Accounts.FirstOrDefault(a => a.Profile.Id == notification.AccountId);
-        // Windows may retain a notification after privacy mode changes. Never send an email to its history.
-        var name = account is null ? "Compte suivi" : PrivacyText.Account(account.Profile, state, true);
+        // Use the same display name as the account panel.
+        var name = account is null ? "Compte suivi" : PrivacyText.Account(account.Profile, state, preferences ?? new());
         var window = notification.Window == UsageWindowKind.Short ? "5 heures" : "semaine";
         return notification.Kind == NotificationKind.Reset
             ? ("Quota rechargé", $"{name} · {window}\nCodex a confirmé le renouvellement du quota.")
