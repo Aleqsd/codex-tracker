@@ -65,7 +65,8 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public ImageSource? Avatar => _preferences.Current.PrivacyMode ? null : AvatarStore.Load(_preferences.DataDirectory, _preferences.Current.Appearances.GetValueOrDefault(Id)?.AvatarFile);
     public bool HasAvatar => Avatar is not null;
     public string IdentityHint => _preferences.Current.PrivacyMode ? Email : _account.Profile.Email;
-    public string Initials => _preferences.Current.PrivacyMode ? Email.Replace("Compte ", "") : new string(Email.Split('@')[0].Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => char.ToUpperInvariant(s[0])).ToArray());
+    public string Initials => AccountAvatar.Initials(Email);
+    public Brush AvatarBackground => AccountAvatar.Background(Id);
     public bool IsActive => _account.IsActiveInCodex;
     public bool IsSelected => IsActive;
     public bool IsIdle => !_state.IsBusy;
@@ -149,8 +150,21 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
 
-    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : "MutedBrush");
-    public string StatusText => Display.SafeText(_state.StatusMessage ?? (_state.IsBusy ? "Actualisation…" : IsDemo ? "Démonstration · données fictives" : "Détection automatique · toutes les 2 secondes"), false);
+    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccount?.Error is not null ? "DangerBrush" : "MutedBrush");
+    public string StatusText
+    {
+        get
+        {
+            if (_state.ActiveAccount?.Snapshot is not { } snapshot)
+                return _state.IsBusy ? "Première actualisation…" : _state.ActiveAccount is null ? "En attente du compte actif" : "Aucun relevé reçu";
+            var at = snapshot.FetchedAt.ToLocalTime();
+            var date = at.ToString(at.Date == DateTimeOffset.Now.Date ? "HH:mm:ss" : "dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("fr-FR"));
+            return $"Dernière mise à jour : {date}" + (_state.IsBusy ? " · actualisation…" : _state.ActiveAccount.Error is not null ? " · échec du dernier essai" : "");
+        }
+    }
+    public string StatusHint => _state.ActiveAccount?.Snapshot is { } snapshot
+        ? $"Dernier relevé reçu : {Display.Exact(snapshot.FetchedAt)}\n{Display.Zone(snapshot.FetchedAt)}\n{_state.ActiveAccount.Error ?? _state.StatusMessage}"
+        : _state.StatusMessage ?? "Ouvrez votre compte dans Codex.";
     private AccountAdvice Advice { get; set; }
     public Guid? AdviceAccountId => Advice.Kind == AccountAdviceKind.VerifyInCodex ? Advice.AccountId : null;
     public bool HasAdvice => AdviceAccountId is not null;
@@ -168,7 +182,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     {
         foreach (var account in Accounts) account.Tick();
         Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow);
-        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId) })
+        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)

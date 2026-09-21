@@ -41,9 +41,15 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 - Les dates précises utilisent le fuseau horaire Windows et son décalage UTC. Le compte à rebours complète l’heure exacte ; il ne confirme pas un reset tant que le serveur n’a pas actualisé la valeur.
 - En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
 
+Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai.
+
+Les réglages sont répartis en quatre rubriques : **Général**, **Notifications**, **Calendrier** et **Application**. Les menus compacts affichent une coche sur la valeur choisie et restent utilisables au clavier.
+
+![Réglages avec données fictives](docs/settings.png)
+
 ## Personnalisation et calendrier
 
-Dans les **détails d’un compte (···) → Nom et avatar…**, choisissez un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Les noms et les photos restent visibles. Le bouton de confidentialité et la sélection manuelle du compte de l’icône ont été retirés ; les anciens réglages correspondants sont ignorés.
+Cliquez directement sur **l’avatar d’un compte** (ou ouvrez **··· → Nom et avatar…**) pour choisir un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. Sans photo, un cercle coloré affiche les initiales du nom ou de l’adresse, avec une couleur stable par compte. Cliquez aussi sur cet avatar dans la fenêtre de personnalisation pour choisir une image. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Les noms et les photos restent visibles. Le bouton de confidentialité et la sélection manuelle du compte de l’icône ont été retirés ; les anciens réglages correspondants sont ignorés.
 
 **Réglages → Calendrier → Exporter les échéances…** crée un fichier `.ics` pour tous les comptes. L’action dans les détails limite l’export au compte ouvert. Seuls les prochains resets semaine/5 heures et les expirations de réserve connues sont exportés ; aucune récurrence n’est inventée. Les événements durent cinq minutes, ne bloquent pas la disponibilité et reprennent les noms affichés des comptes, des dates UTC et la date du relevé.
 

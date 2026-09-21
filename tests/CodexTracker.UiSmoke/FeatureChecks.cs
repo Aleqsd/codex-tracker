@@ -30,6 +30,8 @@ internal static class FeatureChecks
         var theme = window.Theme;
         try
         {
+            Check(AccountAvatar.Initials("Alexandre Almeida") == "AA" && AccountAvatar.Initials("alexandre.almeida@example.test") == "AA" && AccountAvatar.Initials("Studio") == "ST" && AccountAvatar.Initials("") == "?", "Default avatars derive initials from names and email addresses");
+            Check(AccountAvatar.Background(id).ToString() == AccountAvatar.Background(Guid.Parse(id.ToString())).ToString(), "Avatar color remains stable for an account");
             var source = Path.Combine(directory, "source.png");
             var pixels = Enumerable.Repeat((byte)100, 20 * 12 * 4).ToArray();
             var bitmap = BitmapSource.Create(20, 12, 96, 96, PixelFormats.Bgra32, null, pixels, 20 * 4); bitmap.Freeze();
@@ -39,6 +41,7 @@ internal static class FeatureChecks
             Check(photo.PixelWidth == photo.PixelHeight, "Avatar import crops to a square");
             var editor = new AccountAppearanceWindow(window, preferences, id, theme); editor.Show();
             Field<TextBox>(editor, "_name").Text = "Studio";
+            Check(Field<Border>(editor, "_preview").Child is TextBlock initials && initials.Text == "ST" && Field<Border>(editor, "_preview").CornerRadius.TopLeft == 32, "Personalization preview shows live initials in a round avatar");
             typeof(AccountAppearanceWindow).GetField("_image", Flags)!.SetValue(editor, photo);
             typeof(AccountAppearanceWindow).GetField("_imageChanged", Flags)!.SetValue(editor, true);
             Field<Button>(editor, "_save").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
@@ -61,6 +64,7 @@ internal static class FeatureChecks
             Check(inactive.ActiveAccount is null && inactive.SelectedAccount is null && dashboard.Active is null,
                 "Missing active account never falls back to the formerly selected account");
             var settings = new SettingsWindow(window, preferences, new UpdateService(), theme, true); settings.Show();
+            Check(settings.CurrentPage == "Général" && Tree(settings).OfType<Button>().Any(b => b.Content?.ToString() == "Notifications"), "Settings open on General with section navigation");
             Field<ComboBox>(settings, "_refreshSelector").SelectedValue = 1;
             var adaptive = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Adapter à mon activité");
             adaptive.IsChecked = true; adaptive.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
@@ -69,8 +73,25 @@ internal static class FeatureChecks
             Check(preferences.Current.RefreshMinutes == 1 && preferences.Current.AdaptiveRefresh && preferences.Current.ExpiryLeadHours == 72,
                 "Refresh, adaptive mode and expiry horizon save from actual controls");
             var labels = Tree(settings).OfType<TextBlock>().Select(t => t.Text).ToArray();
-            Check(labels.Contains("Chaque minute") && labels.Contains("3 jours") && !labels.Any(t => t.Contains("NumberChoice")),
-                "Refresh selectors display readable labels in the custom template"); settings.Close();
+            Check(labels.Contains("Chaque minute") && !labels.Any(t => t.Contains("NumberChoice")), "Refresh selector displays a readable label");
+            Tree(settings).OfType<Button>().Single(b => b.Content?.ToString() == "Notifications").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);
+            Check(settings.CurrentPage == "Notifications" && Tree(settings).OfType<TextBlock>().Any(t => t.Text == "3 jours"), "Settings navigation shows the selected section and preserves values");
+            var expiry = Field<ComboBox>(settings, "_expirySelector"); expiry.IsDropDownOpen = true; await Task.Delay(100);
+            var popup = (Popup)expiry.Template.FindName("PART_Popup", expiry);
+            var selectedItem = (ComboBoxItem)expiry.ItemContainerGenerator.ContainerFromIndex(expiry.SelectedIndex);
+            Check(popup.IsOpen && selectedItem.Template.FindName("SelectedMark", selectedItem) is FrameworkElement mark && mark.IsVisible, "Dropdown popup opens with a visible selection checkmark");
+            expiry.IsDropDownOpen = false; settings.Close();
+
+            var avatarButton = Tree(window).OfType<Button>().First(b => b.Tag is Guid && b.ToolTip?.ToString() == "Changer le nom ou l’avatar");
+            avatarButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);
+            var avatarEditor = window.OwnedWindows.OfType<AccountAppearanceWindow>().Single();
+            Check(avatarEditor.IsVisible && Field<TextBox>(avatarEditor, "_name").IsVisible, "Clicking a dashboard avatar opens its personalization window"); avatarEditor.Close();
+
+            var observed = service.State.ActiveAccount!.Snapshot!.FetchedAt;
+            var status = new DashboardViewModel(true, preferences); status.Update(service.State);
+            Check(status.StatusText.Contains(observed.ToLocalTime().ToString("HH:mm:ss")) && status.StatusHint.Contains("UTC"), "Footer shows the actual observation time and timezone");
+            status.Update(service.State with { Accounts = service.State.Accounts.Select(a => a.IsActiveInCodex ? a with { Error = "offline" } : a).ToArray() });
+            Check(status.StatusText.Contains(observed.ToLocalTime().ToString("HH:mm:ss")) && status.StatusText.Contains("échec"), "Failed refresh keeps the last successful observation time");
 
             var calendar = new CalendarWindow(window, service, preferences, theme); calendar.Show();
             Check(!Field<Button>(calendar, "_google").IsEnabled, "Calendar guides export before opening Google import");

@@ -19,6 +19,11 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |
 | Comportements Windows | 17 tests de placement et 13 contrôles sur de vrais HWND, décrits ci-dessous |
 
+## Ajouts de la version 0.5.1
+
+- 30 contrôles WPF réussis : 23 contrôles fonctionnels et 7 de réouverture. Les ajouts vérifient la navigation des réglages, les libellés et la coche du menu ouvert, l’ouverture par clic sur avatar, les initiales et leur aperçu, la couleur stable, ainsi que l’heure du relevé conservée après un échec.
+- Rendu WPF inspecté en thèmes clair et sombre avec des comptes fictifs. Les captures à 150 % ne remplacent pas un changement de DPI physique.
+
 ## Ajouts de la version 0.5
 
 - 212 tests métier réussis, dont la persistance des noms, l’isolation, les valeurs par défaut, le retour de la fréquence adaptative, les changements de fréquence dans le collecteur réel, les rappels d’expiration avec déduplication persistante et l’export calendrier.

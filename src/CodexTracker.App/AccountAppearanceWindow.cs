@@ -13,15 +13,20 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
     private readonly Button _save;
     private BitmapSource? _image;
     private bool _imageChanged;
+    private readonly string _identity;
+    internal Guid AccountId => _id;
 
-    public AccountAppearanceWindow(Window owner, PreferencesStore preferences, Guid id, ThemeManager theme)
+    public AccountAppearanceWindow(Window owner, PreferencesStore preferences, Guid id, ThemeManager theme, string? identity = null)
         : base(owner, "Personnaliser le compte", theme, 450, 440)
     {
-        _preferences = preferences; _id = id;
+        _preferences = preferences; _id = id; _identity = identity ?? "Compte";
         var appearance = preferences.Current.Appearances.GetValueOrDefault(id) ?? new();
         _image = AvatarStore.Load(preferences.DataDirectory, appearance.AvatarFile);
-        _preview = new Border { Width = 64, Height = 64, CornerRadius = new CornerRadius(16), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
-        _form.Children.Add(_preview); UpdatePreview();
+        _preview = new Border { Width = 64, Height = 64, CornerRadius = new CornerRadius(32), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
+        var avatarButton = new Button { Content = _preview, Style = (Style)FindResource("AvatarButton"), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Changer la photo", Margin = new Thickness(-4, -4, 0, 8), Padding = new Thickness(3) };
+        _preview.Margin = new Thickness(0);
+        System.Windows.Automation.AutomationProperties.SetName(avatarButton, "Changer la photo du compte");
+        avatarButton.Click += (_, _) => ChooseImage(); _form.Children.Add(avatarButton);
         var actions = new WrapPanel();
         var choose = new Button { Content = "Choisir une photo…", Margin = new Thickness(0, 0, 8, 0) };
         choose.Click += (_, _) => ChooseImage(); actions.Children.Add(choose);
@@ -34,8 +39,13 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
         _form.Children.Add(_name); _form.Children.Add(Ui.Text("Laissez vide pour afficher l’adresse. L’identité de connexion reste inchangée.", 11, "MutedBrush")); Body.Children.Add(_form);
         _save = new Button { Content = "Enregistrer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0) };
         _save.Click += (_, _) => Save(); Body.Children.Add(_save);
+        _name.TextChanged += (_, _) => UpdatePreview(); UpdatePreview();
     }
-    private void UpdatePreview() => _preview.Background = _image is null ? ThemeManager.GetBrush("AvatarBrush") : new ImageBrush(_image) { Stretch = Stretch.UniformToFill };
+    private void UpdatePreview()
+    {
+        _preview.Background = _image is null ? AccountAvatar.Background(_id) : new ImageBrush(_image) { Stretch = Stretch.UniformToFill };
+        _preview.Child = _image is null ? new TextBlock { Text = AccountAvatar.Initials(string.IsNullOrWhiteSpace(_name.Text) ? _identity : _name.Text), FontSize = 22, Foreground = Brushes.White, FontWeight = FontWeights.Medium, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } : null;
+    }
     private void ChooseImage()
     {
         var dialog = new OpenFileDialog { Filter = "Images|*.png;*.jpg;*.jpeg", Title = "Photo du compte" };

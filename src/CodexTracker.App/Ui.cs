@@ -60,6 +60,7 @@ internal class ThemedWindow : Window
 {
     protected readonly StackPanel Body = new() { Margin = new Thickness(21, 17, 21, 22) };
     protected readonly TextBlock Heading;
+    protected readonly ScrollViewer ContentScroll;
     private readonly ThemeManager _theme;
     public ThemedWindow(Window owner, string title, ThemeManager theme, double width, double height)
     {
@@ -76,7 +77,7 @@ internal class ThemedWindow : Window
         WindowChrome.SetIsHitTestVisibleInChrome(close, true); close.Click += (_, _) => Close();
         header.Children.Add(Heading); header.Children.Add(close);
         var top = new Border { Child = header, BorderThickness = new Thickness(0, 0, 0, 1) }; top.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); top.SetResourceReference(Border.BackgroundProperty, "ChromeBrush"); root.Children.Add(top);
-        var scroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetRow(scroll, 1); root.Children.Add(scroll);
+        ContentScroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetRow(ContentScroll, 1); root.Children.Add(ContentScroll);
         frame.Child = root; Content = frame;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); }; theme.Changed += ThemeChanged;
         Loaded += (_, _) => Ui.EnsureWindowVisible(this);

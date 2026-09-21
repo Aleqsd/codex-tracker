@@ -46,7 +46,7 @@ internal sealed class HistoryWindow : ThemedWindow
         _details = Ui.Text("", 11, "MutedBrush"); _details.LineHeight = 19; _details.Margin = new Thickness(0, 12, 0, 3);
         var personal = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
         var customize = new Button { Content = "Nom et avatar…", Style = (Style)FindResource("QuietButton"), Margin = new Thickness(-10, 0, 10, 0) };
-        customize.Click += (_, _) => new AccountAppearanceWindow(this, preferences, AccountId, theme).ShowDialog(); personal.Children.Add(customize);
+        customize.Click += (_, _) => new AccountAppearanceWindow(this, preferences, AccountId, theme, _model?.IdentityHint).ShowDialog(); personal.Children.Add(customize);
         var calendar = new Button { Content = "Exporter les échéances…", Style = (Style)FindResource("QuietButton") };
         calendar.Click += (_, _) => new CalendarWindow(this, service, preferences, theme, AccountId).ShowDialog(); personal.Children.Add(calendar); Body.Children.Add(personal);
         var expander = new Expander { Header = "Dates exactes et détails", Content = _details, Margin = new Thickness(0, 15, 0, 0) }; expander.SetResourceReference(ForegroundProperty, "TextBrush"); Body.Children.Add(expander);

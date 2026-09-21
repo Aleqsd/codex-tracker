@@ -89,6 +89,14 @@ public partial class MainWindow : Window
     private async void Import_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.ImportCurrentAccountAsync(_lifetime.Token));
     private async void Onboarding_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.CompleteOnboardingAsync(_lifetime.Token));
     private void Details_Click(object sender, RoutedEventArgs e) => OpenHistory(Id(sender));
+    private void Avatar_Click(object sender, RoutedEventArgs e) => OpenAppearance(Id(sender));
+    internal AccountAppearanceWindow OpenAppearance(Guid id)
+    {
+        var existing = OwnedWindows.OfType<AccountAppearanceWindow>().FirstOrDefault(w => w.AccountId == id);
+        if (existing is not null) { existing.Activate(); return existing; }
+        var editor = new AccountAppearanceWindow(this, _preferences, id, Theme, _service.State.Accounts.FirstOrDefault(a => a.Profile.Id == id)?.Profile.Email);
+        editor.Show(); return editor;
+    }
     private void Advice_Click(object sender, RoutedEventArgs e)
     {
         if (_model.AdviceAccountId is Guid id) OpenHistory(id);
