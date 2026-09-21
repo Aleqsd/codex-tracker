@@ -19,12 +19,32 @@
    <TabItem Header="Comptes" Tag="{StaticResource AccountsIcon}" Style="{StaticResource MainTabStyle}">
    <Grid Margin="0,15,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="9" Padding="13,10" Margin="0,0,0,13" Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolVisibility}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Changez de compte dans Codex : le tracker suit automatiquement. Glissez son icône près de l’horloge pour la garder visible." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,14,0"/><Button Grid.Column="1" Content="Compris" Click="Onboarding_Click" Padding="9,5" VerticalAlignment="Center"/></Grid></Border>
-   <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="17,14" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel><WrapPanel VerticalAlignment="Center"><TextBlock Text="{Binding Active.SummaryLabel}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/><Border Style="{StaticResource ReserveMetric}" Margin="0,0,8,0"><Border.ToolTip><ToolTip Content="{Binding Active.ReserveHint}" ContentTemplate="{StaticResource ReserveTooltip}"/></Border.ToolTip><TextBlock Text="{Binding Active.ReserveSummary}" Foreground="{Binding Active.ReserveBrush}" FontSize="11" FontWeight="SemiBold"/></Border></WrapPanel><TextBlock Text="{Binding Active.Email}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,5,15,0" ToolTip="{Binding Active.Email}"/></StackPanel>
-    <StackPanel Grid.Column="1" HorizontalAlignment="Right"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding Active.WeeklyNumber}" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Ideal" FontSize="30" FontWeight="SemiBold" Foreground="{Binding Active.WeeklyBrush}"/><TextBlock Text=" restant" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Bottom" Margin="2,0,0,7"/></StackPanel></StackPanel>
-    <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding Active.WeeklyPercent, Mode=OneWay}" Foreground="{Binding Active.WeeklyBrush}" Margin="0,12,0,10"/>
-    <TextBlock Grid.Row="2" Text="{Binding Active.SummaryReset}" ToolTip="{Binding Active.ResetHint}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Active.ShortSummary}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
-   </Grid></Border>
+   <Border x:Name="ActiveAccountCard" Grid.Row="1" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="20,17" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}">
+    <Grid>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="235"/></Grid.ColumnDefinitions>
+     <StackPanel Margin="0,0,22,0" VerticalAlignment="Center">
+      <TextBlock Text="{Binding Active.SummaryLabel}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+      <TextBlock Text="{Binding Active.Email}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,5,0,0" ToolTip="{Binding Active.Email}"/>
+      <WrapPanel Margin="0,11,0,0">
+       <Border Style="{StaticResource ReserveMetric}" Margin="0,0,18,0">
+        <Border.ToolTip><ToolTip Content="{Binding Active.ReserveHint}" ContentTemplate="{StaticResource ReserveTooltip}"/></Border.ToolTip>
+        <TextBlock Text="{Binding Active.ReserveSummary}" Foreground="{Binding Active.ReserveBrush}" FontSize="11" FontWeight="SemiBold"/>
+       </Border>
+       <TextBlock Text="{Binding Active.ShortSummary}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center"/>
+      </WrapPanel>
+     </StackPanel>
+     <Border Grid.Column="1" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0" Padding="22,0,0,0">
+      <StackPanel VerticalAlignment="Center">
+       <StackPanel Orientation="Horizontal">
+        <TextBlock Text="{Binding Active.WeeklyNumber}" TextOptions.TextFormattingMode="Ideal" FontSize="30" FontWeight="SemiBold" Foreground="{Binding Active.WeeklyBrush}"/>
+        <TextBlock Text="restant" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Bottom" Margin="8,0,0,7"/>
+       </StackPanel>
+       <ProgressBar Value="{Binding Active.WeeklyPercent, Mode=OneWay}" Foreground="{Binding Active.WeeklyBrush}" Margin="0,8,0,10"/>
+       <TextBlock Text="{Binding Active.SummaryReset}" ToolTip="{Binding Active.ResetHint}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
+      </StackPanel>
+     </Border>
+    </Grid>
+   </Border>
    <Grid Grid.Row="2" Margin="1,9,0,0" Visibility="{Binding HasAdvice, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding AdviceHint}">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <StackPanel><TextBlock Text="{Binding AdviceTitle}" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding AdviceAge}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel>

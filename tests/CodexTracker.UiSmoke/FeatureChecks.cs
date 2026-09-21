@@ -52,6 +52,27 @@ internal static class FeatureChecks
                 && !Tree(resets).OfType<TextBlock>().Any(t => t.Text == service.State.Accounts[1].Profile.Email), "Resets account filter isolates schedule rows");
             resets.Update(service.State);
             Check(resetFilter.SelectedIndex == 1, "Refresh preserves the resets account filter");
+            var kindFilters = Tree(resets).OfType<RadioButton>().ToArray();
+            var weeklyFilter = kindFilters.Single(r => r.Tag is ResetKind.Weekly);
+            weeklyFilter.IsChecked = true; window.UpdateLayout();
+            var timeline = Field<StackPanel>(resets, "_timeline");
+            var weeklyLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
+            Check(weeklyLabels.Contains("Reset hebdomadaire") && !weeklyLabels.Contains("Reset 5 heures") && !weeklyLabels.Contains("Expiration de réserve"), "Weekly filter shows only weekly resets for the selected account");
+            resets.Update(service.State);
+            Check(weeklyFilter.IsChecked == true && resetFilter.SelectedIndex == 1, "Refresh preserves both account and reset type filters");
+            kindFilters.Single(r => r.Tag is ResetKind.Short).IsChecked = true; window.UpdateLayout();
+            var shortLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
+            Check(shortLabels.Contains("Reset 5 heures") && !shortLabels.Contains("Reset hebdomadaire"), "Five-hour filter uses an explicit reset type label");
+            kindFilters.Single(r => r.Tag is ResetKind.Reserve).IsChecked = true; window.UpdateLayout();
+            var reserveLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
+            Check(reserveLabels.Contains("Expiration de réserve") && reserveLabels.Contains("Réserves sans date")
+                && reserveLabels.Contains(service.State.Accounts[0].Snapshot!.ResetCredits![0].Title)
+                && reserveLabels.Any(t => t.StartsWith("Reçu le ")) && reserveLabels.Any(t => t.Contains("UTC")), "Reserve filter shows source credit title, expiry, received dates, timezone and undetailed reserves");
+            resets.Update(new([service.State.Accounts[0] with { Snapshot = service.State.Accounts[0].Snapshot! with { AvailableResetCredits = 0, ResetCredits = [] } }], id));
+            window.UpdateLayout();
+            Check(Tree(timeline).OfType<TextBlock>().Any(t => t.Text == "Aucune réserve à afficher pour cette sélection."), "Empty reserve filter never falls back to quota resets");
+            kindFilters.Single(r => r.Tag is null).IsChecked = true;
+            resets.Update(service.State);
             var oldSnapshot = service.State.Accounts[0].Snapshot! with
             {
                 Buckets = [new("codex", null, [new(80, 300, DateTimeOffset.UtcNow.AddSeconds(-1))])],

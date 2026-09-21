@@ -49,11 +49,11 @@ Les réglages sont répartis en quatre rubriques : **Général**, **Notification
 
 ## Onglet Resets
 
-L’onglet **Resets**, à côté de **Comptes**, rassemble les échéances de tous les comptes dans une liste chronologique : fenêtres de 5 heures et hebdomadaire, expiration de chaque crédit de reset connu et date de réception. Le filtre permet de ne conserver qu’un compte. Chaque ligne affiche la date exacte, le décalage UTC, un compte à rebours et l’ancienneté du relevé ; le survol précise le fuseau et les informations reçues.
+L’onglet **Resets**, à côté de **Comptes**, rassemble les échéances de tous les comptes dans une liste chronologique. Les catégories **Hebdomadaires**, **5 heures** et **Réserves** se combinent avec le filtre par compte. Chaque ligne met le type de reset en premier, avec son icône, puis le compte concerné ; les réserves affichent aussi le titre du crédit fourni par Codex. La date, l’heure exacte avec décalage UTC et le compte à rebours sont alignés à droite. Les dates de réception et l’ancienneté du relevé restent visibles ; le survol précise le fuseau et les informations reçues.
 
 Les dates sont séparées en **À venir**, **Dates atteintes · à vérifier** et **Dates non communiquées**. Une date passée ne confirme pas un nouveau quota. Si le serveur fournit moins de dates de crédits que le compteur de réserves, une ligne signale les dates manquantes. Le total des réserves reste celui des derniers relevés, sans déduire la disponibilité depuis les dates.
 
-**Google Agenda ↗** ouvre les options d’import pour le compte filtré, ou pour tous les comptes. **Actualiser** conserve le filtre et actualise uniquement le compte actif dans Codex.
+**Google Agenda ↗** ouvre les options d’import pour le compte filtré, ou pour tous les comptes, en incluant tous les types de resets. **Actualiser** conserve les filtres et actualise uniquement le compte actif dans Codex.
 
 ![Onglet Resets avec un compte fictif](docs/resets.png)
 

@@ -19,6 +19,12 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |
 | Comportements Windows | 17 tests de placement et 13 contrôles sur de vrais HWND, décrits ci-dessous |
 
+## Ajouts de la version 0.5.6
+
+- L’encart du compte actif adopte la disposition « Deux zones » : identité et réserves à gauche, quota hebdomadaire, jauge et prochain reset à droite, séparés par un filet discret.
+- L’onglet Resets met le type en premier, avec une icône distincte, le titre des crédits et les dates/heures alignées. Filtres Hebdomadaires, 5 heures et Réserves combinables avec le compte ; ils restent sélectionnés après actualisation.
+- Compilation sans avertissement et 50 contrôles WPF réussis, dont les filtres combinés, les réserves sans date et la sélection vide. Captures clair/sombre inspectées à 760 × 620 et 630 × 500, avec une adresse fictive longue ; dates des réserves et du prochain reset conservées au survol.
+
 ## Ajouts de la version 0.5.5
 
 - 224 tests métier et 45 contrôles WPF réussis. Les ajouts couvrent le tri des échéances, les dates absentes ou partielles, l’isolation par compte, les réserves inconnues ou nulles et les dates historiques conservées.
