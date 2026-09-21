@@ -38,6 +38,38 @@ internal static class FeatureChecks
         var theme = window.Theme;
         try
         {
+            var mainTabs = (TabControl)window.FindName("MainTabs");
+            var resetsTab = (TabItem)window.FindName("ResetsTab");
+            var resets = (ResetsView)resetsTab.Content;
+            Check(mainTabs.SelectedIndex == 0, "Dashboard opens on Accounts by default");
+            mainTabs.SelectedItem = resetsTab; await Task.Delay(100);
+            Check(resets.IsVisible && Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("À venir")), "Resets tab renders a chronological schedule");
+            var resetFilter = Field<ComboBox>(resets, "_accounts");
+            Check(Tree(resetFilter).OfType<TextBlock>().Any(t => t.Text == "Tous les comptes")
+                && !Tree(resetFilter).OfType<TextBlock>().Any(t => t.Text.Contains("ResetAccountChoice")), "Resets dropdown displays its label instead of its data type");
+            resetFilter.SelectedIndex = 1; window.UpdateLayout();
+            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text == service.State.Accounts[0].Profile.Email)
+                && !Tree(resets).OfType<TextBlock>().Any(t => t.Text == service.State.Accounts[1].Profile.Email), "Resets account filter isolates schedule rows");
+            resets.Update(service.State);
+            Check(resetFilter.SelectedIndex == 1, "Refresh preserves the resets account filter");
+            var oldSnapshot = service.State.Accounts[0].Snapshot! with
+            {
+                Buckets = [new("codex", null, [new(80, 300, DateTimeOffset.UtcNow.AddSeconds(-1))])],
+                AvailableResetCredits = null, ResetCredits = null
+            };
+            resets.Update(new([service.State.Accounts[0] with { Snapshot = oldSnapshot }], id));
+            window.UpdateLayout(); resets.Tick();
+            var resetLabels = Tree(resets).OfType<TextBlock>().Select(t => t.Text).ToArray();
+            Check(resetLabels.Contains("Reset à confirmer dans Codex") && resetLabels.Contains("Date indisponible")
+                && resetLabels.Contains("Réserves : non communiquées"), "Past reset dates and missing reserves never imply restored quotas or zero credits");
+            Guid? exportedAccount = null;
+            var scoped = new ResetsView(preferences, selected => exportedAccount = selected, () => { });
+            scoped.Update(service.State); Field<ComboBox>(scoped, "_accounts").SelectedIndex = 1;
+            Tree(scoped.Content as DependencyObject ?? scoped).OfType<Button>().Single(b => b.Content?.ToString() == "Google Agenda ↗").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(exportedAccount == id, "Calendar action receives the account selected in Resets");
+            resets.Update(service.State); resetFilter.SelectedIndex = 0;
+            mainTabs.SelectedIndex = 0; await Task.Delay(100);
+            Check(!resets.IsVisible && Tree(window).OfType<Button>().Any(b => b.ToolTip?.ToString() == "Changer le nom ou l’avatar"), "Returning to Accounts preserves the dashboard");
             Check(AccountAvatar.Initials("Alexandre Almeida") == "AA" && AccountAvatar.Initials("alexandre.almeida@example.test") == "AA" && AccountAvatar.Initials("Studio") == "ST" && AccountAvatar.Initials("") == "?", "Default avatars derive initials from names and email addresses");
             Check(AccountAvatar.Background(id).ToString() == AccountAvatar.Background(Guid.Parse(id.ToString())).ToString(), "Avatar color remains stable for an account");
             var source = Path.Combine(directory, "source.png");

@@ -15,7 +15,9 @@
  </Grid></Viewbox>
 </Button><Button Content="—" ToolTip="Réduire" Click="Minimize_Click" Style="{StaticResource QuietButton}" Padding="10,5"/><Button Content="✕" ToolTip="Masquer dans la zone de notification" Click="Hide_Click" Style="{StaticResource QuietButton}" Padding="10,5"/></StackPanel>
   </Grid></Border>
-  <Grid Grid.Row="1" Margin="22,19,20,12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <TabControl x:Name="MainTabs" Grid.Row="1" Margin="22,9,20,12" Style="{StaticResource MainTabsStyle}">
+   <TabItem Header="Comptes" Tag="{StaticResource AccountsIcon}" Style="{StaticResource MainTabStyle}">
+   <Grid Margin="0,15,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="9" Padding="13,10" Margin="0,0,0,13" Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolVisibility}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Changez de compte dans Codex : le tracker suit automatiquement. Glissez son icône près de l’horloge pour la garder visible." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,14,0"/><Button Grid.Column="1" Content="Compris" Click="Onboarding_Click" Padding="9,5" VerticalAlignment="Center"/></Grid></Border>
    <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="17,14" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel><WrapPanel VerticalAlignment="Center"><TextBlock Text="{Binding Active.SummaryLabel}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/><Border Style="{StaticResource ReserveMetric}" Margin="0,0,8,0"><Border.ToolTip><ToolTip Content="{Binding Active.ReserveHint}" ContentTemplate="{StaticResource ReserveTooltip}"/></Border.ToolTip><TextBlock Text="{Binding Active.ReserveSummary}" Foreground="{Binding Active.ReserveBrush}" FontSize="11" FontWeight="SemiBold"/></Border></WrapPanel><TextBlock Text="{Binding Active.Email}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,5,15,0" ToolTip="{Binding Active.Email}"/></StackPanel>
@@ -43,6 +45,9 @@
     </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
    </StackPanel></ScrollViewer>
   </Grid>
+   </TabItem>
+   <TabItem x:Name="ResetsTab" Header="Resets" Tag="{StaticResource DropdownRefreshIcon}" Style="{StaticResource MainTabStyle}"/>
+  </TabControl>
   <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Ellipse Width="5" Height="5" Fill="{Binding StatusBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding StatusText}" ToolTip="{Binding StatusHint}" Foreground="{DynamicResource MutedBrush}" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="Local &amp; privé" Foreground="{DynamicResource SubtleBrush}" FontSize="10" VerticalAlignment="Center" Margin="15,0,0,0"/></Grid></Border>
  </Grid></Border>
 </Window>

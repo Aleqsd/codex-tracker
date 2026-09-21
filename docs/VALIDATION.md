@@ -19,6 +19,13 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |
 | Comportements Windows | 17 tests de placement et 13 contrôles sur de vrais HWND, décrits ci-dessous |
 
+## Ajouts de la version 0.5.5
+
+- 224 tests métier et 45 contrôles WPF réussis. Les ajouts couvrent le tri des échéances, les dates absentes ou partielles, l’isolation par compte, les réserves inconnues ou nulles et les dates historiques conservées.
+- Navigation réelle Comptes → Resets → Comptes, libellé du filtre, conservation après actualisation, export du compte filtré et affichage des échéances atteintes sans annoncer un quota rétabli.
+- Captures WPF avec comptes fictifs inspectées en clair/sombre, aux dimensions 760 × 620 et 630 × 500, rendues à 150 %. Les listes défilent sans rogner les dates.
+- Un contrôle préexistant du calendrier a échoué ponctuellement en recherchant le bouton d’un panneau venant de s’ouvrir ; une seconde exécution inchangée de ce contrôle a réussi. Aucun événement Google réel n’a été créé.
+
 ## Ajouts de la version 0.5.4
 
 - 215 tests métier et 37 contrôles WPF réussis. Les liens Google conservent les instants UTC lors du changement d’heure et encodent les caractères spéciaux sans ajouter de paramètres.

@@ -47,6 +47,16 @@ Les réglages sont répartis en quatre rubriques : **Général**, **Notification
 
 ![Réglages avec données fictives](docs/settings.png)
 
+## Onglet Resets
+
+L’onglet **Resets**, à côté de **Comptes**, rassemble les échéances de tous les comptes dans une liste chronologique : fenêtres de 5 heures et hebdomadaire, expiration de chaque crédit de reset connu et date de réception. Le filtre permet de ne conserver qu’un compte. Chaque ligne affiche la date exacte, le décalage UTC, un compte à rebours et l’ancienneté du relevé ; le survol précise le fuseau et les informations reçues.
+
+Les dates sont séparées en **À venir**, **Dates atteintes · à vérifier** et **Dates non communiquées**. Une date passée ne confirme pas un nouveau quota. Si le serveur fournit moins de dates de crédits que le compteur de réserves, une ligne signale les dates manquantes. Le total des réserves reste celui des derniers relevés, sans déduire la disponibilité depuis les dates.
+
+**Google Agenda ↗** ouvre les options d’import pour le compte filtré, ou pour tous les comptes. **Actualiser** conserve le filtre et actualise uniquement le compte actif dans Codex.
+
+![Onglet Resets avec un compte fictif](docs/resets.png)
+
 ## Personnalisation et calendrier
 
 Cliquez directement sur **l’avatar d’un compte** (ou ouvrez **··· → Nom et avatar…**) pour choisir un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. Les photos importées conservent leur transparence sur un fond neutre adapté au thème, sans initiales derrière l’image. Sans photo, un cercle coloré affiche les initiales du nom ou de l’adresse, avec une couleur stable par compte. Cliquez aussi sur cet avatar dans la fenêtre de personnalisation pour choisir une image. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Les noms et les photos restent visibles. Le bouton de confidentialité et la sélection manuelle du compte de l’icône ont été retirés ; les anciens réglages correspondants sont ignorés.

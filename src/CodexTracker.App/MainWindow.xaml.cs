@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly DashboardViewModel _model;
     private readonly PreferencesStore _preferences;
     private readonly UpdateService _updates;
+    private readonly ResetsView _resets;
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
     private bool _canClose, _refreshing;
@@ -27,13 +28,14 @@ public partial class MainWindow : Window
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences);
         InitializeComponent();
+        _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync()); ResetsTab.Content = _resets;
         if (demo) Title = "Codex Tracker (démo)";
         DataContext = _model;
         UpdateModel();
         _service.Changed += Service_Changed;
         _preferences.Changed += Preferences_Changed;
         Theme.Changed += Theme_Changed;
-        _clockTimer.Tick += (_, _) => _model.Tick();
+        _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); };
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Hide(); if (e.Key == Key.F5) _ = RefreshAsync(); };
@@ -46,7 +48,7 @@ public partial class MainWindow : Window
     private void UpdateModel()
     {
         if (_canClose) return;
-        _model.Update(_service.State);
+        _model.Update(_service.State); _resets.Update(_service.State);
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
     private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
