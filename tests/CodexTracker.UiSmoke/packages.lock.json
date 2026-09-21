@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "CodexTracker": {
+        "type": "Project",
+        "dependencies": {
+          "CodexTracker.Codex": "[0.4.1, )",
+          "CodexTracker.Core": "[0.4.1, )"
+        }
+      },
+      "codextracker.codex": {
+        "type": "Project",
+        "dependencies": {
+          "CodexTracker.Core": "[0.4.1, )"
+        }
+      },
+      "codextracker.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

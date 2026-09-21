@@ -1,4 +1,4 @@
-# Validation de la version 0.4.1
+# Validation de la version 0.4.2
 
 Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests et captures publics utilisent uniquement des comptes fictifs.
 
@@ -48,3 +48,9 @@ Le conseil de compte possède 28 tests couvrant les seuils, la fraîcheur au tic
 - Confirmer la réception des notifications sur la configuration personnelle de Windows, notamment avec le mode de concentration activé.
 
 Le tracker ne propose ni connexion OAuth ni bascule de compte. Il ne ferme pas Codex. Les anciens essais de bascule de la version 0.1 ne s’appliquent pas à cette version.
+
+## Réouverture après démarrage en arrière-plan (0.4.2)
+
+Le scénario fautif est reproduit avec une vraie fenêtre WPF et des données fictives : un appel natif ShowWindow affiche le HWND sans créer son contenu WPF. La nouvelle demande de réouverture est traitée par le dispatcher de l’instance active, qui appelle ShowPanel et Window.Show.
+
+Sept contrôles automatisés couvrent le démarrage masqué, la reproduction du contenu absent, la première ouverture, la réouverture après masquage, la restauration après réduction, les ouvertures répétées et une demande pendant la fermeture. Ils vérifient la présence effective des contrôles visibles, et pas seulement le titre ou la réactivité du processus. Ce programme est exécuté par la CI Windows.

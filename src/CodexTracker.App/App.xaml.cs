@@ -15,6 +15,7 @@ public partial class App : System.Windows.Application
     private bool _exiting;
     private HwndSource? _messageSource;
     private static readonly uint ExitMessage = RegisterWindowMessage("CodexTracker.RequestExit.v1");
+    private static readonly uint ShowMessage = RegisterWindowMessage("CodexTracker.RequestShow.v1");
     private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
     private readonly DispatcherTimer _environmentTimer = new(DispatcherPriority.Loaded) { Interval = TimeSpan.FromMilliseconds(200) };
     private bool _taskbarCreated, _suspended;
@@ -38,7 +39,14 @@ public partial class App : System.Windows.Application
         if (!created)
         {
             var handle = FindWindow(null, IsDemo ? "Codex Tracker (démo)" : "Codex Tracker");
-            if (handle != IntPtr.Zero) { ShowWindow(handle, 9); SetForegroundWindow(handle); }
+            if (handle != IntPtr.Zero && !e.Args.Contains("--background"))
+            {
+                GetWindowThreadProcessId(handle, out var processId);
+                AllowSetForegroundWindow(processId);
+                // The running WPF dispatcher must call Window.Show. Showing only the HWND
+                // leaves a never-shown background window without its visual tree (black).
+                PostMessage(handle, ShowMessage, IntPtr.Zero, IntPtr.Zero);
+            }
             Shutdown(); return;
         }
         try
@@ -117,6 +125,14 @@ public partial class App : System.Windows.Application
 
     private IntPtr HandleWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if ((uint)message == ShowMessage)
+        {
+            handled = true;
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (!_exiting && MainWindow is MainWindow window) window.ShowPanel();
+            });
+        }
         if ((uint)message == ExitMessage)
         {
             handled = true;
@@ -174,8 +190,8 @@ public partial class App : System.Windows.Application
     });
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string windowName);
-    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int command);
-    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    [DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(uint processId);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint RegisterWindowMessage(string message);
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint message, IntPtr wParam, IntPtr lParam);
 }
