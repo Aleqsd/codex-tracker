@@ -1,6 +1,6 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center">Vos quotas Codex, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.0/CodexTracker-0.8.0-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.1/CodexTracker-0.8.1-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
 <p align="center">Windows 11 · x64 · Gratuit · Données locales — nécessite Codex installé</p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
@@ -12,7 +12,7 @@
 2. **Ouvrez Codex.** Le tracker détecte le compte connecté. Vos autres comptes apparaissent quand vous les utilisez dans Codex.
 3. **Gardez l’icône près de l’horloge.** Survolez-la pour un aperçu, cliquez pour ouvrir le tableau de bord.
 
-Le bouton **—** réduit la fenêtre dans la barre des tâches ; **✕** la masque près de l’horloge. Le tracker continue à fonctionner.
+Le bouton **Réduire**, en bas à droite, ou **—** en haut réduit la fenêtre dans la barre des tâches ; **✕** la masque près de l’horloge. Le tracker continue à fonctionner.
 
 ## L’essentiel, en un coup d’œil
 

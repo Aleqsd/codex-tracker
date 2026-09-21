@@ -110,6 +110,12 @@ internal static class FeatureChecks
                 "Minimize keeps the window visible in the Windows taskbar");
             window.ShowPanel();
             Check(window.WindowState == WindowState.Normal && window.IsVisible, "Tray activation restores a minimized window");
+            var footerMinimize = (Button)window.FindName("FooterMinimizeButton");
+            Check(footerMinimize.IsVisible && Equals(footerMinimize.Content, "Réduire") && footerMinimize.ActualWidth > 40,
+                "Status bar exposes a readable Reduce button");
+            footerMinimize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(window.WindowState == WindowState.Minimized && window.ShowInTaskbar, "Footer Reduce keeps the taskbar entry");
+            window.ShowPanel();
             Check(!resets.IsVisible && Tree(window).OfType<Button>().Any(b => b.ToolTip?.ToString() == "Changer le nom ou l’avatar"), "Returning to Accounts preserves the dashboard");
             Check(AccountAvatar.Initials("Alexandre Almeida") == "AA" && AccountAvatar.Initials("alexandre.almeida@example.test") == "AA" && AccountAvatar.Initials("Studio") == "ST" && AccountAvatar.Initials("") == "?", "Default avatars derive initials from names and email addresses");
             Check(AccountAvatar.Background(id).ToString() == AccountAvatar.Background(Guid.Parse(id.ToString())).ToString(), "Avatar color remains stable for an account");

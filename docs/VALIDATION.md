@@ -1,3 +1,7 @@
+# Correctif 0.8.1
+
+Bouton **Réduire** lisible dans la barre d’état, en bas à droite. Le bouton supérieur reste disponible. Deux contrôles WPF supplémentaires vérifient sa visibilité et la réduction dans la barre des tâches : 291 tests métier, 73 contrôles WPF et 14 contrôles MCP réussis. Aperçus Comptes clair/sombre et compact, dont rendu compact à 200 % ; tour GIF actualisé avec données fictives.
+
 # Validation de la version 0.8.0
 
 - 291 tests métier : ajout de 12 cas sur la semaine locale, les frontières d’année, les heures répétées et sautées, les valeurs inconnues, l’isolation des comptes et la réserve prioritaire. Aucune échéance récurrente n’est inventée.
