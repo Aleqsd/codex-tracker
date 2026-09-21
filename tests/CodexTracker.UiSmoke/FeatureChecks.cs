@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using CodexTracker.App;
 using CodexTracker.App.Updates;
 using CodexTracker.Core;
+using ThemeMode = CodexTracker.App.ThemeMode;
 
 internal static class FeatureChecks
 {
@@ -19,6 +20,13 @@ internal static class FeatureChecks
     {
         yield return root;
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) foreach (var child in Tree(VisualTreeHelper.GetChild(root, i))) yield return child;
+    }
+    private static Color CenterColor(FrameworkElement element)
+    {
+        var image = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        image.Render(element); var pixel = new byte[4];
+        image.CopyPixels(new Int32Rect(image.PixelWidth / 2, image.PixelHeight / 2, 1, 1), pixel, 4, 0);
+        return Color.FromArgb(pixel[3], pixel[2], pixel[1], pixel[0]);
     }
     public static async Task Run(MainWindow window, ITrackerService service)
     {
@@ -86,6 +94,25 @@ internal static class FeatureChecks
             avatarButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);
             var avatarEditor = window.OwnedWindows.OfType<AccountAppearanceWindow>().Single();
             Check(avatarEditor.IsVisible && Field<TextBox>(avatarEditor, "_name").IsVisible, "Clicking a dashboard avatar opens its personalization window"); avatarEditor.Close();
+
+            var transparent = BitmapSource.Create(8, 8, 96, 96, PixelFormats.Bgra32, null, new byte[8 * 8 * 4], 8 * 4); transparent.Freeze();
+            var transparentFile = AvatarStore.Save(directory, transparent);
+            var originalTheme = window.Preferences.Current.ThemeMode;
+            var originalContext = avatarButton.DataContext;
+            preferences.Update(p => p with { Appearances = new(p.Appearances) { [id] = new("Studio", transparentFile) } });
+            avatarButton.DataContext = vm;
+            var transparentEditor = new AccountAppearanceWindow(window, preferences, id, theme); transparentEditor.Show();
+            foreach (var mode in new[] { ThemeMode.Dark, ThemeMode.Light })
+            {
+                window.Preferences.Update(p => p with { ThemeMode = mode }); await Task.Delay(100); vm.Tick(); window.UpdateLayout(); transparentEditor.UpdateLayout();
+                var expected = ThemeManager.GetColor("AvatarBrush");
+                Check(CenterColor(avatarButton) == expected && CenterColor(Field<Border>(transparentEditor, "_preview")) == expected
+                    && !Tree(avatarButton).OfType<TextBlock>().Any(t => t.IsVisible),
+                    $"Transparent imported avatar uses the {mode} theme background without initials in dashboard and preview");
+            }
+            transparentEditor.Close(); avatarButton.DataContext = originalContext;
+            preferences.Update(p => p with { Appearances = new(p.Appearances) { [id] = appearance } });
+            window.Preferences.Update(p => p with { ThemeMode = originalTheme }); AvatarStore.Remove(directory, transparentFile);
 
             var observed = service.State.ActiveAccount!.Snapshot!.FetchedAt;
             var status = new DashboardViewModel(true, preferences); status.Update(service.State);

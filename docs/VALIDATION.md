@@ -19,6 +19,10 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |
 | Comportements Windows | 17 tests de placement et 13 contrôles sur de vrais HWND, décrits ci-dessous |
 
+## Ajouts de la version 0.5.3
+
+- 32 contrôles WPF réussis. Deux tests supplémentaires rendent un PNG transparent dans le tableau de bord et dans l’aperçu, en thèmes sombre et clair : le pixel central correspond au fond neutre du thème et les initiales sont absentes.
+
 ## Ajouts de la version 0.5.1
 
 - 30 contrôles WPF réussis : 23 contrôles fonctionnels et 7 de réouverture. Les ajouts vérifient la navigation des réglages, les libellés et la coche du menu ouvert, l’ouverture par clic sur avatar, les initiales et leur aperçu, la couleur stable, ainsi que l’heure du relevé conservée après un échec.

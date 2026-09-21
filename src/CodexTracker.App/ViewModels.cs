@@ -66,7 +66,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public bool HasAvatar => Avatar is not null;
     public string IdentityHint => _preferences.Current.PrivacyMode ? Email : _account.Profile.Email;
     public string Initials => AccountAvatar.Initials(Email);
-    public Brush AvatarBackground => AccountAvatar.Background(Id);
+    public Brush AvatarBackground => HasAvatar ? ThemeManager.GetBrush("AvatarBrush") : AccountAvatar.Background(Id);
     public bool IsActive => _account.IsActiveInCodex;
     public bool IsSelected => IsActive;
     public bool IsIdle => !_state.IsBusy;

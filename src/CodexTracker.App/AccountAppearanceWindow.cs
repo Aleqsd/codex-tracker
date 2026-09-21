@@ -43,8 +43,16 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
     }
     private void UpdatePreview()
     {
-        _preview.Background = _image is null ? AccountAvatar.Background(_id) : new ImageBrush(_image) { Stretch = Stretch.UniformToFill };
-        _preview.Child = _image is null ? new TextBlock { Text = AccountAvatar.Initials(string.IsNullOrWhiteSpace(_name.Text) ? _identity : _name.Text), FontSize = 22, Foreground = Brushes.White, FontWeight = FontWeights.Medium, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } : null;
+        if (_image is null)
+        {
+            _preview.Background = AccountAvatar.Background(_id);
+            _preview.Child = new TextBlock { Text = AccountAvatar.Initials(string.IsNullOrWhiteSpace(_name.Text) ? _identity : _name.Text), FontSize = 22, Foreground = Brushes.White, FontWeight = FontWeights.Medium, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        }
+        else
+        {
+            _preview.SetResourceReference(Border.BackgroundProperty, "AvatarBrush");
+            _preview.Child = new Border { CornerRadius = _preview.CornerRadius, Background = new ImageBrush(_image) { Stretch = Stretch.UniformToFill } };
+        }
     }
     private void ChooseImage()
     {
