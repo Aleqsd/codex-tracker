@@ -1,6 +1,6 @@
 param(
     [ValidatePattern('^\d+\.\d+\.\d+([-.][a-zA-Z0-9.-]+)?$')]
-    [string]$Version = '0.4.5',
+    [string]$Version = '0.5.0',
     [string]$Dotnet = 'dotnet'
 )
 $ErrorActionPreference = 'Stop'
@@ -10,7 +10,7 @@ $publishRoot = Join-Path $repoRoot "artifacts/publish/$Version"
 if ($LASTEXITCODE -ne 0) { throw 'La publication .NET a échoué.' }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'LICENSE') -Destination $publishRoot
 New-Item -ItemType Directory -Path (Join-Path $publishRoot 'docs') -Force | Out-Null
-foreach ($document in @('dashboard.png', 'dashboard-light.png', 'advice.png', 'history.png', 'VALIDATION.md', 'tray-minimal.png')) {
+foreach ($document in @('dashboard.png', 'dashboard-light.png', 'advice.png', 'history.png', 'VALIDATION.md', 'tray-minimal.png', 'personalization.png', 'calendar.png')) {
     $source = Join-Path $repoRoot "docs/$document"
     if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $publishRoot "docs/$document") }
 }

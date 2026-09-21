@@ -51,8 +51,15 @@ public partial class App : System.Windows.Application
         }
         try
         {
-            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice")) : new Codex.TrackerService();
             var preferences = new PreferencesStore(persistent: !IsDemo);
+            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice")) : new Codex.TrackerService(options: new()
+            {
+                RefreshIntervalProvider = () =>
+                {
+                    var p = preferences.Current;
+                    return RefreshPolicy.Interval(p.RefreshMinutes, p.AdaptiveRefresh, WindowsIdle.Duration());
+                }
+            });
             if (IsDemo)
             {
                 int themeArgument = Array.IndexOf(e.Args, "--theme");

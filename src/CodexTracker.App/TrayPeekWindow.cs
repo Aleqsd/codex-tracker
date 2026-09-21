@@ -80,7 +80,7 @@ internal sealed class TrayPeekWindow : Window
         var snapshot = account?.Snapshot;
         var weekly = snapshot?.Weekly;
         var shortWindow = snapshot?.Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows.FirstOrDefault(w => w.WindowDurationMins == 300);
-        _name.Text = account is null ? "En attente de Codex" : PrivacyText.Account(account.Profile, state, preferences.PrivacyMode);
+        _name.Text = account is null ? "En attente de Codex" : PrivacyText.Account(account.Profile, state, preferences);
         _plan.Text = snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", null => "", var other => other };
         if (snapshot?.PlanMultiplier is int multiplier) _plan.Text += $" {multiplier}×";
         _weekly.Text = Display.Percent(weekly?.RemainingPercent); _short.Text = Display.Percent(shortWindow?.RemainingPercent);

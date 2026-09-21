@@ -44,6 +44,11 @@ internal sealed class HistoryWindow : ThemedWindow
         _forecastHint = Ui.Text("", 11, "MutedBrush"); _forecastHint.Margin = new Thickness(0, 6, 0, 0); forecast.Children.Add(_forecastHint); Body.Children.Add(Ui.Panel(forecast));
         _error = Ui.Text("", 11, "DangerBrush"); _error.Margin = new Thickness(0, 10, 0, 0); Body.Children.Add(_error);
         _details = Ui.Text("", 11, "MutedBrush"); _details.LineHeight = 19; _details.Margin = new Thickness(0, 12, 0, 3);
+        var personal = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
+        var customize = new Button { Content = "Nom et avatar…", Style = (Style)FindResource("QuietButton"), Margin = new Thickness(-10, 0, 10, 0) };
+        customize.Click += (_, _) => new AccountAppearanceWindow(this, preferences, AccountId, theme).ShowDialog(); personal.Children.Add(customize);
+        var calendar = new Button { Content = "Exporter les échéances…", Style = (Style)FindResource("QuietButton") };
+        calendar.Click += (_, _) => new CalendarWindow(this, service, preferences, theme, AccountId).ShowDialog(); personal.Children.Add(calendar); Body.Children.Add(personal);
         var expander = new Expander { Header = "Dates exactes et détails", Content = _details, Margin = new Thickness(0, 15, 0, 0) }; expander.SetResourceReference(ForegroundProperty, "TextBrush"); Body.Children.Add(expander);
         var actions = new Grid { Margin = new Thickness(0, 17, 0, 0) }; actions.ColumnDefinitions.Add(new ColumnDefinition()); actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _select = new Button { Content = "Afficher dans l’icône", HorizontalAlignment = HorizontalAlignment.Left }; _select.Click += async (_, _) => await SelectAsync(); actions.Children.Add(_select);
@@ -100,9 +105,19 @@ internal sealed class HistoryWindow : ThemedWindow
     private async Task RemoveAsync()
     {
         var account = _service.State.Accounts.FirstOrDefault(a => a.Profile.Id == AccountId); if (account is null) return;
-        string name = PrivacyText.Account(account.Profile, _service.State, _preferences.Current.PrivacyMode);
+        string name = PrivacyText.Account(account.Profile, _service.State, _preferences.Current);
         if (new TrackerDialog(this, "Retirer ce compte du suivi ?", $"{name}\n\nSon historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans Codex.", "Retirer", "Annuler").ShowDialog() != true) return;
-        try { await _service.RemoveAccountAsync(AccountId); Close(); }
+        try
+        {
+            await _service.RemoveAccountAsync(AccountId);
+            var avatar = _preferences.Current.Appearances.GetValueOrDefault(AccountId)?.AvatarFile;
+            _preferences.Update(p =>
+            {
+                var appearances = new Dictionary<Guid, AccountAppearance>(p.Appearances); appearances.Remove(AccountId);
+                return p with { Appearances = appearances };
+            });
+            AvatarStore.Remove(_preferences.DataDirectory, avatar); Close();
+        }
         catch (Exception error) { if (!_closed) ShowError(error.Message); }
     }
     private void ShowError(string message) => new TrackerDialog(this, "Action indisponible", Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();

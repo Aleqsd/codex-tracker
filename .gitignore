@@ -21,4 +21,5 @@ initial-accounts.json
 vault/
 runtime/
 observer-runtime/
+avatars/
 pending-desktop-switch.bin

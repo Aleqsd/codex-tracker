@@ -64,6 +64,7 @@ internal static class Program
                 CheckRendered(window, "Activation restores a minimized window");
                 await RequestShow(handle);
                 CheckRendered(window, "Repeated activation retains the same rendered window");
+                await FeatureChecks.Run(window, service);
                 window.Hide();
                 typeof(App).GetField("_exiting", Instance)!.SetValue(app, true);
                 await RequestShow(handle);

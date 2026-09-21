@@ -1,11 +1,11 @@
-# Validation de la version 0.4.5
+# Validation de la version 0.5.0
 
 Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests et captures publics utilisent uniquement des comptes fictifs.
 
 | Contrôle | Résultat |
 | --- | --- |
 | Compilation Release, solution complète | Réussie, aucun avertissement |
-| Tests automatisés | 199 réussis : quotas, dates, abonnement, observation, isolation, historique, prévisions, notifications, confidentialité, mises à jour, reprise et conseil de compte |
+| Tests automatisés | 212 réussis : quotas, dates, abonnement, observation, isolation, historique, prévisions, notifications, confidentialité, mises à jour, reprise et conseil de compte |
 | Lecture réelle du compte Codex courant | Offre, multiplicateur, période active, quota hebdomadaire, date de reset et réserve reçus |
 | Historique après collecte réelle | Premier point enregistré ; aucune prévision inventée à partir de ce seul point |
 | Intégrité de la session active | Empreinte SHA-256 du cache inchangée avant/après la collecte |
@@ -18,6 +18,13 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Mécanisme de mise à jour | Vrais exécutables de test autonomes utilisant le code de production : préparation, arrêt du parent, remplacement, contrôle de démarrage et restauration de l’ancien exécutable si le nouveau échoue |
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |
 | Comportements Windows | 17 tests de placement et 13 contrôles sur de vrais HWND, décrits ci-dessous |
+
+## Ajouts de la version 0.5
+
+- 212 tests métier réussis, dont la persistance des noms, l’isolation, les valeurs par défaut, le retour de la fréquence adaptative, les changements de fréquence dans le collecteur réel, les rappels d’expiration avec déduplication persistante et l’export calendrier.
+- 13 nouveaux contrôles WPF : copie et recadrage d’image, nom et photo après redémarrage, suppression de l’original, isolation des comptes, annulation, confidentialité à chaud, saisie des options, export réel `.ics`, étape Google et rejet d’image invalide. Les 7 contrôles WPF de réouverture depuis l’arrière-plan passent également.
+- L’export couvre les deux occurrences de 02:30 lors du passage à l’heure d’hiver, l’échappement des caractères et retours à la ligne, le pliage UTF-8 à 75 octets et les dates absentes/passées. L’import Google suit le parcours documenté ; aucun événement n’a été ajouté à un agenda réel pendant la validation.
+- Le mode adaptatif se base sur l’inactivité clavier/souris Windows. Les durées sont simulées dans les tests ; aucun réglage de veille Windows n’est modifié.
 
 ## Vérifications Windows de la version 0.4
 

@@ -25,7 +25,7 @@ Changez de compte **dans Codex**. Le tracker observe son fichier de session en l
 
 Le bouton d’actualisation déclenche une vérification immédiate. Aucune connexion OAuth, bascule ni fermeture de Codex n’est effectuée par le tracker.
 
-Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. **Afficher dans l’icône** permet de consulter un ancien relevé ; au prochain changement de compte dans Codex, l’icône suit à nouveau le compte actif.
+Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par défaut. Dans **Réglages → Actualisation**, choisissez 1, 2 ou 5 minutes. Le mode adaptatif, facultatif, passe à 10 minutes après 5 minutes sans activité clavier ou souris, puis reprend la fréquence choisie à votre retour. Les changements sont appliqués sans redémarrage ; si le dernier relevé dépasse déjà le délai choisi, une collecte démarre au prochain contrôle (environ une seconde). L’actualisation manuelle et la détection des changements de compte restent immédiates. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. **Afficher dans l’icône** permet de consulter un ancien relevé ; au prochain changement de compte dans Codex, l’icône suit à nouveau le compte actif.
 
 À la sortie de veille, le tracker abandonne les anciennes requêtes et relit l’identité active avant de collecter les quotas. Le premier relevé de reprise reste silencieux et redémarre la période d’observation utilisée pour les prévisions. Les fenêtres sont ramenées dans la zone utile après un changement d’affichage ; l’aperçu se recale selon le moniteur et son DPI. L’icône est réaffirmée après une recréation de la barre des tâches.
 
@@ -42,6 +42,14 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les au
 - Les dates précises utilisent le fuseau horaire Windows et son décalage UTC. Le compte à rebours complète l’heure exacte ; il ne confirme pas un reset tant que le serveur n’a pas actualisé la valeur.
 - En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
 
+## Personnalisation et calendrier
+
+Dans les **détails d’un compte (···) → Nom et avatar…**, choisissez un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Le mode confidentialité masque également les noms personnalisés et les photos.
+
+**Réglages → Calendrier → Exporter les échéances…** crée un fichier `.ics` pour tous les comptes. L’action dans les détails limite l’export au compte ouvert. Seuls les prochains resets semaine/5 heures et les expirations de réserve connues sont exportés ; aucune récurrence n’est inventée. Les événements durent cinq minutes, ne bloquent pas la disponibilité et utilisent des libellés anonymes **Compte 01…**, des dates UTC et la date du relevé.
+
+Pour **Google Calendar**, enregistrez le fichier puis cliquez sur **Ouvrir l’import Google Calendar**. Dans le navigateur, sélectionnez le `.ics`, choisissez le calendrier de destination et cliquez sur **Importer**, comme décrit dans [l’aide Google](https://support.google.com/calendar/answer/37118?hl=fr). Le tracker ne demande pas d’accès à votre compte Google. Cet import est ponctuel : les événements ne suivent pas les changements ultérieurs, et il faut éviter les imports répétés. Les identifiants d’événement restent stables pour une même échéance.
+
 ## Historique et notifications
 
 Chaque compte conserve jusqu’à 90 jours de relevés locaux. Les graphiques proposent les dernières 24 heures ou les 7 derniers jours, pour la semaine ou la fenêtre de 5 heures. Les interruptions de collecte et changements de période coupent la courbe : aucune consommation n’est inventée pendant l’absence du compte. L’historique est disponible depuis la version 0.3 et reste conservé lors des mises à jour ; les périodes antérieures à son activation ne sont pas reconstituées.
@@ -49,6 +57,8 @@ Chaque compte conserve jusqu’à 90 jours de relevés locaux. Les graphiques pr
 Une estimation d’épuisement apparaît après au moins 15 minutes de relevés récents et continus, si leur évolution est suffisamment régulière. Elle indique la première fenêtre susceptible de s’épuiser, au rythme observé, avant son prochain reset. Un compte inactif, des données insuffisantes ou un rythme trop irrégulier restent sans estimation.
 
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
+
+Les **rappels d’expiration des réserves** sont activés par défaut, 24 heures avant l’échéance connue ; le délai est réglable à 3 ou 7 jours. Ils sont contrôlés chaque minute, regroupés par compte et mémorisés avant affichage pour ne pas se répéter après redémarrage. Une réserve inconnue, nulle ou déjà expirée ne déclenche rien. Les comptes inactifs peuvent produire un rappel basé sur leur dernier relevé daté : il faut vérifier la disponibilité du reset dans Codex. Les notifications restent anonymes.
 
 Le bouton **Tester une notification** permet de vérifier leur affichage. Les paramètres de notifications et le mode de concentration de Windows s’appliquent.
 
@@ -60,7 +70,7 @@ Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datan
 
 ## Données locales
 
-Les profils, réglages, historiques et derniers relevés sont stockés sous `%LOCALAPPDATA%\CodexTracker`, avec des permissions limitées à l’utilisateur Windows. Le tracker lit `%USERPROFILE%\.codex\auth.json` sans jamais le modifier. Il utilise uniquement le jeton d’accès courant en mémoire dans un processus Codex isolé avec un stockage de connexion `ephemeral` ; il ne conserve pas de session et ne renouvelle aucun jeton. Codex reste responsable de sa connexion. Si elle a expiré, ouvrez Codex pour la rétablir.
+Les profils, réglages, avatars importés, historiques et derniers relevés sont stockés sous `%LOCALAPPDATA%\CodexTracker`, avec des permissions limitées à l’utilisateur Windows. Le tracker lit `%USERPROFILE%\.codex\auth.json` sans jamais le modifier. Il utilise uniquement le jeton d’accès courant en mémoire dans un processus Codex isolé avec un stockage de connexion `ephemeral` ; il ne conserve pas de session et ne renouvelle aucun jeton. Codex reste responsable de sa connexion. Si elle a expiré, ouvrez Codex pour la rétablir.
 
 Les anciens coffres et sauvegardes de la version 0.1 ne sont ni utilisés ni modifiés lors de la mise à jour. Les métadonnées et derniers relevés sont conservés. Les nouveaux profils de travail temporaires sont nettoyés après collecte.
 

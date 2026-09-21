@@ -6,6 +6,7 @@ namespace CodexTracker.App;
 
 internal enum ThemeMode { System, Light, Dark }
 internal enum SortMode { Active, Quota, Reset, Plan }
+internal sealed record AccountAppearance(string? Name = null, string? AvatarFile = null);
 
 internal sealed record TrackerPreferences
 {
@@ -17,6 +18,12 @@ internal sealed record TrackerPreferences
     public bool Alert5 { get; init; } = true;
     public bool ResetNotifications { get; init; } = true;
     public bool HoverPreview { get; init; } = true;
+    public int RefreshMinutes { get; init; } = 2;
+    public bool AdaptiveRefresh { get; init; }
+    public bool ExpiryNotifications { get; init; } = true;
+    public int ExpiryLeadHours { get; init; } = 24;
+    public Dictionary<Guid, AccountAppearance> Appearances { get; init; } = new();
+    public Dictionary<string, DateTimeOffset> SentExpiryReminders { get; init; } = new();
 }
 
 internal sealed class PreferencesStore
@@ -28,18 +35,23 @@ internal sealed class PreferencesStore
         Converters = { new JsonStringEnumConverter() }
     };
     private readonly string? _path;
+    public string DataDirectory { get; }
     public TrackerPreferences Current { get; private set; } = new();
     public event EventHandler? Changed;
 
     public PreferencesStore(bool persistent = true, string? dataDirectory = null)
     {
+        DataDirectory = dataDirectory ?? (persistent
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexTracker")
+            : Path.Combine(Path.GetTempPath(), "CodexTrackerDemo", Guid.NewGuid().ToString("N")));
         if (!persistent) return;
-        _path = Path.Combine(dataDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexTracker"), "preferences.json");
+        _path = Path.Combine(DataDirectory, "preferences.json");
         try
         {
             if (File.Exists(_path)) Current = JsonSerializer.Deserialize<TrackerPreferences>(File.ReadAllText(_path), Json) ?? throw new JsonException("Préférences absentes.");
             if (!Enum.IsDefined(Current.ThemeMode)) Current = Current with { ThemeMode = ThemeMode.System };
             if (!Enum.IsDefined(Current.SortMode)) Current = Current with { SortMode = SortMode.Active };
+            Current = Normalize(Current);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -50,7 +62,7 @@ internal sealed class PreferencesStore
 
     public void Update(Func<TrackerPreferences, TrackerPreferences> update)
     {
-        var next = update(Current);
+        var next = Normalize(update(Current));
         if (next == Current) return;
         if (_path is not null)
         {
@@ -70,10 +82,20 @@ internal sealed class PreferencesStore
         Current = next;
         Changed?.Invoke(this, EventArgs.Empty);
     }
+    private static TrackerPreferences Normalize(TrackerPreferences value) => value with
+    {
+        RefreshMinutes = RefreshPolicy.NormalizeMinutes(value.RefreshMinutes),
+        ExpiryLeadHours = ExpiryReminders.NormalizeLeadHours(value.ExpiryLeadHours),
+        Appearances = value.Appearances ?? new(),
+        SentExpiryReminders = value.SentExpiryReminders ?? new()
+    };
 }
 
 internal static class PrivacyText
 {
+    public static string Account(AccountProfile profile, TrackerState state, TrackerPreferences preferences) =>
+        preferences.PrivacyMode ? Account(profile, state, true) :
+        preferences.Appearances.GetValueOrDefault(profile.Id)?.Name is { Length: > 0 } name ? name : profile.Email;
     public static string Email(string email, bool privacy) => privacy ? "Compte masqué" : email;
     public static string Account(AccountProfile profile, TrackerState state, bool privacy)
     {

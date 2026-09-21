@@ -61,8 +61,11 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public void Update(AccountState account, TrackerState state) { _account = account; _state = state; Tick(); }
     public void Tick() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     public Guid Id => _account.Profile.Id;
-    public string Email => PrivacyText.Account(_account.Profile, _state, _preferences.Current.PrivacyMode);
-    public string Initials => _preferences.Current.PrivacyMode ? Email.Replace("Compte ", "") : new string(_account.Profile.Email.Split('@')[0].Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => char.ToUpperInvariant(s[0])).ToArray());
+    public string Email => PrivacyText.Account(_account.Profile, _state, _preferences.Current);
+    public ImageSource? Avatar => _preferences.Current.PrivacyMode ? null : AvatarStore.Load(_preferences.DataDirectory, _preferences.Current.Appearances.GetValueOrDefault(Id)?.AvatarFile);
+    public bool HasAvatar => Avatar is not null;
+    public string IdentityHint => _preferences.Current.PrivacyMode ? Email : _account.Profile.Email;
+    public string Initials => _preferences.Current.PrivacyMode ? Email.Replace("Compte ", "") : new string(Email.Split('@')[0].Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => char.ToUpperInvariant(s[0])).ToArray());
     public bool IsActive => _account.IsActiveInCodex;
     public bool IsSelected => Id == _state.SelectedAccountId;
     public bool IsIdle => !_state.IsBusy;
@@ -161,7 +164,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
         get
         {
             var account = _state.Accounts.FirstOrDefault(a => a.Profile.Id == AdviceAccountId);
-            return account is null ? "" : "À vérifier dans Codex : " + PrivacyText.Account(account.Profile, _state, IsPrivate);
+            return account is null ? "" : "À vérifier dans Codex : " + PrivacyText.Account(account.Profile, _state, _preferences.Current);
         }
     }
     public string AdviceAge => Advice.ObservedAt is { } at ? $"Relevé {Display.Age(at)} · quota actuel à confirmer" : "";

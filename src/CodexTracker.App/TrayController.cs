@@ -21,6 +21,7 @@ internal sealed class TrayController : IDisposable
     private readonly DispatcherTimer _presence = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly DispatcherTimer _notifications = new() { Interval = TimeSpan.FromMilliseconds(650) };
     private readonly DispatcherTimer _shellRecovery = new() { Interval = TimeSpan.FromMilliseconds(750) };
+    private readonly DispatcherTimer _expiryTimer = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly Dictionary<(Guid, UsageWindowKind), QuotaNotification> _pendingNotifications = new();
     private System.Drawing.Point _hoverPoint;
     private DateTimeOffset? _leftPeekAt;
@@ -46,6 +47,8 @@ internal sealed class TrayController : IDisposable
         _hoverDelay.Tick += (_, _) => ShowPeek();
         _presence.Tick += (_, _) => CheckPeekPresence();
         _notifications.Tick += (_, _) => ShowNotifications();
+        _expiryTimer.Tick += (_, _) => ShowExpiryReminder();
+        if (service is not DemoTrackerService) _expiryTimer.Start();
         _shellRecovery.Tick += (_, _) =>
         {
             _shellRecovery.Stop();
@@ -70,7 +73,7 @@ internal sealed class TrayController : IDisposable
         if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(() => PreferencesChanged(sender, e)); return; }
         if (_disposed) return;
         if (!_preferences.Current.HoverPreview) HidePeek();
-        Update();
+        _menuKey = null; Update();
     }
     internal void HandleEnvironmentChanged(bool taskbarCreated = false)
     {
@@ -108,7 +111,7 @@ internal sealed class TrayController : IDisposable
         {
             var old = _icon; _icon = RenderIcon(number, color, dark); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
         }
-        var text = account is null ? "Codex Tracker · en attente d’un compte Codex" : $"{PrivacyText.Account(account.Profile, state, _preferences.Current.PrivacyMode)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(!account.IsActiveInCodex ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(account.Snapshot?.Weekly?.ResetsAt)}";
+        var text = account is null ? "Codex Tracker · en attente d’un compte Codex" : $"{PrivacyText.Account(account.Profile, state, _preferences.Current)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(!account.IsActiveInCodex ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(account.Snapshot?.Weekly?.ResetsAt)}";
         _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
         _peek.Update(state, _preferences.Current);
         var menuKey = state.SelectedAccountId + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActiveInCodex + ":" + a.Profile.Email));
@@ -125,7 +128,7 @@ internal sealed class TrayController : IDisposable
         accountsMenu.DropDown.Renderer = menu.Renderer;
         foreach (var item in state.Accounts)
         {
-            var label = PrivacyText.Account(item.Profile, state, _preferences.Current.PrivacyMode) + (item.IsActiveInCodex ? " · actif" : "");
+            var label = PrivacyText.Account(item.Profile, state, _preferences.Current) + (item.IsActiveInCodex ? " · actif" : "");
             var accountItem = new Forms.ToolStripMenuItem(label) { Checked = item.Profile.Id == state.SelectedAccountId };
             accountItem.Click += async (_, _) => await SafeAsync(() => _service.SelectAccountAsync(item.Profile.Id));
             accountsMenu.DropDownItems.Add(accountItem);
@@ -198,6 +201,30 @@ internal sealed class TrayController : IDisposable
         if (!_notifications.IsEnabled) _notifications.Start();
     });
 
+    private void ShowExpiryReminder()
+    {
+        if (_disposed || _suspended || _notifications.IsEnabled || _service.State.IsBusy || !_preferences.Current.ExpiryNotifications) return;
+        var now = DateTimeOffset.UtcNow; var state = _service.State;
+        var due = ExpiryReminders.Due(state, now, _preferences.Current.ExpiryLeadHours, _preferences.Current.SentExpiryReminders);
+        if (due.Count == 0) return;
+        var group = due.Where(r => r.AccountId == due[0].AccountId).ToArray();
+        var account = state.Accounts.First(a => a.Profile.Id == group[0].AccountId);
+        try
+        {
+            // Persist before showing so a restart does not repeat the reminder.
+            _preferences.Update(p =>
+            {
+                var sent = p.SentExpiryReminders.Where(kv => kv.Value > now).ToDictionary(kv => kv.Key, kv => kv.Value);
+                foreach (var reminder in group) sent[reminder.Key] = reminder.ExpiresAt;
+                return p with { SentExpiryReminders = sent };
+            });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        var name = PrivacyText.Account(account.Profile, state, true);
+        _tray.ShowBalloonTip(8000, "Réserve bientôt expirée",
+            $"{name} · {group.Length} échéance(s) de réserve\nExpiration : {Display.Exact(group[0].ExpiresAt)}\nRelevé : {Display.Exact(group[0].ObservedAt)}\nVérifiez leur disponibilité dans Codex.", Forms.ToolTipIcon.Info);
+    }
+
     private void ShowNotifications()
     {
         _notifications.Stop();
@@ -264,7 +291,7 @@ internal sealed class TrayController : IDisposable
         if (_disposed) return;
         _disposed = true; _service.Changed -= Changed; _service.Notification -= Notified;
         _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
-        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _pendingNotifications.Clear(); _peek.Close();
+        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close();
         _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
     }
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);

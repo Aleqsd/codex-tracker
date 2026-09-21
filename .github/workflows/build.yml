@@ -19,8 +19,8 @@ jobs:
         run: dotnet build CodexTracker.slnx -c Release --no-restore
       - name: Test
         run: dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx"
-      - name: Test background window activation
-        # Real WPF windows, fictional accounts; verifies the background activation path.
+      - name: Test WPF activation and account features
+        # Real WPF windows and fictional accounts: activation, avatars, privacy, refresh, ICS export.
         # Run from the repository root so the smoke harness can read application resources.
         shell: pwsh
         run: dotnet run --project tests/CodexTracker.UiSmoke/CodexTracker.UiSmoke.csproj -c Release --no-build

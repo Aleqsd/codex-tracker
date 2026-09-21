@@ -5,6 +5,7 @@ using AppThemeMode = CodexTracker.App.ThemeMode;
 namespace CodexTracker.App;
 
 internal sealed record ThemeChoice(ThemeMode Value, string Label) { public override string ToString() => Label; }
+internal sealed record NumberChoice(int Value, string Label) { public override string ToString() => Label; }
 internal sealed class SettingsWindow : ThemedWindow
 {
     private readonly PreferencesStore _preferences;
@@ -12,6 +13,7 @@ internal sealed class SettingsWindow : ThemedWindow
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<(CheckBox Box, Func<TrackerPreferences, bool> Read)> _toggles = new();
     private readonly ComboBox _themeSelector;
+    private readonly ComboBox _refreshSelector, _expirySelector;
     private readonly TextBlock _updateStatus;
     private readonly Button _check, _install;
     private readonly System.Windows.Threading.DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -33,6 +35,9 @@ internal sealed class SettingsWindow : ThemedWindow
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
         Toggle("Masquer les identités", "Remplace les adresses par Compte 01, Compte 02…", p => p.PrivacyMode, (p, value) => p with { PrivacyMode = value });
         Toggle("Aperçu au survol de l’icône", "Le quota et le prochain reset, sans ouvrir le panneau.", p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
+        Section("Actualisation", true);
+        _refreshSelector = Choice("Compte actif", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
+        Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
         Section("Notifications", true);
         Body.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 11, "MutedBrush"));
         var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 13, 0, 2) };
@@ -42,6 +47,12 @@ internal sealed class SettingsWindow : ThemedWindow
         var test = new Button { Content = "Tester une notification", Style = (Style)FindResource("QuietButton"), Padding = new Thickness(0, 7, 0, 1), HorizontalAlignment = HorizontalAlignment.Left, FontSize = 11 };
         test.Click += (_, _) => ((App)System.Windows.Application.Current).ShowTestNotification(); Body.Children.Add(test);
         Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
+        Toggle("Prévenir avant l’expiration des réserves", "Un rappel par reset, d’après le dernier relevé disponible.", p => p.ExpiryNotifications, (p, v) => p with { ExpiryNotifications = v });
+        _expirySelector = Choice("Prévenir à l’avance", [new(24, "24 heures"), new(72, "3 jours"), new(168, "7 jours")], v => Save(p => p with { ExpiryLeadHours = v }));
+        Section("Calendrier", true);
+        var calendar = new Button { Content = "Exporter les échéances…", HorizontalAlignment = HorizontalAlignment.Left };
+        calendar.Click += (_, _) => ((MainWindow)owner).OpenCalendar(); Body.Children.Add(calendar);
+        var calendarHint = Ui.Text("Fichier .ics compatible Google Calendar, Outlook et Apple Calendar.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 7, 0, 0); Body.Children.Add(calendarHint);
         Section("Démarrage", true);
         var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Margin = new Thickness(0, 3, 0, 4) };
         startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; Body.Children.Add(startup);
@@ -77,6 +88,14 @@ internal sealed class SettingsWindow : ThemedWindow
         if (separator) { var line = new Border { Height = 1, Margin = new Thickness(0, 19, 0, 17) }; line.SetResourceReference(Border.BackgroundProperty, "LineBrush"); Body.Children.Add(line); }
         var text = Ui.Text(title, 13); text.FontWeight = FontWeights.SemiBold; text.Margin = new Thickness(0, 0, 0, 12); Body.Children.Add(text);
     }
+    private ComboBox Choice(string title, NumberChoice[] choices, Action<int> save)
+    {
+        var row = new Grid { Margin = new Thickness(0, 10, 0, 0) }; row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+        var label = Ui.Text(title); label.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(label);
+        var combo = new ComboBox { ItemsSource = choices, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
+        combo.SelectionChanged += (_, _) => { if (!_syncing && combo.SelectedValue is int value) save(value); };
+        Grid.SetColumn(combo, 1); row.Children.Add(combo); Body.Children.Add(row); return combo;
+    }
     private CheckBox PreferenceCheck(string title, Func<TrackerPreferences, bool> read, Func<TrackerPreferences, bool, TrackerPreferences> set)
     {
         var check = new CheckBox { Content = title, Margin = new Thickness(0, 0, 24, 0) };
@@ -97,6 +116,9 @@ internal sealed class SettingsWindow : ThemedWindow
     {
         if (_closed) return;
         _syncing = true; _themeSelector.SelectedValue = _preferences.Current.ThemeMode;
+        _refreshSelector.SelectedValue = _preferences.Current.RefreshMinutes;
+        _expirySelector.SelectedValue = _preferences.Current.ExpiryLeadHours;
+        _expirySelector.IsEnabled = _preferences.Current.ExpiryNotifications;
         foreach (var (box, read) in _toggles) box.IsChecked = read(_preferences.Current); _syncing = false;
         _updateStatus.Text = Display.SafeText(_updateStatus.Text, _preferences.Current.PrivacyMode);
     }

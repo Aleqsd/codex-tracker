@@ -8,6 +8,28 @@ namespace CodexTracker.Tests;
 public sealed class TrackerServiceTests
 {
     [Fact]
+    public async Task ChangingRefreshProviderAppliesWithoutRestartAndManualRefreshBypassesDelay()
+    {
+        using var directory = new TestDirectory(); var authPath = directory.File("auth.json"); var reader = new FakeReader();
+        await File.WriteAllBytesAsync(authPath, TestFixtures.Auth("a@example.test", "a"));
+        long intervalTicks = TimeSpan.FromHours(1).Ticks;
+        await using var service = new TrackerService(authPath, Options(directory) with
+        {
+            AutomaticRefresh = true, RefreshIntervalProvider = () => TimeSpan.FromTicks(Interlocked.Read(ref intervalTicks))
+        }, reader);
+        await service.InitializeAsync();
+        await Task.Delay(1200); Assert.Single(reader.Requests);
+        await service.RefreshAsync(); Assert.Equal(2, reader.Requests.Count);
+        Interlocked.Exchange(ref intervalTicks, TimeSpan.FromMilliseconds(10).Ticks);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (reader.Requests.Count < 3) await Task.Delay(30, timeout.Token);
+        Interlocked.Exchange(ref intervalTicks, TimeSpan.FromHours(1).Ticks);
+        var count = reader.Requests.Count; await Task.Delay(1200); Assert.Equal(count, reader.Requests.Count);
+        await service.SuspendAsync();
+        Interlocked.Exchange(ref intervalTicks, TimeSpan.FromMilliseconds(10).Ticks);
+        await Task.Delay(1200); Assert.Equal(count, reader.Requests.Count);
+    }
+    [Fact]
     public async Task ObservingAToBToAKeepsBothSnapshotsAndFollowsTheCurrentAccount()
     {
         using var directory = new TestDirectory();

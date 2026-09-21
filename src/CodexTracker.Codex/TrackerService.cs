@@ -9,6 +9,7 @@ public sealed record TrackerServiceOptions
     public string DataDirectory { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexTracker");
     public string? CodexExecutablePath { get; init; }
     public TimeSpan RefreshInterval { get; init; } = TimeSpan.FromMinutes(2);
+    public Func<TimeSpan>? RefreshIntervalProvider { get; init; }
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(35);
     public TimeSpan DetectionInterval { get; init; } = TimeSpan.FromSeconds(2);
     public bool AutomaticRefresh { get; init; } = true;
@@ -36,6 +37,7 @@ public sealed class TrackerService : ITrackerService
     private Task? _refresh;
     private long _generation;
     private long _requestSequence;
+    private long _lastRefreshStarted = System.Diagnostics.Stopwatch.GetTimestamp();
     private string? _activeKey;
     private string? _accountId;
     private bool _initialized;
@@ -222,6 +224,7 @@ public sealed class TrackerService : ITrackerService
             PruneOldHistory(DateTimeOffset.UtcNow);
             if (_activeKey is null || _accountId is null) return Task.CompletedTask;
             if (_refresh is { IsCompleted: false }) return _refresh;
+            _lastRefreshStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             var active = State.Accounts.Single(a => a.IsActiveInCodex);
             var sequence = ++_requestSequence;
             _refresh = RefreshCoreAsync(active.Profile, _accountId, _generation, _identityLifetime.Token);
@@ -365,11 +368,13 @@ public sealed class TrackerService : ITrackerService
 
     private async Task RunTimerAsync()
     {
-        using var timer = new PeriodicTimer(_options.RefreshInterval);
+        using var timer = new PeriodicTimer(_options.RefreshIntervalProvider is null ? _options.RefreshInterval : TimeSpan.FromSeconds(1));
         try
         {
             while (await timer.WaitForNextTickAsync(_lifetime.Token))
             {
+                if (_options.RefreshIntervalProvider is { } interval &&
+                    System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Read(ref _lastRefreshStarted)) < interval()) continue;
                 try { await RefreshAsync(_lifetime.Token); }
                 catch (Exception ex) when (IsRecoverable(ex)) { }
             }

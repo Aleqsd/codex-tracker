@@ -12,6 +12,7 @@
     <ApplicationIcon>Assets\App.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="CodexTracker.UiSmoke" />
     <Resource Include="Assets\App.ico" />
     <ProjectReference Include="..\CodexTracker.Core\CodexTracker.Core.csproj" />
     <ProjectReference Include="..\CodexTracker.Codex\CodexTracker.Codex.csproj" />

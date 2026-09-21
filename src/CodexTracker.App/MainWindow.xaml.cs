@@ -115,6 +115,7 @@ public partial class MainWindow : Window
         new SettingsWindow(this, _preferences, _updates, Theme, _model.IsDemo).Show();
     }
     private void Settings_Click(object sender, RoutedEventArgs e) => ShowSettings();
+    internal void OpenCalendar() => new CalendarWindow(this, _service, _preferences, Theme).ShowDialog();
     public void SaveScreenshot(string path, double dpi) => Ui.SaveScreenshot(this, path, dpi);
     public void SaveDetailsScreenshot(string path, double dpi)
     {
