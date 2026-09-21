@@ -21,6 +21,14 @@ Interface française, sobre, neutre et compacte. Afficher l’information essent
 
 `scripts/dev.ps1 -Action Preview` lance les vraies vues en mode démo avec une horloge de présentation fixe. `-View` choisit Comptes, Resets ou une section des réglages ; `-Theme`, `-Size` et `-Dpi` contrôlent le rendu.
 
-`-Matrix` produit 36 captures : Comptes/Resets/Assistants × clair/sombre × normal/compact × 96/144/192 DPI. Le rendu dépend encore des polices et du fuseau Windows ; comparer les captures sur le même environnement. Les captures sont des rendus WPF à ces résolutions, complétés par les contrôles d’interaction ; elles ne remplacent pas un déplacement manuel entre écrans physiques.
+`-Matrix` produit 48 captures : Comptes/Resets/Semaine/Assistants × clair/sombre × normal/compact × 96/144/192 DPI. Le rendu dépend encore des polices et du fuseau Windows ; comparer les captures sur le même environnement. Les captures sont des rendus WPF à ces résolutions, complétés par les contrôles d’interaction ; elles ne remplacent pas un déplacement manuel entre écrans physiques.
 
 Vérifier le débordement, les textes coupés, le focus clavier et la distinction des états. Les dates inconnues restent explicitement inconnues.
+
+## Resets : agenda et semaine
+
+Le choix Agenda / Semaine utilise `ResetKindFilter` dans un groupe radio distinct des types de resets. La semaine garde sept colonnes, marque aujourd’hui par un trait neutre et utilise les mêmes icônes de type. Les comptes longs sont tronqués avec un survol complet. La priorité est un encart informatif sans bordure de bouton ; seules les commandes de navigation sont cliquables. L’aperçu `-View Semaine` entre dans la matrice de démonstration.
+
+## Tour animé du README
+
+Après les aperçus normaux à 96 DPI, `python scripts/tour.py` (Pillow) assemble six écrans fictifs : Comptes, Semaine, Resets, Rappels, Général en clair et Assistants. Chaque écran reste 1,8 seconde, avec une transition de 120 ms, des légendes courtes et une progression discrète. Le GIF utilise une palette commune et une boucle de 11,52 secondes. Ne jamais utiliser des captures des comptes réels.

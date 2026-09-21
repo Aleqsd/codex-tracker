@@ -30,3 +30,7 @@ Utiliser `ThemeManager`, les styles d’App.xaml et les petits composants d’Ui
 Le journal des rappels conserve 30 jours et les clés nécessaires aux échéances futures. Les reçus d’actions MCP conservent uniquement UUID, empreinte, statut, date et résultat sans arguments. Ils ne sont pas purgés automatiquement, afin qu’un ancien UUID ne déclenche pas un second test ; au-delà de 10 000 reçus, les nouvelles mutations sont refusées. Une demande en attente ne conserve son contenu qu’en mémoire et expire après cinq minutes.
 
 Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte Codex, ni exécuter des commandes arbitraires, ni éditer des fichiers. La modification du code se fait dans le dépôt avec les outils habituels de l’assistant.
+
+## Agenda semaine (0.8)
+
+`ResetCalendar` groupe les instants connus par date dans un fuseau explicite, du lundi au dimanche. Les heures répétées restent deux instants distincts. `PriorityReserve` exige un compteur serveur positif et une expiration future connue ; l’entrée conserve le relevé et ses erreurs. `ResetsView` partage ses filtres entre Agenda et Semaine et préserve la navigation à chaque collecte. Ces projections ne modifient ni les rappels ni les échéances.

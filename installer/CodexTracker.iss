@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.7.0"
+  #define AppVersion "0.8.0"
 #endif
 #ifndef PublishDir
   #error PublishDir is required
@@ -22,6 +22,7 @@
 [Setup]
 AppId={#AppIdValue}
 AppName=Codex Tracker
+UninstallDisplayName=Codex Tracker
 AppVersion={#AppVersion}
 AppPublisher=Aleqsd
 AppPublisherURL=https://github.com/Aleqsd/codex-tracker

@@ -323,7 +323,7 @@
       "codextracker.codex": {
         "type": "Project",
         "dependencies": {
-          "CodexTracker.Core": "[0.7.0, )"
+          "CodexTracker.Core": "[0.8.0, )"
         }
       },
       "codextracker.core": {

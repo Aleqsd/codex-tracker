@@ -36,8 +36,18 @@ internal static class AssistantChecks
                 if (accept) Tree(dialog).OfType<Button>().Single(b => Equals(b.Content, "Confirmer")).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                 else dialog.Close();
             };
-            timer.Start(); await Task.Delay(400); timer.Stop();
-            var status = Element(await control.HandleAsync("action", Element(new { requestId = id })));
+            timer.Start();
+            JsonElement status = default;
+            try
+            {
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(5);
+                do
+                {
+                    await Task.Delay(50);
+                    status = Element(await control.HandleAsync("action", Element(new { requestId = id })));
+                } while (status.GetProperty("status").GetString() is "pending" or "executing" && DateTimeOffset.UtcNow < deadline);
+            }
+            finally { timer.Stop(); }
             Check(status.GetProperty("status").GetString() == (accept ? "completed" : "cancelled"), accept ? "Approved demo test uses disabled-send runtime" : "Closing approval window cancels request");
             if (accept) Check(status.GetProperty("detail").GetString()!.Contains("désactivés"), "Demo approval cannot send a real email");
         }

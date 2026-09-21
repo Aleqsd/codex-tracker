@@ -1,6 +1,6 @@
 param(
     [ValidatePattern('^\d+\.\d+\.\d+([-.][a-zA-Z0-9.-]+)?$')]
-    [string]$Version = '0.7.0',
+    [string]$Version = '0.8.0',
     [string]$Dotnet = 'dotnet'
 )
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,7 @@ if ($LASTEXITCODE -ne 0) { throw 'La publication .NET a échoué.' }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'LICENSE'), (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $publishRoot
 New-Item -ItemType Directory -Path (Join-Path $publishRoot 'docs') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/licenses') -Destination (Join-Path $publishRoot 'docs') -Recurse -Force
-foreach ($document in @('dashboard.png', 'dashboard-light.png', 'advice.png', 'history.png', 'VALIDATION.md', 'tray-minimal.png', 'personalization.png', 'calendar.png', 'settings.png', 'resets.png', 'reminders.png', 'channels.png', 'installer.png', 'assistants.png', 'MCP.md', 'ARCHITECTURE.md', 'DESIGN.md')) {
+foreach ($document in @('dashboard.png', 'dashboard-light.png', 'advice.png', 'history.png', 'VALIDATION.md', 'tray-minimal.png', 'personalization.png', 'calendar.png', 'settings.png', 'resets.png', 'reminders.png', 'channels.png', 'installer.png', 'assistants.png', 'MCP.md', 'ARCHITECTURE.md', 'DESIGN.md', 'PRIVACY.md', 'WINGET.md', 'resets-week.png', 'tour.gif', 'UTILISATION.md')) {
     $source = Join-Path $repoRoot "docs/$document"
     if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $publishRoot "docs/$document") }
 }

@@ -18,8 +18,8 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/dev.ps1 -Action Demo
 ./scripts/dev.ps1 -Action Preview -View Assistants -Theme dark
 ./scripts/dev.ps1 -Action Preview -Matrix
-./scripts/publish.ps1 -Version 0.7.0
-./scripts/build-installer.ps1 -Version 0.7.0
+./scripts/publish.ps1 -Version 0.8.0
+./scripts/build-installer.ps1 -Version 0.8.0
 ```
 
 Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Python`. Les artefacts restent sous `artifacts/`, ignoré par Git. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
@@ -38,3 +38,7 @@ Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Pyth
 ## Vérification proportionnée
 
 Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Avant une release : CI Windows verte sur le commit publié, installer + ZIP + SHA-256, test réel stdio et préservation des données existantes.
+
+## Présentation publique
+
+README bref, orienté installation et usage ; détails dans docs/UTILISATION.md. Tour GIF rapide, exclusivement fictif. Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts de validation et sert au manifeste WinGet.

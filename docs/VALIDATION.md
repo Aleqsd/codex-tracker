@@ -1,4 +1,16 @@
-# Validation de la version 0.7.0
+# Validation de la version 0.8.0
+
+- 291 tests métier : ajout de 12 cas sur la semaine locale, les frontières d’année, les heures répétées et sautées, les valeurs inconnues, l’isolation des comptes et la réserve prioritaire. Aucune échéance récurrente n’est inventée.
+- 71 contrôles WPF : ajout de la grille à sept jours, navigation, conservation des filtres/mode/semaine, dates manquantes, priorité et réduction/restauration dans la barre des tâches.
+- 14 contrôles MCP de processus conservés, sans envoi externe réel.
+- 24 rendus fictifs Agenda/Semaine × clair/sombre × normal/compact × DPI 96/144/192. Inspection des deux vues, dont Semaine compacte à 200 %. Les contenus longs défilent verticalement ; les noms tronqués ont un survol complet.
+- Les tests de rendu du calendrier attendent sa mise en page ; les confirmations MCP attendent leur résultat avec un délai maximal, au lieu de dépendre d’une pause fixe de 400 ms.
+
+La génération WinGet vérifie le checksum de l’installateur puis exécute la validation officielle des manifestes. La publication dans le catalogue dépend d’une revue externe. Le manifeste ne modifie pas les réglages de sécurité Windows pour autoriser son installation locale.
+
+Ces rendus et contrôles WPF ne remplacent pas un essai sur plusieurs moniteurs physiques. Le mode MCP et les services de notifications restent inchangés.
+
+## Base de validation 0.7.0
 
 Contrôles ajoutés pour le MCP et les outils de contribution :
 

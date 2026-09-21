@@ -2,7 +2,7 @@ param(
     [ValidateSet('Check','Demo','Preview')][string]$Action = 'Check',
     [string]$Dotnet = 'dotnet',
     [string]$Python = 'python',
-    [ValidateSet('Comptes','Resets','Général','Rappels','Canaux','Historique','Calendrier','Assistants','Application')][string]$View = 'Comptes',
+    [ValidateSet('Comptes','Resets','Semaine','Général','Rappels','Canaux','Historique','Calendrier','Assistants','Application')][string]$View = 'Comptes',
     [ValidateSet('light','dark')][string]$Theme = 'dark',
     [ValidateSet('normal','compact')][string]$Size = 'normal',
     [ValidateSet(96,144,192)][int]$Dpi = 96,
@@ -27,7 +27,7 @@ try {
     } elseif ($Action -eq 'Demo') {
         & $Dotnet run --project src/CodexTracker.App -c Release --no-build -- --demo --theme $Theme
     } else {
-        $views = if ($Matrix) { @('Comptes','Resets','Assistants') } else { @($View) }
+        $views = if ($Matrix) { @('Comptes','Resets','Semaine','Assistants') } else { @($View) }
         $themes = if ($Matrix) { @('light','dark') } else { @($Theme) }
         $sizes = if ($Matrix) { @('normal','compact') } else { @($Size) }
         $dpis = if ($Matrix) { @(96,144,192) } else { @($Dpi) }

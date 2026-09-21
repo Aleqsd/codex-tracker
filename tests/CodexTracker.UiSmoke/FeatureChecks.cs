@@ -52,7 +52,7 @@ internal static class FeatureChecks
                 && !Tree(resets).OfType<TextBlock>().Any(t => t.Text == service.State.Accounts[1].Profile.Email), "Resets account filter isolates schedule rows");
             resets.Update(service.State);
             Check(resetFilter.SelectedIndex == 1, "Refresh preserves the resets account filter");
-            var kindFilters = Tree(resets).OfType<RadioButton>().ToArray();
+            var kindFilters = Tree(resets).OfType<RadioButton>().Where(r => r.GroupName == "ResetKinds").ToArray();
             var weeklyFilter = kindFilters.Single(r => r.Tag is ResetKind.Weekly);
             weeklyFilter.IsChecked = true; window.UpdateLayout();
             var timeline = Field<StackPanel>(resets, "_timeline");
@@ -88,8 +88,28 @@ internal static class FeatureChecks
             scoped.Update(service.State); Field<ComboBox>(scoped, "_accounts").SelectedIndex = 1;
             Tree(scoped.Content as DependencyObject ?? scoped).OfType<Button>().Single(b => b.Content?.ToString() == "Google Agenda ↗").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(exportedAccount == id, "Calendar action receives the account selected in Resets");
+            resets.Update(service.State); resets.ShowWeek(); window.UpdateLayout();
+            Check(Tree(resets).OfType<Border>().Count(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("Échéances du ")) == 7,
+                "Week mode renders seven calendar days with accessible date names");
+            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text == "Réserve prioritaire"),
+                "Known available credit has a priority summary outside the calendar range");
+            var nextWeek = Tree(resets).OfType<Button>().Single(b => b.ToolTip?.ToString() == "Semaine suivante");
+            var before = Field<DateOnly>(resets, "_week"); nextWeek.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); window.UpdateLayout();
+            Check(Field<DateOnly>(resets, "_week") == before.AddDays(7) && resetFilter.SelectedIndex == 1,
+                "Week navigation retains the selected account");
+            resets.Update(service.State); window.UpdateLayout();
+            Check(Field<DateOnly>(resets, "_week") == before.AddDays(7) && Field<RadioButton>(resets, "_weekChoice").IsChecked == true,
+                "Refresh retains the selected week and display mode");
+            resets.Update(new([service.State.Accounts[0] with { Snapshot = oldSnapshot }], id)); window.UpdateLayout();
+            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("Dates non communiquées")), "Unknown dates remain available below the week grid");
+            Tree(resets).OfType<RadioButton>().Single(r => r.Content?.ToString() == "Agenda").IsChecked = true;
             resets.Update(service.State); resetFilter.SelectedIndex = 0;
             mainTabs.SelectedIndex = 0; await Task.Delay(100);
+            ((Button)window.FindName("MinimizeButton")).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(window.WindowState == WindowState.Minimized && window.ShowInTaskbar && window.IsVisible,
+                "Minimize keeps the window visible in the Windows taskbar");
+            window.ShowPanel();
+            Check(window.WindowState == WindowState.Normal && window.IsVisible, "Tray activation restores a minimized window");
             Check(!resets.IsVisible && Tree(window).OfType<Button>().Any(b => b.ToolTip?.ToString() == "Changer le nom ou l’avatar"), "Returning to Accounts preserves the dashboard");
             Check(AccountAvatar.Initials("Alexandre Almeida") == "AA" && AccountAvatar.Initials("alexandre.almeida@example.test") == "AA" && AccountAvatar.Initials("Studio") == "ST" && AccountAvatar.Initials("") == "?", "Default avatars derive initials from names and email addresses");
             Check(AccountAvatar.Background(id).ToString() == AccountAvatar.Background(Guid.Parse(id.ToString())).ToString(), "Avatar color remains stable for an account");
@@ -194,7 +214,7 @@ internal static class FeatureChecks
                 "Google button prepares a private ICS file and displays the remaining import steps");
             Field<Button>(calendar, "_google").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(Field<TextBox>(calendar, "_path").Text == prepared && Directory.GetFiles(Path.GetDirectoryName(prepared)!).Length == 1, "Repeated import clicks reuse the same prepared file");
-            Tree(calendar).OfType<Expander>().Single().IsExpanded = true; await Task.Delay(100);
+            Tree(calendar).OfType<Expander>().Single().IsExpanded = true; calendar.UpdateLayout();
             Tree(calendar).OfType<Button>().First(b => b.Tag is CalendarEntry).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(opened.Last().AbsolutePath.EndsWith("/eventedit") && opened.Last().Query.Contains("action=TEMPLATE") && Field<TextBlock>(calendar, "_status").Text.Contains("Enregistrer"), "Single event button opens a Google draft without claiming it was saved");
             var countBefore = opened.Count; calendar.OpenEntry(new("old", "Old", "", DateTimeOffset.UtcNow.AddDays(-1)));

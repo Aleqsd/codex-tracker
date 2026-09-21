@@ -160,8 +160,9 @@ public partial class App : System.Windows.Application
     private static async Task RenderPreview(MainWindow window, string[] args)
     {
         string Option(string name, string fallback) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback; }
-        var page = Option("--view", "Comptes"); window.OpenPage(page);
-        Window target = page is "Comptes" or "Resets" ? window : window.OwnedWindows.OfType<SettingsWindow>().First();
+        var page = Option("--view", "Comptes");
+        if (page == "Semaine") window.ShowResetWeek(); else window.OpenPage(page);
+        Window target = page is "Comptes" or "Resets" or "Semaine" ? window : window.OwnedWindows.OfType<SettingsWindow>().First();
         if (Option("--size", "normal") == "compact") { target.Width = Math.Max(target.MinWidth, 660); target.Height = Math.Max(target.MinHeight, 500); }
         var dpi = double.Parse(Option("--dpi", "96"), System.Globalization.CultureInfo.InvariantCulture);
         if (dpi is not (96 or 144 or 192)) throw new ArgumentException("DPI : 96, 144 ou 192.");

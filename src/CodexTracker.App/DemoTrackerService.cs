@@ -16,7 +16,7 @@ internal sealed class DemoTrackerService : ITrackerService
         string[] plans = ["Pro", "Plus", "Pro", "Free", "Plus"];
         var accounts = emails.Select((email, i) => new AccountState(new AccountProfile(Guid.NewGuid(), email),
             new AccountSnapshot(email, plans[i], [new QuotaBucket("codex", "Codex", [new QuotaWindow(100 - fiveHour[i], 300, now.AddHours(2 + i).AddMinutes(14)), new QuotaWindow(100 - weekly[i], 10080, now.AddDays(2 + i % 3).AddHours(14).AddMinutes(32))])],
-                i == 0 ? 3 : i % 3, [new ResetCredit($"demo-{i}", "Crédit de reset", now.AddDays(-5), now.AddDays(30 + i))], i == 0 ? now.AddSeconds(-26) : showAdvice && i == 2 ? now.AddMinutes(-12) : now.AddHours(-2 * i).AddMinutes(-12),
+                i == 0 ? 3 : i % 3, [new ResetCredit($"demo-{i}", "Crédit de reset", now.AddDays(-5), i == 0 ? now.AddHours(23) : now.AddDays(4 + i))], i == 0 ? now.AddSeconds(-26) : showAdvice && i == 2 ? now.AddMinutes(-12) : now.AddHours(-2 * i).AddMinutes(-12),
                 PlanMultiplier: i == 0 ? 20 : i == 2 ? 5 : null, SubscriptionStartedAt: i == 3 ? null : now.AddMonths(-4 - i), SubscriptionEndsAt: i == 3 ? null : now.AddDays(28 - i)), IsActiveInCodex: i == 0, IsConnected: true)).ToArray();
         State = new TrackerState(accounts, accounts[0].Profile.Id, OnboardingComplete: true);
         foreach (var account in accounts)
