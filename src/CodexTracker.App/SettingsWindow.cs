@@ -41,14 +41,14 @@ internal sealed class SettingsWindow : ThemedWindow
         ContentScroll.VerticalContentAlignment = VerticalAlignment.Stretch; ContentScroll.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         Page("Général", "Adaptez le suivi à votre façon de travailler.");
         Section("Apparence");
-        var themeRow = new Grid(); themeRow.ColumnDefinitions.Add(new ColumnDefinition()); themeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+        var themeRow = new Grid(); themeRow.ColumnDefinitions.Add(new ColumnDefinition()); themeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
         var label = Ui.Text("Thème"); label.VerticalAlignment = VerticalAlignment.Center; themeRow.Children.Add(label);
-        _themeSelector = new ComboBox { ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, "Comme Windows"), new ThemeChoice(AppThemeMode.Light, "Clair"), new ThemeChoice(AppThemeMode.Dark, "Sombre") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
+        _themeSelector = new ComboBox { Tag = FindResource("DropdownThemeIcon"), ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, "Comme Windows"), new ThemeChoice(AppThemeMode.Light, "Clair"), new ThemeChoice(AppThemeMode.Dark, "Sombre") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         Grid.SetColumn(_themeSelector, 1); themeRow.Children.Add(_themeSelector); _page.Children.Add(themeRow);
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
         Toggle("Aperçu au survol de l’icône", "Le quota et le prochain reset, sans ouvrir le panneau.", p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
         Section("Actualisation", true);
-        _refreshSelector = Choice("Compte actif", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
+        _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
         Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
         Page("Notifications", "Choisissez les alertes utiles, au bon moment.");
         Section("Quotas");
@@ -62,7 +62,7 @@ internal sealed class SettingsWindow : ThemedWindow
         Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Section("Resets en réserve", true);
         Toggle("Prévenir avant l’expiration des réserves", "Un rappel par reset, d’après le dernier relevé disponible.", p => p.ExpiryNotifications, (p, v) => p with { ExpiryNotifications = v });
-        _expirySelector = Choice("Prévenir à l’avance", [new(24, "24 heures"), new(72, "3 jours"), new(168, "7 jours")], v => Save(p => p with { ExpiryLeadHours = v }));
+        _expirySelector = Choice("Prévenir à l’avance", "DropdownClockIcon", [new(24, "24 heures"), new(72, "3 jours"), new(168, "7 jours")], v => Save(p => p with { ExpiryLeadHours = v }));
         Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
         var calendar = new Button { Content = "Exporter les échéances…", HorizontalAlignment = HorizontalAlignment.Left };
         calendar.Click += (_, _) => ((MainWindow)owner).OpenCalendar(); _page.Children.Add(calendar);
@@ -123,11 +123,11 @@ internal sealed class SettingsWindow : ThemedWindow
         if (separator) { var line = new Border { Height = 1, Margin = new Thickness(0, 19, 0, 17) }; line.SetResourceReference(Border.BackgroundProperty, "LineBrush"); _page.Children.Add(line); }
         var text = Ui.Text(title, 13); text.FontWeight = FontWeights.SemiBold; text.Margin = new Thickness(0, 0, 0, 12); _page.Children.Add(text);
     }
-    private ComboBox Choice(string title, NumberChoice[] choices, Action<int> save)
+    private ComboBox Choice(string title, string icon, NumberChoice[] choices, Action<int> save)
     {
-        var row = new Grid { Margin = new Thickness(0, 10, 0, 0) }; row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+        var row = new Grid { Margin = new Thickness(0, 10, 0, 0) }; row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
         var label = Ui.Text(title); label.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(label);
-        var combo = new ComboBox { ItemsSource = choices, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
+        var combo = new ComboBox { Tag = FindResource(icon), ItemsSource = choices, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         combo.SelectionChanged += (_, _) => { if (!_syncing && combo.SelectedValue is int value) save(value); };
         Grid.SetColumn(combo, 1); row.Children.Add(combo); _page.Children.Add(row); return combo;
     }

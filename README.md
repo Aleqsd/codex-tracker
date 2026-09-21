@@ -43,7 +43,7 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 
 Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai.
 
-Les réglages sont répartis en quatre rubriques : **Général**, **Notifications**, **Calendrier** et **Application**. Les menus compacts affichent une coche sur la valeur choisie et restent utilisables au clavier.
+Les réglages sont répartis en quatre rubriques : **Général**, **Notifications**, **Calendrier** et **Application**. Les menus « Icône et libellé » associent une icône discrète à chaque réglage et affichent une coche sur la valeur choisie et restent utilisables au clavier.
 
 ![Réglages avec données fictives](docs/settings.png)
 

@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Deterministic>true</Deterministic>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>0.5.1</Version>
+    <Version>0.5.2</Version>
     <Authors>Aleqsd</Authors>
     <RepositoryUrl>https://github.com/Aleqsd/codex-tracker</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

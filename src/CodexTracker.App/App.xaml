@@ -29,14 +29,20 @@
     <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="AvatarFrame" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="AvatarFrame" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="AvatarFrame" Property="Opacity" Value="0.7"/></Trigger></ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
+  <Geometry x:Key="DropdownThemeIcon">M3,4 L21,4 21,17 3,17 Z M8,21 L16,21 M12,17 L12,21</Geometry>
+  <Geometry x:Key="DropdownRefreshIcon">M20,7 A9,9 0 1 0 21,15 M20,3 L20,8 15,8</Geometry>
+  <Geometry x:Key="DropdownClockIcon">M12,3 A9,9 0 1 1 11.999,3 M12,7 L12,12 16,14</Geometry>
+  <Geometry x:Key="DropdownCalendarIcon">M4,5 L20,5 20,21 4,21 Z M8,3 L8,7 M16,3 L16,7 M4,10 L20,10</Geometry>
+  <Geometry x:Key="DropdownQuotaIcon">M4,20 L4,14 M12,20 L12,8 M20,20 L20,3</Geometry>
   <Style TargetType="ComboBox">
-   <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+   <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
    <Setter Property="FontSize" Value="12"/><Setter Property="MinHeight" Value="34"/><Setter Property="Padding" Value="10,7"/>
    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
     <Grid SnapsToDevicePixels="True">
      <Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6"/>
-     <ContentPresenter Margin="10,7,30,7" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" IsHitTestVisible="False" VerticalAlignment="Center"/>
+     <Viewbox Width="16" Height="16" Margin="11,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False"><Canvas Width="24" Height="24"><Path Data="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/></Canvas></Viewbox>
+     <ContentPresenter Margin="36,7,30,7" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" IsHitTestVisible="False" VerticalAlignment="Center"/>
      <Path x:Name="Chevron" Data="M 0,0 L 4,4 L 8,0" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="9" Height="6" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,11,0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5"/>
      <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False" ClickMode="Press"><ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent"/></ControlTemplate></ToggleButton.Template></ToggleButton>
      <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="None">
