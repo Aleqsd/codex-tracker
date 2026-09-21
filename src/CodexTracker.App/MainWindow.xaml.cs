@@ -21,10 +21,13 @@ public partial class MainWindow : Window
     private bool _canClose, _refreshing;
     internal ThemeManager Theme { get; }
     internal PreferencesStore Preferences => _preferences;
+    internal ITrackerService TrackerService => _service;
+    internal ReminderRuntime Reminders { get; }
 
     internal MainWindow(ITrackerService service, bool demo, PreferencesStore preferences, UpdateService updates)
     {
         _service = service; _preferences = preferences; _updates = updates;
+        Reminders = new(service, preferences, demo);
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences);
         InitializeComponent();
@@ -55,12 +58,13 @@ public partial class MainWindow : Window
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; Hide(); } }
     public void ShowPanel() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Ui.EnsureWindowVisible(this); Activate(); }
+    internal void ShowResets() { ShowPanel(); ResetsTab.IsSelected = true; }
     public void PrepareExit()
     {
         _canClose = true; _lifetime.Cancel(); _clockTimer.Stop();
         foreach (Window child in OwnedWindows.Cast<Window>().ToArray()) child.Close();
         _service.Changed -= Service_Changed; _preferences.Changed -= Preferences_Changed; Theme.Changed -= Theme_Changed;
-        Theme.Dispose(); _updates.Dispose();
+        Reminders.Dispose(); Theme.Dispose(); _updates.Dispose();
     }
     private void ApplyChrome()
     {

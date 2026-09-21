@@ -43,11 +43,12 @@ internal sealed class TrayController : IDisposable
             if (e.Button == Forms.MouseButtons.Left) _window.Dispatcher.Invoke(_window.ShowPanel);
         };
         _tray.MouseMove += (_, _) => OnTrayHover();
-        _tray.BalloonTipClicked += (_, _) => _window.ShowPanel();
+        _tray.BalloonTipClicked += (_, _) => _window.ShowResets();
         _hoverDelay.Tick += (_, _) => ShowPeek();
         _presence.Tick += (_, _) => CheckPeekPresence();
         _notifications.Tick += (_, _) => ShowNotifications();
-        _expiryTimer.Tick += (_, _) => ShowExpiryReminder();
+        _expiryTimer.Tick += async (_, _) => await CheckRemindersAsync();
+        _window.Reminders.ShowWindows = rows => _tray.ShowBalloonTip(8000, rows.Count == 1 ? ReminderPlanner.Label(rows[0].Kind) : $"{rows.Count} rappels Codex", ReminderPlanner.Body(rows[0]) + (rows.Count > 1 ? $"\n{rows.Count - 1} autre(s) échéance(s) dans l’onglet Resets." : ""), Forms.ToolTipIcon.Info);
         if (service is not DemoTrackerService) _expiryTimer.Start();
         _shellRecovery.Tick += (_, _) =>
         {
@@ -66,14 +67,14 @@ internal sealed class TrayController : IDisposable
     private void Changed(object? sender, EventArgs e)
     {
         if (Interlocked.Exchange(ref _updateQueued, 1) != 0) return;
-        _window.Dispatcher.InvokeAsync(() => { Interlocked.Exchange(ref _updateQueued, 0); Update(); });
+        _window.Dispatcher.InvokeAsync(() => { Interlocked.Exchange(ref _updateQueued, 0); Update(); _ = CheckRemindersAsync(); });
     }
     private void PreferencesChanged(object? sender, EventArgs e)
     {
         if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(() => PreferencesChanged(sender, e)); return; }
         if (_disposed) return;
         if (!_preferences.Current.HoverPreview) HidePeek();
-        _menuKey = null; Update();
+        _menuKey = null; Update(); _ = CheckRemindersAsync();
     }
     internal void HandleEnvironmentChanged(bool taskbarCreated = false)
     {
@@ -88,6 +89,7 @@ internal sealed class TrayController : IDisposable
         if (_disposed || _window.Dispatcher.HasShutdownStarted) return;
         if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(OnSuspend); return; }
         _suspended = true;
+        _window.Reminders.Pause();
         HidePeek(); _tray.ContextMenuStrip?.Close(); _shellRecovery.Stop();
         _notifications.Stop(); _pendingNotifications.Clear();
     }
@@ -95,7 +97,7 @@ internal sealed class TrayController : IDisposable
     {
         if (_disposed || _window.Dispatcher.HasShutdownStarted) return;
         if (!_window.Dispatcher.CheckAccess()) { _window.Dispatcher.InvokeAsync(OnResume); return; }
-        _suspended = false; HandleEnvironmentChanged(taskbarCreated: true);
+        _suspended = false; _window.Reminders.Resume(); HandleEnvironmentChanged(taskbarCreated: true); _ = CheckRemindersAsync();
     }
     private void Update()
     {
@@ -186,28 +188,10 @@ internal sealed class TrayController : IDisposable
         if (!_notifications.IsEnabled) _notifications.Start();
     });
 
-    private void ShowExpiryReminder()
+    private async Task CheckRemindersAsync()
     {
-        if (_disposed || _suspended || _notifications.IsEnabled || _service.State.IsBusy || !_preferences.Current.ExpiryNotifications) return;
-        var now = DateTimeOffset.UtcNow; var state = _service.State;
-        var due = ExpiryReminders.Due(state, now, _preferences.Current.ExpiryLeadHours, _preferences.Current.SentExpiryReminders);
-        if (due.Count == 0) return;
-        var group = due.Where(r => r.AccountId == due[0].AccountId).ToArray();
-        var account = state.Accounts.First(a => a.Profile.Id == group[0].AccountId);
-        try
-        {
-            // Persist before showing so a restart does not repeat the reminder.
-            _preferences.Update(p =>
-            {
-                var sent = p.SentExpiryReminders.Where(kv => kv.Value > now).ToDictionary(kv => kv.Key, kv => kv.Value);
-                foreach (var reminder in group) sent[reminder.Key] = reminder.ExpiresAt;
-                return p with { SentExpiryReminders = sent };
-            });
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
-        var name = PrivacyText.Account(account.Profile, state, _preferences.Current);
-        _tray.ShowBalloonTip(8000, "Réserve bientôt expirée",
-            $"{name} · {group.Length} échéance(s) de réserve\nExpiration : {Display.Exact(group[0].ExpiresAt)}\nRelevé : {Display.Exact(group[0].ObservedAt)}\nVérifiez leur disponibilité dans Codex.", Forms.ToolTipIcon.Info);
+        if (_disposed || _suspended || _notifications.IsEnabled || _service.State.IsBusy) return;
+        await _window.Reminders.TickAsync();
     }
 
     private void ShowNotifications()

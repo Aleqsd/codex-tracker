@@ -83,7 +83,8 @@ internal sealed class ResetsView : UserControl
         _reserves.Text = counts.Length == 0 ? "" : counts.All(n => n is null) ? "Réserves : non communiquées" : $"Réserves : {counts.Sum(n => (long)(n ?? 0))} resets au dernier relevé" + (counts.Any(n => n is null) ? $" · {counts.Count(n => n is null)} comptes sans compteur" : "");
         _reserves.ToolTip = "Les comptes inactifs ne sont pas actualisés en arrière-plan. Le compteur serveur fait foi ; les dates détaillées ne permettent pas de déduire le nombre de resets disponibles.";
         _rows.Clear(); _timeline.Children.Clear();
-        AddGroup("À venir", future);
+        foreach (var day in future.GroupBy(e => e.At!.Value.ToLocalTime().Date))
+            AddGroup($"À venir · {day.Key:dddd dd MMMM yyyy}", day.ToArray());
         AddGroup("Dates atteintes · à vérifier", reached);
         AddGroup("Dates non communiquées", unknown, showCount: false);
         if (entries.Length == 0) { var empty = Ui.Text(_kindFilter == ResetKind.Reserve ? "Aucune réserve à afficher pour cette sélection." : "Aucune échéance à afficher pour cette sélection.", 13, "MutedBrush"); empty.Margin = new Thickness(0, 24, 0, 0); _timeline.Children.Add(empty); }
@@ -96,13 +97,18 @@ internal sealed class ResetsView : UserControl
         var heading = Ui.Text(showCount ? $"{title}  ·  {entries.Count}" : title, 12, "MutedBrush"); heading.FontWeight = FontWeights.SemiBold; heading.Margin = new Thickness(0, 13, 0, 7); _timeline.Children.Add(heading);
         foreach (var entry in entries)
         {
-            var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) }); row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(177) });
-            var marker = new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(8), Child = KindIcon(entry.Kind, 18), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0) };
-            marker.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); row.Children.Add(marker);
+            var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) }); row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(177) });
+            var date = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+            var day = Ui.Text(entry.At?.ToLocalTime().ToString("dd") ?? "—", 24); day.FontWeight = FontWeights.SemiBold; date.Children.Add(day);
+            date.Children.Add(Ui.Text(entry.At?.ToLocalTime().ToString("MMM") ?? "", 11, "MutedBrush"));
+            date.Children.Add(Ui.Text(entry.At?.ToLocalTime().ToString("yyyy") ?? "", 10, "MutedBrush"));
+            var marker = new Border { Child = date, BorderThickness = new Thickness(0, 0, 1, 0), Padding = new Thickness(0, 0, 15, 0), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Stretch };
+            marker.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); row.Children.Add(marker);
             var identity = new StackPanel { Margin = new Thickness(0, 0, 14, 0) };
             var kind = entry.Kind switch { ResetKind.Weekly => "Reset hebdomadaire", ResetKind.Short => "Reset 5 heures", _ => "Expiration de réserve" };
             if (entry.IsUndetailedReserve) kind = "Réserves sans date";
-            var detail = Ui.Text(kind, 13); detail.FontWeight = FontWeights.SemiBold; identity.Children.Add(detail);
+            var detail = Ui.Text(kind, 13); detail.FontWeight = FontWeights.SemiBold; var typeRow = new StackPanel { Orientation = Orientation.Horizontal };
+            var typeIcon = KindIcon(entry.Kind, 16); typeIcon.Margin = new Thickness(0, 0, 7, 0); typeRow.Children.Add(typeIcon); typeRow.Children.Add(detail); identity.Children.Add(typeRow);
             if (!string.IsNullOrWhiteSpace(entry.CreditTitle))
             {
                 var creditTitle = Ui.Text(entry.CreditTitle, 11, "MutedBrush"); creditTitle.Margin = new Thickness(0, 3, 0, 0); creditTitle.TextWrapping = TextWrapping.NoWrap; creditTitle.TextTrimming = TextTrimming.CharacterEllipsis; creditTitle.ToolTip = entry.CreditTitle; identity.Children.Add(creditTitle);
@@ -112,8 +118,8 @@ internal sealed class ResetsView : UserControl
             if (entry.GrantedAt is { } granted) { var receipt = Ui.Text($"Reçu le {Display.Exact(granted)}", 11, "MutedBrush"); receipt.Margin = new Thickness(0, 4, 0, 0); receipt.ToolTip = Display.Zone(granted); identity.Children.Add(receipt); }
             Grid.SetColumn(identity, 1); row.Children.Add(identity);
             var timing = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
-            var exact = Ui.Text(entry.At is null ? "Date indisponible" : entry.At.Value.ToLocalTime().ToString("dd/MM/yyyy"), 13); exact.FontWeight = FontWeights.SemiBold; exact.TextAlignment = TextAlignment.Right; timing.Children.Add(exact);
-            if (entry.At is { } at) { var clock = Ui.Text($"{at.ToLocalTime():HH:mm:ss} · UTC{at.ToLocalTime():zzz}", 11, "MutedBrush"); clock.Margin = new Thickness(0, 4, 0, 0); clock.TextAlignment = TextAlignment.Right; clock.ToolTip = $"{Display.Exact(at)}\n{Display.Zone(at)}"; timing.Children.Add(clock); }
+            var exact = Ui.Text(entry.At is null ? "Date indisponible" : entry.At.Value.ToLocalTime().ToString("HH:mm:ss"), 13); exact.FontWeight = FontWeights.SemiBold; exact.TextAlignment = TextAlignment.Right; timing.Children.Add(exact);
+            if (entry.At is { } at) { var clock = Ui.Text($"UTC{at.ToLocalTime():zzz}", 11, "MutedBrush"); clock.Margin = new Thickness(0, 4, 0, 0); clock.TextAlignment = TextAlignment.Right; clock.ToolTip = $"{Display.Exact(at)}\n{Display.Zone(at)}"; timing.Children.Add(clock); }
             var countdown = Ui.Text("", 11, "MutedBrush"); countdown.Margin = new Thickness(0, 4, 0, 0); countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown);
             Grid.SetColumn(timing, 2); row.Children.Add(timing);
             var border = new Border { Child = row, Background = Brushes.Transparent, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 12, 7, 13) }; border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
@@ -123,7 +129,7 @@ internal sealed class ResetsView : UserControl
     }
     private FrameworkElement KindIcon(ResetKind kind, double size)
     {
-        var key = kind switch { ResetKind.Weekly => "DropdownCalendarIcon", ResetKind.Short => "ResetClockIcon", _ => "ResetReserveIcon" };
+        var key = kind switch { ResetKind.Weekly => "ResetTimerIcon", ResetKind.Short => "ResetRepeatIcon", _ => "ResetTicketIcon" };
         var path = new System.Windows.Shapes.Path { Data = (Geometry)FindResource(key), StrokeThickness = 1.6, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round };
         path.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "MutedBrush");
         var canvas = new Canvas { Width = 24, Height = 24 }; canvas.Children.Add(path);

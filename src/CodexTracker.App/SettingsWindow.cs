@@ -13,7 +13,7 @@ internal sealed class SettingsWindow : ThemedWindow
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<(CheckBox Box, Func<TrackerPreferences, bool> Read)> _toggles = new();
     private readonly ComboBox _themeSelector;
-    private readonly ComboBox _refreshSelector, _expirySelector;
+    private readonly ComboBox _refreshSelector;
     private readonly TextBlock _updateStatus;
     private readonly Button _check, _install;
     private readonly System.Windows.Threading.DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -50,7 +50,8 @@ internal sealed class SettingsWindow : ThemedWindow
         Section("Actualisation", true);
         _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
         Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
-        Page("Notifications", "Choisissez les alertes utiles, au bon moment.");
+        Page("Rappels", "Choisissez les échéances, les comptes et les canaux utiles.");
+        _page.Children.Add(ReminderSettingsView.Rules(preferences, ((MainWindow)owner).TrackerService));
         Section("Quotas");
         _page.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 11, "MutedBrush"));
         var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 13, 0, 2) };
@@ -60,9 +61,10 @@ internal sealed class SettingsWindow : ThemedWindow
         var test = new Button { Content = "Tester une notification", Style = (Style)FindResource("QuietButton"), Padding = new Thickness(0, 7, 0, 1), HorizontalAlignment = HorizontalAlignment.Left, FontSize = 11 };
         test.Click += (_, _) => ((App)System.Windows.Application.Current).ShowTestNotification(); _page.Children.Add(test);
         Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
-        Section("Resets en réserve", true);
-        Toggle("Prévenir avant l’expiration des réserves", "Un rappel par reset, d’après le dernier relevé disponible.", p => p.ExpiryNotifications, (p, v) => p with { ExpiryNotifications = v });
-        _expirySelector = Choice("Prévenir à l’avance", "DropdownClockIcon", [new(24, "24 heures"), new(72, "3 jours"), new(168, "7 jours")], v => Save(p => p with { ExpiryLeadHours = v }));
+        Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
+        _page.Children.Add(ReminderSettingsView.Channels(preferences, ((MainWindow)owner).Reminders, demo));
+        Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
+        _page.Children.Add(ReminderSettingsView.History(((MainWindow)owner).Reminders));
         Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
         var calendar = new Button { Content = "Ouvrir les options Google Agenda…", HorizontalAlignment = HorizontalAlignment.Left };
         calendar.Click += (_, _) => ((MainWindow)owner).OpenCalendar(); _page.Children.Add(calendar);
@@ -104,7 +106,7 @@ internal sealed class SettingsWindow : ThemedWindow
         _page = new StackPanel { Margin = new Thickness(26, 24, 24, 24) };
         var heading = Ui.Text(title, 21); heading.FontWeight = FontWeights.SemiBold; _page.Children.Add(heading);
         var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 7, 0, 26); _page.Children.Add(hint);
-        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Général" => "SettingsGeneralIcon", "Notifications" => "SettingsNotificationsIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
+        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
         button.Click += (_, _) => ShowPage(title); _navigation.Children.Add(button); _pages.Add(title, (_page, button));
     }
     internal void ShowPage(string title)
@@ -152,8 +154,6 @@ internal sealed class SettingsWindow : ThemedWindow
         if (_closed) return;
         _syncing = true; _themeSelector.SelectedValue = _preferences.Current.ThemeMode;
         _refreshSelector.SelectedValue = _preferences.Current.RefreshMinutes;
-        _expirySelector.SelectedValue = _preferences.Current.ExpiryLeadHours;
-        _expirySelector.IsEnabled = _preferences.Current.ExpiryNotifications;
         foreach (var (box, read) in _toggles) box.IsChecked = read(_preferences.Current); _syncing = false;
         _updateStatus.Text = Display.SafeText(_updateStatus.Text, _preferences.Current.PrivacyMode);
     }

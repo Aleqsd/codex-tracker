@@ -22,6 +22,8 @@ internal sealed record TrackerPreferences
     public bool AdaptiveRefresh { get; init; }
     public bool ExpiryNotifications { get; init; } = true;
     public int ExpiryLeadHours { get; init; } = 24;
+    public ReminderRule[]? ReminderRules { get; init; }
+    public PhonePolicy PhonePolicy { get; init; } = new();
     public Dictionary<Guid, AccountAppearance> Appearances { get; init; } = new();
     public Dictionary<string, DateTimeOffset> SentExpiryReminders { get; init; } = new();
 }
@@ -36,7 +38,7 @@ internal sealed class PreferencesStore
     };
     private readonly string? _path;
     public string DataDirectory { get; }
-    public TrackerPreferences Current { get; private set; } = new();
+    public TrackerPreferences Current { get; private set; } = Normalize(new());
     public event EventHandler? Changed;
 
     public PreferencesStore(bool persistent = true, string? dataDirectory = null)
@@ -56,7 +58,7 @@ internal sealed class PreferencesStore
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             // Keep safe defaults without rewriting an unreadable file.
-            Current = new();
+            Current = Normalize(new());
         }
     }
 
@@ -86,9 +88,17 @@ internal sealed class PreferencesStore
     {
         RefreshMinutes = RefreshPolicy.NormalizeMinutes(value.RefreshMinutes),
         ExpiryLeadHours = ExpiryReminders.NormalizeLeadHours(value.ExpiryLeadHours),
+        ReminderRules = ReminderPlanner.Normalize(value.ReminderRules ?? ReminderPlanner.Defaults(value.ExpiryNotifications, ExpiryReminders.NormalizeLeadHours(value.ExpiryLeadHours))),
+        PhonePolicy = NormalizePhone(value.PhonePolicy ?? new()),
         Appearances = value.Appearances ?? new(),
         SentExpiryReminders = value.SentExpiryReminders ?? new()
     };
+    private static PhonePolicy NormalizePhone(PhonePolicy policy)
+    {
+        try { ReminderPlanner.Zone(policy); }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException) { policy = policy with { TimeZoneId = "Europe/Paris" }; }
+        return policy with { SmsPerDay = Math.Clamp(policy.SmsPerDay, 0, 100), CallsPerDay = Math.Clamp(policy.CallsPerDay, 0, 20), QuietStart = Math.Clamp(policy.QuietStart, 0, 23), QuietEnd = Math.Clamp(policy.QuietEnd, 0, 23) };
+    }
 }
 
 internal static class PrivacyText

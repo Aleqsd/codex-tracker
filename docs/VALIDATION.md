@@ -1,3 +1,16 @@
+# Validation de la version 0.6.0
+
+Contrôles Windows 11 x64 du 21 septembre 2026, comptes fictifs uniquement dans les captures publiques.
+
+- Compilation Release sans avertissement.
+- 264 tests métier, dont 40 nouveaux cas de rappels : seuils exacts, indépendance des canaux/délais/comptes, identifiants des crédits, données absentes, migration, redémarrage, déduplication, reprise, annulation, heures silencieuses, changements d’heure Europe/Paris, quotas d’envoi, chiffrement DPAPI et journal corrompu.
+- API Twilio/SendGrid simulées : contenu, authentification, SMS mono-segment, TwiML sans webhook, HTTP 401/429/500, réseau incertain, livraison et sérialisation des envois concurrents. Aucun SMS, appel ou email réel envoyé.
+- 53 contrôles WPF : activation, navigation, règles par délai, champs secrets masqués, canaux désactivés en démonstration, fuseaux Windows/IANA, agenda, filtres, avatars et Google Agenda.
+- Captures réelles du rendu WPF clair/sombre et petits formats ; rendu de l’agenda à 96, 144 et 192 DPI (100/150/200 %). Ces captures de rendu ne remplacent pas un déplacement manuel entre écrans de DPI différents.
+- Les sorties de veille du moteur sont simulées par horloge injectable. La livraison réelle par les prestataires nécessite les identifiants de l’utilisateur et un test manuel volontaire ; elle n’est pas déclarée validée ici.
+
+## Validations des versions précédentes
+
 # Validation de la version 0.5.0
 
 Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests et captures publics utilisent uniquement des comptes fictifs.

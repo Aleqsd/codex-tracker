@@ -125,23 +125,35 @@ internal static class FeatureChecks
             Check(inactive.ActiveAccount is null && inactive.SelectedAccount is null && dashboard.Active is null,
                 "Missing active account never falls back to the formerly selected account");
             var settings = new SettingsWindow(window, preferences, new UpdateService(), theme, true); settings.Show();
-            Check(settings.CurrentPage == "Général" && Tree(settings).OfType<Button>().Any(b => b.Content?.ToString() == "Notifications"), "Settings open on General with section navigation");
+            Check(settings.CurrentPage == "Général" && Tree(settings).OfType<Button>().Any(b => b.Content?.ToString() == "Rappels"), "Settings open on General with section navigation");
             Field<ComboBox>(settings, "_refreshSelector").SelectedValue = 1;
             var adaptive = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Adapter à mon activité");
             adaptive.IsChecked = true; adaptive.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            Field<ComboBox>(settings, "_expirySelector").SelectedValue = 72;
             await Task.Delay(100);
-            Check(preferences.Current.RefreshMinutes == 1 && preferences.Current.AdaptiveRefresh && preferences.Current.ExpiryLeadHours == 72,
-                "Refresh, adaptive mode and expiry horizon save from actual controls");
+            Check(preferences.Current.RefreshMinutes == 1 && preferences.Current.AdaptiveRefresh,
+                "Refresh and adaptive mode save from actual controls");
             var labels = Tree(settings).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(labels.Contains("Chaque minute") && !labels.Any(t => t.Contains("NumberChoice")), "Refresh selector displays a readable label");
-            Tree(settings).OfType<Button>().Single(b => b.Content?.ToString() == "Notifications").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);
-            Check(settings.CurrentPage == "Notifications" && Tree(settings).OfType<TextBlock>().Any(t => t.Text == "3 jours"), "Settings navigation shows the selected section and preserves values");
-            var expiry = Field<ComboBox>(settings, "_expirySelector"); expiry.IsDropDownOpen = true; await Task.Delay(100);
-            var popup = (Popup)expiry.Template.FindName("PART_Popup", expiry);
-            var selectedItem = (ComboBoxItem)expiry.ItemContainerGenerator.ContainerFromIndex(expiry.SelectedIndex);
-            Check(popup.IsOpen && selectedItem.Template.FindName("SelectedMark", selectedItem) is FrameworkElement mark && mark.IsVisible, "Dropdown popup opens with a visible selection checkmark");
-            expiry.IsDropDownOpen = false; settings.Close();
+            Tree(settings).OfType<Button>().Single(b => b.Content?.ToString() == "Rappels").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);
+            Check(settings.CurrentPage == "Rappels" && Tree(settings).OfType<Expander>().Any(t => t.Header?.ToString() == "Reset hebdomadaire"), "Reminder settings show per-type expandable rules");
+            var week = Tree(settings).OfType<Expander>().Single(t => t.Header?.ToString() == "Reset hebdomadaire"); week.IsExpanded = true; settings.UpdateLayout();
+            var smsOneHour = Tree(week).OfType<CheckBox>().Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == "Reset hebdomadaire, 1 h, SMS");
+            smsOneHour.IsChecked = true;
+            Tree(week).OfType<Button>().Single(b => b.Content?.ToString() == "Enregistrer ces rappels").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(preferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(60) && r.Channels.Contains(ReminderChannel.Sms))
+                && !preferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(1440) && r.Channels.Contains(ReminderChannel.Sms)), "Actual controls persist independent channels per lead");
+            settings.ShowPage("Canaux"); await Task.Delay(100);
+            var twilio = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Twilio · SMS et appels"); twilio.IsExpanded = true; settings.UpdateLayout();
+            Check(Tree(twilio).OfType<PasswordBox>().Count() == 1 && Tree(twilio).OfType<Button>().Where(b => b.Content?.ToString()?.Contains("test") == true).All(b => !b.IsEnabled), "Twilio secrets use a masked field and demo cannot send real tests");
+            var limits = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Limites et heures silencieuses"); limits.IsExpanded = true; settings.UpdateLayout();
+            var zone = Tree(limits).OfType<ComboBox>().Single(); zone.IsDropDownOpen = true; await Task.Delay(100);
+            var popup = (Popup)zone.Template.FindName("PART_Popup", zone);
+            var selectedItem = (ComboBoxItem)zone.ItemContainerGenerator.ContainerFromIndex(zone.SelectedIndex);
+            Check(popup.IsOpen && selectedItem is not null, "Themed dropdown opens and retains the selected timezone");
+            zone.IsDropDownOpen = false;
+            settings.ShowPage("Historique"); await Task.Delay(100);
+            Check(Tree(settings).OfType<TextBlock>().Any(t => t.Text.StartsWith("Aucun rappel envoyé")), "Empty history explains local reminder tracking");
+            settings.Close();
 
             var avatarButton = Tree(window).OfType<Button>().First(b => b.Tag is Guid && b.ToolTip?.ToString() == "Changer le nom ou l’avatar");
             avatarButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);

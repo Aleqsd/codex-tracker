@@ -23,3 +23,6 @@ runtime/
 observer-runtime/
 avatars/
 pending-desktop-switch.bin
+
+notification-secrets.dpapi
+reminder-journal.json

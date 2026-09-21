@@ -75,9 +75,35 @@ Une estimation d’épuisement apparaît après au moins 15 minutes de relevés 
 
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
 
-Les **rappels d’expiration des réserves** sont activés par défaut, 24 heures avant l’échéance connue ; le délai est réglable à 3 ou 7 jours. Ils sont contrôlés chaque minute, regroupés par compte et mémorisés avant affichage pour ne pas se répéter après redémarrage. Une réserve inconnue, nulle ou déjà expirée ne déclenche rien. Les comptes inactifs peuvent produire un rappel basé sur leur dernier relevé daté : il faut vérifier la disponibilité du reset dans Codex. Les notifications affichent le nom personnalisé du compte, ou son adresse si aucun nom n’est défini.
+### Rappels locaux et connecteurs facultatifs
 
-Le bouton **Tester une notification** permet de vérifier leur affichage. Les paramètres de notifications et le mode de concentration de Windows s’appliquent.
+![Réglages des rappels avec comptes fictifs](docs/reminders.png)
+
+**Réglages → Rappels** propose une configuration par type de reset, compte, délai et canal. Par défaut, Windows prévient **24 h et 1 h avant** les resets hebdomadaires et les expirations de réserves. Les rappels du quota de cinq heures sont désactivés ; leurs délais possibles sont 30 min et 1 h. Les alertes de quota existantes restent indépendantes. Les réglages d’expiration des versions précédentes sont conservés, ainsi que les rappels déjà envoyés.
+
+L’agenda regroupe les échéances par date : jour à gauche, type et compte au centre, heure, fuseau et compte à rebours à droite. Les fenêtres de quota et les réserves possèdent des icônes distinctes. Les filtres par compte/type et Google Agenda restent disponibles.
+
+Le moteur vérifie les dates chaque minute, après actualisation et au retour de veille. **Le tracker doit être ouvert et le PC éveillé** : aucun serveur ne travaille lorsque le PC est éteint. À la reprise, seul le rappel franchi le plus urgent par événement et canal est envoyé, si l’échéance est encore future. Les réserves sans date ou sans compteur positif ne déclenchent rien. Un ancien relevé peut produire un rappel daté, sans confirmer la disponibilité réelle du reset dans Codex.
+
+**Réglages → Canaux** contient trois possibilités indépendantes :
+
+| Canal | Configuration |
+| --- | --- |
+| Windows | Disponible immédiatement, bouton de test ; les réglages de concentration de Windows s’appliquent |
+| SMS / appels Twilio | Votre Account SID, API Key SID et secret, un expéditeur autorisé pour chaque canal utilisé et votre numéro destinataire au format international |
+| Email SendGrid | Votre clé API avec la permission Mail Send, votre expéditeur vérifié et votre adresse destinataire |
+
+Tous les connecteurs externes sont **désactivés par défaut**. Enregistrer les identifiants ne lance aucun test ; sélectionnez aussi le canal dans vos règles de rappel. Les boutons de test envoient seulement après un clic explicite, avec facturation éventuelle sur votre propre compte. Aucun compte, numéro ou abonnement n’est acheté par le tracker. La démonstration et les tests automatisés ne peuvent pas envoyer de vrais messages.
+
+Les clés sont chiffrées avec **Windows DPAPI**, pour l’utilisateur courant, dans `notification-secrets.dpapi`. Elles ne sont pas exportées ni inscrites dans les journaux. Le bouton de suppression efface les identifiants du connecteur et le désactive ; les rappels Windows continuent. Chaque ordinateur possède sa propre configuration. Ne partagez pas le dossier de données privées.
+
+Les requêtes partent directement en HTTPS vers Twilio ou SendGrid, sans relais ni webhook. Seuls le destinataire et le contenu nécessaire au rappel sont transmis au prestataire sélectionné. Les SMS tiennent dans un segment ; les appels lisent un court message français, sans enregistrement et avec une durée maximale de 60 secondes. Les numéros d’expéditeur doivent être autorisés par Twilio pour l’usage et le pays concernés. [Configuration Twilio](https://www.twilio.com/docs/usage/requests-to-twilio), [identité d’expéditeur SendGrid](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/sender-identity).
+
+SendGrid possède sa propre clé et sa propre facturation. Consultez les [tarifs SendGrid](https://www.twilio.com/en-us/products/email-api/pricing) avant activation ; ce connecteur est surtout pratique si vous avez déjà un compte.
+
+Les limites téléphoniques initiales sont **5 SMS et 1 appel par jour**, avec silence **22 h–8 h, Europe/Paris**. Elles sont configurables et s’appliquent aussi aux tests. Les envois différés ne dépassent jamais leur échéance. Les tentatives de résultat incertain comptent dans les limites pour éviter les dépenses répétées.
+
+**Réglages → Historique** conserve 30 jours de résultats : transmis à Windows, accepté, livré selon Twilio, appel terminé, différé, annulé, échec ou résultat inconnu. Un email accepté par SendGrid n’est pas présenté comme livré ; un appel terminé ne prouve pas que le message a été écouté. Les statuts Twilio sont consultés pendant 24 h maximum, tant que l’application fonctionne. Une coupure réseau laissant le résultat incertain ne déclenche aucune réémission automatique. Le journal est écrit avant envoi pour éviter les doublons après redémarrage ; s’il est illisible, les rappels sont suspendus et l’historique l’indique.
 
 ## Aide au choix du compte
 
@@ -91,7 +117,7 @@ Les profils, réglages, avatars importés, historiques et derniers relevés sont
 
 Les anciens coffres et sauvegardes de la version 0.1 ne sont ni utilisés ni modifiés lors de la mise à jour. Les métadonnées et derniers relevés sont conservés. Les nouveaux profils de travail temporaires sont nettoyés après collecte.
 
-L’application ne possède pas de serveur de synchronisation et n’envoie pas vos comptes à ce dépôt. Les requêtes de quota passent par Codex et les services OpenAI ; les vérifications de mise à jour interrogent GitHub sans authentification. Aucun mot de passe n’est demandé au tracker. Les journaux applicatifs n’enregistrent pas de tokens. Les exemples et captures de ce dépôt utilisent uniquement des comptes fictifs.
+L’application ne possède pas de serveur de synchronisation et n’envoie pas vos comptes à ce dépôt. Les requêtes de quota passent par Codex et les services OpenAI ; les vérifications de mise à jour interrogent GitHub sans authentification. La connexion Codex ne demande aucun mot de passe au tracker ; seuls les connecteurs de notification facultatifs utilisent vos clés de prestataire. Les journaux applicatifs n’enregistrent pas de tokens. Les exemples et captures de ce dépôt utilisent uniquement des comptes fictifs.
 
 Pour préconfigurer localement une première installation, créez `%LOCALAPPDATA%\CodexTracker\initial-accounts.json` avec un tableau d’adresses, par exemple `["demo@example.test"]`. Ce fichier est facultatif, lu uniquement si les réglages n’existent pas encore, et doit rester hors du dépôt. Ces comptes restent « À détecter » jusqu’à leur ouverture dans Codex.
 
