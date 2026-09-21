@@ -38,6 +38,17 @@ internal static class Display
         return age.TotalMinutes < 1 ? "à l’instant" : age.TotalHours < 1 ? $"il y a {(int)age.TotalMinutes} min" : age.TotalDays < 1 ? $"il y a {(int)age.TotalHours} h" : $"il y a {(int)age.TotalDays} j";
     }
     public static string SafeText(string? text, bool privacy) => privacy ? Regex.Replace(text ?? "", @"[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+", "[compte masqué]", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)) : text ?? "";
+    public static string ReserveSummary(AccountSnapshot? snapshot) => snapshot?.AvailableResetCredits is int count
+        ? $"{count} reset{(count == 1 ? "" : "s")} en réserve" : "Réserve indisponible";
+    public static string CreditDetails(AccountSnapshot? snapshot, bool privacy) => snapshot?.ResetCredits is { Count: > 0 } credits
+        ? string.Join("\n\n", credits.OrderBy(c => c.ExpiresAt ?? DateTimeOffset.MaxValue).Select((c, i) =>
+            $"{SafeText(c.Title ?? $"Reset {i + 1}", privacy)}\n" +
+            (c.GrantedAt is { } granted ? $"Reçu le {Exact(granted)} · {Zone(granted)}\n" : "") +
+            (c.ExpiresAt is { } expires ? $"{(expires <= DateTimeOffset.UtcNow ? "Expiration passée" : "Expire le")} {Exact(expires)}\n{Zone(expires)}" : "Expiration non communiquée")))
+        : "Aucune expiration communiquée par Codex.";
+    public static string ReserveHint(AccountSnapshot? snapshot, bool privacy) =>
+        $"{ReserveSummary(snapshot)}\n\n{CreditDetails(snapshot, privacy)}" +
+        (snapshot is null ? "" : $"\n\nDernier relevé : {Exact(snapshot.FetchedAt)}\n{Zone(snapshot.FetchedAt)}\nDisponibilité au moment de ce relevé.");
 }
 
 internal sealed record SortChoice(SortMode Value, string Label) { public override string ToString() => Label; }
@@ -79,7 +90,10 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ResetHint => $"{ResetExact}\n{ResetZone}";
     public string SummaryReset => $"Reset hebdomadaire {ResetCountdown.ToLowerInvariant()}";
     public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
-    public string ReserveSummary => _account.Snapshot?.AvailableResetCredits is int count ? $"{count} reset{(count == 1 ? "" : "s")} en réserve" : "Réserve indisponible";
+    public string ReserveSummary => Display.ReserveSummary(_account.Snapshot);
+    public string ReserveBadge => $"↺ {ReserveCount}";
+    public Brush ReserveBrush => ThemeManager.GetBrush(_account.Snapshot?.AvailableResetCredits > 0 ? "TextBrush" : "MutedBrush");
+    public string ReserveHint => Display.ReserveHint(_account.Snapshot, _preferences.Current.PrivacyMode);
     public string SubscriptionSummary
     {
         get
@@ -91,7 +105,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
         }
     }
     public string SubscriptionDetails => $"Période d’abonnement active\nDébut : {Display.Exact(_account.Snapshot?.SubscriptionStartedAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionStartedAt)}\nFin : {Display.Exact(_account.Snapshot?.SubscriptionEndsAt)}\n{Display.Zone(_account.Snapshot?.SubscriptionEndsAt)}";
-    public string CreditDetails => _account.Snapshot?.ResetCredits is { Count: > 0 } credits ? string.Join("\n", credits.Select(c => $"{Display.SafeText(c.Title ?? "Crédit", _preferences.Current.PrivacyMode)} · expire le {Display.Exact(c.ExpiresAt)}\n{Display.Zone(c.ExpiresAt)}")) : "Aucune expiration communiquée par Codex.";
+    public string CreditDetails => Display.CreditDetails(_account.Snapshot, _preferences.Current.PrivacyMode);
     public bool HasError => !string.IsNullOrWhiteSpace(_account.Error);
     public string Error => Display.SafeText(_account.Error, _preferences.Current.PrivacyMode);
     public string Freshness

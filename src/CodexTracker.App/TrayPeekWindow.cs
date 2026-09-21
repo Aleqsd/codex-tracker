@@ -16,6 +16,8 @@ internal sealed class TrayPeekWindow : Window
     private readonly ProgressBar _shortBar = new() { Maximum = 100, Height = 3, Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBlock _reset = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 15, 0, 0) };
     private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+    private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 13, 0, 0) };
+    private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBlock _status = new() { FontSize = 10, Margin = new Thickness(0, 0, 0, 10) };
     private DrawingPoint _anchor;
     private bool _positionQueued, _positioning, _closed;
@@ -47,6 +49,10 @@ internal sealed class TrayPeekWindow : Window
         var weekly = Metric("Semaine", _weekly, _weeklyBar); weekly.Margin = new Thickness(0, 0, 15, 0);
         var shortWindow = Metric("5 heures", _short, _shortBar); shortWindow.Margin = new Thickness(15, 0, 0, 0);
         quotas.Children.Add(weekly); Grid.SetColumn(shortWindow, 1); quotas.Children.Add(shortWindow); content.Children.Add(quotas);
+        content.Children.Add(_reserve); content.Children.Add(_expirations);
+        Muted(_expirations);
+        ToolTipService.SetInitialShowDelay(_reserve, 150);
+        ToolTipService.SetShowDuration(_reserve, 60000);
         content.Children.Add(_reset); content.Children.Add(_freshness);
         var button = new Button { Content = "Ouvrir le suivi", Margin = new Thickness(0, 17, 0, 0), Padding = new Thickness(10, 7, 10, 7), HorizontalAlignment = HorizontalAlignment.Stretch };
         button.Click += (_, _) => { Hide(); open(); }; content.Children.Add(button);
@@ -83,6 +89,12 @@ internal sealed class TrayPeekWindow : Window
         _status.Text = account?.IsActiveInCodex == true ? "COMPTE ACTIF DANS CODEX" : "COMPTE AFFICHÉ DANS L’ICÔNE";
         _reset.Text = weekly?.ResetsAt is null ? "Reset hebdomadaire indisponible" : "Reset · " + Display.Countdown(weekly.ResetsAt);
         _reset.ToolTip = Display.Exact(weekly?.ResetsAt) + " · " + Display.Zone(weekly?.ResetsAt);
+        _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
+        _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };
+        _expirations.Text = snapshot?.ResetCredits is { Count: > 0 } credits
+            ? string.Join("\n", credits.OrderBy(c => c.ExpiresAt ?? DateTimeOffset.MaxValue).Select(c =>
+                c.ExpiresAt is { } expires ? $"{(expires <= DateTimeOffset.UtcNow ? "Expiration passée" : "Expire le")} {Display.Exact(expires)} · {Display.Zone(expires)}" : "Expiration non communiquée"))
+            : "Dates d’expiration non communiquées";
         if (snapshot is null) _freshness.Text = "Ouvrez votre compte dans Codex pour le détecter.";
         else
         {
