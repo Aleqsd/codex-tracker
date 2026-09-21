@@ -4,10 +4,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $installer = Join-Path $repoRoot "artifacts/CodexTracker-$Version-Setup.exe"
-if (!(Test-Path -LiteralPath $installer)) { throw 'Construisez l’installateur de cette version avant le manifeste.' }
+if (!(Test-Path -LiteralPath $installer)) { throw "Construisez l’installateur de cette version avant le manifeste." }
 $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
 $checksum = (Get-Content -LiteralPath "$installer.sha256").Split(' ')[0]
-if ($hash -ne $checksum) { throw 'Le SHA-256 de l’installateur diffère du fichier publié.' }
+if ($hash -ne $checksum) { throw "Le SHA-256 de l’installateur diffère du fichier publié." }
 $folder = Join-Path $repoRoot "artifacts/winget/manifests/a/Aleqsd/CodexTracker/$Version"
 New-Item -ItemType Directory -Path $folder -Force | Out-Null
 $url = "https://github.com/Aleqsd/codex-tracker/releases/download/v$Version/CodexTracker-$Version-Setup.exe"
