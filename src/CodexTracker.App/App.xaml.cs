@@ -64,6 +64,23 @@ public partial class App : System.Windows.Application
             }
             var preferences = new PreferencesStore(persistent: !IsDemo);
             if (IsDemo && demoInstance >= 0) preferences.Update(p => p with { McpEnabled = true });
+            var updates = new UpdateService();
+            if (!IsDemo)
+            {
+                await updates.LoadPreparedAsync();
+                // MCP startup must remain available within its connection deadline. Health probes
+                // never trigger another installation; the persisted claim also prevents rollback loops.
+                if (UpdateService.CanSelfUpdate && preferences.Current.InstallUpdatesAtStartup &&
+                    !e.Args.Contains("--assistant-start") && !e.Args.Contains("--update-health"))
+                {
+                    try
+                    {
+                        if (await updates.LaunchPreparedAsync(true, e.Args.Contains("--background")))
+                        { updates.Dispose(); await ExitAsync(); return; }
+                    }
+                    catch (Exception) { /* Continue opening the working version; allow a manual retry. */ }
+                }
+            }
             _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice")) : new Codex.TrackerService(options: new()
             {
                 RefreshIntervalProvider = () =>
@@ -78,7 +95,8 @@ public partial class App : System.Windows.Application
                 if (themeArgument >= 0 && themeArgument + 1 < e.Args.Length)
                     preferences.Update(p => p with { ThemeMode = e.Args[themeArgument + 1] == "light" ? CodexTracker.App.ThemeMode.Light : CodexTracker.App.ThemeMode.Dark });
             }
-            var window = new MainWindow(_service, IsDemo, preferences, new UpdateService());
+            var window = new MainWindow(_service, IsDemo, preferences, updates);
+            if (IsDemo && e.Args.Contains("--demo-update")) window.PresentUpdate("0.9.0", false);
             window.Title = windowTitle;
             MainWindow = window;
             var handle = new WindowInteropHelper(window).EnsureHandle();

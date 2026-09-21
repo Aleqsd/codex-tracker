@@ -34,3 +34,13 @@ Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte
 ## Agenda semaine (0.8)
 
 `ResetCalendar` groupe les instants connus par date dans un fuseau explicite, du lundi au dimanche. Les heures répétées restent deux instants distincts. `PriorityReserve` exige un compteur serveur positif et une expiration future connue ; l’entrée conserve le relevé et ses erreurs. `ResetsView` partage ses filtres entre Agenda et Semaine et préserve la navigation à chaque collecte. Ces projections ne modifient ni les rappels ni les échéances.
+
+## Mises à jour préparées (0.8.2)
+
+`AutomaticUpdater`, possédé par la fenêtre principale, recherche après 15 secondes puis toutes les six heures. Il respecte le cache HTTP et les limites GitHub ; un téléchargement interrompu est retenté après 15 minutes. Aucun ordonnanceur dans les fenêtres de réglages ou les ponts MCP. Le mode démo et les exécutables de développement ne démarrent pas ce moteur.
+
+`UpdateService.PrepareAsync` sérialise les téléchargements, contrôle source, taille, SHA-256 et archive, puis publie atomiquement `updates/prepared-update.json`. Le chemin préparé est construit à partir d’un UUID validé. Le hash de l’exécutable est revérifié après redémarrage et avant installation. Une ancienne préparation valide reste utilisable si le téléchargement d’une version plus récente échoue.
+
+Au démarrage normal, une préparation peut être installée avant l’ouverture des collecteurs. La tentative est enregistrée avant lancement du helper ; échec, arrêt ou restauration ne provoquent pas de boucle. Le démarrage à la demande d’un MCP et le contrôle de santé n’installent pas automatiquement. Le bouton de la fenêtre passe par le même helper, ferme proprement les ponts MCP, puis rouvre le tracker. Le helper conserve les vérifications, le délai de libération et la restauration existants.
+
+Pour prévisualiser le bandeau avec des données fictives : ajouter `--demo-update` à une commande `--demo --preview ...`. Cette démonstration ne peut pas installer une mise à jour.

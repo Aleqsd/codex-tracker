@@ -8,9 +8,9 @@ Le tracker observe le compte connecté dans Codex et conserve les identités, of
 
 Il ne se connecte pas à un autre compte et ne modifie pas la session de Codex. La collecte utilise la CLI Codex installée, qui communique avec les services OpenAI pour le compte actif.
 
-## Échanges facultatifs
+## Échanges réseau
 
-- Une recherche de mises à jour contacte GitHub ; GitHub reçoit les informations ordinaires d’une requête réseau, dont l’adresse IP. Le tracker ne lui envoie pas les comptes ni les quotas.
+- Par défaut, le tracker recherche et télécharge les mises à jour sur GitHub au démarrage puis toutes les six heures. GitHub reçoit les informations ordinaires d’une requête réseau, dont l’adresse IP ; aucun compte ni quota ne lui est envoyé. Désactivez le téléchargement automatique dans **Réglages → Application** pour ne faire que des recherches manuelles.
 - Les notifications Windows restent sur le PC. Les connecteurs SMS/appels Twilio et email SendGrid, désactivés par défaut, transmettent les destinations et messages au prestataire lorsque l’utilisateur les configure et les active. Leurs conditions et coûts s’appliquent.
 - L’import Google Agenda prépare un fichier local à importer par l’utilisateur. L’ajout d’une échéance via un lien Google transmet son contenu dans un brouillon d’événement.
 - Le MCP est désactivé par défaut. Une fois activé, les outils transmettent les données demandées au client assistant connecté. Le traitement effectué par ce client relève de sa propre configuration. Les secrets enregistrés via MCP ne sont pas renvoyés, mais leur saisie peut apparaître dans le contexte de l’assistant.

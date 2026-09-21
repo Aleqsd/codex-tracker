@@ -1,3 +1,12 @@
+# Version 0.8.2 — mises à jour et zone de notification
+
+- 305 tests métier, dont 14 nouveaux cas : téléchargement partagé, préparation atomique, validation après redémarrage, mode hors ligne, annulation, horaires, anciennes préférences, anti-boucle et conservation du paquet précédent après un échec. La revue a aussi corrigé le nettoyage d’une préparation valide après un arrêt entre l’écriture du journal et le retrait du marqueur temporaire.
+- Contrôles WPF du bandeau clair/sombre, du focus clavier, du téléchargement sans bouton prématuré, des deux préférences indépendantes et du masquage/restauration de la fenêtre sans entrée dans la barre des tâches. Aperçus fictifs en fenêtre compacte, 100 % et 200 % ; le mode `--demo-update` ne peut pas installer de mise à jour.
+- Le helper existant conserve les tests de verrouillage, remplacement et restauration. Les tests de téléchargement et de lancement métier sont simulés : ils ne constituent pas une mise à jour réelle vers une future Release.
+- Le test MCP sur l’exécutable autonome vérifie notamment la libération des deux processus clients lors de la fermeture du tracker. Aucun SMS, appel ou email réel.
+
+![Bandeau de mise à jour sur des comptes fictifs](updates.png)
+
 # Correctif 0.8.1
 
 Bouton **Réduire** lisible dans la barre d’état, en bas à droite. Le bouton supérieur reste disponible. Deux contrôles WPF supplémentaires vérifient sa visibilité et la réduction dans la barre des tâches : 291 tests métier, 73 contrôles WPF et 14 contrôles MCP réussis. Aperçus Comptes clair/sombre et compact, dont rendu compact à 200 % ; tour GIF actualisé avec données fictives.

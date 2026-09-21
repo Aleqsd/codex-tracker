@@ -79,6 +79,10 @@ internal sealed class SettingsWindow : ThemedWindow
         startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; _page.Children.Add(startup);
         Section("Mises à jour", true);
         _page.Children.Add(Ui.Text($"Version {_updates.CurrentVersion}", 12));
+        Toggle("Télécharger automatiquement les mises à jour", "Recherche au démarrage puis toutes les 6 heures sur GitHub. Le suivi continue pendant le téléchargement.",
+            p => p.DownloadUpdatesAutomatically, (p, value) => p with { DownloadUpdatesAutomatically = value });
+        Toggle("Installer au prochain démarrage du tracker", "Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation.",
+            p => p.InstallUpdatesAtStartup, (p, value) => p with { InstallUpdatesAtStartup = value });
         var lastUpdate = demo ? null : updates.ReadLastResult();
         _updateStatus = Ui.Text(demo ? "Les mises à jour sont désactivées dans la démonstration." : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : "Vérifiez les versions publiées sur le dépôt officiel.", 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 7, 0, 12); _page.Children.Add(_updateStatus);
         var actions = new WrapPanel();
@@ -96,12 +100,13 @@ internal sealed class SettingsWindow : ThemedWindow
             ShowCheckResult(cached);
             if (lastUpdate is { Success: false }) _updateStatus.Text = Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) + "\n" + _updateStatus.Text;
         }
+        if (!demo) { updates.PreparationChanged += PreparationChanged; ShowPreparation(); }
         _updateTimer.Tick += (_, _) => SyncUpdateButton();
         _updateTimer.Start();
         var quit = new Button { Content = "Quitter Codex Tracker", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-10, 19, 0, 0) };
         quit.Click += async (_, _) => await ((App)System.Windows.Application.Current).ExitAsync(); _page.Children.Add(quit);
         preferences.Changed += PreferencesChanged;
-        Closed += (_, _) => { _closed = true; _updateTimer.Stop(); _lifetime.Cancel(); preferences.Changed -= PreferencesChanged; };
+        Closed += (_, _) => { _closed = true; _updateTimer.Stop(); _lifetime.Cancel(); preferences.Changed -= PreferencesChanged; updates.PreparationChanged -= PreparationChanged; };
         Sync();
         ShowPage("Général");
     }
@@ -171,6 +176,8 @@ internal sealed class SettingsWindow : ThemedWindow
             var result = await _updates.CheckDetailedAsync(_lifetime.Token);
             if (_closed) return;
             ShowCheckResult(result);
+            if (_preferences.Current.DownloadUpdatesAutomatically && result.IsVerifiedNow && result.Release is { } release)
+                await _updates.PrepareAsync(release, _lifetime.Token);
         }
         catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Recherche annulée."; }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
@@ -192,8 +199,22 @@ internal sealed class SettingsWindow : ThemedWindow
     }
     private void SyncUpdateButton()
     {
-        _check.IsEnabled = !_demo && !_updateBusy && !(_nextCheckAt > DateTimeOffset.UtcNow);
+        _check.IsEnabled = !_demo && !_updateBusy && !_updates.IsPreparing && !(_nextCheckAt > DateTimeOffset.UtcNow);
+        _install.IsEnabled = !_demo && !_updateBusy && !_updates.IsPreparing;
         _check.ToolTip = _nextCheckAt > DateTimeOffset.UtcNow ? $"Disponible à {_nextCheckAt.Value.ToLocalTime():HH:mm:ss}." : null;
+    }
+    private void PreparationChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(ShowPreparation);
+    private void ShowPreparation()
+    {
+        if (_closed) return;
+        if (_updates.PreparationMessage is { } message) _updateStatus.Text = message;
+        if (_updates.Prepared is { } ready)
+        {
+            _release = ready.Release;
+            _install.Content = "Mettre à jour et relancer";
+            _install.Visibility = Visibility.Visible;
+        }
+        SyncUpdateButton();
     }
     private async Task InstallAsync()
     {
@@ -201,11 +222,11 @@ internal sealed class SettingsWindow : ThemedWindow
         _updateBusy = true; SyncUpdateButton(); _install.IsEnabled = false; _updateStatus.Text = "Téléchargement et vérification de la mise à jour…";
         try
         {
-            await _updates.StageAndLaunchAsync(_release, Environment.ProcessId, _lifetime.Token);
-            if (!_closed) await ((App)System.Windows.Application.Current).ExitAsync();
+            await _updates.PrepareAsync(_release, _lifetime.Token);
+            if (!_closed) await ((MainWindow)Owner).InstallReadyUpdateAsync();
         }
         catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Installation annulée."; }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
-        finally { _updateBusy = false; if (!_closed) { SyncUpdateButton(); _install.IsEnabled = true; } }
+        finally { _updateBusy = false; if (!_closed) SyncUpdateButton(); }
     }
 }

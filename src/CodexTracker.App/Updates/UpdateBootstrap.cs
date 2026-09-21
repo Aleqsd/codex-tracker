@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace CodexTracker.App.Updates;
 
-internal sealed record UpdateManifest(string Target, string StagedExecutable, string OldHash, string NewHash, int ParentId, long ParentStartedUtcTicks);
+internal sealed record UpdateManifest(string Target, string StagedExecutable, string OldHash, string NewHash, int ParentId, long ParentStartedUtcTicks, bool RelaunchInBackground = true);
 
 public static class UpdateBootstrap
 {
@@ -40,7 +40,7 @@ public static class UpdateBootstrap
             if (File.Exists(Path.Combine(stage, "cancel"))) { await File.WriteAllTextAsync(Path.Combine(stage, "complete"), "cancelled"); return true; }
             var health = Path.Combine(stage, "health.ready");
             await UpdateInstaller.InstallAsync(manifest.Target, manifest.StagedExecutable, manifest.OldHash, manifest.NewHash,
-                (target, verifyHealth, token) => LaunchAsync(target, verifyHealth ? health : null, token));
+                (target, verifyHealth, token) => LaunchAsync(target, verifyHealth ? health : null, manifest.RelaunchInBackground, token));
             await File.WriteAllTextAsync(Path.Combine(stage, "complete"), "complete");
             await WriteResultAsync("La mise à jour a été installée.", true);
         }
@@ -74,11 +74,11 @@ public static class UpdateBootstrap
         return full;
     }
 
-    private static async Task<bool> LaunchAsync(string target, string? health, CancellationToken token)
+    private static async Task<bool> LaunchAsync(string target, string? health, bool background, CancellationToken token)
     {
         if (health is not null && File.Exists(health)) File.Delete(health);
         var info = new ProcessStartInfo(target) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(target)! };
-        info.ArgumentList.Add("--background");
+        if (background) info.ArgumentList.Add("--background");
         if (health is not null) { info.ArgumentList.Add("--update-health"); info.ArgumentList.Add(health); }
         using var process = Process.Start(info);
         if (process is null) return false;

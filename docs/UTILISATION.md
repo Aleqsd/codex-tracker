@@ -21,7 +21,11 @@ La distribution **WinGet** est préparée sous l’identifiant `Aleqsd.CodexTrac
 
 Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaires. Le runtime .NET est inclus. Le démarrage avec Windows est facultatif, depuis les réglages du tracker.
 
-Une version portable ZIP est également disponible : extrayez-la dans un dossier permanent puis lancez `CodexTracker.exe`. Dans **Réglages → Mises à jour**, vous pouvez rechercher une version, la télécharger puis relancer le tracker. Le téléchargement utilise le dépôt public, vérifie l’empreinte SHA-256 et conserve une copie de secours jusqu’au démarrage réussi de la nouvelle version. Cette opération ne ferme pas Codex.
+Une version portable ZIP est également disponible : extrayez-la dans un dossier permanent puis lancez `CodexTracker.exe`.
+
+Par défaut, le tracker recherche une nouvelle version 15 secondes après son démarrage puis toutes les six heures, et la télécharge en arrière-plan. Quand elle est vérifiée, un bandeau propose **Mettre à jour et relancer**. Si vous ne cliquez pas, la version préparée est installée au prochain démarrage du tracker, sans devoir la télécharger à nouveau. Le démarrage avec Windows reste un réglage séparé.
+
+Dans **Réglages → Application**, vous pouvez désactiver séparément le téléchargement automatique et l’installation au démarrage, ou rechercher manuellement une version. Le téléchargement utilise le dépôt public et vérifie l’empreinte SHA-256. L’installation conserve une copie de secours jusqu’au démarrage réussi de la nouvelle version. Elle préserve vos comptes et réglages, ferme proprement les connexions MCP du tracker et ne ferme pas Codex. Après un échec, aucune boucle de réinstallation : la version précédente reste accessible et un nouvel essai nécessite un clic. Le démarrage à la demande d’un assistant MCP reporte l’installation automatique.
 
 Le résultat de la recherche est conservé localement avec sa date. Les vérifications simultanées sont regroupées, et le bouton attend au moins cinq minutes après une vérification réussie. Si GitHub limite les requêtes, le tracker respecte le délai annoncé, même après redémarrage ; une erreur réseau déclenche aussi un délai progressif. Un ancien résultat reste explicitement présenté comme un cache, sans annoncer que l’application est à jour. Le lien **Voir les versions sur GitHub** reste accessible pour consulter la Release manuellement.
 

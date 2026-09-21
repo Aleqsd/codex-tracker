@@ -15,6 +15,9 @@ public partial class MainWindow : Window
     private readonly DashboardViewModel _model;
     private readonly PreferencesStore _preferences;
     private readonly UpdateService _updates;
+    private readonly AutomaticUpdater? _automaticUpdates;
+    private readonly bool _demo;
+    private bool _installingUpdate;
     private readonly ResetsView _resets;
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
@@ -29,12 +32,15 @@ public partial class MainWindow : Window
 
     internal MainWindow(ITrackerService service, bool demo, PreferencesStore preferences, UpdateService updates)
     {
-        _service = service; _preferences = preferences; _updates = updates;
+        _service = service; _preferences = preferences; _updates = updates; _demo = demo;
+        if (!demo && UpdateService.CanSelfUpdate) _automaticUpdates = new(updates);
         Reminders = new(service, preferences, demo);
         Commands = new(preferences, Reminders.Secrets);
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences);
         InitializeComponent();
+        _updates.PreparationChanged += UpdatePreparationChanged;
+        UpdatePresentation();
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync()); ResetsTab.Content = _resets;
         if (demo) Title = "Codex Tracker (démo)";
         DataContext = _model;
@@ -51,6 +57,11 @@ public partial class MainWindow : Window
     {
         await _service.InitializeAsync(_lifetime.Token);
         UpdateModel(); _clockTimer.Start();
+        if (_automaticUpdates is not null)
+        {
+            _automaticUpdates.SetEnabled(_preferences.Current.DownloadUpdatesAutomatically);
+            _ = _automaticUpdates.RunAsync();
+        }
     }
     private void UpdateModel()
     {
@@ -58,7 +69,11 @@ public partial class MainWindow : Window
         _model.Update(_service.State); _resets.Update(_service.State);
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
-    private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
+    private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() =>
+    {
+        UpdateModel(); UpdatePresentation();
+        _automaticUpdates?.SetEnabled(!_installingUpdate && _preferences.Current.DownloadUpdatesAutomatically);
+    });
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; HideToTray(); } }
     private void HideToTray() { Hide(); ShowInTaskbar = false; }
@@ -78,6 +93,7 @@ public partial class MainWindow : Window
         Assistant?.Dispose();
         foreach (Window child in OwnedWindows.Cast<Window>().ToArray()) child.Close();
         _service.Changed -= Service_Changed; _preferences.Changed -= Preferences_Changed; Theme.Changed -= Theme_Changed;
+        _automaticUpdates?.Dispose(); _updates.PreparationChanged -= UpdatePreparationChanged;
         Reminders.Dispose(); Theme.Dispose(); _updates.Dispose();
     }
     private void ApplyChrome()
@@ -89,6 +105,44 @@ public partial class MainWindow : Window
     }
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Hide_Click(object sender, RoutedEventArgs e) => HideToTray();
+    private void UpdatePreparationChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdatePresentation);
+    private void UpdatePresentation()
+    {
+        if (_canClose) return;
+        PresentUpdate(_updates.Prepared?.Release.Version, _updates.IsPreparing);
+    }
+    internal void PresentUpdate(string? version, bool downloading)
+    {
+        UpdateBanner.Visibility = version is not null || downloading ? Visibility.Visible : Visibility.Collapsed;
+        UpdateHeadline.Text = downloading ? "Une mise à jour se télécharge…" : $"Version {version} prête à installer";
+        UpdateHint.Text = downloading ? "Le suivi continue en arrière-plan." : _preferences.Current.InstallUpdatesAtStartup
+            ? "Maintenant, ou automatiquement au prochain démarrage du tracker." : "Téléchargée et vérifiée. Vos comptes et réglages sont conservés.";
+        if (!_installingUpdate && _updates.Prepared?.AutomaticAttempted == true) UpdateHint.Text = "Installation précédente interrompue. Vous pouvez réessayer.";
+        UpdateNowButton.Visibility = version is not null && !downloading ? Visibility.Visible : Visibility.Collapsed;
+        UpdateNowButton.IsEnabled = !_installingUpdate;
+        UpdateNowButton.Content = _installingUpdate ? "Installation…" : "Mettre à jour et relancer";
+    }
+    private async void UpdateNow_Click(object sender, RoutedEventArgs e)
+    {
+        try { await InstallReadyUpdateAsync(); }
+        catch (Exception error) { if (!_canClose) ShowMessage("Mise à jour indisponible", error.Message); }
+    }
+    internal async Task InstallReadyUpdateAsync()
+    {
+        if (_demo || _installingUpdate || _canClose) return;
+        _installingUpdate = true; _automaticUpdates?.SetEnabled(false); UpdatePresentation();
+        try
+        {
+            if (!await _updates.LaunchPreparedAsync(false, false, _lifetime.Token))
+                throw new IOException("La mise à jour n’est plus prête. Recherchez-la à nouveau dans les réglages.");
+            await ((App)System.Windows.Application.Current).ExitAsync();
+        }
+        finally
+        {
+            _installingUpdate = false;
+            if (!_canClose) { UpdatePresentation(); _automaticUpdates?.SetEnabled(_preferences.Current.DownloadUpdatesAutomatically); }
+        }
+    }
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
     public async Task RefreshAsync()
     {

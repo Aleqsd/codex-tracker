@@ -1,6 +1,6 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center">Vos quotas Codex, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.1/CodexTracker-0.8.1-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.2/CodexTracker-0.8.2-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
 <p align="center">Windows 11 · x64 · Gratuit · Données locales — nécessite Codex installé</p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
@@ -12,7 +12,7 @@
 2. **Ouvrez Codex.** Le tracker détecte le compte connecté. Vos autres comptes apparaissent quand vous les utilisez dans Codex.
 3. **Gardez l’icône près de l’horloge.** Survolez-la pour un aperçu, cliquez pour ouvrir le tableau de bord.
 
-Le bouton **Réduire**, en bas à droite, ou **—** en haut réduit la fenêtre dans la barre des tâches ; **✕** la masque près de l’horloge. Le tracker continue à fonctionner.
+Le bouton **flèche vers un bac**, à côté de **—**, masque le tracker près de l’horloge et le retire de la barre des tâches. Le suivi continue.
 
 ## L’essentiel, en un coup d’œil
 
@@ -32,7 +32,7 @@ Le bouton **Réduire**, en bas à droite, ou **—** en haut réduit la fenêtre
 ## Installer autrement ou aller plus loin
 
 - **Sans installation :** prenez le ZIP portable dans les [Releases](https://github.com/Aleqsd/codex-tracker/releases). Le petit fichier `.sha256` sert aux mises à jour automatiques ; vous pouvez l’ignorer.
-- **Mises à jour :** ouvrez **Réglages → Application**. Comptes et réglages sont conservés.
+- **Mises à jour :** téléchargement automatique, puis bouton **Mettre à jour et relancer** ou installation au prochain démarrage. Options dans **Réglages → Application** ; comptes et réglages conservés.
 - **WinGet :** [publication soumise à Microsoft](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
 - [Guide d’utilisation](docs/UTILISATION.md) · [Confidentialité](docs/PRIVACY.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues)
 

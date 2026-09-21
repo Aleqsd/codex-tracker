@@ -11,6 +11,8 @@ internal sealed record AccountAppearance(string? Name = null, string? AvatarFile
 internal sealed record TrackerPreferences
 {
     public bool McpEnabled { get; init; }
+    public bool DownloadUpdatesAutomatically { get; init; } = true;
+    public bool InstallUpdatesAtStartup { get; init; } = true;
     [JsonIgnore] public bool PrivacyMode => false; // Legacy preference is ignored.
     public ThemeMode ThemeMode { get; init; } = ThemeMode.System;
     public SortMode SortMode { get; init; } = SortMode.Active;

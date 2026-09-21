@@ -9,7 +9,7 @@ using Xunit;
 
 namespace CodexTracker.Tests;
 
-public sealed class UpdateTests
+public sealed partial class UpdateTests
 {
     [Theory]
     [InlineData("0.10.0", "0.9.0", 1)]

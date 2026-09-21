@@ -95,6 +95,17 @@ public sealed partial class UpdateService : IDisposable
     public async Task StageAndLaunchAsync(UpdateRelease release, int processId, CancellationToken cancellationToken = default)
     {
         if (processId != Environment.ProcessId) throw new InvalidOperationException("Le processus de mise à jour ne correspond pas à cette application.");
+        await PrepareAsync(release, cancellationToken);
+        if (!await LaunchPreparedAsync(false, false, cancellationToken))
+            throw new IOException("La mise à jour n’est plus prête. Recherchez-la à nouveau.");
+    }
+
+    public static bool CanSelfUpdate => Environment.ProcessPath is { } path &&
+        string.Equals(Path.GetFileName(path), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase) &&
+        !File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "CodexTracker.dll"));
+
+    public async Task<bool> LaunchPreparedAsync(bool automatic, bool background, CancellationToken cancellationToken = default)
+    {
         var target = Environment.ProcessPath ?? throw new IOException("L’application en cours est introuvable.");
         if (!string.Equals(Path.GetFileName(target), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase))
             throw new IOException("Utilisez la version installée ou portable pour effectuer la mise à jour.");
@@ -102,17 +113,23 @@ public sealed partial class UpdateService : IDisposable
             throw new IOException("La mise à jour automatique nécessite la version autonome installée ou portable.");
         UpdatePackage.RejectReparsePoints(target);
         UpdatePackage.RejectReparsePoints(UpdatesRoot);
+        var prepared = await ClaimPreparedAsync(automatic, cancellationToken);
+        if (prepared is null) return false;
         var stage = Path.Combine(UpdatesRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(stage);
         var helperStarted = false;
         try
         {
-            var executable = await StagePackageAsync(release, stage, cancellationToken);
+            var executable = Path.Combine(stage, "payload", "CodexTracker.exe");
+            Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
+            File.Copy(PreparedExecutable(prepared), executable, false);
+            if (!string.Equals(await UpdatePackage.HashAsync(executable, cancellationToken), prepared.ExecutableHash, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("Le fichier téléchargé a changé depuis la préparation.");
             var helper = Path.Combine(stage, "CodexTracker.UpdateHelper.exe");
             File.Copy(target, helper, false);
             using var current = Process.GetCurrentProcess();
             var manifest = new UpdateManifest(target, executable, await UpdatePackage.HashAsync(target, cancellationToken),
-                await UpdatePackage.HashAsync(executable, cancellationToken), processId, current.StartTime.ToUniversalTime().Ticks);
+                prepared.ExecutableHash, Environment.ProcessId, current.StartTime.ToUniversalTime().Ticks, background);
             var manifestPath = Path.Combine(stage, "update.json");
             await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest), cancellationToken);
             var info = new ProcessStartInfo(helper) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = stage };
@@ -137,6 +154,7 @@ public sealed partial class UpdateService : IDisposable
                 throw;
             }
             // The caller now closes this app normally. The helper never closes Codex or kills this app.
+            return true;
         }
         catch
         {
@@ -227,15 +245,25 @@ public sealed partial class UpdateService : IDisposable
         }
     }
 
-    private static void CleanupOldStages()
+    internal void CleanupOldStages()
     {
         try
         {
-            UpdatePackage.RejectReparsePoints(UpdatesRoot);
-            if (!Directory.Exists(UpdatesRoot)) return;
-            foreach (var directory in Directory.EnumerateDirectories(UpdatesRoot).Take(100))
+            UpdatePackage.RejectReparsePoints(PreparationRoot);
+            if (!Directory.Exists(PreparationRoot)) return;
+            string? preparedId = null;
+            if (File.Exists(PreparedPath))
+            {
+                UpdatePackage.RejectReparsePoints(PreparedPath);
+                if (new FileInfo(PreparedPath).Length > 16384) return;
+                preparedId = JsonSerializer.Deserialize<PreparedUpdate>(File.ReadAllText(PreparedPath))?.StageId;
+            }
+            foreach (var directory in Directory.EnumerateDirectories(PreparationRoot).Take(100))
             {
                 if (!Guid.TryParseExact(Path.GetFileName(directory), "N", out _)) continue;
+                // A crash after committing prepared-update.json may leave an abandoned marker.
+                // Never delete the package still referenced by the current ready record.
+                if (string.Equals(Path.GetFileName(directory), preparedId, StringComparison.OrdinalIgnoreCase)) continue;
                 if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) continue;
                 var marker = File.Exists(Path.Combine(directory, "complete")) ? Path.Combine(directory, "complete") : Path.Combine(directory, "abandoned");
                 if (!File.Exists(marker) || DateTime.UtcNow - File.GetLastWriteTimeUtc(marker) < TimeSpan.FromDays(1)) continue;
@@ -251,7 +279,7 @@ public sealed partial class UpdateService : IDisposable
                 if (safe) Directory.Delete(directory, true);
             }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException) { }
     }
 
     public void Dispose()

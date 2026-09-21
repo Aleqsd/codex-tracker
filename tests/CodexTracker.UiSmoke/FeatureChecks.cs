@@ -42,6 +42,23 @@ internal static class FeatureChecks
             var resetsTab = (TabItem)window.FindName("ResetsTab");
             var resets = (ResetsView)resetsTab.Content;
             Check(mainTabs.SelectedIndex == 0, "Dashboard opens on Accounts by default");
+            var updateBanner = (Border)window.FindName("UpdateBanner");
+            var updateButton = (Button)window.FindName("UpdateNowButton");
+            Check(!updateBanner.IsVisible, "Update banner takes no space when no update is ready");
+            window.PresentUpdate(null, true); window.UpdateLayout();
+            Check(updateBanner.IsVisible && !updateButton.IsVisible, "Download state never offers premature installation");
+            foreach (var mode in new[] { ThemeMode.Dark, ThemeMode.Light })
+            {
+                window.Preferences.Update(p => p with { ThemeMode = mode }); await Task.Delay(50);
+                window.PresentUpdate("0.9.0", false); window.UpdateLayout();
+                Check(updateBanner.IsVisible && updateButton.IsVisible && updateButton.ActualWidth > 120,
+                    $"Prepared update has a readable action in {mode}");
+                updateButton.Focus();
+                Check(updateButton.IsKeyboardFocused, "Prepared update action is reachable by keyboard");
+                await window.InstallReadyUpdateAsync();
+                Check(window.IsVisible && !window.Dispatcher.HasShutdownStarted, "Fictional preview cannot install a real update");
+            }
+            window.PresentUpdate(null, false);
             mainTabs.SelectedItem = resetsTab; await Task.Delay(100);
             Check(resets.IsVisible && Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("À venir")), "Resets tab renders a chronological schedule");
             var resetFilter = Field<ComboBox>(resets, "_accounts");
@@ -160,6 +177,16 @@ internal static class FeatureChecks
                 "Missing active account never falls back to the formerly selected account");
             var settings = new SettingsWindow(window, preferences, new UpdateService(), theme, true); settings.Show();
             Check(settings.CurrentPage == "Général" && Tree(settings).OfType<Button>().Any(b => b.Content?.ToString() == "Rappels"), "Settings open on General with section navigation");
+            settings.ShowPage("Application"); await Task.Delay(50);
+            var autoDownload = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Télécharger automatiquement les mises à jour");
+            var autoInstall = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Installer au prochain démarrage du tracker");
+            autoDownload.IsChecked = false; autoDownload.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(!preferences.Current.DownloadUpdatesAutomatically && preferences.Current.InstallUpdatesAtStartup,
+                "Disabling automatic downloads preserves the independent startup preference");
+            autoInstall.IsChecked = false; autoInstall.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(!preferences.Current.InstallUpdatesAtStartup && !preferences.Current.DownloadUpdatesAutomatically,
+                "Automatic update controls persist independently through application commands");
+            settings.ShowPage("Général"); await Task.Delay(50);
             Field<ComboBox>(settings, "_refreshSelector").SelectedValue = 1;
             var adaptive = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Adapter à mon activité");
             adaptive.IsChecked = true; adaptive.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
