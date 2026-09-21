@@ -8,6 +8,13 @@ public sealed record CalendarEntry(string Uid, string Title, string Description,
 
 public static class CalendarExport
 {
+    // Google documents this link for a one-off event that the user saves in the browser.
+    public static Uri GoogleEventLink(CalendarEntry entry) => new(
+        "https://calendar.google.com/calendar/r/eventedit?action=TEMPLATE" +
+        "&dates=" + Uri.EscapeDataString(Utc(entry.StartsAt) + "/" + Utc(entry.StartsAt.AddMinutes(5))) +
+        "&stz=Etc%2FUTC&etz=Etc%2FUTC&text=" + Uri.EscapeDataString(entry.Title) +
+        "&details=" + Uri.EscapeDataString(entry.Description));
+
     public static string Identity(Guid accountId, string kind, string id, DateTimeOffset at) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{accountId:N}|{kind}|{id}|{at.ToUnixTimeSeconds()}"))).ToLowerInvariant();
 

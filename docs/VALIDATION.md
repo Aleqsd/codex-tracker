@@ -19,6 +19,12 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |
 | Comportements Windows | 17 tests de placement et 13 contrôles sur de vrais HWND, décrits ci-dessous |
 
+## Ajouts de la version 0.5.4
+
+- 215 tests métier et 37 contrôles WPF réussis. Les liens Google conservent les instants UTC lors du changement d’heure et encodent les caractères spéciaux sans ajouter de paramètres.
+- Le clic d’import prépare un vrai fichier local avant l’ouverture du navigateur simulée ; les tests couvrent la réutilisation, le brouillon individuel, le refus d’une échéance périmée et l’échec du navigateur sans perte du fichier.
+- Captures WPF clair/sombre inspectées. Le lien Google documenté a été ouvert avec un événement fictif dans un navigateur sans session Google, qui a affiché la page de connexion/présentation du service. Aucun événement n’a été ajouté à un agenda réel ; le formulaire connecté et l’import final restent à vérifier par l’utilisateur.
+
 ## Ajouts de la version 0.5.3
 
 - 32 contrôles WPF réussis. Deux tests supplémentaires rendent un PNG transparent dans le tableau de bord et dans l’aperçu, en thèmes sombre et clair : le pixel central correspond au fond neutre du thème et les initiales sont absentes.

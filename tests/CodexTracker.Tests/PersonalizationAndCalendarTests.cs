@@ -76,6 +76,27 @@ public sealed class PersonalizationAndCalendarTests
         Assert.Equal(other.Id, remaining.AccountId);
     }
 
+    [Theory]
+    [InlineData("2026-10-25T02:30:00+02:00", "20261025T003000Z/20261025T003500Z")]
+    [InlineData("2026-10-25T02:30:00+01:00", "20261025T013000Z/20261025T013500Z")]
+    public void GoogleDraftPreservesDstInstants(string at, string dates)
+    {
+        var uri = CalendarExport.GoogleEventLink(new("id", "Reset", "", DateTimeOffset.Parse(at)));
+        Assert.Equal("https", uri.Scheme); Assert.Equal("calendar.google.com", uri.Host);
+        Assert.Contains("dates=" + dates, Uri.UnescapeDataString(uri.Query));
+    }
+
+    [Fact]
+    public void GoogleDraftEncodesTextWithoutInjectingParameters()
+    {
+        var title = "Été 😀 &add=other@example.test#fragment";
+        var description = "First\nSecond &dates=wrong";
+        var uri = CalendarExport.GoogleEventLink(new("id", title, description, Now));
+        var fields = uri.Query.TrimStart('?').Split('&').Select(p => p.Split('=', 2)).ToDictionary(p => p[0], p => Uri.UnescapeDataString(p[1]));
+        Assert.Equal(6, fields.Count); Assert.Equal(title, fields["text"]); Assert.Equal(description, fields["details"]);
+        Assert.Empty(uri.Fragment); Assert.False(fields.ContainsKey("add"));
+    }
+
     [Fact]
     public void CalendarOnlyExportsFutureKnownDatesWithStablePrivateIdentifiers()
     {

@@ -120,12 +120,25 @@ internal static class FeatureChecks
             status.Update(service.State with { Accounts = service.State.Accounts.Select(a => a.IsActiveInCodex ? a with { Error = "offline" } : a).ToArray() });
             Check(status.StatusText.Contains(observed.ToLocalTime().ToString("HH:mm:ss")) && status.StatusText.Contains("échec"), "Failed refresh keeps the last successful observation time");
 
-            var calendar = new CalendarWindow(window, service, preferences, theme); calendar.Show();
-            Check(!Field<Button>(calendar, "_google").IsEnabled, "Calendar guides export before opening Google import");
+            var opened = new List<Uri>();
+            var calendar = new CalendarWindow(window, service, preferences, theme, openBrowser: opened.Add); calendar.Show();
+            Check(Field<Button>(calendar, "_google").IsEnabled, "Google import is available without a prior manual export");
+            Field<Button>(calendar, "_google").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            var prepared = Field<TextBox>(calendar, "_path").Text;
+            Check(File.Exists(prepared) && prepared.StartsWith(directory) && File.ReadAllText(prepared).Contains("Studio") && opened.Single().AbsolutePath.EndsWith("/settings/export") && Field<Border>(calendar, "_ready").IsVisible,
+                "Google button prepares a private ICS file and displays the remaining import steps");
+            Field<Button>(calendar, "_google").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(Field<TextBox>(calendar, "_path").Text == prepared && Directory.GetFiles(Path.GetDirectoryName(prepared)!).Length == 1, "Repeated import clicks reuse the same prepared file");
+            Tree(calendar).OfType<Expander>().Single().IsExpanded = true; await Task.Delay(100);
+            Tree(calendar).OfType<Button>().First(b => b.Tag is CalendarEntry).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(opened.Last().AbsolutePath.EndsWith("/eventedit") && opened.Last().Query.Contains("action=TEMPLATE") && Field<TextBlock>(calendar, "_status").Text.Contains("Enregistrer"), "Single event button opens a Google draft without claiming it was saved");
+            var countBefore = opened.Count; calendar.OpenEntry(new("old", "Old", "", DateTimeOffset.UtcNow.AddDays(-1)));
+            Check(opened.Count == countBefore && Field<TextBlock>(calendar, "_status").Text.Contains("changé"), "Outdated events cannot open a stale Google draft");
             var icsPath = Path.Combine(directory, "calendar.ics"); calendar.ExportToFile(icsPath);
-            var ics = File.ReadAllText(icsPath);
-            Check(ics.Contains("BEGIN:VEVENT") && ics.Contains("Studio") && Field<Button>(calendar, "_google").IsEnabled,
-                "Calendar writes account display names to ICS and enables the Google import action"); calendar.Close();
+            Check(File.ReadAllText(icsPath).Contains("BEGIN:VEVENT") && File.ReadAllText(icsPath).Contains("Studio"), "Manual calendar export still includes account display names"); calendar.Close();
+            var failedBrowser = new CalendarWindow(window, service, preferences, theme, openBrowser: _ => throw new IOException()); failedBrowser.Show();
+            Field<Button>(failedBrowser, "_google").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(File.Exists(Field<TextBox>(failedBrowser, "_path").Text) && Field<TextBlock>(failedBrowser, "_status").Text.Contains("n’a pas pu"), "A browser failure preserves the prepared file and reports the failure"); failedBrowser.Close();
 
             var missing = Path.Combine(directory, "avatars", appearance.AvatarFile!); AvatarStore.Remove(directory, appearance.AvatarFile);
             Check(!File.Exists(missing) && AvatarStore.Load(directory, appearance.AvatarFile) is null, "Removing an avatar restores the initials fallback");

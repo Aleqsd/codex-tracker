@@ -33,7 +33,7 @@ internal sealed class SettingsWindow : ThemedWindow
     {
         _preferences = preferences; _updates = updates; _demo = demo;
         MinWidth = 640;
-        var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(154) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
+        var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
         var sidebar = new Border { Child = _navigation, BorderThickness = new Thickness(0, 0, 1, 0) };
         sidebar.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); layout.Children.Add(sidebar);
         Grid.SetColumn(_pageScroll, 1); layout.Children.Add(_pageScroll);
@@ -64,9 +64,9 @@ internal sealed class SettingsWindow : ThemedWindow
         Toggle("Prévenir avant l’expiration des réserves", "Un rappel par reset, d’après le dernier relevé disponible.", p => p.ExpiryNotifications, (p, v) => p with { ExpiryNotifications = v });
         _expirySelector = Choice("Prévenir à l’avance", "DropdownClockIcon", [new(24, "24 heures"), new(72, "3 jours"), new(168, "7 jours")], v => Save(p => p with { ExpiryLeadHours = v }));
         Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
-        var calendar = new Button { Content = "Exporter les échéances…", HorizontalAlignment = HorizontalAlignment.Left };
+        var calendar = new Button { Content = "Ouvrir les options Google Agenda…", HorizontalAlignment = HorizontalAlignment.Left };
         calendar.Click += (_, _) => ((MainWindow)owner).OpenCalendar(); _page.Children.Add(calendar);
-        var calendarHint = Ui.Text("Fichier .ics compatible Google Calendar, Outlook et Apple Calendar.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 7, 0, 0); _page.Children.Add(calendarHint);
+        var calendarHint = Ui.Text("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 7, 0, 0); _page.Children.Add(calendarHint);
         Page("Application", "Démarrage, mises à jour et version installée.");
         Section("Démarrage");
         var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Margin = new Thickness(0, 3, 0, 4) };
@@ -104,7 +104,7 @@ internal sealed class SettingsWindow : ThemedWindow
         _page = new StackPanel { Margin = new Thickness(26, 24, 24, 24) };
         var heading = Ui.Text(title, 21); heading.FontWeight = FontWeights.SemiBold; _page.Children.Add(heading);
         var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 7, 0, 26); _page.Children.Add(hint);
-        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = title };
+        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Général" => "SettingsGeneralIcon", "Notifications" => "SettingsNotificationsIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
         button.Click += (_, _) => ShowPage(title); _navigation.Children.Add(button); _pages.Add(title, (_page, button));
     }
     internal void ShowPage(string title)
