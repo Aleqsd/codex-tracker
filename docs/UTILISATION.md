@@ -57,7 +57,7 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 - Les dates précises utilisent le fuseau horaire Windows et son décalage UTC. Le compte à rebours complète l’heure exacte ; il ne confirme pas un reset tant que le serveur n’a pas actualisé la valeur.
 - En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
 
-Le bouton **Réduire** en bas à droite (ou **—** dans l’en-tête) réduit la fenêtre dans la barre des tâches Windows. **✕** la masque dans la zone de notification ; un clic sur l’icône la rouvre.
+Le bouton **flèche vers un bac**, juste à gauche de **—**, masque la fenêtre près de l’horloge et la retire de la barre des tâches. Le bouton **Masquer près de l’horloge** en bas à droite fait la même chose. Le suivi et les rappels restent actifs ; un clic sur l’icône près de l’horloge rouvre la fenêtre. **—** conserve la réduction Windows habituelle. **✕** masque aussi l’application ; utilisez **Quitter** dans le menu de l’icône pour l’arrêter.
 
 Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai.
 

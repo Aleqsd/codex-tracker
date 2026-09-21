@@ -45,7 +45,7 @@ public partial class MainWindow : Window
         _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); };
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
-        KeyDown += (_, e) => { if (e.Key == Key.Escape) Hide(); if (e.Key == Key.F5) _ = RefreshAsync(); };
+        KeyDown += (_, e) => { if (e.Key == Key.Escape) HideToTray(); if (e.Key == Key.F5) _ = RefreshAsync(); };
     }
     public async Task InitializeAsync()
     {
@@ -60,8 +60,9 @@ public partial class MainWindow : Window
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
     private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
-    private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; Hide(); } }
-    public void ShowPanel() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Ui.EnsureWindowVisible(this); Activate(); }
+    private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; HideToTray(); } }
+    private void HideToTray() { Hide(); ShowInTaskbar = false; }
+    public void ShowPanel() { ShowInTaskbar = true; Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Ui.EnsureWindowVisible(this); Activate(); }
     internal void ShowResetWeek() { ShowResets(); _resets.ShowWeek(); }
     internal void ShowResets() { ShowPanel(); ResetsTab.IsSelected = true; }
     internal void OpenPage(string page)
@@ -87,7 +88,7 @@ public partial class MainWindow : Window
         int rounded = 2; DwmSetWindowAttribute(handle, 33, ref rounded, 4);
     }
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void Hide_Click(object sender, RoutedEventArgs e) => Hide();
+    private void Hide_Click(object sender, RoutedEventArgs e) => HideToTray();
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
     public async Task RefreshAsync()
     {

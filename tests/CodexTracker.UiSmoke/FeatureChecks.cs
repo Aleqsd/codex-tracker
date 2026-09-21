@@ -110,11 +110,19 @@ internal static class FeatureChecks
                 "Minimize keeps the window visible in the Windows taskbar");
             window.ShowPanel();
             Check(window.WindowState == WindowState.Normal && window.IsVisible, "Tray activation restores a minimized window");
-            var footerMinimize = (Button)window.FindName("FooterMinimizeButton");
-            Check(footerMinimize.IsVisible && Equals(footerMinimize.Content, "Réduire") && footerMinimize.ActualWidth > 40,
-                "Status bar exposes a readable Reduce button");
-            footerMinimize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            Check(window.WindowState == WindowState.Minimized && window.ShowInTaskbar, "Footer Reduce keeps the taskbar entry");
+            var hideToTray = (Button)window.FindName("HideToTrayButton");
+            Check(hideToTray.IsVisible && hideToTray.ActualWidth >= 30, "Dedicated tray control is visible next to minimize");
+            hideToTray.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(!window.IsVisible && !window.ShowInTaskbar && !window.Dispatcher.HasShutdownStarted,
+                "Tray control hides the window and taskbar entry without exiting");
+            window.ShowPanel();
+            Check(window.IsVisible && window.ShowInTaskbar && window.WindowState == WindowState.Normal,
+                "Reopening from tray restores the window and taskbar entry");
+            var footerHide = (Button)window.FindName("FooterHideToTrayButton");
+            Check(footerHide.IsVisible && Equals(footerHide.Content, "Masquer près de l’horloge") && footerHide.ActualWidth > 100,
+                "Status bar explains the tray action");
+            footerHide.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(!window.IsVisible && !window.ShowInTaskbar, "Footer tray action also removes the taskbar entry");
             window.ShowPanel();
             Check(!resets.IsVisible && Tree(window).OfType<Button>().Any(b => b.ToolTip?.ToString() == "Changer le nom ou l’avatar"), "Returning to Accounts preserves the dashboard");
             Check(AccountAvatar.Initials("Alexandre Almeida") == "AA" && AccountAvatar.Initials("alexandre.almeida@example.test") == "AA" && AccountAvatar.Initials("Studio") == "ST" && AccountAvatar.Initials("") == "?", "Default avatars derive initials from names and email addresses");
