@@ -11,7 +11,7 @@
       "codextracker.codex": {
         "type": "Project",
         "dependencies": {
-          "CodexTracker.Core": "[0.4.4, )"
+          "CodexTracker.Core": "[0.4.5, )"
         }
       },
       "codextracker.core": {
