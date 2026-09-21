@@ -10,6 +10,14 @@ La génération WinGet vérifie le checksum de l’installateur puis exécute la
 
 Ces rendus et contrôles WPF ne remplacent pas un essai sur plusieurs moniteurs physiques. Le mode MCP et les services de notifications restent inchangés.
 
+## Livraison 0.8.0
+
+La [CI Windows du commit 2c4e4f7](https://github.com/Aleqsd/codex-tracker/actions/runs/35623128160) est verte. La [Release 0.8.0](https://github.com/Aleqsd/codex-tracker/releases/tag/v0.8.0) contient l’installateur, le ZIP et son checksum ; les trois empreintes d’assets GitHub ont été comparées aux fichiers locaux. Les 14 contrôles MCP passent sur cet exécutable autonome.
+
+L’installation réelle depuis la 0.7.0 s’est terminée avec le code 0. Le binaire installé correspond au binaire publié, les profils, préférences, identifiants DPAPI et fichiers d’historique ont été conservés. Le processus relancé répond ; version Windows et raccourci vérifiés. Aucun SMS, appel ou email de test réel.
+
+`winget validate` réussit pour les trois manifestes. Le téléchargement public de l’installateur répond HTTP 200. La [soumission Microsoft #438574](https://github.com/microsoft/winget-pkgs/pull/438574) est distincte d’une acceptation/indexation. L’installateur silencieux a été testé directement ; `winget install --manifest` n’a pas été exécuté car LocalManifestFiles est désactivé sur ce PC.
+
 ## Base de validation 0.7.0
 
 Contrôles ajoutés pour le MCP et les outils de contribution :

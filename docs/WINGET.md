@@ -1,6 +1,6 @@
 # Distribution WinGet
 
-Identifiant prévu : `Aleqsd.CodexTracker`. La disponibilité dans le catalogue public dépend de la validation et de la fusion du manifeste par Microsoft ; construire le manifeste ne publie pas le paquet.
+Identifiant : `Aleqsd.CodexTracker`. La version 0.8.0 est soumise dans la [demande Microsoft #438574](https://github.com/microsoft/winget-pkgs/pull/438574). La disponibilité dans le catalogue public dépend de la validation et de la fusion du manifeste par Microsoft ; construire le manifeste ne publie pas le paquet.
 
 Après intégration dans le catalogue :
 

@@ -33,7 +33,7 @@ Le bouton **—** réduit la fenêtre dans la barre des tâches ; **✕** la mas
 
 - **Sans installation :** prenez le ZIP portable dans les [Releases](https://github.com/Aleqsd/codex-tracker/releases). Le petit fichier `.sha256` sert aux mises à jour automatiques ; vous pouvez l’ignorer.
 - **Mises à jour :** ouvrez **Réglages → Application**. Comptes et réglages sont conservés.
-- **WinGet :** [distribution en cours de soumission](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
+- **WinGet :** [publication soumise à Microsoft](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
 - [Guide d’utilisation](docs/UTILISATION.md) · [Confidentialité](docs/PRIVACY.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues)
 
 <details>
