@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     private readonly UpdateService _updates;
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
-    private bool _canClose, _refreshing, _updatingSort;
+    private bool _canClose, _refreshing;
     internal ThemeManager Theme { get; }
     internal PreferencesStore Preferences => _preferences;
 
@@ -47,7 +47,6 @@ public partial class MainWindow : Window
     {
         if (_canClose) return;
         _model.Update(_service.State);
-        _updatingSort = true; SortSelector.SelectedValue = _preferences.Current.SortMode; _updatingSort = false;
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
     private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
@@ -72,10 +71,6 @@ public partial class MainWindow : Window
     private void Hide_Click(object sender, RoutedEventArgs e) => Hide();
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
     private void Privacy_Click(object sender, RoutedEventArgs e) => UpdatePreferences(p => p with { PrivacyMode = !p.PrivacyMode });
-    private void Sort_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_updatingSort && SortSelector.SelectedValue is SortMode mode) UpdatePreferences(p => p with { SortMode = mode });
-    }
     private void UpdatePreferences(Func<TrackerPreferences, TrackerPreferences> update)
     {
         try { _preferences.Update(update); }

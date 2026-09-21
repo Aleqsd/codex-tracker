@@ -2,7 +2,7 @@
 
 Vos quotas Codex, directement dans la barre des tâches Windows.
 
-L’icône affiche le **pourcentage hebdomadaire restant au centre d’un anneau de progression**. Survolez-la pour un aperçu ; cliquez pour retrouver vos comptes dans un panneau compact. Les dates précises, réserves, périodes d’abonnement et graphiques restent accessibles dans les détails.
+L’icône affiche le **pourcentage hebdomadaire restant avec une fine jauge horizontale, sur fond transparent**. Survolez-la pour un aperçu ; cliquez pour retrouver vos comptes dans un panneau compact. Les dates précises, réserves, périodes d’abonnement et graphiques restent accessibles dans les détails.
 
 ![Tableau de bord avec comptes fictifs](docs/dashboard.png)
 
@@ -31,11 +31,11 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes. Les au
 
 ## Lire le tableau de bord
 
-- La vue principale présente le compte actif puis une ligne par compte. Vous pouvez trier par compte actif, quota restant, prochain reset ou offre. Le bouton **…** ouvre les détails et l’historique.
+- La vue principale présente le compte actif puis une ligne par compte. Le compte actif reste automatiquement en tête ; les autres gardent un ordre stable. Le bouton **…** ouvre les détails et l’historique.
 - **Confidentialité** remplace les adresses par des alias stables dans les écrans, menus et aperçus. Les notifications Windows utilisent toujours ces alias pour éviter de laisser des adresses dans les notifications conservées par le système.
 - Les thèmes clair et sombre suivent Windows, avec un choix manuel dans les réglages. Le dessin de l’icône s’adapte également au thème.
 - **Hebdomadaire** : quota restant de la fenêtre de 10 080 minutes du bucket `codex`. Une limite de cinq heures n’est jamais présentée comme une limite hebdomadaire.
-- **Dans l’icône** : nombre et anneau sobres au-dessus de 20 %, orange entre 10 et 20 %, rouge sous 10 %. La valeur reste lisible sans dépendre uniquement de la couleur.
+- **Dans l’icône** : chiffre monochrome lisible et jauge fine. La jauge reste neutre au-dessus de 20 %, orange entre 10 et 20 %, rouge sous 10 %. La valeur reste lisible sans dépendre uniquement de la couleur.
 - **Offre** : badges Free, Plus, Pro et autres offres renvoyées par Codex. Les valeurs `prolite` et `pro` correspondent respectivement à Pro **5×** et Pro **20×**, conformément à l’interface Codex actuelle. Une offre inconnue reste affichée telle quelle.
 - **Période d’abonnement** : début et fin de période active lorsqu’ils sont présents dans les métadonnées de session Codex. Ce ne sont pas nécessairement la date de souscription initiale ni une échéance de paiement. Les dates absentes restent indisponibles.
 - **Resets en réserve** : badge visible sur le compte actif et dans la colonne **Resets**. Survolez le badge pour lire les dates d’obtention et d’expiration, leur fuseau horaire et la date du relevé. L’aperçu de l’icône présente aussi la réserve et les expirations. Le compteur `availableCount` fourni par Codex, accompagné des expirations disponibles. Le nombre d’éléments détaillés ne remplace jamais le compteur serveur.

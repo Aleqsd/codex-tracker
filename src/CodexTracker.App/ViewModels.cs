@@ -51,7 +51,6 @@ internal static class Display
         (snapshot is null ? "" : $"\n\nDernier relevé : {Exact(snapshot.FetchedAt)}\n{Zone(snapshot.FetchedAt)}\nDisponibilité au moment de ce relevé.");
 }
 
-internal sealed record SortChoice(SortMode Value, string Label) { public override string ToString() => Label; }
 internal sealed class AccountViewModel : INotifyPropertyChanged
 {
     private AccountState _account;
@@ -141,7 +140,6 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
-    public IReadOnlyList<SortChoice> SortChoices { get; } = [new(SortMode.Active, "Compte actif"), new(SortMode.Quota, "Quota restant"), new(SortMode.Reset, "Prochain reset"), new(SortMode.Plan, "Type d’offre")];
     public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow); }
     public bool IsDemo { get; }
     public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive) ?? Accounts.FirstOrDefault(a => a.IsSelected) ?? Accounts.FirstOrDefault();
@@ -180,13 +178,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
         _state = state;
         Advice = AccountAdvisor.Evaluate(state, DateTimeOffset.UtcNow);
         var source = state.Accounts.Select((account, index) => (account, index));
-        var sorted = _preferences.Current.SortMode switch
-        {
-            SortMode.Quota => source.OrderBy(a => a.account.Snapshot?.Weekly?.RemainingPercent ?? double.MaxValue).ThenBy(a => a.index),
-            SortMode.Reset => source.OrderBy(a => a.account.Snapshot?.Weekly?.ResetsAt ?? DateTimeOffset.MaxValue).ThenBy(a => a.index),
-            SortMode.Plan => source.OrderBy(a => a.account.Snapshot?.PlanType ?? "zzz", StringComparer.OrdinalIgnoreCase).ThenBy(a => a.index),
-            _ => source.OrderByDescending(a => a.account.IsActiveInCodex).ThenBy(a => a.index)
-        };
+        var sorted = source.OrderByDescending(a => a.account.IsActiveInCodex).ThenBy(a => a.index);
         var ordered = sorted.Select(a => a.account).ToArray();
         var existing = Accounts.ToDictionary(a => a.Id);
         var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences); }).ToArray();

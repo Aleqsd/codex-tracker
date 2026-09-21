@@ -1,4 +1,4 @@
-# Validation de la version 0.4.2
+# Validation de la version 0.4.3
 
 Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests et captures publics utilisent uniquement des comptes fictifs.
 
@@ -11,9 +11,9 @@ Contrôles effectués sur Windows 11 x64, les 20 et 21 septembre 2026. Les tests
 | Intégrité de la session active | Empreinte SHA-256 du cache inchangée avant/après la collecte |
 | Persistance des credentials | Aucun fichier de session créé dans les données du tracker ; runtime temporaire nettoyé après collecte |
 | Démonstration WPF | Vrais processus, captures clair/sombre et identités masquées, détails et réglages |
-| Interactions WPF en démonstration | 21 contrôles réussis : badges de réserve, infobulle ouverte avec dates et fuseau, tri, thèmes à chaud, confidentialité dans les fenêtres ouvertes et le conseil, menus, graphique, minuterie et arrêt |
+| Interactions WPF en démonstration | 21 contrôles réussis : badges de réserve, infobulle ouverte avec dates et fuseau, ordre actif en premier sans menu de tri, thèmes à chaud, confidentialité dans les fenêtres ouvertes et le conseil, menus, graphique, minuterie et arrêt |
 | Rendus WPF 96, 144 et 192 DPI | Contrôle des dimensions et lisibilité ; ces rendus ne changent pas les réglages DPI de Windows |
-| Icône anneau claire et sombre | Valeurs 0, 8, 10, 20, 21, 72, 99, 100 et inconnue aux tailles 16, 20, 24 et 32 pixels dans le [rendu de contrôle](tray-ring.png) |
+| Icône transparente claire et sombre | Valeurs 0, 8, 10, 20, 21, 72, 99, 100 et inconnue aux tailles 16, 20, 24 et 32 pixels dans le [rendu de contrôle](tray-minimal.png) |
 | Installateur Windows | Installation, mise à niveau et désinstallation réelles dans un dossier isolé ; arrêt gracieux de l’application de test et conservation du témoin de données privées |
 | Mécanisme de mise à jour | Vrais exécutables de test autonomes utilisant le code de production : préparation, arrêt du parent, remplacement, contrôle de démarrage et restauration de l’ancien exécutable si le nouveau échoue |
 | Limitation GitHub réelle | Réponse anonyme limitée : échéance serveur conservée ; deuxième essai et recréation du service ne produisent aucune nouvelle requête pendant ce délai |

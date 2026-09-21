@@ -232,34 +232,29 @@ internal sealed class TrayController : IDisposable
         using var graphics = Graphics.FromImage(bitmap);
         graphics.SmoothingMode = SmoothingMode.AntiAlias; graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         graphics.Clear(Color.Transparent);
-        using var background = new SolidBrush(dark ? Color.FromArgb(29, 29, 29) : Color.FromArgb(245, 245, 242));
-        graphics.FillEllipse(background, 0, 0, 64, 64);
-        var ring = new RectangleF(3, 3, 58, 58);
-        using var track = new Pen(dark ? Color.FromArgb(79, 79, 79) : Color.FromArgb(186, 186, 182), 4.5f);
-        graphics.DrawEllipse(track, ring);
+        // Transparent like the Windows system icons; reserve the full width for the number.
         var known = int.TryParse(number, out var remaining);
+        using var track = new Pen(dark ? Color.FromArgb(95, 95, 95) : Color.FromArgb(155, 155, 155), 4f);
+        if (known) graphics.DrawLine(track, 6, 58, 58, 58);
         if (known && remaining > 0)
         {
-            using var progress = new Pen(color, 4.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-            // A closed ellipse avoids a seam at 100%; 0% keeps only the empty track.
-            if (remaining >= 100) graphics.DrawEllipse(progress, ring);
-            else graphics.DrawArc(progress, ring, -90, Math.Clamp(remaining, 0, 100) * 3.6f);
+            using var progress = new Pen(color, 4f);
+            graphics.DrawLine(progress, 6, 58, 6 + 52 * Math.Clamp(remaining, 0, 100) / 100f, 58);
         }
         using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
         format.Alignment = StringAlignment.Center; format.LineAlignment = StringAlignment.Center;
         format.FormatFlags |= StringFormatFlags.NoWrap;
-        // Reserve the centre for the number. Three digits must fit inside the ring,
-        // including when Explorer scales the icon down to 16 physical pixels.
-        float fontSize = number.Length == 3 ? 28 : number.Length == 1 ? 38 : 35;
+        string label = known ? number : "—";
+        float fontSize = label.Length == 3 ? 32 : 44;
         while (fontSize > 20)
         {
-            using var candidate = new Font("Segoe UI", fontSize, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
-            if (graphics.MeasureString(number, candidate, int.MaxValue, format).Width <= 44) break;
+            using var candidate = new Font("Segoe UI Semibold", fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
+            if (graphics.MeasureString(label, candidate, int.MaxValue, format).Width <= 58) break;
             fontSize--;
         }
-        using var font = new Font("Segoe UI", fontSize, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
+        using var font = new Font("Segoe UI Semibold", fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
         using var foreground = new SolidBrush(known ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(35, 35, 35)) : color);
-        graphics.DrawString(number, font, foreground, new RectangleF(0, -1, 64, 64), format);
+        graphics.DrawString(label, font, foreground, new RectangleF(0, -5, 64, 60), format);
         IntPtr handle = bitmap.GetHicon();
         try { using var unmanaged = Icon.FromHandle(handle); return (Icon)unmanaged.Clone(); }
         finally { DestroyIcon(handle); }
