@@ -25,7 +25,7 @@ internal static class Display
     public static string Countdown(DateTimeOffset? date)
     {
         if (date is null) return "Indisponible";
-        var left = date.Value - DateTimeOffset.UtcNow;
+        var left = date.Value - PreviewClock.UtcNow;
         if (left <= TimeSpan.Zero) return "Reset attendu";
         if (left.TotalDays >= 1) return $"Dans {(int)left.TotalDays} j {left.Hours:00} h";
         if (left.TotalHours >= 1) return $"Dans {(int)left.TotalHours} h {left.Minutes:00} min";
@@ -34,7 +34,7 @@ internal static class Display
     public static string Duration(int? minutes) => minutes switch { null => "Fenêtre inconnue", 10080 => "Semaine", 300 => "5 heures", >= 1440 => $"{minutes / 1440.0:0.#} jours", >= 60 => $"{minutes / 60.0:0.#} heures", _ => $"{minutes} min" };
     public static string Age(DateTimeOffset timestamp)
     {
-        var age = DateTimeOffset.UtcNow - timestamp;
+        var age = PreviewClock.UtcNow - timestamp;
         return age.TotalMinutes < 1 ? "à l’instant" : age.TotalHours < 1 ? $"il y a {(int)age.TotalMinutes} min" : age.TotalDays < 1 ? $"il y a {(int)age.TotalHours} h" : $"il y a {(int)age.TotalDays} j";
     }
     public static string SafeText(string? text, bool privacy) => privacy ? Regex.Replace(text ?? "", @"[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+", "[compte masqué]", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)) : text ?? "";
@@ -44,7 +44,7 @@ internal static class Display
         ? string.Join("\n\n", credits.OrderBy(c => c.ExpiresAt ?? DateTimeOffset.MaxValue).Select((c, i) =>
             $"{SafeText(c.Title ?? $"Reset {i + 1}", privacy)}\n" +
             (c.GrantedAt is { } granted ? $"Reçu le {Exact(granted)} · {Zone(granted)}\n" : "") +
-            (c.ExpiresAt is { } expires ? $"{(expires <= DateTimeOffset.UtcNow ? "Expiration passée" : "Expire le")} {Exact(expires)}\n{Zone(expires)}" : "Expiration non communiquée")))
+            (c.ExpiresAt is { } expires ? $"{(expires <= PreviewClock.UtcNow ? "Expiration passée" : "Expire le")} {Exact(expires)}\n{Zone(expires)}" : "Expiration non communiquée")))
         : "Aucune expiration communiquée par Codex.";
     public static string ReserveHint(AccountSnapshot? snapshot, bool privacy) =>
         $"{ReserveSummary(snapshot)}\n\n{CreditDetails(snapshot, privacy)}" +
@@ -141,7 +141,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
-    public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow); }
+    public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow); }
     public bool IsDemo { get; }
     public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive);
     public bool HasActive => Active is not null;
@@ -181,14 +181,14 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public void Tick()
     {
         foreach (var account in Accounts) account.Tick();
-        Advice = AccountAdvisor.Evaluate(_state, DateTimeOffset.UtcNow);
+        Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow);
         foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)
     {
         _state = state;
-        Advice = AccountAdvisor.Evaluate(state, DateTimeOffset.UtcNow);
+        Advice = AccountAdvisor.Evaluate(state, PreviewClock.UtcNow);
         var source = state.Accounts.Select((account, index) => (account, index));
         var sorted = source.OrderByDescending(a => a.account.IsActiveInCodex).ThenBy(a => a.index);
         var ordered = sorted.Select(a => a.account).ToArray();

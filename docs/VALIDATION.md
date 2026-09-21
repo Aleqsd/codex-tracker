@@ -1,4 +1,16 @@
-# Validation de la version 0.6.0
+# Validation de la version 0.7.0
+
+Contrôles ajoutés pour le MCP et les outils de contribution :
+
+- 279 tests métier au total : révisions partagées, expansion des permissions, DPAPI, reçus persistants, expiration à cinq minutes, reprise sans réémission, annulation après attente dans la file d’envoi et verrouillage pendant une mise à jour.
+- 64 contrôles WPF au total, dont 11 pour l’accès désactivé, le refus/fermeture et l’approbation des confirmations, l’annulation à la désactivation et le rendu des réglages Assistants en clair/sombre.
+- 14 contrôles sur de vrais processus MCP stdio : négociation, 16 outils, lancement en arrière-plan, deux clients, révision périmée, déduplication, saisie en écriture seule et fermeture des ponts quand le tracker quitte. Le même script fonctionne sur l’exécutable autonome publié et dans la CI Windows.
+- 36 captures de démonstration produites par la matrice d’aperçus. Vérification visuelle des vues Assistants et Resets en clair/sombre et petite fenêtre ; DPI de rendu 96/144/192.
+- Aucun envoi réel SMS/appel/email. L’approbation de test dans les essais WPF utilise le runtime de démonstration qui bloque les envois.
+
+Le client MCP de processus utilisé est un client de test JSON-RPC ; la validation n’affirme pas une installation dans tous les assistants tiers. Les tests de fermeture des ponts et de verrouillage du remplacement sont distincts d’une mise à jour téléchargée depuis une future release.
+
+## Base de validation 0.6.0
 
 Contrôles Windows 11 x64 du 21 septembre 2026, comptes fictifs uniquement dans les captures publiques.
 

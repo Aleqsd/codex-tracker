@@ -80,11 +80,12 @@ public sealed class ReminderDispatcher(
     {
         if (!journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status == DeliveryStatus.Deferred && d.Detail == text)) Put(r, DeliveryStatus.Deferred, text);
     }
-    public async Task<DeliveryResult> TestAsync(ReminderChannel channel, CancellationToken token = default)
+    public async Task<DeliveryResult> TestAsync(ReminderChannel channel, CancellationToken token = default, Func<bool>? stillAuthorized = null)
     {
         await _gate.WaitAsync(token);
         try
         {
+            if (stillAuthorized is not null && !stillAuthorized()) return new(DeliveryStatus.Skipped, "Configuration modifiée pendant l’attente ; test annulé.");
             var now = _clock.GetUtcNow();
             if (channel != ReminderChannel.Windows && !NotificationProviders.Configured(channel, secrets.Read())) return new(DeliveryStatus.Failed, "Enregistrez et activez d’abord le connecteur.");
             if (channel is ReminderChannel.Sms or ReminderChannel.Call && (ReminderPlanner.IsQuiet(now, phone()) || ReminderPlanner.AtDailyLimit(channel, now, phone(), journal.Entries)))

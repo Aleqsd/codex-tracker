@@ -30,6 +30,12 @@ jobs:
       - name: Build per-user Windows installer
         shell: pwsh
         run: ./scripts/build-installer.ps1 -InstallCompiler
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Test published executable MCP protocol with fictional data
+        shell: pwsh
+        run: python scripts/test-mcp.py artifacts/publish/0.7.0/CodexTracker.exe
       - uses: actions/upload-artifact@v7
         with:
           name: CodexTracker-win-x64

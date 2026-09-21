@@ -74,7 +74,7 @@ internal sealed class ResetsView : UserControl
         var accountId = (_accounts.SelectedItem as ResetAccountChoice)?.Id;
         var accounts = _state.Accounts.Where(a => accountId is null || a.Profile.Id == accountId).ToArray();
         var entries = ResetSchedule.Entries(_state, accountId).Where(e => _kindFilter is null || e.Kind == _kindFilter).ToArray();
-        var now = DateTimeOffset.UtcNow;
+        var now = PreviewClock.UtcNow;
         var future = entries.Where(e => e.At > now).ToArray();
         var reached = entries.Where(e => e.At <= now).OrderByDescending(e => e.At).ToArray();
         var unknown = entries.Where(e => e.At is null).ToArray();
@@ -137,7 +137,7 @@ internal sealed class ResetsView : UserControl
     }
     internal void Tick()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = PreviewClock.UtcNow;
         if (_nextBoundary <= now) Render(); else UpdateTimes(now);
     }
     private void UpdateTimes(DateTimeOffset now)

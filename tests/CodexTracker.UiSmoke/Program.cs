@@ -65,6 +65,7 @@ internal static class Program
                 await RequestShow(handle);
                 CheckRendered(window, "Repeated activation retains the same rendered window");
                 await FeatureChecks.Run(window, service);
+                await AssistantChecks.Run(window);
                 window.Hide();
                 typeof(App).GetField("_exiting", Instance)!.SetValue(app, true);
                 await RequestShow(handle);

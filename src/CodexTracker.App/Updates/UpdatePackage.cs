@@ -104,6 +104,7 @@ internal static class UpdateInstaller
                 throw new IOException("Le fichier téléchargé a changé depuis la préparation.");
             File.Copy(staged, temporary, false);
             token.ThrowIfCancellationRequested();
+            await WaitUntilReleasedAsync(target, TimeSpan.FromSeconds(10), token);
             File.Replace(temporary, target, backup, true);
             replaced = true;
             // Once replacement has begun, complete the transaction even if a UI token was cancelled.
@@ -159,5 +160,17 @@ internal static class UpdateInstaller
     {
         try { return await launch(target, false, CancellationToken.None); }
         catch (Exception) { return false; }
+    }
+
+    internal static async Task WaitUntilReleasedAsync(string target, TimeSpan timeout, CancellationToken token)
+    {
+        var deadline = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+            try { using var probe = new FileStream(target, FileMode.Open, FileAccess.ReadWrite, FileShare.None); return; }
+            catch (IOException) when (deadline.Elapsed < timeout) { await Task.Delay(100, token); }
+            catch (IOException) { throw new IOException("L’application reste verrouillée, éventuellement par un client MCP. Reconnectez ce client puis réessayez ; aucun fichier n’a été remplacé."); }
+        }
     }
 }

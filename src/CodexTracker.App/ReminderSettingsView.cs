@@ -12,11 +12,12 @@ internal static class ReminderSettingsView
     private static Button Button(string text) => new() { Content = text, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 8, 0) };
     private static CheckBox Check(string text, bool value) => new() { Content = text, IsChecked = value, Margin = new Thickness(0, 6, 12, 6) };
 
-    internal static FrameworkElement Rules(PreferencesStore preferences, ITrackerService service)
+    internal static FrameworkElement Rules(PreferencesStore preferences, ITrackerService service, ApplicationCommands commands)
     {
         var root = Panel(); root.Children.Add(Hint("Le tracker doit rester ouvert et le PC éveillé. Chaque canal est indépendant ; un rappel passé ne confirme pas un reset dans Codex."));
         foreach (var kind in Enum.GetValues<ResetKind>())
         {
+            var baseline = preferences.Current.ReminderRules!.Where(r => r.Kind == kind).ToArray();
             var existing = preferences.Current.ReminderRules!.Where(r => r.Kind == kind).ToArray();
             var summary = Hint("");
             void Summary()
@@ -58,7 +59,9 @@ internal static class ReminderSettingsView
                 {
                     var ids = all.IsChecked == true ? null : accountChecks.Where(c => c.Box.IsChecked == true).Select(c => c.Id).ToArray();
                     var updated = rows.Select(r => new ReminderRule(kind, enabled.IsChecked == true, [r.Minutes], channels.Where((_, i) => r.Boxes[i].IsChecked == true).ToArray(), ids));
-                    preferences.Update(p => p with { ReminderRules = p.ReminderRules!.Where(r => r.Kind != kind).Concat(updated).ToArray() }); status.Text = "Rappels enregistrés."; Summary();
+                    if (System.Text.Json.JsonSerializer.Serialize(preferences.Current.ReminderRules!.Where(r => r.Kind == kind)) != System.Text.Json.JsonSerializer.Serialize(baseline)) { status.Text = "Règles modifiées ailleurs. Fermez puis rouvrez les réglages."; return; }
+                    commands.SavePreferences(p => p with { ReminderRules = p.ReminderRules!.Where(r => r.Kind != kind).Concat(updated).ToArray() });
+                    baseline = preferences.Current.ReminderRules!.Where(r => r.Kind == kind).ToArray(); status.Text = "Rappels enregistrés."; Summary();
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status.Text = "Impossible d’enregistrer les rappels."; }
             };
@@ -70,7 +73,7 @@ internal static class ReminderSettingsView
         return root;
     }
 
-    internal static FrameworkElement Channels(PreferencesStore preferences, ReminderRuntime runtime, bool demo)
+    internal static FrameworkElement Channels(PreferencesStore preferences, ReminderRuntime runtime, bool demo, ApplicationCommands commands)
     {
         var root = Panel(); root.Children.Add(Hint("Facultatif : utilisez vos propres comptes. Les envois partent directement de ce PC ; les frais sont facturés par votre prestataire."));
         root.Children.Add(TestButton("Tester une notification Windows", ReminderChannel.Windows, runtime, demo, root));
@@ -94,7 +97,8 @@ internal static class ReminderSettingsView
                 var config = new TwilioSettings(enabled.IsChecked == true, sid.Text.Trim(), key.Text.Trim(), secret.Password.Trim(), sms.Text.Trim(), call.Text.Trim(), to.Text.Trim());
                 var current = runtime.Secrets.Read() with { Twilio = config };
                 if (config.Enabled && !NotificationProviders.Configured(ReminderChannel.Sms, current) && !NotificationProviders.Configured(ReminderChannel.Call, current)) { twilioStatus.Text = "Vérifiez les identifiants, le destinataire et au moins un expéditeur."; return; }
-                runtime.Secrets.Save(current); twilioStatus.Text = "Enregistré localement et chiffré. Aucun envoi effectué.";
+                if (runtime.Secrets.Read().Twilio != secrets.Twilio) { twilioStatus.Text = "Configuration modifiée ailleurs. Rouvrez les réglages."; return; }
+                commands.SaveSecrets(current); secrets = secrets with { Twilio = current.Twilio }; twilioStatus.Text = "Enregistré localement et chiffré. Aucun envoi effectué.";
             }
             catch { twilioStatus.Text = "Impossible d’enregistrer les identifiants."; }
         };
@@ -102,7 +106,7 @@ internal static class ReminderSettingsView
         twilio.Children.Add(TestButton("Envoyer un SMS de test · payant", ReminderChannel.Sms, runtime, demo, twilio));
         twilio.Children.Add(TestButton("Recevoir un appel de test · payant", ReminderChannel.Call, runtime, demo, twilio));
         var remove = Button("Supprimer les identifiants Twilio"); remove.IsEnabled = !demo;
-        remove.Click += (_, _) => { try { runtime.Secrets.Save(runtime.Secrets.Read() with { Twilio = new() }); enabled.IsChecked = false; sid.Clear(); key.Clear(); secret.Clear(); sms.Clear(); call.Clear(); to.Clear(); twilioStatus.Text = "Identifiants supprimés ; canal désactivé."; } catch { twilioStatus.Text = "Suppression impossible."; } };
+        remove.Click += (_, _) => { try { commands.SaveSecrets(runtime.Secrets.Read() with { Twilio = new() }); secrets = secrets with { Twilio = new() }; enabled.IsChecked = false; sid.Clear(); key.Clear(); secret.Clear(); sms.Clear(); call.Clear(); to.Clear(); twilioStatus.Text = "Identifiants supprimés ; canal désactivé."; } catch { twilioStatus.Text = "Suppression impossible."; } };
         twilio.Children.Add(remove); twilio.Children.Add(Link("Configurer Twilio ↗", "https://www.twilio.com/docs/usage/requests-to-twilio"));
         root.Children.Add(new Expander { Header = "Twilio · SMS et appels", Content = twilio, Margin = new Thickness(0, 16, 0, 10) });
 
@@ -120,14 +124,15 @@ internal static class ReminderSettingsView
                 var config = new SendGridSettings(emailEnabled.IsChecked == true, emailKey.Password.Trim(), from.Text.Trim(), recipient.Text.Trim());
                 var current = runtime.Secrets.Read() with { SendGrid = config };
                 if (config.Enabled && !NotificationProviders.Configured(ReminderChannel.Email, current)) { emailStatus.Text = "Vérifiez la clé et les deux adresses email."; return; }
-                runtime.Secrets.Save(current); emailStatus.Text = "Enregistré localement et chiffré. Aucun envoi effectué.";
+                if (runtime.Secrets.Read().SendGrid != secrets.SendGrid) { emailStatus.Text = "Configuration modifiée ailleurs. Rouvrez les réglages."; return; }
+                commands.SaveSecrets(current); secrets = secrets with { SendGrid = current.SendGrid }; emailStatus.Text = "Enregistré localement et chiffré. Aucun envoi effectué.";
             }
             catch { emailStatus.Text = "Impossible d’enregistrer les identifiants."; }
         };
         email.Children.Add(saveEmail); email.Children.Add(emailStatus);
         email.Children.Add(TestButton("Envoyer un email de test", ReminderChannel.Email, runtime, demo, email));
         var removeEmail = Button("Supprimer la clé SendGrid"); removeEmail.IsEnabled = !demo;
-        removeEmail.Click += (_, _) => { try { runtime.Secrets.Save(runtime.Secrets.Read() with { SendGrid = new() }); emailKey.Clear(); from.Clear(); recipient.Clear(); emailEnabled.IsChecked = false; emailStatus.Text = "Identifiants supprimés ; canal désactivé."; } catch { emailStatus.Text = "Suppression impossible."; } };
+        removeEmail.Click += (_, _) => { try { commands.SaveSecrets(runtime.Secrets.Read() with { SendGrid = new() }); secrets = secrets with { SendGrid = new() }; emailKey.Clear(); from.Clear(); recipient.Clear(); emailEnabled.IsChecked = false; emailStatus.Text = "Identifiants supprimés ; canal désactivé."; } catch { emailStatus.Text = "Suppression impossible."; } };
         email.Children.Add(removeEmail); email.Children.Add(Link("Vérifier l’expéditeur ↗", "https://www.twilio.com/docs/sendgrid/for-developers/sending-email/sender-identity"));
         email.Children.Add(Link("Tarifs SendGrid ↗", "https://www.twilio.com/en-us/products/email-api/pricing"));
         root.Children.Add(new Expander { Header = "SendGrid · Email", Content = email, Margin = new Thickness(0, 4, 0, 10) });
@@ -146,7 +151,7 @@ internal static class ReminderSettingsView
         {
             if (!int.TryParse(smsLimit.Text, out var sm) || sm < 0 || sm > 100 || !int.TryParse(callLimit.Text, out var ca) || ca < 0 || ca > 20 || !int.TryParse(start.Text, out var st) || st < 0 || st > 23 || !int.TryParse(end.Text, out var en) || en < 0 || en > 23 || zone.SelectedValue is not string tz)
             { limitStatus.Text = "Vérifiez les limites, les heures et le fuseau."; return; }
-            try { preferences.Update(p => p with { PhonePolicy = new(sm, ca, quiet.IsChecked == true, st, en, tz) }); limitStatus.Text = "Limites enregistrées. Les tests téléphoniques les respectent aussi."; }
+            try { if (preferences.Current.PhonePolicy != policy) { limitStatus.Text = "Limites modifiées ailleurs. Rouvrez les réglages."; return; } commands.SavePreferences(p => p with { PhonePolicy = new(sm, ca, quiet.IsChecked == true, st, en, tz) }); policy = preferences.Current.PhonePolicy; limitStatus.Text = "Limites enregistrées. Les tests téléphoniques les respectent aussi."; }
             catch { limitStatus.Text = "Enregistrement impossible."; }
         };
         limits.Children.Add(saveLimits); limits.Children.Add(limitStatus);

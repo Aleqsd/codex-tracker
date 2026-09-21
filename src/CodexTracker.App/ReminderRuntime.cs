@@ -34,8 +34,8 @@ internal sealed class ReminderRuntime : IDisposable
         try { await _dispatcher.TickAsync(linked.Token); Error = _dispatcher.Error; }
         catch (OperationCanceledException) { }
     }
-    internal Task<DeliveryResult> TestAsync(ReminderChannel channel) => _demo || _dispatcher is null
-        ? Task.FromResult(new DeliveryResult(DeliveryStatus.Skipped, "Tests d’envoi désactivés dans la démonstration.")) : _dispatcher.TestAsync(channel, _lifetime.Token);
+    internal Task<DeliveryResult> TestAsync(ReminderChannel channel, Func<bool>? stillAuthorized = null) => _demo || _dispatcher is null
+        ? Task.FromResult(new DeliveryResult(DeliveryStatus.Skipped, "Tests d’envoi désactivés dans la démonstration.")) : _dispatcher.TestAsync(channel, _lifetime.Token, stillAuthorized);
     internal void Pause() { _paused = true; _wake.Cancel(); }
     internal void Resume() { if (!_paused) return; _wake = new(); _paused = false; }
     public void Dispose() { _lifetime.Cancel(); _wake.Cancel(); _http.Dispose(); }

@@ -10,6 +10,7 @@ internal sealed record AccountAppearance(string? Name = null, string? AvatarFile
 
 internal sealed record TrackerPreferences
 {
+    public bool McpEnabled { get; init; }
     [JsonIgnore] public bool PrivacyMode => false; // Legacy preference is ignored.
     public ThemeMode ThemeMode { get; init; } = ThemeMode.System;
     public SortMode SortMode { get; init; } = SortMode.Active;
@@ -40,6 +41,8 @@ internal sealed class PreferencesStore
     public string DataDirectory { get; }
     public TrackerPreferences Current { get; private set; } = Normalize(new());
     public event EventHandler? Changed;
+    public string Revision { get; private set; } = Guid.NewGuid().ToString("N");
+    public void Touch() { Revision = Guid.NewGuid().ToString("N"); Changed?.Invoke(this, EventArgs.Empty); }
 
     public PreferencesStore(bool persistent = true, string? dataDirectory = null)
     {
@@ -82,7 +85,7 @@ internal sealed class PreferencesStore
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
         Current = next;
-        Changed?.Invoke(this, EventArgs.Empty);
+        Touch();
     }
     private static TrackerPreferences Normalize(TrackerPreferences value) => value with
     {

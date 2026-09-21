@@ -9,6 +9,7 @@ internal sealed record NumberChoice(int Value, string Label) { public override s
 internal sealed class SettingsWindow : ThemedWindow
 {
     private readonly PreferencesStore _preferences;
+    private readonly ApplicationCommands _commands;
     private readonly UpdateService _updates;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<(CheckBox Box, Func<TrackerPreferences, bool> Read)> _toggles = new();
@@ -32,6 +33,7 @@ internal sealed class SettingsWindow : ThemedWindow
         : base(owner, "Réglages", theme, 750, 620)
     {
         _preferences = preferences; _updates = updates; _demo = demo;
+        _commands = new(preferences, ((MainWindow)owner).Reminders.Secrets);
         MinWidth = 640;
         var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
         var sidebar = new Border { Child = _navigation, BorderThickness = new Thickness(0, 0, 1, 0) };
@@ -51,7 +53,7 @@ internal sealed class SettingsWindow : ThemedWindow
         _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
         Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
         Page("Rappels", "Choisissez les échéances, les comptes et les canaux utiles.");
-        _page.Children.Add(ReminderSettingsView.Rules(preferences, ((MainWindow)owner).TrackerService));
+        _page.Children.Add(ReminderSettingsView.Rules(preferences, ((MainWindow)owner).TrackerService, _commands));
         Section("Quotas");
         _page.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 11, "MutedBrush"));
         var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 13, 0, 2) };
@@ -62,13 +64,15 @@ internal sealed class SettingsWindow : ThemedWindow
         test.Click += (_, _) => ((App)System.Windows.Application.Current).ShowTestNotification(); _page.Children.Add(test);
         Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
-        _page.Children.Add(ReminderSettingsView.Channels(preferences, ((MainWindow)owner).Reminders, demo));
+        _page.Children.Add(ReminderSettingsView.Channels(preferences, ((MainWindow)owner).Reminders, demo, _commands));
         Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
         _page.Children.Add(ReminderSettingsView.History(((MainWindow)owner).Reminders));
         Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
         var calendar = new Button { Content = "Ouvrir les options Google Agenda…", HorizontalAlignment = HorizontalAlignment.Left };
         calendar.Click += (_, _) => ((MainWindow)owner).OpenCalendar(); _page.Children.Add(calendar);
         var calendarHint = Ui.Text("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 7, 0, 0); _page.Children.Add(calendarHint);
+        Page("Assistants", "Pilotez le tracker depuis votre assistant de code.");
+        _page.Children.Add(Mcp.AssistantSettingsView.Create((MainWindow)owner, preferences, demo));
         Page("Application", "Démarrage, mises à jour et version installée.");
         Section("Démarrage");
         var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Margin = new Thickness(0, 3, 0, 4) };
@@ -106,7 +110,7 @@ internal sealed class SettingsWindow : ThemedWindow
         _page = new StackPanel { Margin = new Thickness(26, 24, 24, 24) };
         var heading = Ui.Text(title, 21); heading.FontWeight = FontWeights.SemiBold; _page.Children.Add(heading);
         var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 7, 0, 26); _page.Children.Add(hint);
-        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
+        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
         button.Click += (_, _) => ShowPage(title); _navigation.Children.Add(button); _pages.Add(title, (_page, button));
     }
     internal void ShowPage(string title)
@@ -145,7 +149,7 @@ internal sealed class SettingsWindow : ThemedWindow
     }
     private void Save(Func<TrackerPreferences, TrackerPreferences> update)
     {
-        try { _preferences.Update(update); }
+        try { _commands.SavePreferences(update); }
         catch (Exception error) { ShowError(error.Message); Sync(); }
     }
     private void PreferencesChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Sync);

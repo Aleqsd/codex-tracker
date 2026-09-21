@@ -12,6 +12,7 @@ public partial class App : System.Windows.Application
     private Mutex? _mutex;
     private ITrackerService? _service;
     private TrayController? _tray;
+    private Mcp.LocalServer? _assistantServer;
     private bool _exiting;
     private HwndSource? _messageSource;
     private static readonly uint ExitMessage = RegisterWindowMessage("CodexTracker.RequestExit.v1");
@@ -28,17 +29,20 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
         if (await UpdateBootstrap.TryHandleAsync(e.Args)) { Shutdown(); return; }
         IsDemo = e.Args.Contains("--demo");
+        var demoInstance = Array.IndexOf(e.Args, "--demo-instance");
+        var demoSuffix = IsDemo && demoInstance >= 0 ? "." + Guid.Parse(e.Args[demoInstance + 1]).ToString("N") : "";
+        var windowTitle = IsDemo ? "Codex Tracker (démo)" + demoSuffix : "Codex Tracker";
         if (e.Args.Contains("--exit"))
         {
-            var running = FindWindow(null, IsDemo ? "Codex Tracker (démo)" : "Codex Tracker");
+            var running = FindWindow(null, windowTitle);
             if (running != IntPtr.Zero) PostMessage(running, ExitMessage, IntPtr.Zero, IntPtr.Zero);
             Shutdown(); return;
         }
         if (e.Args.Contains("--screenshot")) RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
-        _mutex = new Mutex(true, IsDemo ? "Local\\CodexTracker.Demo" : "Local\\CodexTracker", out bool created);
+        _mutex = new Mutex(true, IsDemo ? "Local\\CodexTracker.Demo" + demoSuffix : "Local\\CodexTracker", out bool created);
         if (!created)
         {
-            var handle = FindWindow(null, IsDemo ? "Codex Tracker (démo)" : "Codex Tracker");
+            var handle = FindWindow(null, windowTitle);
             if (handle != IntPtr.Zero && !e.Args.Contains("--background"))
             {
                 GetWindowThreadProcessId(handle, out var processId);
@@ -51,7 +55,15 @@ public partial class App : System.Windows.Application
         }
         try
         {
+            if (e.Args.Contains("--preview"))
+            {
+                if (!IsDemo) throw new ArgumentException("Les aperçus nécessitent --demo.");
+                PreviewClock.Fixed = DateTimeOffset.Parse("2026-09-21T12:00:00Z");
+                RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+                System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+            }
             var preferences = new PreferencesStore(persistent: !IsDemo);
+            if (IsDemo && demoInstance >= 0) preferences.Update(p => p with { McpEnabled = true });
             _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice")) : new Codex.TrackerService(options: new()
             {
                 RefreshIntervalProvider = () =>
@@ -67,6 +79,7 @@ public partial class App : System.Windows.Application
                     preferences.Update(p => p with { ThemeMode = e.Args[themeArgument + 1] == "light" ? CodexTracker.App.ThemeMode.Light : CodexTracker.App.ThemeMode.Dark });
             }
             var window = new MainWindow(_service, IsDemo, preferences, new UpdateService());
+            window.Title = windowTitle;
             MainWindow = window;
             var handle = new WindowInteropHelper(window).EnsureHandle();
             _messageSource = HwndSource.FromHwnd(handle);
@@ -75,11 +88,25 @@ public partial class App : System.Windows.Application
             _environmentTimer.Tick += EnvironmentTimerTick;
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
-            if (!e.Args.Contains("--background") || IsDemo) window.Show();
+            if (!e.Args.Contains("--background")) window.Show();
             await window.InitializeAsync();
             if (_exiting) return;
+            if (!IsDemo || demoInstance >= 0)
+            {
+                try
+                {
+                    window.Assistant = new Mcp.TrackerControl(window, IsDemo);
+                    _assistantServer = new(window, window.Assistant, e.Args);
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+                { window.AssistantError = "MCP indisponible : journal local illisible. Le suivi reste actif."; }
+            }
             UpdateBootstrap.MarkHealthy(e.Args);
-            if (!window.IsVisible && (!_service.State.OnboardingComplete || _service.State.Accounts.Count == 0)) window.ShowPanel();
+            if (e.Args.Contains("--preview"))
+            {
+                await RenderPreview(window, e.Args); await ExitAsync(); return;
+            }
+            if (!e.Args.Contains("--assistant-start") && !window.IsVisible && (!_service.State.OnboardingComplete || _service.State.Accounts.Count == 0)) window.ShowPanel();
             int imageArgument = Array.IndexOf(e.Args, "--screenshot");
             if (imageArgument >= 0 && imageArgument + 1 < e.Args.Length)
             {
@@ -123,10 +150,22 @@ public partial class App : System.Windows.Application
         SystemEvents.PowerModeChanged -= PowerModeChanged;
         SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
         _messageSource?.RemoveHook(HandleWindowMessage);
+        if (_assistantServer is not null) await _assistantServer.DisposeAsync();
         if (MainWindow is MainWindow window) window.PrepareExit();
         _tray?.Dispose();
         try { if (_service is not null) await _service.DisposeAsync(); }
         finally { _mutex?.Dispose(); Shutdown(); }
+    }
+
+    private static async Task RenderPreview(MainWindow window, string[] args)
+    {
+        string Option(string name, string fallback) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback; }
+        var page = Option("--view", "Comptes"); window.OpenPage(page);
+        Window target = page is "Comptes" or "Resets" ? window : window.OwnedWindows.OfType<SettingsWindow>().First();
+        if (Option("--size", "normal") == "compact") { target.Width = Math.Max(target.MinWidth, 660); target.Height = Math.Max(target.MinHeight, 500); }
+        var dpi = double.Parse(Option("--dpi", "96"), System.Globalization.CultureInfo.InvariantCulture);
+        if (dpi is not (96 or 144 or 192)) throw new ArgumentException("DPI : 96, 144 ou 192.");
+        await Task.Delay(200); target.UpdateLayout(); Ui.SaveScreenshot(target, Path.GetFullPath(Option("--preview", "artifacts/preview.png")), dpi);
     }
 
     private IntPtr HandleWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)

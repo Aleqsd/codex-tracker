@@ -23,6 +23,16 @@ Une version portable ZIP est également disponible : extrayez-la dans un dossier
 
 Le résultat de la recherche est conservé localement avec sa date. Les vérifications simultanées sont regroupées, et le bouton attend au moins cinq minutes après une vérification réussie. Si GitHub limite les requêtes, le tracker respecte le délai annoncé, même après redémarrage ; une erreur réseau déclenche aussi un délai progressif. Un ancien résultat reste explicitement présenté comme un cache, sans annoncer que l’application est à jour. Le lien **Voir les versions sur GitHub** reste accessible pour consulter la Release manuellement.
 
+## Assistants de code et MCP
+
+Dans **Réglages → Assistants**, activez le MCP puis copiez sa configuration dans votre client assistant. Le même exécutable démarre en mode `--mcp`, sans console ni serveur réseau. Il peut démarrer le tracker en arrière-plan, consulter les comptes et échéances, modifier les réglages et gérer les rappels.
+
+Les clés Twilio/SendGrid sont accessibles en écriture seule. Les tests externes et les nouveaux envois nécessitent une confirmation locale ; enregistrer une clé n’envoie rien. Les données demandées sont transmises à votre client assistant. Voir le [guide MCP](docs/MCP.md).
+
+Pour modifier le code : [consignes pour assistants](AGENTS.md), [architecture](docs/ARCHITECTURE.md), [design](docs/DESIGN.md). `scripts/dev.ps1` regroupe compilation, tests et aperçus avec données fictives.
+
+![Réglages des assistants, démonstration](docs/assistants.png)
+
 ## Détection automatique
 
 Changez de compte **dans Codex**. Le tracker observe son fichier de session en lecture seule, détecte le nouveau compte, sélectionne son quota dans l’icône et actualise ses données. Les changements de fichier sont surveillés immédiatement, avec un contrôle de secours toutes les deux secondes et une stabilisation de 300 ms. Une écriture transitoire ou une connexion réseau lente peut prolonger l’affichage des quotas.
