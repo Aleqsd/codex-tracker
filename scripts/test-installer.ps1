@@ -41,6 +41,8 @@ $report = [ordered]@{
     initialInstallExitCode = $null; reinstallExitCode = $null; uninstallExitCode = $null
     executableVerified = $false; registrationVerified = $false
     backgroundStartupResponding = $false; noCodexSessionChecked = $false; applicationExitClean = $null
+    observedWindowFound = $false; observedWindowOwned = $false; observedWindowVisible = $false
+    observedDispatcherResponding = $false; observedStoreLock = $false; observedProcessExited = $false
     fixtureCreated = $false; reinstallPreservedFixture = $false
     applicationFilesRemoved = $false; registrationRemoved = $false; uninstallPreservedFixture = $false
     durationSeconds = 0
@@ -77,11 +79,12 @@ function Test-Within([string]$Path, [string]$Directory) {
         $Path.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)
 }
 
-function Start-OwnedProcess([string]$Executable, [string[]]$Arguments) {
+function Start-OwnedProcess([string]$Executable, [string[]]$Arguments,
+    [Diagnostics.ProcessWindowStyle]$WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden) {
     Assert-NoLink $Executable
     $info = [Diagnostics.ProcessStartInfo]::new($Executable)
     $info.UseShellExecute = $false; $info.CreateNoWindow = $true
-    $info.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $info.WindowStyle = $WindowStyle
     $info.WorkingDirectory = [IO.Path]::GetDirectoryName($Executable)
     foreach ($argument in $Arguments) { $info.ArgumentList.Add($argument) }
     foreach ($name in @('GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN')) {
@@ -223,28 +226,44 @@ public static class InstallerLifecycleWindow {
     [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam, uint flags, uint timeout, out UIntPtr result);
 }
 '@
-    $tracker = Start-OwnedProcess $runExe @('--background')
+    # The application's first-start onboarding must be allowed to show its window.
+    # Installer processes and the --exit helper retain the default Hidden style.
+    $tracker = Start-OwnedProcess $runExe @('--background') -WindowStyle Normal
     $startupWatch = [Diagnostics.Stopwatch]::StartNew()
     while ($startupWatch.Elapsed.TotalSeconds -lt 10 -and !$tracker.HasExited) {
         $handle = [InstallerLifecycleWindow]::FindWindow($null, 'Codex Tracker')
         $ownerId = 0u; $response = [UIntPtr]::Zero
-        if ($handle -ne [IntPtr]::Zero) {
+        # Last-probe booleans only: no window titles, handles, paths or error text in the report.
+        $report.observedWindowFound = $handle -ne [IntPtr]::Zero
+        $report.observedWindowOwned = $false
+        $report.observedWindowVisible = $false
+        $report.observedDispatcherResponding = $false
+        $report.observedStoreLock = Test-Path -LiteralPath (Join-Path $dataRoot '.lock')
+        if ($report.observedWindowFound) {
             $null = [InstallerLifecycleWindow]::GetWindowThreadProcessId($handle, [ref]$ownerId)
-            # First startup intentionally shows onboarding even with --background.
-            # Visibility is reached after InitializeAsync; a hidden HWND alone is not readiness.
-            if ($ownerId -eq $tracker.Id -and [InstallerLifecycleWindow]::IsWindowVisible($handle) -and
-                [InstallerLifecycleWindow]::SendMessageTimeout($handle, 0, [UIntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$response) -ne [IntPtr]::Zero -and
-                (Test-Path -LiteralPath (Join-Path $dataRoot '.lock'))) {
-                $report.backgroundStartupResponding = $true
-                break
+            $report.observedWindowOwned = $ownerId -eq $tracker.Id
+            if ($report.observedWindowOwned) {
+                $report.observedWindowVisible = [InstallerLifecycleWindow]::IsWindowVisible($handle)
+                $report.observedDispatcherResponding = [InstallerLifecycleWindow]::SendMessageTimeout(
+                    $handle, 0, [UIntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$response) -ne [IntPtr]::Zero
             }
+        }
+        # First startup shows onboarding after InitializeAsync even with --background.
+        # A hidden HWND or a responding dispatcher alone is not readiness.
+        if ($report.observedWindowOwned -and $report.observedWindowVisible -and
+            $report.observedDispatcherResponding -and $report.observedStoreLock) {
+            $report.backgroundStartupResponding = $true
+            break
         }
         Start-Sleep -Milliseconds 100
     }
+    $report.observedProcessExited = $tracker.HasExited
     if (!$report.backgroundStartupResponding) { Stop-Test 'background_startup_failed' }
     Start-Sleep -Milliseconds 250
-    if ($tracker.HasExited -or
-        [InstallerLifecycleWindow]::SendMessageTimeout($handle, 0, [UIntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$response) -eq [IntPtr]::Zero) {
+    $report.observedProcessExited = $tracker.HasExited
+    $report.observedDispatcherResponding = !$report.observedProcessExited -and
+        [InstallerLifecycleWindow]::SendMessageTimeout($handle, 0, [UIntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$response) -ne [IntPtr]::Zero
+    if ($report.observedProcessExited -or !$report.observedDispatcherResponding) {
         $report.backgroundStartupResponding = $false
         Stop-Test 'background_startup_failed'
     }
