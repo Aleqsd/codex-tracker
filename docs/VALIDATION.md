@@ -1,3 +1,10 @@
+# Version 0.8.4 — diagnostic des notifications Windows
+
+- Les deux boutons de test partagent le même moteur, un résultat visible et le journal. Une transmission ne devient plus un faux statut « affiché » ; absence d’adaptateur, journal illisible et exception sont signalés explicitement.
+- 328 tests métier réussis, dont 23 nouveaux cas sur les états Windows, la transmission sans preuve d’affichage, les résultats persistés, les reports jusqu’à l’échéance, la déduplication et les exceptions sans contenu privé. 16 nouveaux contrôles WPF couvrent les deux pages, le clavier, le diagnostic compact, le double clic, le mode démo et les erreurs du runtime.
+- La lecture native de `SHQueryUserNotificationState` a renvoyé `QUNS_BUSY` (application plein écran ou mode présentation) pendant l’investigation. Aucun réglage Windows n’a été modifié. Les essais automatisés utilisent un adaptateur simulé ; l’apparition réelle d’une bannière après sortie du mode bloquant reste à confirmer.
+- Aperçus fictifs compacts clair/sombre inspectés à 150 %. Le bouton de réglages ouvre uniquement `ms-settings:notifications`.
+
 # Version 0.8.3 — bouton de barre d’état
 
 - Variante 03 appliquée : flèche diagonale vers le coin, placée entre Réglages et Réduire. Les libellés de l’action utilisent « barre d’état » dans la fenêtre, le pied de page, l’onboarding et l’installateur.

@@ -60,8 +60,7 @@ internal sealed class SettingsWindow : ThemedWindow
         thresholds.Children.Add(PreferenceCheck("20 %", p => p.Alert20, (p, v) => p with { Alert20 = v }));
         thresholds.Children.Add(PreferenceCheck("10 %", p => p.Alert10, (p, v) => p with { Alert10 = v }));
         thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); _page.Children.Add(thresholds);
-        var test = new Button { Content = "Tester une notification", Style = (Style)FindResource("QuietButton"), Padding = new Thickness(0, 7, 0, 1), HorizontalAlignment = HorizontalAlignment.Left, FontSize = 11 };
-        test.Click += (_, _) => ((App)System.Windows.Application.Current).ShowTestNotification(); _page.Children.Add(test);
+        _page.Children.Add(ReminderSettingsView.WindowsTest(((MainWindow)owner).Reminders, demo));
         Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
         _page.Children.Add(ReminderSettingsView.Channels(preferences, ((MainWindow)owner).Reminders, demo, _commands));

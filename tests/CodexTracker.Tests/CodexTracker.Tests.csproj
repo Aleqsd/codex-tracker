@@ -20,6 +20,7 @@
     <Compile Include="../../src/CodexTracker.App/PreferencesStore.cs" Link="App/PreferencesStore.cs" />
     <Compile Include="../../src/CodexTracker.App/ApplicationCommands.cs" Link="App/ApplicationCommands.cs" />
     <Compile Include="../../src/CodexTracker.App/NotificationPolicy.cs" Link="App/NotificationPolicy.cs" />
+    <Compile Include="../../src/CodexTracker.App/WindowsNotificationDelivery.cs" Link="App/WindowsNotificationDelivery.cs" />
     <Compile Include="../../src/CodexTracker.App/WindowPlacement.cs" Link="App/WindowPlacement.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -80,6 +80,80 @@ public sealed class ReminderTests
         await fixture.Dispatcher.TickAsync(); fixture.Recreate(); await fixture.Dispatcher.TickAsync(); Assert.Single(fixture.Desktop);
         Assert.Equal(0, fixture.Handler.Requests);
     }
+    [Theory]
+    [InlineData(DeliveryStatus.Accepted)] [InlineData(DeliveryStatus.Skipped)] [InlineData(DeliveryStatus.Failed)]
+    public async Task GroupedWindowsRemindersPersistAdapterResultWithoutRetry(DeliveryStatus status)
+    {
+        using var f = new Fixture();
+        f.Rules = [new(ResetKind.Weekly, true, [60], [ReminderChannel.Windows]), new(ResetKind.Short, true, [60], [ReminderChannel.Windows])];
+        f.WindowsResult = new(status, "Résultat fourni par Windows.");
+        await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.Equal(2, f.Desktop[0].Count); Assert.True(f.PersistedBeforeWindows);
+        Assert.Equal(2, f.Journal.Entries.Count);
+        Assert.All(f.Journal.Entries, d => { Assert.Equal(status, d.Status); Assert.Equal(f.WindowsResult.Detail, d.Detail); });
+        f.Recreate(); await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.All(f.Journal.Entries, d => Assert.Equal(status, d.Status));
+        Assert.Equal(0, f.Handler.Requests);
+    }
+    [Theory]
+    [InlineData(DeliveryStatus.Accepted)] [InlineData(DeliveryStatus.Skipped)] [InlineData(DeliveryStatus.Failed)]
+    public async Task WindowsTestReturnsAndPersistsAdapterResult(DeliveryStatus status)
+    {
+        using var f = new Fixture(); f.Rules = [];
+        f.WindowsResult = new(status, "Résultat du test Windows.");
+        var result = await f.Dispatcher.TestAsync(ReminderChannel.Windows);
+        Assert.Equal(f.WindowsResult, result); Assert.Single(f.Desktop); Assert.True(f.PersistedBeforeWindows);
+        var entry = Assert.Single(f.Journal.Entries);
+        Assert.True(entry.IsTest); Assert.Equal(status, entry.Status); Assert.Equal(result.Detail, entry.Detail);
+        Assert.Equal(Now, entry.AttemptedAt);
+        f.Recreate(); await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.Equal(status, Assert.Single(f.Journal.Entries).Status);
+        Assert.Equal(0, f.Handler.Requests);
+    }
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public async Task WindowsAdapterExceptionPersistsSanitizedFailureWithoutRetry(bool manualTest)
+    {
+        using var f = new Fixture(); f.WindowsThrows = true;
+        f.Rules = manualTest ? [] : [new(ResetKind.Weekly, true, [60], [ReminderChannel.Windows])];
+        if (manualTest)
+        {
+            var result = await f.Dispatcher.TestAsync(ReminderChannel.Windows);
+            Assert.Equal(DeliveryStatus.Failed, result.Status); Assert.DoesNotContain("fake-secret", result.Detail);
+        }
+        else await f.Dispatcher.TickAsync();
+        var entry = Assert.Single(f.Journal.Entries);
+        Assert.Equal(DeliveryStatus.Failed, entry.Status); Assert.DoesNotContain("fake-secret", entry.Detail); Assert.True(f.PersistedBeforeWindows);
+        Assert.Contains("Windows", entry.Detail); Assert.Equal(manualTest, entry.IsTest);
+        f.Recreate(); await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.Equal(DeliveryStatus.Failed, Assert.Single(f.Journal.Entries).Status);
+        Assert.Equal(0, f.Handler.Requests);
+    }
+    [Fact]
+    public async Task DeferredWindowsReminderRetriesAfterShellRecoversAndDoesNotRepeat()
+    {
+        using var f = new Fixture(); f.Rules = [new(ResetKind.Weekly, true, [60], [ReminderChannel.Windows])];
+        f.WindowsResult = new(DeliveryStatus.Deferred, "Windows est temporairement occupé.");
+        await f.Dispatcher.TickAsync();
+        Assert.Equal(DeliveryStatus.Deferred, Assert.Single(f.Journal.Entries).Status); Assert.Single(f.Desktop);
+        f.Recreate(); f.Clock.Now = Now.AddMinutes(1); f.WindowsResult = new(DeliveryStatus.Accepted, "Transmis à Windows.");
+        await f.Dispatcher.TickAsync();
+        Assert.Equal(2, f.Desktop.Count); Assert.Equal(DeliveryStatus.Accepted, Assert.Single(f.Journal.Entries).Status);
+        await f.Dispatcher.TickAsync(); f.Recreate(); await f.Dispatcher.TickAsync();
+        Assert.Equal(2, f.Desktop.Count); Assert.Equal(0, f.Handler.Requests);
+    }
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public async Task DeferredWindowsReminderNeverSendsAfterExpiryOrEventRemoval(bool removed)
+    {
+        using var f = new Fixture(); f.Rules = [new(ResetKind.Weekly, true, [60], [ReminderChannel.Windows])];
+        f.WindowsResult = new(DeliveryStatus.Deferred, "Windows est temporairement occupé.");
+        await f.Dispatcher.TickAsync();
+        Assert.Equal(DeliveryStatus.Deferred, Assert.Single(f.Journal.Entries).Status);
+        if (removed) f.State = new([], null); else f.Clock.Now = Now.AddHours(1);
+        f.WindowsResult = new(DeliveryStatus.Accepted, "Transmis à Windows.");
+        await f.Dispatcher.TickAsync(); f.Recreate(); await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.Equal(DeliveryStatus.Cancelled, Assert.Single(f.Journal.Entries).Status);
+        Assert.Equal(0, f.Handler.Requests);
+    }
     [Fact]
     public async Task EachOffsetSendsOnceWhenTrackerRemainsOpen()
     {
@@ -215,9 +289,17 @@ public sealed class ReminderTests
         public readonly Clock Clock = new(); public readonly Handler Handler = new(); private readonly HttpClient _http;
         public TrackerState State = ReminderTests.State(); public ReminderRule[] Rules = Rule(); public PhonePolicy Policy = new();
         public readonly Dictionary<string, DateTimeOffset> Legacy = []; public readonly List<IReadOnlyList<ReminderOccurrence>> Desktop = [];
+        public DeliveryResult WindowsResult = new(DeliveryStatus.Accepted, "Transmis à Windows ; affichage non confirmé."); public bool WindowsThrows, PersistedBeforeWindows;
         public NotificationSecretStore Secrets; public ReminderJournal Journal = null!; public ReminderDispatcher Dispatcher = null!;
         public Fixture() { _http = new(Handler); Secrets = new(_directory.Root); Secrets.Save(Config); Recreate(); }
-        public void Recreate() { Journal = new(_directory.Root); Dispatcher = new(Journal, Secrets, new(_http), () => State, () => Rules, () => Policy, () => Legacy, r => Desktop.Add(r), Clock); }
+        public void Recreate() { Journal = new(_directory.Root); Dispatcher = new(Journal, Secrets, new(_http), () => State, () => Rules, () => Policy, () => Legacy, ShowWindows, Clock); }
+        private DeliveryResult ShowWindows(IReadOnlyList<ReminderOccurrence> rows)
+        {
+            Desktop.Add(rows);
+            PersistedBeforeWindows = rows.All(r => Journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status == DeliveryStatus.Submitting));
+            if (WindowsThrows) throw new InvalidOperationException("fake-secret must never be logged");
+            return WindowsResult;
+        }
         public void Dispose() { _http.Dispose(); _directory.Dispose(); }
     }
 }

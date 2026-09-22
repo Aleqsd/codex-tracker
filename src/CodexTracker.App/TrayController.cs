@@ -12,6 +12,7 @@ namespace CodexTracker.App;
 internal sealed class TrayController : IDisposable
 {
     private readonly Forms.NotifyIcon _tray;
+    private readonly WindowsNotificationDelivery _desktop;
     private readonly MainWindow _window;
     private readonly ITrackerService _service;
     private readonly Func<Task> _exit;
@@ -37,6 +38,8 @@ internal sealed class TrayController : IDisposable
         _window = window; _service = service; _exit = exit; _preferences = preferences;
         _peek = new TrayPeekWindow(_window.ShowPanel);
         _tray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
+        _desktop = new((title, body) => _tray.ShowBalloonTip(8000, title, body, Forms.ToolTipIcon.Info),
+            () => !_disposed && !_suspended && _tray.Visible);
         _tray.MouseClick += (_, e) =>
         {
             HidePeek();
@@ -48,7 +51,8 @@ internal sealed class TrayController : IDisposable
         _presence.Tick += (_, _) => CheckPeekPresence();
         _notifications.Tick += (_, _) => ShowNotifications();
         _expiryTimer.Tick += async (_, _) => await CheckRemindersAsync();
-        _window.Reminders.ShowWindows = rows => _tray.ShowBalloonTip(8000, rows.Count == 1 ? ReminderPlanner.Label(rows[0].Kind) : $"{rows.Count} rappels Codex", ReminderPlanner.Body(rows[0]) + (rows.Count > 1 ? $"\n{rows.Count - 1} autre(s) échéance(s) dans l’onglet Resets." : ""), Forms.ToolTipIcon.Info);
+        _window.Reminders.ShowWindows = rows => _window.Dispatcher.CheckAccess()
+            ? ShowReminders(rows) : _window.Dispatcher.Invoke(() => ShowReminders(rows));
         if (service is not DemoTrackerService) _expiryTimer.Start();
         _shellRecovery.Tick += (_, _) =>
         {
@@ -204,7 +208,7 @@ internal sealed class TrayController : IDisposable
         var latest = pending.OrderByDescending(n => n.Kind == NotificationKind.Threshold).ThenBy(n => n.Threshold ?? 100).First();
         var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current);
         if (pending.Length > 1) body += $"\n{pending.Length - 1} autre événement dans le suivi.";
-        _tray.ShowBalloonTip(5000, title, body, latest.Kind == NotificationKind.Reset ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Warning);
+        _desktop.Send(title, body);
     }
 
     internal void SavePeekScreenshot(string path, double dpi = 96)
@@ -215,9 +219,13 @@ internal sealed class TrayController : IDisposable
         _peek.Hide();
     }
 
-    internal void ShowTestNotification()
+    private DeliveryResult ShowReminders(IReadOnlyList<ReminderOccurrence> rows)
     {
-        if (!_disposed) _tray.ShowBalloonTip(5000, "Codex Tracker", "Les alertes de quota et de reset apparaîtront ici.", Forms.ToolTipIcon.Info);
+        if (rows.Count == 0) return new(DeliveryStatus.Failed, "Aucun rappel à transmettre à Windows.");
+        if (rows.Count == 1 && rows[0].Key.StartsWith("test/", StringComparison.Ordinal))
+            return _desktop.Send("Codex Tracker · Test", "Les alertes de quota et de reset apparaîtront ici. Cliquez pour ouvrir l’onglet Resets.");
+        return _desktop.Send(rows.Count == 1 ? ReminderPlanner.Label(rows[0].Kind) : $"{rows.Count} rappels Codex",
+            ReminderPlanner.Body(rows[0]) + (rows.Count > 1 ? $"\n{rows.Count - 1} autre(s) échéance(s) dans l’onglet Resets." : ""), deferWhenBusy: true);
     }
     internal static Icon CreateIcon(string number, Color color)
         => RenderIcon(number, color, true);
@@ -259,6 +267,7 @@ internal sealed class TrayController : IDisposable
     {
         if (_disposed) return;
         _disposed = true; _service.Changed -= Changed; _service.Notification -= Notified;
+        _window.Reminders.ShowWindows = null;
         _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
         _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close();
         _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();

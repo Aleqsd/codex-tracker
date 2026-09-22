@@ -1,6 +1,6 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center">Vos quotas Codex, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.3/CodexTracker-0.8.3-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.4/CodexTracker-0.8.4-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
 <p align="center">Windows 11 · x64 · Gratuit · Données locales — nécessite Codex installé</p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)

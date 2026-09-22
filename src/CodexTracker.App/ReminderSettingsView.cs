@@ -76,7 +76,7 @@ internal static class ReminderSettingsView
     internal static FrameworkElement Channels(PreferencesStore preferences, ReminderRuntime runtime, bool demo, ApplicationCommands commands)
     {
         var root = Panel(); root.Children.Add(Hint("Facultatif : utilisez vos propres comptes. Les envois partent directement de ce PC ; les frais sont facturés par votre prestataire."));
-        root.Children.Add(TestButton("Tester une notification Windows", ReminderChannel.Windows, runtime, demo, root));
+        root.Children.Add(WindowsTest(runtime, demo));
         NotificationSecrets secrets;
         try { secrets = runtime.Secrets.Read(); }
         catch { root.Children.Add(Hint("Identifiants locaux illisibles. Aucun écrasement effectué.")); return root; }
@@ -158,6 +158,41 @@ internal static class ReminderSettingsView
         root.Children.Add(new Expander { Header = "Limites et heures silencieuses", Content = limits, Margin = new Thickness(0, 4, 0, 10) });
         return root;
     }
+    internal static FrameworkElement WindowsTest(ReminderRuntime runtime, bool demo) => WindowsTest(() => runtime.TestAsync(ReminderChannel.Windows), demo);
+
+    internal static FrameworkElement WindowsTest(Func<Task<DeliveryResult>> test, bool demo)
+    {
+        var root = new StackPanel { Margin = new Thickness(0, 5, 0, 8) };
+        var actions = new WrapPanel();
+        var button = Button("Tester une notification Windows");
+        button.IsEnabled = !demo;
+        var settings = Button("Réglages Windows ↗");
+        settings.Style = (Style)System.Windows.Application.Current.FindResource("QuietButton");
+        settings.IsEnabled = !demo;
+        settings.ToolTip = "Ouvrir les paramètres des notifications Windows";
+        var status = Hint(""); status.Visibility = Visibility.Collapsed;
+        System.Windows.Automation.AutomationProperties.SetLiveSetting(status, System.Windows.Automation.AutomationLiveSetting.Polite);
+        button.Click += async (_, _) =>
+        {
+            if (demo || !button.IsEnabled) return;
+            button.IsEnabled = false;
+            status.Text = "Vérification des notifications Windows…";
+            status.Visibility = Visibility.Visible;
+            try { status.Text = (await test()).Detail; }
+            catch { status.Text = "Test impossible ; consultez les réglages Windows et l’historique local."; }
+            finally { button.IsEnabled = !demo; }
+        };
+        settings.Click += (_, _) =>
+        {
+            if (demo) return;
+            try { Process.Start(new ProcessStartInfo("ms-settings:notifications") { UseShellExecute = true }); }
+            catch { status.Text = "Ouvrez Paramètres Windows → Système → Notifications."; status.Visibility = Visibility.Visible; }
+        };
+        actions.Children.Add(button); actions.Children.Add(settings);
+        root.Children.Add(actions); root.Children.Add(status);
+        return root;
+    }
+
     private static TextBox Field(Panel panel, string label, string value)
     {
         panel.Children.Add(Ui.Text(label, 11, "MutedBrush"));

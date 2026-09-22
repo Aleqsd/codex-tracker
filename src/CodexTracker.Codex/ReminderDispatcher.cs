@@ -6,7 +6,7 @@ public sealed class ReminderDispatcher(
     ReminderJournal journal, NotificationSecretStore secrets, NotificationProviders providers,
     Func<TrackerState> state, Func<ReminderRule[]> rules, Func<PhonePolicy> phone,
     Func<IReadOnlyDictionary<string, DateTimeOffset>> legacySent,
-    Action<IReadOnlyList<ReminderOccurrence>> windows, TimeProvider? clock = null)
+    Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -57,8 +57,11 @@ public sealed class ReminderDispatcher(
                 var current = ReminderPlanner.Due(state(), rules(), _clock.GetUtcNow()).Select(r => r.Key).ToHashSet();
                 desktop = desktop.Where(r => current.Contains(r.Key)).ToList();
                 foreach (var r in desktop) Put(r, DeliveryStatus.Submitting, "Transmission à Windows.");
-                if (desktop.Count > 0) windows(desktop);
-                foreach (var r in desktop) Put(r, DeliveryStatus.Shown, "Transmis à Windows ; affichage soumis aux réglages de notification Windows.");
+                if (desktop.Count > 0)
+                {
+                    var result = SendWindows(desktop);
+                    foreach (var r in desktop) Put(r, result.Status, result.Detail);
+                }
             }
             if (now >= _nextPoll)
             {
@@ -76,6 +79,11 @@ public sealed class ReminderDispatcher(
         finally { _gate.Release(); }
     }
     private void Put(ReminderOccurrence r, DeliveryStatus status, string text) => journal.Put(new(r, status, _clock.GetUtcNow(), text));
+    private DeliveryResult SendWindows(IReadOnlyList<ReminderOccurrence> occurrences)
+    {
+        try { return windows(occurrences); }
+        catch (Exception) { return new(DeliveryStatus.Failed, "Notification Windows impossible. Vérifiez les réglages de notification Windows."); }
+    }
     private void Defer(ReminderOccurrence r, string text)
     {
         if (!journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status == DeliveryStatus.Deferred && d.Detail == text)) Put(r, DeliveryStatus.Deferred, text);
@@ -93,7 +101,7 @@ public sealed class ReminderDispatcher(
             var r = new ReminderOccurrence("test/" + Guid.NewGuid(), Guid.Empty, "Test de notification", ResetKind.Weekly, null, now.AddHours(1), now, 60, channel);
             var attempt = new ReminderDelivery(r, DeliveryStatus.Submitting, now, "Test demandé manuellement.", AttemptedAt: now, IsTest: true); journal.Put(attempt);
             DeliveryResult result;
-            if (channel == ReminderChannel.Windows) { windows([r]); result = new(DeliveryStatus.Shown, "Test transmis à Windows."); }
+            if (channel == ReminderChannel.Windows) result = SendWindows([r]);
             else result = await providers.SendAsync(r, secrets.Read(), token);
             journal.Put(attempt with { Status = result.Status, Detail = result.Detail, ProviderId = result.ProviderId, UpdatedAt = _clock.GetUtcNow() });
             return result;

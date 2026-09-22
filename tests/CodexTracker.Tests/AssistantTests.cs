@@ -114,7 +114,7 @@ public sealed class AssistantTests
             secrets.Save(NotificationSecrets.Empty with { SendGrid = new(true, "fictional", "sender@example.test", "to@example.test") });
             var handler = new BlockingMail(); using var http = new System.Net.Http.HttpClient(handler);
             var journal = new ReminderJournal(dir);
-            var dispatcher = new ReminderDispatcher(journal, secrets, new(http), () => new([], null), () => [], () => new(), () => new Dictionary<string, DateTimeOffset>(), _ => { });
+            var dispatcher = new ReminderDispatcher(journal, secrets, new(http), () => new([], null), () => [], () => new(), () => new Dictionary<string, DateTimeOffset>(), _ => new(DeliveryStatus.Accepted, "Transmis au faux adaptateur Windows."));
             var first = dispatcher.TestAsync(ReminderChannel.Email);
             await handler.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
             bool authorized = true;

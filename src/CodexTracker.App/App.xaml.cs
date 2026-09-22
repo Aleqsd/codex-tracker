@@ -22,7 +22,6 @@ public partial class App : System.Windows.Application
     private bool _taskbarCreated, _suspended;
     private DateTimeOffset _lastResume = DateTimeOffset.MinValue;
     internal bool IsDemo { get; private set; }
-    internal void ShowTestNotification() => _tray?.ShowTestNotification();
 
     protected override async void OnStartup(StartupEventArgs e)
     {
