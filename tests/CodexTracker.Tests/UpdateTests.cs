@@ -31,6 +31,7 @@ public sealed partial class UpdateTests
         var handler = new FakeHandler(_ => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(releases)) });
         using var client = new HttpClient(handler);
         using var service = new UpdateService("0.3.0", client);
+        service.SetIncludePrereleases(true);
 
         var release = await service.CheckAsync();
 
@@ -289,6 +290,7 @@ public sealed partial class UpdateTests
         });
         using var client = new HttpClient(handler);
         using var service = new UpdateService("0.3.0", client, clock: () => now);
+        service.SetIncludePrereleases(true);
         Assert.Equal("0.9.0-rc.1", (await service.CheckDetailedAsync()).Release!.Version);
         revalidate = true; now = now.AddMinutes(6);
         var result = await service.CheckDetailedAsync();
@@ -346,7 +348,7 @@ public sealed partial class UpdateTests
         var recorded = corruption == "clock-backwards" ? now.AddHours(2) : now;
         var content = JsonSerializer.Serialize(new
         {
-            Schema = 2, VerifiedAt = (DateTimeOffset?)null,
+            Schema = 3, IncludePrereleases = false, VerifiedAt = (DateTimeOffset?)null,
             NextCheckAt = corruption == "clock-backwards" ? recorded.AddMinutes(3) : DateTimeOffset.MaxValue,
             Failures = corruption == "incoherent" ? 0 : 1,
             RateLimited = corruption != "incoherent", Pages = Array.Empty<object>(), RecordedAt = recorded
@@ -584,12 +586,12 @@ public sealed partial class UpdateTests
         new("https://github.com/Aleqsd/codex-tracker/releases/download/v0.4.0/CodexTracker-0.4.0-win-x64.zip"),
         new("https://github.com/Aleqsd/codex-tracker/releases/download/v0.4.0/CodexTracker-0.4.0-win-x64.zip.sha256"), size);
 
-    private static object ReleaseRow(string version, bool draft = false, string host = "github.com", bool includeChecksum = true)
+    private static object ReleaseRow(string version, bool draft = false, string host = "github.com", bool includeChecksum = true, bool? prerelease = null)
     {
         var name = $"CodexTracker-{version}-win-x64.zip";
         var assets = new List<object> { new { name, size = 123, browser_download_url = $"https://{host}/Aleqsd/codex-tracker/releases/download/v{version}/{name}" } };
         if (includeChecksum) assets.Add(new { name = name + ".sha256", size = 100, browser_download_url = $"https://{host}/Aleqsd/codex-tracker/releases/download/v{version}/{name}.sha256" });
-        return new { tag_name = "v" + version, draft, prerelease = version.Contains('-'), assets };
+        return new { tag_name = "v" + version, draft, prerelease = prerelease ?? version.Contains('-'), assets };
     }
 
     private static byte[] Zip(params (string Path, string Content)[] entries)

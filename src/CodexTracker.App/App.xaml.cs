@@ -64,6 +64,7 @@ public partial class App : System.Windows.Application
             var preferences = new PreferencesStore(persistent: !IsDemo);
             if (IsDemo && demoInstance >= 0) preferences.Update(p => p with { McpEnabled = true });
             var updates = new UpdateService();
+            updates.SetIncludePrereleases(preferences.Current.IncludePrereleaseUpdates);
             if (!IsDemo)
             {
                 await updates.LoadPreparedAsync();
@@ -179,7 +180,7 @@ public partial class App : System.Windows.Application
         string Option(string name, string fallback) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback; }
         var page = Option("--view", "Comptes");
         if (page == "Semaine") window.ShowResetWeek(); else window.OpenPage(page);
-        Window target = page is "Comptes" or "Resets" or "Semaine" ? window : window.OwnedWindows.OfType<SettingsWindow>().First();
+        Window target = window;
         if (Option("--size", "normal") == "compact") { target.Width = Math.Max(target.MinWidth, 660); target.Height = Math.Max(target.MinHeight, 500); }
         var dpi = double.Parse(Option("--dpi", "96"), System.Globalization.CultureInfo.InvariantCulture);
         if (dpi is not (96 or 144 or 192)) throw new ArgumentException("DPI : 96, 144 ou 192.");

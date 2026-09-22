@@ -3,22 +3,37 @@ namespace CodexTracker.Codex;
 public static class CodexLocator
 {
     public static string? FindExecutable()
+        => FindExecutable(Environment.GetEnvironmentVariable("PATH"),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+
+    internal static string? FindExecutable(string? pathEnvironment, string localApplicationData, string applicationData)
     {
         // The native app binary is preferable to npm's .cmd shim: no shell is required.
-        foreach (var path in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+        foreach (var path in (pathEnvironment ?? "").Split(Path.PathSeparator))
         {
             if (string.IsNullOrWhiteSpace(path)) continue;
-            var candidate = Path.Combine(path.Trim('"'), "codex.exe");
-            if (File.Exists(candidate)) return candidate;
+            try
+            {
+                var candidate = Path.GetFullPath(Path.Combine(path.Trim().Trim('"'), "codex.exe"));
+                if (File.Exists(candidate)) return candidate;
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or System.Security.SecurityException) { }
         }
-        var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
-        if (Directory.Exists(root))
+        return FindUnder(Path.Combine(localApplicationData, "OpenAI", "Codex", "bin"))
+            ?? FindUnder(Path.Combine(applicationData, "npm", "node_modules", "@openai"));
+    }
+
+    private static string? FindUnder(string directory)
+    {
+        try
         {
-            var native = Directory.EnumerateFiles(root, "codex.exe", SearchOption.AllDirectories)
+            if (!Directory.Exists(directory)) return null;
+            return Directory.EnumerateFiles(directory, "codex.exe", new EnumerationOptions
+                { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint })
                 .OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
-            if (native is not null) return native;
         }
-        var npm = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "npm", "node_modules", "@openai");
-        return Directory.Exists(npm) ? Directory.EnumerateFiles(npm, "codex.exe", SearchOption.AllDirectories).FirstOrDefault() : null;
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        { return null; }
     }
 }

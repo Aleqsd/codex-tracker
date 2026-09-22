@@ -27,3 +27,9 @@ pending-desktop-switch.bin
 notification-secrets.dpapi
 reminder-journal.json
 assistant-actions.json
+settings.json.bak*
+settings.json.corrupt-*
+preferences.json.bak*
+preferences.json.corrupt-*
+snapshots.json.bak*
+snapshots.json.corrupt-*

@@ -14,7 +14,7 @@ Interface française, sobre, neutre et compacte. Afficher l’information essent
 - Dropdowns : style existant avec icône, libellé et chevron ; ne pas utiliser l’objet de données comme texte.
 - Icônes vectorielles provenant des ressources existantes, avec de la marge autour du tracé.
 - Initiales sur fond coloré en l’absence de photo ; fond neutre du thème derrière une image transparente.
-- Sections de réglages à gauche, formulaire à droite. Défilement vertical et labels lisibles en petite fenêtre.
+- Réglages dans le troisième onglet de la fenêtre, à côté de Comptes et Resets. Sections à gauche, formulaire à droite. Défilement indépendant des deux colonnes et labels lisibles en petite fenêtre. Conserver la section et les saisies lorsque l’utilisateur passe à un autre onglet.
 - Confirmation MCP : action, destinataire, effet et expiration ; jamais afficher de clé.
 
 ## Aperçus reproductibles

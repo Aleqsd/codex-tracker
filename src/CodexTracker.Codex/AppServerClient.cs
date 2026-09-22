@@ -38,7 +38,7 @@ internal sealed class AppServerClient : IAsyncDisposable
         foreach (var name in new[] { "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN",
             "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT", "CODEX_SQLITE_HOME" })
             start.Environment.Remove(name);
-        var process = Process.Start(start) ?? throw new TrackerException("Impossible de démarrer le service Codex.");
+        var process = Process.Start(start) ?? throw new TrackerException("Impossible de démarrer le service Codex.", CodexFailureCode.ServiceUnavailable);
         AppServerClient client;
         try { client = new AppServerClient(process, rereadDesktopTokens); }
         catch
@@ -54,7 +54,8 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             await client.RequestAsync("initialize", new
             {
-                clientInfo = new { name = "codex_tracker", title = "Codex Tracker", version = "0.6.0" },
+                clientInfo = new { name = "codex_tracker", title = "Codex Tracker", version =
+                    typeof(AppServerClient).Assembly.GetName().Version?.ToString(3) ?? "0.0.0" },
                 capabilities = new { experimentalApi = true }
             }, cancellationToken);
             await client.SendAsync(new { method = "initialized", @params = new { } }, cancellationToken);
@@ -118,19 +119,23 @@ internal sealed class AppServerClient : IAsyncDisposable
                     if (root.TryGetProperty("error", out var error))
                     {
                         var code = error.TryGetProperty("code", out var c) && c.TryGetInt32(out var number) ? number : 0;
-                        completion.TrySetException(new TrackerException($"Codex n'a pas pu répondre (RPC {code}). Actualisez ou vérifiez ce compte dans Codex."));
+                        completion.TrySetException(RpcFailure(code));
                     }
                     else if (root.TryGetProperty("result", out var result)) completion.TrySetResult(result.Clone());
-                    else completion.TrySetException(new TrackerException("Réponse Codex incompatible."));
+                    else completion.TrySetException(new TrackerException("Réponse Codex incompatible. Mettez à jour Codex et le tracker.", CodexFailureCode.ProtocolUnsupported));
                 }
             }
         }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or JsonException or TrackerException or InvalidOperationException) { }
         finally
         {
-            foreach (var completion in _pending.Values) completion.TrySetException(new TrackerException("Le service Codex s'est arrêté. Actualisez pour réessayer."));
+            foreach (var completion in _pending.Values) completion.TrySetException(new TrackerException("Le service Codex s'est arrêté. Actualisez pour réessayer.", CodexFailureCode.ServiceUnavailable));
         }
     }
+
+    internal static TrackerException RpcFailure(int code) => code is -32601 or -32602
+        ? new TrackerException("Cette version de Codex ne prend pas en charge la lecture des quotas. Mettez à jour Codex et le tracker.", CodexFailureCode.ProtocolUnsupported)
+        : new TrackerException($"Codex n'a pas pu répondre (RPC {code}). Actualisez ou vérifiez ce compte dans Codex.", CodexFailureCode.ServiceUnavailable);
 
     private async Task HandleServerRequestAsync(JsonElement id, string method)
     {

@@ -1,8 +1,17 @@
+# Version 0.9.0 — stabilisation avant la 1.0
+
+- 381 tests métier réussis, dont les canaux stable/préversions, leur cache, les changements de canal pendant une préparation, la version Windows après installation, la récupération locale et les diagnostics de compatibilité.
+- 123 contrôles WPF réussis : Réglages est un véritable troisième onglet, les sections et brouillons restent présents, le clavier et le défilement compact fonctionnent, les avertissements de récupération et l’aperçu du diagnostic restent accessibles. Les notifications Windows ne sont pas émises réellement par ces tests.
+- Compilation Release sans avertissement. Revue croisée des canaux de mise à jour, de la récupération et de la durée de vie des réglages intégrés. Rendus fictifs Application compacts aux DPI 96/144/192, thèmes clair/sombre ; tour GIF régénéré avec les nouveaux onglets. Les rendus ne remplacent pas les essais entre écrans physiques.
+- Le rapport de support exclut les noms de comptes, quotas, chemins et secrets. `CODEX_HOME` est pris en compte en lecture seule. Une corruption des préférences n’active ni rappels ni MCP ; un journal de rappels structurellement invalide suspend les envois sans empêcher le démarrage.
+
+Les validations restant à terminer avant une version stable sont suivies dans [V1-READINESS.md](V1-READINESS.md), en distinguant les tests simulés des essais sur de vrais postes.
+
 # Version 0.8.4 — diagnostic des notifications Windows
 
 - Les deux boutons de test partagent le même moteur, un résultat visible et le journal. Une transmission ne devient plus un faux statut « affiché » ; absence d’adaptateur, journal illisible et exception sont signalés explicitement.
 - 328 tests métier réussis, dont 23 nouveaux cas sur les états Windows, la transmission sans preuve d’affichage, les résultats persistés, les reports jusqu’à l’échéance, la déduplication et les exceptions sans contenu privé. 16 nouveaux contrôles WPF couvrent les deux pages, le clavier, le diagnostic compact, le double clic, le mode démo et les erreurs du runtime.
-- La lecture native de `SHQueryUserNotificationState` a renvoyé `QUNS_BUSY` (application plein écran ou mode présentation) pendant l’investigation. Aucun réglage Windows n’a été modifié. Les essais automatisés utilisent un adaptateur simulé ; l’apparition réelle d’une bannière après sortie du mode bloquant reste à confirmer.
+- La lecture native de `SHQueryUserNotificationState` a renvoyé `QUNS_BUSY` (application plein écran ou mode présentation) pendant l’investigation. Aucun réglage Windows n’a été modifié par le tracker. Les essais automatisés utilisent un adaptateur simulé ; l’utilisateur a ensuite confirmé l’apparition réelle de la notification sur la 0.8.4, puis avoir trouvé son réglage « Ne pas déranger ».
 - Aperçus fictifs compacts clair/sombre inspectés à 150 %. Le bouton de réglages ouvre uniquement `ms-settings:notifications`.
 
 # Version 0.8.3 — bouton de barre d’état

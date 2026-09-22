@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace CodexTracker.App.Updates;
 
-public sealed record UpdateRelease(string Version, string Tag, Uri NotesUrl, Uri DownloadUrl, Uri ChecksumUrl, long Size);
+public sealed record UpdateRelease(string Version, string Tag, Uri NotesUrl, Uri DownloadUrl, Uri ChecksumUrl, long Size, bool IsPrerelease = false);
 public sealed record UpdateOutcome(DateTimeOffset At, bool Success, string Message);
 
 public sealed partial class UpdateService : IDisposable
@@ -22,6 +22,28 @@ public sealed partial class UpdateService : IDisposable
     private readonly HttpClient _client;
     private readonly bool _ownsClient;
     public string CurrentVersion { get; }
+    public bool IncludePrereleases { get; private set; }
+    private int _channelRevision;
+    public event EventHandler? ChannelChanged;
+
+    public void SetIncludePrereleases(bool include)
+    {
+        lock (_checkGate)
+        {
+            if (IncludePrereleases == include) return;
+            IncludePrereleases = include;
+            _channelRevision++;
+            _checkInFlight = null;
+            _cache = LoadCheckCache();
+            Prepared = null;
+            PreparationMessage = null;
+        }
+        ChannelChanged?.Invoke(this, EventArgs.Empty);
+        PreparationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static bool IsReleaseAllowed(UpdateRelease release, bool includePrereleases) =>
+        includePrereleases || !release.IsPrerelease && SemanticVersion.Parse(release.Version)?.PreRelease is null;
     internal static string UpdatesRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexTracker", "updates");
 
     public UpdateService() : this(typeof(UpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0", null) { }
@@ -59,7 +81,7 @@ public sealed partial class UpdateService : IDisposable
         return result.Release;
     }
 
-    internal static UpdateRelease? SelectRelease(JsonElement releases, string currentVersion)
+    internal static UpdateRelease? SelectRelease(JsonElement releases, string currentVersion, bool includePrereleases = false)
     {
         var current = SemanticVersion.Parse(currentVersion) ?? throw new InvalidDataException("Version actuelle invalide.");
         UpdateRelease? best = null;
@@ -72,6 +94,8 @@ public sealed partial class UpdateService : IDisposable
             if (tag.Length > 256) continue;
             var version = SemanticVersion.Parse(tag);
             if (version is null || version.CompareTo(current) <= 0 || best is not null && version.CompareTo(SemanticVersion.Parse(best.Version)) <= 0) continue;
+            var isPrerelease = version.PreRelease is not null || row.TryGetProperty("prerelease", out var preview) && preview.ValueKind == JsonValueKind.True;
+            if (isPrerelease && !includePrereleases) continue;
             var name = $"CodexTracker-{version.Text}-win-x64.zip";
             Uri? download = null; Uri? checksum = null; long size = 0;
             foreach (var asset in assets.EnumerateArray())
@@ -87,7 +111,7 @@ public sealed partial class UpdateService : IDisposable
                 if (assetName == name + ".sha256") checksum = uri;
             }
             if (download is not null && checksum is not null)
-                best = new(version.Text, tag, new Uri($"https://github.com{Repository}/releases/tag/{Uri.EscapeDataString(tag)}"), download, checksum, size);
+                best = new(version.Text, tag, new Uri($"https://github.com{Repository}/releases/tag/{Uri.EscapeDataString(tag)}"), download, checksum, size, isPrerelease);
         }
         return best;
     }
@@ -106,6 +130,7 @@ public sealed partial class UpdateService : IDisposable
 
     public async Task<bool> LaunchPreparedAsync(bool automatic, bool background, CancellationToken cancellationToken = default)
     {
+        var channelRevision = _channelRevision;
         var target = Environment.ProcessPath ?? throw new IOException("L’application en cours est introuvable.");
         if (!string.Equals(Path.GetFileName(target), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase))
             throw new IOException("Utilisez la version installée ou portable pour effectuer la mise à jour.");
@@ -115,6 +140,7 @@ public sealed partial class UpdateService : IDisposable
         UpdatePackage.RejectReparsePoints(UpdatesRoot);
         var prepared = await ClaimPreparedAsync(automatic, cancellationToken);
         if (prepared is null) return false;
+        EnsureChannel(channelRevision);
         var stage = Path.Combine(UpdatesRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(stage);
         var helperStarted = false;
@@ -134,25 +160,18 @@ public sealed partial class UpdateService : IDisposable
             await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest), cancellationToken);
             var info = new ProcessStartInfo(helper) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = stage };
             info.ArgumentList.Add("--apply-update"); info.ArgumentList.Add(manifestPath);
-            using var child = Process.Start(info) ?? throw new IOException("Le programme de mise à jour n’a pas démarré.");
+            Process child;
+            lock (_checkGate)
+            {
+                EnsureChannel(channelRevision);
+                child = Process.Start(info) ?? throw new IOException("Le programme de mise à jour n’a pas démarré.");
+            }
+            using var childLifetime = child;
             helperStarted = true;
             var ready = Path.Combine(stage, "helper.ready");
-            using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            wait.CancelAfter(TimeSpan.FromSeconds(20));
-            try
-            {
-                while (!File.Exists(ready))
-                {
-                    if (child.HasExited) throw new IOException("Le programme de mise à jour n’a pas pu préparer l’installation.");
-                    await Task.Delay(100, wait.Token);
-                }
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-            catch
-            {
-                await File.WriteAllTextAsync(Path.Combine(stage, "cancel"), "cancel", CancellationToken.None);
-                throw;
-            }
+            await WaitForHelperReadyAsync(() => File.Exists(ready), () => child.HasExited,
+                () => EnsureChannel(channelRevision),
+                () => File.WriteAllTextAsync(Path.Combine(stage, "cancel"), "cancel", CancellationToken.None), cancellationToken);
             // The caller now closes this app normally. The helper never closes Codex or kills this app.
             return true;
         }
@@ -164,6 +183,26 @@ public sealed partial class UpdateService : IDisposable
                 catch (UnauthorizedAccessException) { }
             throw;
         }
+    }
+
+    internal static async Task WaitForHelperReadyAsync(Func<bool> ready, Func<bool> exited, Action ensureCurrentChannel,
+        Func<Task> cancel, CancellationToken cancellationToken)
+    {
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        wait.CancelAfter(TimeSpan.FromSeconds(20));
+        try
+        {
+            while (!ready())
+            {
+                ensureCurrentChannel();
+                if (exited()) throw new IOException("Le programme de mise à jour n’a pas pu préparer l’installation.");
+                await Task.Delay(100, wait.Token);
+            }
+            // Readiness is not permission to install after the user changes release channels.
+            ensureCurrentChannel();
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch { await cancel(); throw; }
     }
 
     internal async Task<string> StagePackageAsync(UpdateRelease release, string stage, CancellationToken token)
@@ -251,19 +290,21 @@ public sealed partial class UpdateService : IDisposable
         {
             UpdatePackage.RejectReparsePoints(PreparationRoot);
             if (!Directory.Exists(PreparationRoot)) return;
-            string? preparedId = null;
-            if (File.Exists(PreparedPath))
+            var preparedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var preparedPath in new[] { PreparedPathFor(false), PreparedPathFor(true) })
             {
-                UpdatePackage.RejectReparsePoints(PreparedPath);
-                if (new FileInfo(PreparedPath).Length > 16384) return;
-                preparedId = JsonSerializer.Deserialize<PreparedUpdate>(File.ReadAllText(PreparedPath))?.StageId;
+                if (!File.Exists(preparedPath)) continue;
+                UpdatePackage.RejectReparsePoints(preparedPath);
+                if (new FileInfo(preparedPath).Length > 16384) return;
+                var preparedId = JsonSerializer.Deserialize<PreparedUpdate>(File.ReadAllText(preparedPath))?.StageId;
+                if (preparedId is not null) preparedIds.Add(preparedId);
             }
             foreach (var directory in Directory.EnumerateDirectories(PreparationRoot).Take(100))
             {
                 if (!Guid.TryParseExact(Path.GetFileName(directory), "N", out _)) continue;
                 // A crash after committing prepared-update.json may leave an abandoned marker.
                 // Never delete the package still referenced by the current ready record.
-                if (string.Equals(Path.GetFileName(directory), preparedId, StringComparison.OrdinalIgnoreCase)) continue;
+                if (preparedIds.Contains(Path.GetFileName(directory))) continue;
                 if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) continue;
                 var marker = File.Exists(Path.Combine(directory, "complete")) ? Path.Combine(directory, "complete") : Path.Combine(directory, "abandoned");
                 if (!File.Exists(marker) || DateTime.UtcNow - File.GetLastWriteTimeUtc(marker) < TimeSpan.FromDays(1)) continue;

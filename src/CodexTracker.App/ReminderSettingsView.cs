@@ -59,7 +59,7 @@ internal static class ReminderSettingsView
                 {
                     var ids = all.IsChecked == true ? null : accountChecks.Where(c => c.Box.IsChecked == true).Select(c => c.Id).ToArray();
                     var updated = rows.Select(r => new ReminderRule(kind, enabled.IsChecked == true, [r.Minutes], channels.Where((_, i) => r.Boxes[i].IsChecked == true).ToArray(), ids));
-                    if (System.Text.Json.JsonSerializer.Serialize(preferences.Current.ReminderRules!.Where(r => r.Kind == kind)) != System.Text.Json.JsonSerializer.Serialize(baseline)) { status.Text = "Règles modifiées ailleurs. Fermez puis rouvrez les réglages."; return; }
+                    if (System.Text.Json.JsonSerializer.Serialize(preferences.Current.ReminderRules!.Where(r => r.Kind == kind)) != System.Text.Json.JsonSerializer.Serialize(baseline)) { status.Text = "Règles modifiées ailleurs. Utilisez « Recharger la section » avant de réessayer."; return; }
                     commands.SavePreferences(p => p with { ReminderRules = p.ReminderRules!.Where(r => r.Kind != kind).Concat(updated).ToArray() });
                     baseline = preferences.Current.ReminderRules!.Where(r => r.Kind == kind).ToArray(); status.Text = "Rappels enregistrés."; Summary();
                 }
@@ -97,7 +97,7 @@ internal static class ReminderSettingsView
                 var config = new TwilioSettings(enabled.IsChecked == true, sid.Text.Trim(), key.Text.Trim(), secret.Password.Trim(), sms.Text.Trim(), call.Text.Trim(), to.Text.Trim());
                 var current = runtime.Secrets.Read() with { Twilio = config };
                 if (config.Enabled && !NotificationProviders.Configured(ReminderChannel.Sms, current) && !NotificationProviders.Configured(ReminderChannel.Call, current)) { twilioStatus.Text = "Vérifiez les identifiants, le destinataire et au moins un expéditeur."; return; }
-                if (runtime.Secrets.Read().Twilio != secrets.Twilio) { twilioStatus.Text = "Configuration modifiée ailleurs. Rouvrez les réglages."; return; }
+                if (runtime.Secrets.Read().Twilio != secrets.Twilio) { twilioStatus.Text = "Configuration modifiée ailleurs. Utilisez « Recharger la section »."; return; }
                 commands.SaveSecrets(current); secrets = secrets with { Twilio = current.Twilio }; twilioStatus.Text = "Enregistré localement et chiffré. Aucun envoi effectué.";
             }
             catch { twilioStatus.Text = "Impossible d’enregistrer les identifiants."; }
@@ -124,7 +124,7 @@ internal static class ReminderSettingsView
                 var config = new SendGridSettings(emailEnabled.IsChecked == true, emailKey.Password.Trim(), from.Text.Trim(), recipient.Text.Trim());
                 var current = runtime.Secrets.Read() with { SendGrid = config };
                 if (config.Enabled && !NotificationProviders.Configured(ReminderChannel.Email, current)) { emailStatus.Text = "Vérifiez la clé et les deux adresses email."; return; }
-                if (runtime.Secrets.Read().SendGrid != secrets.SendGrid) { emailStatus.Text = "Configuration modifiée ailleurs. Rouvrez les réglages."; return; }
+                if (runtime.Secrets.Read().SendGrid != secrets.SendGrid) { emailStatus.Text = "Configuration modifiée ailleurs. Utilisez « Recharger la section »."; return; }
                 commands.SaveSecrets(current); secrets = secrets with { SendGrid = current.SendGrid }; emailStatus.Text = "Enregistré localement et chiffré. Aucun envoi effectué.";
             }
             catch { emailStatus.Text = "Impossible d’enregistrer les identifiants."; }
@@ -151,7 +151,7 @@ internal static class ReminderSettingsView
         {
             if (!int.TryParse(smsLimit.Text, out var sm) || sm < 0 || sm > 100 || !int.TryParse(callLimit.Text, out var ca) || ca < 0 || ca > 20 || !int.TryParse(start.Text, out var st) || st < 0 || st > 23 || !int.TryParse(end.Text, out var en) || en < 0 || en > 23 || zone.SelectedValue is not string tz)
             { limitStatus.Text = "Vérifiez les limites, les heures et le fuseau."; return; }
-            try { if (preferences.Current.PhonePolicy != policy) { limitStatus.Text = "Limites modifiées ailleurs. Rouvrez les réglages."; return; } commands.SavePreferences(p => p with { PhonePolicy = new(sm, ca, quiet.IsChecked == true, st, en, tz) }); policy = preferences.Current.PhonePolicy; limitStatus.Text = "Limites enregistrées. Les tests téléphoniques les respectent aussi."; }
+            try { if (preferences.Current.PhonePolicy != policy) { limitStatus.Text = "Limites modifiées ailleurs. Utilisez « Recharger la section »."; return; } commands.SavePreferences(p => p with { PhonePolicy = new(sm, ca, quiet.IsChecked == true, st, en, tz) }); policy = preferences.Current.PhonePolicy; limitStatus.Text = "Limites enregistrées. Les tests téléphoniques les respectent aussi."; }
             catch { limitStatus.Text = "Enregistrement impossible."; }
         };
         limits.Children.Add(saveLimits); limits.Children.Add(limitStatus);

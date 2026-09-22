@@ -8,6 +8,8 @@ Le tracker observe le compte connecté dans Codex et conserve les identités, of
 
 Il ne se connecte pas à un autre compte et ne modifie pas la session de Codex. La collecte utilise la CLI Codex installée, qui communique avec les services OpenAI pour le compte actif.
 
+Des copies `.bak` des préférences, profils et relevés permettent leur récupération. Les fichiers corrompus sont conservés localement avant remplacement et peuvent aussi contenir des données privées : ne les partagez pas. Le diagnostic proposé dans l’onglet Réglages utilise une liste limitée de versions, états techniques et dates, sans compte, quota, chemin personnel ni secret ; son contenu est montré avant copie et n’est jamais envoyé automatiquement.
+
 ## Échanges réseau
 
 - Par défaut, le tracker recherche et télécharge les mises à jour sur GitHub au démarrage puis toutes les six heures. GitHub reçoit les informations ordinaires d’une requête réseau, dont l’adresse IP ; aucun compte ni quota ne lui est envoyé. Désactivez le téléchargement automatique dans **Réglages → Application** pour ne faire que des recherches manuelles.

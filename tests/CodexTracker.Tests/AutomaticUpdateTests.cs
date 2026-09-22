@@ -77,7 +77,7 @@ public sealed partial class UpdateTests
             await service.PrepareAsync(Release(zip.Length));
         using var updated = new UpdateService("0.4.0", client, directory.File("cache.json"));
         Assert.Null(await updated.LoadPreparedAsync());
-        Assert.False(File.Exists(directory.File("prepared-update.json")));
+        Assert.False(File.Exists(directory.File("prepared-update-stable.json")));
     }
 
     [Theory]
@@ -88,7 +88,7 @@ public sealed partial class UpdateTests
     {
         using var directory = new TestDirectory();
         using var client = PackageClient([]);
-        await File.WriteAllTextAsync(directory.File("prepared-update.json"), JsonSerializer.Serialize(
+        await File.WriteAllTextAsync(directory.File("prepared-update-stable.json"), JsonSerializer.Serialize(
             new PreparedUpdate(Release(10), id, new string('a', 64), DateTimeOffset.UtcNow)));
         using var service = new UpdateService("0.3.0", client, directory.File("cache.json"));
         Assert.Null(await service.LoadPreparedAsync());
@@ -104,7 +104,7 @@ public sealed partial class UpdateTests
         await Assert.ThrowsAsync<InvalidDataException>(() => service.PrepareAsync(Release(zip.Length)));
         Assert.Null(service.Prepared);
         Assert.False(service.IsPreparing);
-        Assert.False(File.Exists(directory.File("prepared-update.json")));
+        Assert.False(File.Exists(directory.File("prepared-update-stable.json")));
         Assert.Single(Directory.GetFiles(directory.Root, "abandoned", SearchOption.AllDirectories));
     }
 
@@ -190,7 +190,7 @@ public sealed partial class UpdateTests
         await tick;
         Assert.Null(service.Prepared);
         Assert.False(service.IsPreparing);
-        Assert.False(File.Exists(directory.File("prepared-update.json")));
+        Assert.False(File.Exists(directory.File("prepared-update-stable.json")));
     }
 
     [Fact]

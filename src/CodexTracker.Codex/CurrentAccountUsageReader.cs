@@ -11,7 +11,8 @@ internal sealed class CurrentAccountUsageReader(string authPath, ProfileStore st
         var identity = await ReadIdentityAsync(authPath, cancellationToken);
         Validate(identity, profile.Email, expectedAccountId);
         var executable = options.CodexExecutablePath ?? CodexLocator.FindExecutable()
-            ?? throw new TrackerException("Ouvrez ou installez Codex pour lire les quotas.");
+            ?? throw MissingExecutable();
+        if (!File.Exists(executable)) throw MissingExecutable();
         var home = store.CreateRuntime();
         try
         {
@@ -27,10 +28,10 @@ internal sealed class CurrentAccountUsageReader(string authPath, ProfileStore st
             var response = await client.RequestAsync("account/read", new { refreshToken = false }, cancellationToken);
             if (!response.TryGetProperty("account", out var account) || AuthDocument.Read(account, "type") != "chatgpt" ||
                 !string.Equals(AuthDocument.Read(account, "email"), profile.Email, StringComparison.OrdinalIgnoreCase))
-                throw new TrackerException("Codex n'a pas confirmé le compte actif. Ouvrez ce compte dans Codex puis actualisez.");
+                throw new TrackerException("Codex n'a pas confirmé le compte actif. Ouvrez ce compte dans Codex puis actualisez.", CodexFailureCode.AccountChanged);
             var limits = await client.RequestAsync("account/rateLimits/read", new { }, cancellationToken);
             if (AuthDocument.Read(limits, "accountId") is { } quotaAccountId && quotaAccountId != expectedAccountId)
-                throw new TrackerException("Le relevé appartient à un autre compte. Il a été ignoré.");
+                throw new TrackerException("Le relevé appartient à un autre compte. Il a été ignoré.", CodexFailureCode.AccountChanged);
             Validate(await ReadIdentityAsync(authPath, cancellationToken), profile.Email, expectedAccountId);
             var snapshot = RateLimitParser.Parse(limits, profile.Email, AuthDocument.Read(account, "planType") ?? identity.PlanType, DateTimeOffset.UtcNow);
             return snapshot with { PlanMultiplier = AuthDocument.PlanMultiplier(snapshot.PlanType),
@@ -60,16 +61,26 @@ internal sealed class CurrentAccountUsageReader(string authPath, ProfileStore st
             {
                 await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
                     4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                if (file.Length > 1_000_000) throw new TrackerException("Le fichier de session Codex est incompatible.");
+                if (file.Length > 1_000_000) throw UnsupportedSession();
                 using var buffer = new MemoryStream();
+                var chunk = new byte[8192];
                 try
                 {
-                    await file.CopyToAsync(buffer, cancellationToken);
+                    int length;
+                    while ((length = await file.ReadAsync(chunk, cancellationToken)) != 0)
+                    {
+                        if (buffer.Length + length > 1_000_000) throw UnsupportedSession();
+                        buffer.Write(chunk, 0, length);
+                    }
                     var bytes = buffer.ToArray();
                     try { return AuthDocument.Parse(bytes); }
                     finally { CryptographicOperations.ZeroMemory(bytes); }
                 }
-                finally { CryptographicOperations.ZeroMemory(buffer.GetBuffer()); }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(chunk);
+                    CryptographicOperations.ZeroMemory(buffer.GetBuffer());
+                }
             }
             catch (Exception ex) when (attempt < 2 && ex is IOException or JsonException or TrackerException)
             { await Task.Delay(80, cancellationToken); }
@@ -79,6 +90,13 @@ internal sealed class CurrentAccountUsageReader(string authPath, ProfileStore st
     private static void Validate(AuthDocument identity, string email, string accountId)
     {
         if (!string.Equals(identity.Email, email, StringComparison.OrdinalIgnoreCase) || identity.AccountId != accountId)
-            throw new TrackerException("Le compte a changé dans Codex. Le relevé précédent a été ignoré.");
+            throw new TrackerException("Le compte a changé dans Codex. Le relevé précédent a été ignoré.", CodexFailureCode.AccountChanged);
+        if (identity.AccessTokenExpiresAt is { } expires && expires <= DateTimeOffset.UtcNow)
+            throw new TrackerException("La session a expiré. Ouvrez Codex pour qu'il renouvelle sa connexion, puis actualisez le tracker.", CodexFailureCode.SessionExpired);
     }
+
+    private static TrackerException MissingExecutable() => new(
+        "Le service Codex est introuvable. Installez ou mettez à jour Codex, puis relancez le tracker.", CodexFailureCode.CodexNotFound);
+    private static TrackerException UnsupportedSession() => new(
+        "Le fichier de session Codex est incompatible. Ouvrez votre compte dans Codex puis actualisez.", CodexFailureCode.UnsupportedSession);
 }

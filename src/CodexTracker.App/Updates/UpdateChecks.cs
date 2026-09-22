@@ -29,14 +29,16 @@ public sealed partial class UpdateService
     private readonly CancellationTokenSource _checksLifetime = new();
     private readonly Func<DateTimeOffset> _clock;
     private readonly string? _cachePath;
+    private string? CheckCachePath(bool previews) => _cachePath is null ? null : previews
+        ? Path.Combine(Path.GetDirectoryName(_cachePath)!, Path.GetFileNameWithoutExtension(_cachePath) + "-preview.json") : _cachePath;
     private CheckCache _cache;
     private Task<UpdateCheckResult>? _checkInFlight;
     private bool _disposed;
 
     private sealed record CachedPage(Uri Uri, string? ETag, Uri? NextUri, UpdateRelease? Latest);
     private sealed record CheckCache(int Schema, DateTimeOffset? VerifiedAt, DateTimeOffset? NextCheckAt,
-        int Failures, bool RateLimited, List<CachedPage> Pages, DateTimeOffset? RecordedAt);
-    private static CheckCache EmptyCache() => new(2, null, null, 0, false, [], null);
+        int Failures, bool RateLimited, List<CachedPage> Pages, DateTimeOffset? RecordedAt, bool IncludePrereleases);
+    private CheckCache EmptyCache() => new(3, null, null, 0, false, [], null, IncludePrereleases);
 
     /// <summary>Reads the last known result without making a network request.</summary>
     public UpdateCheckResult? ReadCachedCheck()
@@ -55,12 +57,12 @@ public sealed partial class UpdateService
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_checkInFlight is { IsCompleted: false }) pending = _checkInFlight;
             else if (_cache.NextCheckAt > _clock()) return Task.FromResult(CachedResult(_cache));
-            else pending = _checkInFlight = CheckCoreAsync(_cache);
+            else pending = _checkInFlight = CheckCoreAsync(_cache, _channelRevision);
         }
         return pending.WaitAsync(cancellationToken);
     }
 
-    private async Task<UpdateCheckResult> CheckCoreAsync(CheckCache previous)
+    private async Task<UpdateCheckResult> CheckCoreAsync(CheckCache previous, int channelRevision)
     {
         // Leave the caller's lock before sending requests, including synchronously completing test handlers.
         await Task.Yield();
@@ -109,16 +111,18 @@ public sealed partial class UpdateService
                     if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("La réponse de GitHub est invalide.");
                     var tag = response.Headers.ETag?.ToString();
                     if (tag?.Length > 1024) tag = null;
-                    page = new(uri, tag, ReadNextPage(response, pages.Count + 2), SelectRelease(document.RootElement, "0.0.0-0"));
+                    page = new(uri, tag, ReadNextPage(response, pages.Count + 2), SelectRelease(document.RootElement, "0.0.0-0", previous.IncludePrereleases));
                 }
                 pages.Add(page);
                 uri = page.NextUri;
             }
             var now = _clock();
-            var next = new CheckCache(2, now, now.AddMinutes(5), 0, false, pages, now);
-            PublishCache(next);
-            return new(BestRelease(next), usedCache ? UpdateCheckSource.ValidatedCache : UpdateCheckSource.Network,
-                now, next.NextCheckAt, "Versions vérifiées auprès de GitHub.");
+            var next = new CheckCache(3, now, now.AddMinutes(5), 0, false, pages, now, previous.IncludePrereleases);
+            PublishCache(next, channelRevision);
+            lock (_checkGate)
+                return _channelRevision != channelRevision ? CachedResult(_cache)
+                    : new(BestRelease(next), usedCache ? UpdateCheckSource.ValidatedCache : UpdateCheckSource.Network,
+                        now, next.NextCheckAt, "Versions vérifiées auprès de GitHub.");
         }
         catch (OperationCanceledException) when (_checksLifetime.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is HttpRequestException or IOException or InvalidDataException or JsonException or OperationCanceledException)
@@ -126,13 +130,13 @@ public sealed partial class UpdateService
             var failures = Math.Min(previous.Failures + 1, 10);
             var now = _clock();
             var next = previous with { RecordedAt = now, NextCheckAt = retryAt ?? now.AddMinutes(Math.Min(60, Math.Pow(2, failures - 1))), Failures = failures, RateLimited = rateLimited };
-            PublishCache(next);
-            return CachedResult(next);
+            PublishCache(next, channelRevision);
+            lock (_checkGate) return CachedResult(_channelRevision == channelRevision ? next : _cache);
         }
     }
 
     private UpdateRelease? BestRelease(CheckCache cache) => cache.Pages.Select(p => p.Latest)
-        .Where(r => r is not null && SemanticVersion.Parse(r.Version)!.CompareTo(SemanticVersion.Parse(CurrentVersion)) > 0)
+        .Where(r => r is not null && IsReleaseAllowed(r, cache.IncludePrereleases) && SemanticVersion.Parse(r.Version)!.CompareTo(SemanticVersion.Parse(CurrentVersion)) > 0)
         .OrderByDescending(r => SemanticVersion.Parse(r!.Version)).FirstOrDefault();
 
     private UpdateCheckResult CachedResult(CheckCache cache)
@@ -187,17 +191,18 @@ public sealed partial class UpdateService
 
     private CheckCache LoadCheckCache()
     {
-        if (_cachePath is null) return EmptyCache();
+        var cachePath = CheckCachePath(IncludePrereleases);
+        if (cachePath is null) return EmptyCache();
         try
         {
-            UpdatePackage.RejectReparsePoints(_cachePath);
-            if (!File.Exists(_cachePath)) return EmptyCache();
-            using var input = new FileStream(_cachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            UpdatePackage.RejectReparsePoints(cachePath);
+            if (!File.Exists(cachePath)) return EmptyCache();
+            using var input = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (input.Length > MaximumCacheBytes) return EmptyCache();
             var bytes = new byte[input.Length];
             input.ReadExactly(bytes);
             var cache = JsonSerializer.Deserialize<CheckCache>(bytes);
-            if (cache is null || cache.Schema != 2 || cache.Pages is null || cache.Pages.Count > 5 || cache.Pages.Any(p => p is null) || cache.Failures is < 0 or > 10 ||
+            if (cache is null || cache.Schema != 3 || cache.IncludePrereleases != IncludePrereleases || cache.Pages is null || cache.Pages.Count > 5 || cache.Pages.Any(p => p is null) || cache.Failures is < 0 or > 10 ||
                 (cache.VerifiedAt is null) != (cache.Pages.Count == 0) || !HasPlausibleCacheTimes(cache, _clock())) return EmptyCache();
             for (var index = 0; index < cache.Pages.Count; index++)
             {
@@ -205,7 +210,7 @@ public sealed partial class UpdateService
                 if (page is null || page.Uri is null || !IsApiPage(page.Uri, index + 1) ||
                     page.ETag is { } tag && (tag.Length > 1024 || !EntityTagHeaderValue.TryParse(tag, out _)) ||
                     page.NextUri != (index + 1 < cache.Pages.Count ? cache.Pages[index + 1].Uri : null) ||
-                    page.Latest is { } release && !IsCachedReleaseValid(release)) return EmptyCache();
+                    page.Latest is { } release && (!IsCachedReleaseValid(release) || !IsReleaseAllowed(release, cache.IncludePrereleases))) return EmptyCache();
             }
             return cache;
         }
@@ -235,21 +240,26 @@ public sealed partial class UpdateService
             IsReleaseUri(release.DownloadUrl, release.Tag, name) && IsReleaseUri(release.ChecksumUrl, release.Tag, name + ".sha256");
     }
 
-    private void PublishCache(CheckCache cache)
+    private void PublishCache(CheckCache cache, int channelRevision)
     {
-        lock (_checkGate) _cache = cache;
-        if (_cachePath is null) return;
+        lock (_checkGate)
+        {
+            if (_channelRevision != channelRevision) return;
+            _cache = cache;
+        }
+        var cachePath = CheckCachePath(cache.IncludePrereleases);
+        if (cachePath is null) return;
         string? temporary = null;
         try
         {
-            UpdatePackage.RejectReparsePoints(_cachePath);
+            UpdatePackage.RejectReparsePoints(cachePath);
             var bytes = JsonSerializer.SerializeToUtf8Bytes(cache);
             if (bytes.Length > MaximumCacheBytes) return;
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(_cachePath))!);
-            temporary = _cachePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(cachePath))!);
+            temporary = cachePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
             using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             { output.Write(bytes); output.Flush(true); }
-            File.Move(temporary, _cachePath, true);
+            File.Move(temporary, cachePath, true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         finally

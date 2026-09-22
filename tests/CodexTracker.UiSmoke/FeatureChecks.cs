@@ -176,23 +176,27 @@ internal static class FeatureChecks
             var dashboard = new DashboardViewModel(true, preferences); dashboard.Update(inactive);
             Check(inactive.ActiveAccount is null && inactive.SelectedAccount is null && dashboard.Active is null,
                 "Missing active account never falls back to the formerly selected account");
-            var settings = new SettingsWindow(window, preferences, new UpdateService(), theme, true); settings.Show();
+            window.ShowSettings(); await Task.Delay(50); window.UpdateLayout();
+            var settings = window.Settings; var settingsPreferences = window.Preferences;
             Check(settings.CurrentPage == "Général" && Tree(settings).OfType<Button>().Any(b => b.Content?.ToString() == "Rappels"), "Settings open on General with section navigation");
+            Check(mainTabs.Items.Count == 3 && mainTabs.SelectedIndex == 2 && settings.IsVisible && window.FindName("SettingsButton") is null,
+                "Settings are the third main tab and the duplicate title-bar button is removed");
             settings.ShowPage("Application"); await Task.Delay(50);
             var autoDownload = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Télécharger automatiquement les mises à jour");
             var autoInstall = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Installer au prochain démarrage du tracker");
             autoDownload.IsChecked = false; autoDownload.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            Check(!preferences.Current.DownloadUpdatesAutomatically && preferences.Current.InstallUpdatesAtStartup,
+            Check(!settingsPreferences.Current.DownloadUpdatesAutomatically && settingsPreferences.Current.InstallUpdatesAtStartup,
                 "Disabling automatic downloads preserves the independent startup preference");
             autoInstall.IsChecked = false; autoInstall.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            Check(!preferences.Current.InstallUpdatesAtStartup && !preferences.Current.DownloadUpdatesAutomatically,
+            Check(!settingsPreferences.Current.InstallUpdatesAtStartup && !settingsPreferences.Current.DownloadUpdatesAutomatically,
                 "Automatic update controls persist independently through application commands");
             settings.ShowPage("Général"); await Task.Delay(50);
             Field<ComboBox>(settings, "_refreshSelector").SelectedValue = 1;
+            window.UpdateLayout();
             var adaptive = Tree(settings).OfType<CheckBox>().Single(c => c.Content?.ToString() == "Adapter à mon activité");
             adaptive.IsChecked = true; adaptive.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             await Task.Delay(100);
-            Check(preferences.Current.RefreshMinutes == 1 && preferences.Current.AdaptiveRefresh,
+            Check(settingsPreferences.Current.RefreshMinutes == 1 && settingsPreferences.Current.AdaptiveRefresh,
                 "Refresh and adaptive mode save from actual controls");
             var labels = Tree(settings).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(labels.Contains("Chaque minute") && !labels.Any(t => t.Contains("NumberChoice")), "Refresh selector displays a readable label");
@@ -202,8 +206,8 @@ internal static class FeatureChecks
             var smsOneHour = Tree(week).OfType<CheckBox>().Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == "Reset hebdomadaire, 1 h, SMS");
             smsOneHour.IsChecked = true;
             Tree(week).OfType<Button>().Single(b => b.Content?.ToString() == "Enregistrer ces rappels").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            Check(preferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(60) && r.Channels.Contains(ReminderChannel.Sms))
-                && !preferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(1440) && r.Channels.Contains(ReminderChannel.Sms)), "Actual controls persist independent channels per lead");
+            Check(settingsPreferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(60) && r.Channels.Contains(ReminderChannel.Sms))
+                && !settingsPreferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(1440) && r.Channels.Contains(ReminderChannel.Sms)), "Actual controls persist independent channels per lead");
             settings.ShowPage("Canaux"); await Task.Delay(100);
             var twilio = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Twilio · SMS et appels"); twilio.IsExpanded = true; settings.UpdateLayout();
             Check(Tree(twilio).OfType<PasswordBox>().Count() == 1 && Tree(twilio).OfType<Button>().Where(b => b.Content?.ToString()?.Contains("test") == true).All(b => !b.IsEnabled), "Twilio secrets use a masked field and demo cannot send real tests");
@@ -215,7 +219,7 @@ internal static class FeatureChecks
             zone.IsDropDownOpen = false;
             settings.ShowPage("Historique"); await Task.Delay(100);
             Check(Tree(settings).OfType<TextBlock>().Any(t => t.Text.StartsWith("Aucun rappel envoyé")), "Empty history explains local reminder tracking");
-            settings.Close();
+            window.OpenPage("Comptes"); await Task.Delay(50); window.UpdateLayout();
 
             var avatarButton = Tree(window).OfType<Button>().First(b => b.Tag is Guid && b.ToolTip?.ToString() == "Changer le nom ou l’avatar");
             avatarButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);

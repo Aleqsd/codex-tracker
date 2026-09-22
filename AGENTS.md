@@ -18,8 +18,8 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/dev.ps1 -Action Demo
 ./scripts/dev.ps1 -Action Preview -View Assistants -Theme dark
 ./scripts/dev.ps1 -Action Preview -Matrix
-./scripts/publish.ps1 -Version 0.8.4
-./scripts/build-installer.ps1 -Version 0.8.4
+./scripts/publish.ps1 -Version 0.9.0
+./scripts/build-installer.ps1 -Version 0.9.0
 ```
 
 Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Python`. Les artefacts restent sous `artifacts/`, ignoré par Git. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.

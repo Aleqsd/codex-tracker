@@ -5,13 +5,27 @@ using System.Threading.Tasks;
 namespace CodexTracker.App.Updates;
 
 // One scheduler owned by the main application, never by a settings window or MCP bridge.
-internal sealed class AutomaticUpdater(UpdateService service, Func<DateTimeOffset>? clock = null) : IDisposable
+internal sealed class AutomaticUpdater : IDisposable
 {
-    private readonly Func<DateTimeOffset> _clock = clock ?? (() => DateTimeOffset.UtcNow);
+    private readonly UpdateService _service;
+    private readonly Func<DateTimeOffset> _clock;
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _operation;
     private bool _enabled, _busy;
     internal DateTimeOffset NextCheck { get; private set; } = DateTimeOffset.MinValue;
+
+    internal AutomaticUpdater(UpdateService service, Func<DateTimeOffset>? clock = null)
+    {
+        _service = service;
+        _clock = clock ?? (() => DateTimeOffset.UtcNow);
+        service.ChannelChanged += ChannelChanged;
+    }
+
+    private void ChannelChanged(object? sender, EventArgs args)
+    {
+        _operation?.Cancel();
+        NextCheck = DateTimeOffset.MinValue;
+    }
 
     internal void SetEnabled(bool enabled)
     {
@@ -40,11 +54,12 @@ internal sealed class AutomaticUpdater(UpdateService service, Func<DateTimeOffse
         _operation = operation;
         try
         {
-            var result = await service.CheckDetailedAsync(operation.Token);
+            var result = await _service.CheckDetailedAsync(operation.Token);
+            operation.Token.ThrowIfCancellationRequested();
             NextCheck = result.IsVerifiedNow ? _clock().AddHours(6) : result.NextCheckAt ?? _clock().AddMinutes(15);
             if (NextCheck <= _clock()) NextCheck = _clock().AddMinutes(15);
             if (_enabled && result.IsVerifiedNow && result.Release is { } release)
-                await service.PrepareAsync(release, operation.Token);
+                await _service.PrepareAsync(release, operation.Token);
         }
         catch (OperationCanceledException) { }
         catch (Exception)
@@ -55,5 +70,5 @@ internal sealed class AutomaticUpdater(UpdateService service, Func<DateTimeOffse
         finally { _operation = null; _busy = false; }
     }
 
-    public void Dispose() { _enabled = false; _lifetime.Cancel(); _operation?.Cancel(); }
+    public void Dispose() { _service.ChannelChanged -= ChannelChanged; _enabled = false; _lifetime.Cancel(); _operation?.Cancel(); }
 }

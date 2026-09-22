@@ -23,7 +23,7 @@ public interface IAccountUsageReader
 
 public sealed class TrackerService : ITrackerService
 {
-    private readonly string _authPath;
+    private readonly string? _authPath;
     private readonly TrackerServiceOptions _options;
     private readonly ProfileStore _store;
     private readonly IAccountUsageReader _reader;
@@ -46,16 +46,23 @@ public sealed class TrackerService : ITrackerService
     private long _notificationBaselineGeneration = -1;
     private sealed record ActiveObservation(Guid AccountId, DateTimeOffset StartedAt);
     private ActiveObservation? _activeObservation;
+    private CodexCompatibilityDiagnostic _compatibility;
     public event EventHandler? Changed;
     public event EventHandler<QuotaNotification>? Notification;
     public TrackerState State { get; private set; } = new([], null, StatusMessage: "Détection du compte Codex…");
+    public CodexCompatibilityDiagnostic GetCompatibilityDiagnostic() => _compatibility;
+    public IReadOnlyList<string> RecoveryWarnings => _store.RecoveryWarnings;
 
     public TrackerService(string? authFilePath = null, TrackerServiceOptions? options = null, IAccountUsageReader? reader = null)
     {
-        _authPath = authFilePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex", "auth.json");
+        var location = CodexAuthLocation.Resolve(authFilePath, Environment.GetEnvironmentVariable("CODEX_HOME"),
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        _authPath = location.Path;
+        _compatibility = new(location.Source, CodexSessionStatus.NotChecked, CodexServiceStatus.NotChecked,
+            CodexFailureCode.None, null, null);
         _options = options ?? new();
         _store = new(_options.DataDirectory);
-        _reader = reader ?? new CurrentAccountUsageReader(_authPath, _store, _options);
+        _reader = reader ?? new CurrentAccountUsageReader(_authPath ?? "", _store, _options);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -85,7 +92,7 @@ public sealed class TrackerService : ITrackerService
         try
         {
             RequireInitialized();
-            if (_options.MonitorAuthChanges)
+            if (_options.MonitorAuthChanges && _authPath is not null)
             {
                 _monitor = new(_authPath, async token =>
                 {
@@ -177,8 +184,28 @@ public sealed class TrackerService : ITrackerService
             if (_suspended) return;
             AuthDocument? identity = null;
             string? warning = null;
-            try { identity = await CurrentAccountUsageReader.ReadIdentityAsync(_authPath, cancellationToken); }
-            catch (Exception ex) when (IsRecoverable(ex)) { warning = "Ouvrez votre compte dans Codex pour démarrer le suivi."; }
+            try
+            {
+                if (_authPath is null) throw new TrackerException(
+                    "Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker.", CodexFailureCode.InvalidHome);
+                identity = await CurrentAccountUsageReader.ReadIdentityAsync(_authPath, cancellationToken);
+                var expired = identity.AccessTokenExpiresAt is { } expires && expires <= DateTimeOffset.UtcNow;
+                _compatibility = _compatibility with
+                {
+                    Session = expired ? CodexSessionStatus.Expired : CodexSessionStatus.Detected,
+                    CheckedAt = DateTimeOffset.UtcNow,
+                    LastFailure = expired ? CodexFailureCode.SessionExpired : _compatibility.LastFailure is
+                        CodexFailureCode.SessionMissing or CodexFailureCode.SessionUnreadable or CodexFailureCode.UnsupportedSession
+                        or CodexFailureCode.SessionExpired ? CodexFailureCode.None : _compatibility.LastFailure
+                };
+            }
+            catch (Exception ex) when (IsRecoverable(ex))
+            {
+                var failure = ClassifyFailure(ex, readingSession: true);
+                warning = SessionWarning(failure);
+                _compatibility = _compatibility with { Session = SessionStatus(failure), LastFailure = failure,
+                    CheckedAt = DateTimeOffset.UtcNow };
+            }
             var key = identity is null ? null : identity.Email.ToUpperInvariant() + "\n" + identity.AccountId;
             if (key == _activeKey)
             {
@@ -243,6 +270,7 @@ public sealed class TrackerService : ITrackerService
         request.CancelAfter(_options.RequestTimeout);
         AccountSnapshot? snapshot = null;
         string? error = null;
+        var failure = CodexFailureCode.None;
         IReadOnlyList<QuotaNotification> notifications = Array.Empty<QuotaNotification>();
         try
         {
@@ -255,15 +283,16 @@ public sealed class TrackerService : ITrackerService
             }
             finally { _gate.Release(); }
             var candidate = await _reader.ReadAsync(profile, accountId, request.Token);
-            if (!SameEmail(candidate.Email, profile.Email)) throw new TrackerException("Codex a retourné un autre compte. Le relevé a été ignoré.");
+            if (!SameEmail(candidate.Email, profile.Email)) throw new TrackerException("Codex a retourné un autre compte. Le relevé a été ignoré.", CodexFailureCode.AccountChanged);
             snapshot = candidate;
         }
         catch (OperationCanceledException)
         {
             if (_lifetime.IsCancellationRequested || identityToken.IsCancellationRequested) return;
             error = "Codex met trop de temps à répondre. Dernier relevé conservé.";
+            failure = CodexFailureCode.RequestTimedOut;
         }
-        catch (Exception ex) when (IsRecoverable(ex)) { error = SafeMessage(ex); }
+        catch (Exception ex) when (IsRecoverable(ex)) { error = SafeMessage(ex); failure = ClassifyFailure(ex); }
         finally
         {
             if (!_lifetime.IsCancellationRequested)
@@ -282,8 +311,22 @@ public sealed class TrackerService : ITrackerService
                             {
                                 snapshot = null;
                                 error = "Un relevé plus ancien a été ignoré. Les dernières données sont conservées.";
+                                failure = CodexFailureCode.Unknown;
                             }
                             if (snapshot is not null) notifications = RecordObservation(profile, snapshot, generation);
+                            _compatibility = _compatibility with
+                            {
+                                Service = snapshot is not null ? CodexServiceStatus.Compatible : failure switch
+                                {
+                                    CodexFailureCode.CodexNotFound => CodexServiceStatus.Missing,
+                                    CodexFailureCode.ProtocolUnsupported => CodexServiceStatus.Incompatible,
+                                    CodexFailureCode.SessionExpired => _compatibility.Service,
+                                    _ => CodexServiceStatus.Unavailable
+                                },
+                                LastFailure = failure,
+                                LastSuccessfulReadAt = snapshot?.FetchedAt ?? _compatibility.LastSuccessfulReadAt,
+                                CheckedAt = DateTimeOffset.UtcNow
+                            };
                             Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsRefreshing = false, Error = error });
                             Set(State with { IsBusy = false, StatusMessage = error ?? "À jour · changements de compte détectés automatiquement" });
                             Save();
@@ -390,6 +433,28 @@ public sealed class TrackerService : ITrackerService
     private static bool SameEmail(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     private static bool IsRecoverable(Exception ex) => ex is TrackerException or IOException or UnauthorizedAccessException or JsonException or System.ComponentModel.Win32Exception;
     private static string SafeMessage(Exception ex) => ex is TrackerException ? ex.Message : "Les données ne sont pas disponibles. Dernier relevé conservé ; réessayez depuis Codex.";
+    private static CodexFailureCode ClassifyFailure(Exception ex, bool readingSession = false) => ex switch
+    {
+        TrackerException tracker => tracker.Code,
+        FileNotFoundException or DirectoryNotFoundException when readingSession => CodexFailureCode.SessionMissing,
+        UnauthorizedAccessException or IOException when readingSession => CodexFailureCode.SessionUnreadable,
+        JsonException when readingSession => CodexFailureCode.UnsupportedSession,
+        _ => CodexFailureCode.ServiceUnavailable
+    };
+    private static CodexSessionStatus SessionStatus(CodexFailureCode failure) => failure switch
+    {
+        CodexFailureCode.SessionMissing => CodexSessionStatus.Missing,
+        CodexFailureCode.SessionUnreadable => CodexSessionStatus.Unreadable,
+        CodexFailureCode.InvalidHome => CodexSessionStatus.InvalidHome,
+        _ => CodexSessionStatus.Unsupported
+    };
+    private static string SessionWarning(CodexFailureCode failure) => failure switch
+    {
+        CodexFailureCode.SessionMissing => "Aucune session locale détectée. Ouvrez Codex et connectez-vous avec votre compte ChatGPT.",
+        CodexFailureCode.SessionUnreadable => "La session Codex est momentanément illisible. Fermez puis rouvrez Codex et actualisez le tracker.",
+        CodexFailureCode.InvalidHome => "Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker.",
+        _ => "Le format de la session n'est pas pris en charge. Mettez à jour Codex et connectez-vous avec votre compte ChatGPT ; une clé API seule ne permet pas de suivre ces quotas."
+    };
 
     public async ValueTask DisposeAsync()
     {

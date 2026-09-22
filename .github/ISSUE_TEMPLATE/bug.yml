@@ -1,0 +1,29 @@
+name: Signaler un problème
+description: Un problème avec le suivi, les rappels ou les mises à jour.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Merci ! Ne joignez jamais vos sessions Codex, clés, fichiers privés ou captures contenant vos comptes. Le diagnostic dans Réglages → Application est prévu pour le partage."
+  - type: textarea
+    id: steps
+    attributes:
+      label: Que se passe-t-il ?
+      description: Les étapes, le résultat obtenu et ce que vous attendiez.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: Diagnostic (facultatif)
+      description: Réglages → Application → Préparer un diagnostic. Relisez le contenu avant de le coller.
+      render: text
+  - type: dropdown
+    id: installed
+    attributes:
+      label: Mode d’installation
+      options:
+        - Installateur Setup.exe
+        - ZIP portable
+        - Compilation du code
+        - Je ne sais pas

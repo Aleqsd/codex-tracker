@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly bool _demo;
     private bool _installingUpdate;
     private readonly ResetsView _resets;
+    private SettingsView? _settings;
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
     private bool _canClose, _refreshing;
@@ -29,10 +30,23 @@ public partial class MainWindow : Window
     internal ApplicationCommands Commands { get; }
     internal Mcp.TrackerControl? Assistant { get; set; }
     internal string? AssistantError { get; set; }
+    internal SettingsView Settings
+    {
+        get
+        {
+            if (_settings is null)
+            {
+                _settings = new(this, _preferences, _updates, _demo);
+                SettingsTab.Content = _settings;
+            }
+            return _settings;
+        }
+    }
 
     internal MainWindow(ITrackerService service, bool demo, PreferencesStore preferences, UpdateService updates)
     {
         _service = service; _preferences = preferences; _updates = updates; _demo = demo;
+        _updates.SetIncludePrereleases(preferences.Current.IncludePrereleaseUpdates);
         if (!demo && UpdateService.CanSelfUpdate) _automaticUpdates = new(updates);
         Reminders = new(service, preferences, demo);
         Commands = new(preferences, Reminders.Secrets);
@@ -42,13 +56,15 @@ public partial class MainWindow : Window
         _updates.PreparationChanged += UpdatePreparationChanged;
         UpdatePresentation();
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync()); ResetsTab.Content = _resets;
+        MainTabs.SelectionChanged += (_, e) =>
+        { if (ReferenceEquals(e.OriginalSource, MainTabs) && SettingsTab.IsSelected) _ = Settings; };
         if (demo) Title = "Codex Tracker (démo)";
         DataContext = _model;
         UpdateModel();
         _service.Changed += Service_Changed;
         _preferences.Changed += Preferences_Changed;
         Theme.Changed += Theme_Changed;
-        _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); };
+        _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); RefreshHealth(); };
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
         KeyDown += (_, e) => { if (e.Key == Key.Escape) HideToTray(); if (e.Key == Key.F5) _ = RefreshAsync(); };
@@ -67,12 +83,25 @@ public partial class MainWindow : Window
     {
         if (_canClose) return;
         _model.Update(_service.State); _resets.Update(_service.State);
+        RefreshHealth();
+    }
+    private void RefreshHealth()
+    {
+        RecoveryBanner.Visibility = HealthWarnings().Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _settings?.RefreshHealth();
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
-    private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() =>
+    private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(async () =>
     {
+        var changed = _updates.IncludePrereleases != _preferences.Current.IncludePrereleaseUpdates;
+        _updates.SetIncludePrereleases(_preferences.Current.IncludePrereleaseUpdates);
         UpdateModel(); UpdatePresentation();
         _automaticUpdates?.SetEnabled(!_installingUpdate && _preferences.Current.DownloadUpdatesAutomatically);
+        if (changed)
+        {
+            try { await _updates.LoadPreparedAsync(_lifetime.Token); }
+            catch (OperationCanceledException) { }
+        }
     });
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; HideToTray(); } }
@@ -85,7 +114,7 @@ public partial class MainWindow : Window
         if (page == "Resets") { ShowResets(); return; }
         if (page == "Comptes") { ShowPanel(); AccountsTab.IsSelected = true; return; }
         if (page is not ("Général" or "Rappels" or "Canaux" or "Historique" or "Calendrier" or "Assistants" or "Application")) throw new ArgumentException("Page inconnue.");
-        ShowPanel(); ShowSettings(); OwnedWindows.OfType<SettingsWindow>().First().ShowPage(page);
+        ShowSettings(); Settings.ShowPage(page);
     }
     public void PrepareExit()
     {
@@ -94,6 +123,7 @@ public partial class MainWindow : Window
         foreach (Window child in OwnedWindows.Cast<Window>().ToArray()) child.Close();
         _service.Changed -= Service_Changed; _preferences.Changed -= Preferences_Changed; Theme.Changed -= Theme_Changed;
         _automaticUpdates?.Dispose(); _updates.PreparationChanged -= UpdatePreparationChanged;
+        _settings?.Dispose();
         Reminders.Dispose(); Theme.Dispose(); _updates.Dispose();
     }
     private void ApplyChrome()
@@ -105,6 +135,14 @@ public partial class MainWindow : Window
     }
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Hide_Click(object sender, RoutedEventArgs e) => HideToTray();
+    private void Recovery_Click(object sender, RoutedEventArgs e) => OpenPage("Application");
+    internal string[] HealthWarnings() => new[] { _preferences.RecoveryWarning, Reminders.Error, AssistantError }
+        .Concat((_service as Codex.TrackerService)?.RecoveryWarnings ?? [])
+        .Where(message => !string.IsNullOrWhiteSpace(message)).Select(message => message!).Distinct().ToArray();
+    internal string BuildDiagnostic() => SupportDiagnostics.Create(_updates.CurrentVersion, _preferences.Current,
+        (_service as Codex.TrackerService)?.GetCompatibilityDiagnostic(), Reminders.Error is null,
+        Assistant is not null && AssistantError is null, _demo ? WindowsNotificationState.Unknown : WindowsNotificationDelivery.ReadState(),
+        _updates.Prepared is not null, _demo);
     private void UpdatePreparationChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdatePresentation);
     private void UpdatePresentation()
     {
@@ -185,11 +223,8 @@ public partial class MainWindow : Window
     internal void ShowMessage(string title, string message) => new TrackerDialog(this, title, Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();
     public void ShowSettings()
     {
-        var existing = OwnedWindows.OfType<SettingsWindow>().FirstOrDefault();
-        if (existing is not null) { existing.Activate(); return; }
-        new SettingsWindow(this, _preferences, _updates, Theme, _model.IsDemo).Show();
+        ShowPanel(); _ = Settings; SettingsTab.IsSelected = true;
     }
-    private void Settings_Click(object sender, RoutedEventArgs e) => ShowSettings();
     internal void OpenCalendar() => new CalendarWindow(this, _service, _preferences, Theme).ShowDialog();
     public void SaveScreenshot(string path, double dpi) => Ui.SaveScreenshot(this, path, dpi);
     public void SaveDetailsScreenshot(string path, double dpi)
@@ -201,7 +236,7 @@ public partial class MainWindow : Window
     public void SaveSettingsScreenshot(string path, double dpi)
     {
         if (!_model.IsDemo) throw new InvalidOperationException("Les captures des réglages nécessitent le mode démonstration.");
-        var window = new SettingsWindow(this, _preferences, _updates, Theme, true); window.Show(); window.UpdateLayout(); Ui.SaveScreenshot(window, path, dpi); window.Close();
+        ShowSettings(); UpdateLayout(); Ui.SaveScreenshot(this, path, dpi);
     }
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 }

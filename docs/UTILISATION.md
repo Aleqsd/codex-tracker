@@ -27,6 +27,8 @@ Par défaut, le tracker recherche une nouvelle version 15 secondes après son d�
 
 Dans **Réglages → Application**, vous pouvez désactiver séparément le téléchargement automatique et l’installation au démarrage, ou rechercher manuellement une version. Le téléchargement utilise le dépôt public et vérifie l’empreinte SHA-256. L’installation conserve une copie de secours jusqu’au démarrage réussi de la nouvelle version. Elle préserve vos comptes et réglages, ferme proprement les connexions MCP du tracker et ne ferme pas Codex. Après un échec, aucune boucle de réinstallation : la version précédente reste accessible et un nouvel essai nécessite un clic. Le démarrage à la demande d’un assistant MCP reporte l’installation automatique.
 
+À partir de la 0.9, seules les **versions stables** sont recherchées par défaut. Activez **Recevoir aussi les préversions** pour les prochaines bêtas. Revenir au canal stable écarte une préversion déjà téléchargée ; elle ne s’installe pas au démarrage. Les préparations d’avant la 0.9 dont le statut bêta était inconnu doivent être retéléchargées.
+
 Le résultat de la recherche est conservé localement avec sa date. Les vérifications simultanées sont regroupées, et le bouton attend au moins cinq minutes après une vérification réussie. Si GitHub limite les requêtes, le tracker respecte le délai annoncé, même après redémarrage ; une erreur réseau déclenche aussi un délai progressif. Un ancien résultat reste explicitement présenté comme un cache, sans annoncer que l’application est à jour. Le lien **Voir les versions sur GitHub** reste accessible pour consulter la Release manuellement.
 
 ## Assistants de code et MCP
@@ -145,9 +147,13 @@ Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datan
 
 ## Données locales
 
-Les profils, réglages, avatars importés, historiques et derniers relevés sont stockés sous `%LOCALAPPDATA%\CodexTracker`, avec des permissions limitées à l’utilisateur Windows. Le tracker lit `%USERPROFILE%\.codex\auth.json` sans jamais le modifier. Il utilise uniquement le jeton d’accès courant en mémoire dans un processus Codex isolé avec un stockage de connexion `ephemeral` ; il ne conserve pas de session et ne renouvelle aucun jeton. Codex reste responsable de sa connexion. Si elle a expiré, ouvrez Codex pour la rétablir.
+Les profils, réglages, avatars importés, historiques et derniers relevés sont stockés sous `%LOCALAPPDATA%\CodexTracker`, avec des permissions limitées à l’utilisateur Windows. Le tracker lit `%CODEX_HOME%\auth.json` si cette variable est définie, sinon `%USERPROFILE%\.codex\auth.json`, sans jamais le modifier. Après un changement de `CODEX_HOME`, relancez le tracker. Il utilise uniquement le jeton d’accès courant en mémoire dans un processus Codex isolé avec un stockage de connexion `ephemeral` ; il ne conserve pas de session et ne renouvelle aucun jeton. Codex reste responsable de sa connexion. Si elle a expiré, ouvrez Codex pour la rétablir.
 
 Les anciens coffres et sauvegardes de la version 0.1 ne sont ni utilisés ni modifiés lors de la mise à jour. Les métadonnées et derniers relevés sont conservés. Les nouveaux profils de travail temporaires sont nettoyés après collecte.
+
+Les préférences, profils et relevés disposent d’une copie locale `.bak`. Si le fichier principal est illisible, une copie valide est récupérée et un avertissement apparaît. Les préférences récupérées désactivent rappels, alertes et MCP : vérifiez-les avant de les réactiver. Le bouton **Valider les réglages récupérés** retire l’avertissement sans réactiver de fonction. Les fichiers endommagés sont conservés ; les journaux d’envoi ne sont jamais réinitialisés automatiquement.
+
+Pour demander de l’aide, **Réglages → Application → Préparer un diagnostic** montre le texte exact avant copie. Ce rapport contient les versions, états techniques et dates de vérification, sans compte, quota, chemin personnel ni secret. Il n’envoie rien automatiquement.
 
 L’application ne possède pas de serveur de synchronisation et n’envoie pas vos comptes à ce dépôt. Les requêtes de quota passent par Codex et les services OpenAI ; les vérifications de mise à jour interrogent GitHub sans authentification. La connexion Codex ne demande aucun mot de passe au tracker ; seuls les connecteurs de notification facultatifs utilisent vos clés de prestataire. Les journaux applicatifs n’enregistrent pas de tokens. Les exemples et captures de ce dépôt utilisent uniquement des comptes fictifs.
 

@@ -44,3 +44,13 @@ Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte
 Au démarrage normal, une préparation peut être installée avant l’ouverture des collecteurs. La tentative est enregistrée avant lancement du helper ; échec, arrêt ou restauration ne provoquent pas de boucle. Le démarrage à la demande d’un MCP et le contrôle de santé n’installent pas automatiquement. Le bouton de la fenêtre passe par le même helper, ferme proprement les ponts MCP, puis rouvre le tracker. Le helper conserve les vérifications, le délai de libération et la restauration existants.
 
 Pour prévisualiser le bandeau avec des données fictives : ajouter `--demo-update` à une commande `--demo --preview ...`. Cette démonstration ne peut pas installer une mise à jour.
+
+### Canaux de mise à jour (0.9)
+
+Les versions stables sont sélectionnées par défaut. `IncludePrereleaseUpdates` active les préversions déclarées par GitHub ou par le suffixe SemVer. Les caches HTTP et les paquets prêts sont séparés ; les réponses d’un ancien canal ne remplacent pas celles du canal choisi. Les anciens paquets dont le statut bêta n’était pas mémorisé sont ignorés et doivent être retéléchargés. Le helper actualise la version affichée par Windows après contrôle du démarrage, seulement pour l’installation enregistrée correspondante.
+
+### Récupération et diagnostic (0.9)
+
+`RecoverableJsonFile` maintient une génération `.bak` validée pour les préférences, profils et relevés, et préserve le contenu endommagé avant remplacement. Il ne doit jamais restaurer un ancien journal d’envoi, reçu MCP ou identifiant. Une récupération des préférences coupe les rappels, alertes et MCP ; `RecoveryPending` garde l’avertissement visible jusqu’à un acquittement explicite. L’acquittement ne réactive rien.
+
+`CodexCompatibilityDiagnostic` expose uniquement des enums et dates. Le rapport de support est une projection explicite, sans sérialisation des comptes, préférences complètes, chemins, exceptions ou secrets. `CODEX_HOME` est résolu au démarrage ; le modifier nécessite de relancer le tracker.

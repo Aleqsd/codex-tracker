@@ -65,7 +65,9 @@ internal static class Program
                 await RequestShow(handle);
                 CheckRendered(window, "Repeated activation retains the same rendered window");
                 await FeatureChecks.Run(window, service);
+                await SettingsNavigationChecks.Run(window);
                 await NotificationChecks.Run(window);
+                await ReliabilityChecks.Run();
                 ((System.Windows.Controls.Button)window.FindName("HideToTrayButton")).RaiseEvent(
                     new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Check(!window.ShowInTaskbar && !IsWindowVisible(handle), "Tray hiding removes the native visible window");

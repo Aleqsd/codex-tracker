@@ -8,23 +8,23 @@
   <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="34"/></Grid.RowDefinitions>
   <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource ChromeBrush}"><Grid Margin="19,0,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="&gt;_" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Margin="0,0,10,0"/><TextBlock Text="Codex Tracker" FontSize="13" FontWeight="SemiBold"/><TextBlock Text="  ·  démo" Style="{StaticResource Muted}" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"/></StackPanel>
-   <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True"><Button x:Name="SettingsButton" ToolTip="Réglages" AutomationProperties.Name="Réglages" Click="Settings_Click" Style="{StaticResource QuietButton}" Width="36" Height="34" Padding="6" VerticalAlignment="Center" Margin="0,0,8,0">
- <Viewbox Width="18" Height="18"><Grid Width="24" Height="24" IsHitTestVisible="False">
-  <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.7" StrokeLineJoin="Round" Data="M 19.498,9.85 L 21.903,10.608 L 21.903,13.392 L 19.498,14.15 L 18.822,15.782 L 19.986,18.018 L 18.018,19.986 L 15.782,18.822 L 14.15,19.498 L 13.392,21.903 L 10.608,21.903 L 9.85,19.498 L 8.218,18.822 L 5.982,19.986 L 4.014,18.018 L 5.178,15.782 L 4.502,14.15 L 2.097,13.392 L 2.097,10.608 L 4.502,9.85 L 5.178,8.218 L 4.014,5.982 L 5.982,4.014 L 8.218,5.178 L 9.85,4.502 L 10.608,2.097 L 13.392,2.097 L 14.15,4.502 L 15.782,5.178 L 18.018,4.014 L 19.986,5.982 L 18.822,8.218 Z"/>
-  <Ellipse Width="7" Height="7" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.7"/>
- </Grid></Viewbox>
-</Button>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
     <Button x:Name="HideToTrayButton" ToolTip="Masquer dans la barre d’état — le suivi reste actif" AutomationProperties.Name="Masquer dans la barre d’état" Click="Hide_Click" Style="{StaticResource QuietButton}" Width="36" Height="34" Padding="9" VerticalAlignment="Center">
      <Grid Width="18" Height="18" IsHitTestVisible="False"><Path Data="M 3,3 L 14,14 M 14,14 L 8,14 M 14,14 L 14,8" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/></Grid>
     </Button>
     <Button x:Name="MinimizeButton" ToolTip="Réduire dans la barre des tâches" AutomationProperties.Name="Réduire dans la barre des tâches" Click="Minimize_Click" Style="{StaticResource QuietButton}" Width="36" Height="34" Padding="9" VerticalAlignment="Center"><Grid Width="18" Height="18" IsHitTestVisible="False"><Path Data="M 3,9 L 15,9" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5"/></Grid></Button><Button Content="✕" ToolTip="Masquer dans la barre d’état" AutomationProperties.Name="Masquer dans la barre d’état" Click="Hide_Click" Style="{StaticResource QuietButton}" Padding="10,5"/></StackPanel>
   </Grid></Border>
-  <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="22,12">
+  <StackPanel Grid.Row="1">
+  <Border x:Name="UpdateBanner" Visibility="Collapsed" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="22,12">
    <DockPanel LastChildFill="True">
     <Button x:Name="UpdateNowButton" DockPanel.Dock="Right" Content="Mettre à jour et relancer" Click="UpdateNow_Click" Style="{StaticResource PrimaryButton}" Padding="14,8" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Installer la mise à jour téléchargée et relancer Codex Tracker"/>
     <StackPanel VerticalAlignment="Center"><TextBlock x:Name="UpdateHeadline" FontSize="12" FontWeight="SemiBold"/><TextBlock x:Name="UpdateHint" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel>
    </DockPanel>
   </Border>
+  <Border x:Name="RecoveryBanner" Visibility="Collapsed" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="22,8">
+   <DockPanel LastChildFill="True"><Button Content="Vérifier" DockPanel.Dock="Right" Click="Recovery_Click" Style="{StaticResource QuietButton}" Margin="12,0,0,0" AutomationProperties.Name="Vérifier les données et les rappels dans les réglages"/><TextBlock Text="Des données locales ou des rappels nécessitent votre attention." TextWrapping="Wrap" FontSize="11" VerticalAlignment="Center"/></DockPanel>
+  </Border>
+  </StackPanel>
   <TabControl x:Name="MainTabs" Grid.Row="2" Margin="22,9,20,12" Style="{StaticResource MainTabsStyle}">
    <TabItem x:Name="AccountsTab" Header="Comptes" Tag="{StaticResource AccountsIcon}" Style="{StaticResource MainTabStyle}">
    <Grid Margin="0,15,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -77,6 +77,7 @@
   </Grid>
    </TabItem>
    <TabItem x:Name="ResetsTab" Header="Resets" Tag="{StaticResource DropdownRefreshIcon}" Style="{StaticResource MainTabStyle}"/>
+   <TabItem x:Name="SettingsTab" Header="Réglages" Tag="{StaticResource SettingsGeneralIcon}" Style="{StaticResource MainTabStyle}" AutomationProperties.Name="Réglages"/>
   </TabControl>
   <Border Grid.Row="3" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Ellipse Width="5" Height="5" Fill="{Binding StatusBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding StatusText}" ToolTip="{Binding StatusHint}" Foreground="{DynamicResource MutedBrush}" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="Local &amp; privé" Foreground="{DynamicResource SubtleBrush}" FontSize="10" VerticalAlignment="Center" Margin="15,0,0,0"/><Button x:Name="FooterHideToTrayButton" Grid.Column="3" Content="Masquer dans la barre d’état" ToolTip="Retirer la fenêtre de la barre des tâches ; le suivi reste actif dans la barre d’état" AutomationProperties.Name="Masquer dans la barre d’état depuis la barre d’état" Click="Hide_Click" Style="{StaticResource QuietButton}" FontSize="11" Padding="10,3" Height="26" VerticalAlignment="Center" Margin="12,0,0,0"/></Grid></Border>
  </Grid></Border>

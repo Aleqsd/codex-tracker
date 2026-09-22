@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CodexTracker.Codex;
 using CodexTracker.Core;
 
 namespace CodexTracker.App;
@@ -13,6 +14,8 @@ internal sealed record TrackerPreferences
     public bool McpEnabled { get; init; }
     public bool DownloadUpdatesAutomatically { get; init; } = true;
     public bool InstallUpdatesAtStartup { get; init; } = true;
+    public bool IncludePrereleaseUpdates { get; init; }
+    public bool RecoveryPending { get; init; }
     [JsonIgnore] public bool PrivacyMode => false; // Legacy preference is ignored.
     public ThemeMode ThemeMode { get; init; } = ThemeMode.System;
     public SortMode SortMode { get; init; } = SortMode.Active;
@@ -42,6 +45,10 @@ internal sealed class PreferencesStore
     private readonly string? _path;
     public string DataDirectory { get; }
     public TrackerPreferences Current { get; private set; } = Normalize(new());
+    public bool RecoveryRequired => Current.RecoveryPending;
+    public string? RecoveryWarning => RecoveryRequired
+        ? "Des préférences locales étaient illisibles. Les réglages disponibles ont été récupérés avec les rappels, alertes et assistants désactivés. Vérifiez vos réglages avant de les réactiver. Le fichier d’origine est conservé."
+        : null;
     public event EventHandler? Changed;
     public string Revision { get; private set; } = Guid.NewGuid().ToString("N");
     public void Touch() { Revision = Guid.NewGuid().ToString("N"); Changed?.Invoke(this, EventArgs.Empty); }
@@ -53,42 +60,44 @@ internal sealed class PreferencesStore
             : Path.Combine(Path.GetTempPath(), "CodexTrackerDemo", Guid.NewGuid().ToString("N")));
         if (!persistent) return;
         _path = Path.Combine(DataDirectory, "preferences.json");
-        try
-        {
-            if (File.Exists(_path)) Current = JsonSerializer.Deserialize<TrackerPreferences>(File.ReadAllText(_path), Json) ?? throw new JsonException("Préférences absentes.");
-            if (!Enum.IsDefined(Current.ThemeMode)) Current = Current with { ThemeMode = ThemeMode.System };
-            if (!Enum.IsDefined(Current.SortMode)) Current = Current with { SortMode = SortMode.Active };
-            Current = Normalize(Current);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
-        {
-            // Keep safe defaults without rewriting an unreadable file.
-            Current = Normalize(new());
-        }
+        var loaded = RecoverableJsonFile.Read(_path, Parse);
+        Current = loaded.Value ?? Normalize(new());
+        if (loaded.RecoveryRequired) Current = DisableNotifications(Current) with { RecoveryPending = true };
     }
 
     public void Update(Func<TrackerPreferences, TrackerPreferences> update)
     {
-        var next = Normalize(update(Current));
+        var next = Normalize(update(Current)) with { RecoveryPending = Current.RecoveryPending };
         if (next == Current) return;
-        if (_path is not null)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            var temporary = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
-                {
-                    JsonSerializer.Serialize(stream, next, Json);
-                    stream.Flush(true);
-                }
-                File.Move(temporary, _path, true);
-            }
-            finally { if (File.Exists(temporary)) File.Delete(temporary); }
-        }
+        Save(next);
+    }
+
+    public void AcknowledgeRecovery()
+    {
+        if (RecoveryRequired) Save(Current with { RecoveryPending = false });
+    }
+
+    private void Save(TrackerPreferences next)
+    {
+        if (_path is not null) RecoverableJsonFile.Write(_path, JsonSerializer.SerializeToUtf8Bytes(next, Json), Parse);
         Current = next;
         Touch();
     }
+
+    private static TrackerPreferences Parse(byte[] bytes)
+    {
+        var value = JsonSerializer.Deserialize<TrackerPreferences>(bytes, Json) ?? throw new JsonException("Préférences absentes.");
+        if (!Enum.IsDefined(value.ThemeMode)) value = value with { ThemeMode = ThemeMode.System };
+        if (!Enum.IsDefined(value.SortMode)) value = value with { SortMode = SortMode.Active };
+        return Normalize(value);
+    }
+
+    private static TrackerPreferences DisableNotifications(TrackerPreferences value) => value with
+    {
+        McpEnabled = false, Alert20 = false, Alert10 = false, Alert5 = false,
+        ResetNotifications = false, ExpiryNotifications = false,
+        ReminderRules = value.ReminderRules!.Select(rule => rule with { Enabled = false }).ToArray()
+    };
     private static TrackerPreferences Normalize(TrackerPreferences value) => value with
     {
         RefreshMinutes = RefreshPolicy.NormalizeMinutes(value.RefreshMinutes),

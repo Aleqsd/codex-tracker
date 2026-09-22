@@ -6,8 +6,9 @@ namespace CodexTracker.App;
 
 internal sealed record ThemeChoice(ThemeMode Value, string Label) { public override string ToString() => Label; }
 internal sealed record NumberChoice(int Value, string Label) { public override string ToString() => Label; }
-internal sealed class SettingsWindow : ThemedWindow
+internal sealed class SettingsView : UserControl, IDisposable
 {
+    private readonly MainWindow _owner;
     private readonly PreferencesStore _preferences;
     private readonly ApplicationCommands _commands;
     private readonly UpdateService _updates;
@@ -22,6 +23,10 @@ internal sealed class SettingsWindow : ThemedWindow
     private bool _updateBusy;
     private UpdateRelease? _release;
     private bool _syncing, _closed;
+    private bool _includePrereleases;
+    private readonly StackPanel _health = new();
+    private string[] _healthMessages = [];
+    private bool _recoveryRequired;
     private readonly bool _demo;
     private readonly StackPanel _navigation = new() { Margin = new Thickness(12, 18, 12, 0) };
     private readonly ScrollViewer _pageScroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
@@ -29,18 +34,19 @@ internal sealed class SettingsWindow : ThemedWindow
     private StackPanel _page = new();
     internal string CurrentPage { get; private set; } = "Général";
 
-    public SettingsWindow(Window owner, PreferencesStore preferences, UpdateService updates, ThemeManager theme, bool demo)
-        : base(owner, "Réglages", theme, 750, 620)
+    public SettingsView(MainWindow owner, PreferencesStore preferences, UpdateService updates, bool demo)
     {
-        _preferences = preferences; _updates = updates; _demo = demo;
-        _commands = new(preferences, ((MainWindow)owner).Reminders.Secrets);
-        MinWidth = 640;
-        var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
-        var sidebar = new Border { Child = _navigation, BorderThickness = new Thickness(0, 0, 1, 0) };
+        _owner = owner; _preferences = preferences; _updates = updates; _demo = demo;
+        _includePrereleases = preferences.Current.IncludePrereleaseUpdates;
+        _commands = new(preferences, owner.Reminders.Secrets);
+        Focusable = false;
+        var layout = new Grid { Margin = new Thickness(0, 10, 0, 0) }; layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
+        var navigationScroll = new ScrollViewer { Content = _navigation, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var sidebar = new Border { Child = navigationScroll, BorderThickness = new Thickness(0, 0, 1, 0) };
         sidebar.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); layout.Children.Add(sidebar);
         Grid.SetColumn(_pageScroll, 1); layout.Children.Add(_pageScroll);
-        ContentScroll.Content = layout; ContentScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-        ContentScroll.VerticalContentAlignment = VerticalAlignment.Stretch; ContentScroll.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        Content = layout;
+        System.Windows.Input.KeyboardNavigation.SetTabNavigation(_navigation, System.Windows.Input.KeyboardNavigationMode.Continue);
         Page("Général", "Adaptez le suivi à votre façon de travailler.");
         Section("Apparence");
         var themeRow = new Grid(); themeRow.ColumnDefinitions.Add(new ColumnDefinition()); themeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
@@ -53,25 +59,25 @@ internal sealed class SettingsWindow : ThemedWindow
         _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
         Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
         Page("Rappels", "Choisissez les échéances, les comptes et les canaux utiles.");
-        _page.Children.Add(ReminderSettingsView.Rules(preferences, ((MainWindow)owner).TrackerService, _commands));
+        ReloadableSection(() => ReminderSettingsView.Rules(preferences, owner.TrackerService, _commands));
         Section("Quotas");
         _page.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 11, "MutedBrush"));
         var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 13, 0, 2) };
         thresholds.Children.Add(PreferenceCheck("20 %", p => p.Alert20, (p, v) => p with { Alert20 = v }));
         thresholds.Children.Add(PreferenceCheck("10 %", p => p.Alert10, (p, v) => p with { Alert10 = v }));
         thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); _page.Children.Add(thresholds);
-        _page.Children.Add(ReminderSettingsView.WindowsTest(((MainWindow)owner).Reminders, demo));
+        _page.Children.Add(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
         Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
-        _page.Children.Add(ReminderSettingsView.Channels(preferences, ((MainWindow)owner).Reminders, demo, _commands));
+        ReloadableSection(() => ReminderSettingsView.Channels(preferences, owner.Reminders, demo, _commands));
         Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
-        _page.Children.Add(ReminderSettingsView.History(((MainWindow)owner).Reminders));
+        _page.Children.Add(ReminderSettingsView.History(owner.Reminders));
         Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
         var calendar = new Button { Content = "Ouvrir les options Google Agenda…", HorizontalAlignment = HorizontalAlignment.Left };
-        calendar.Click += (_, _) => ((MainWindow)owner).OpenCalendar(); _page.Children.Add(calendar);
+        calendar.Click += (_, _) => owner.OpenCalendar(); _page.Children.Add(calendar);
         var calendarHint = Ui.Text("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 7, 0, 0); _page.Children.Add(calendarHint);
         Page("Assistants", "Pilotez le tracker depuis votre assistant de code.");
-        _page.Children.Add(Mcp.AssistantSettingsView.Create((MainWindow)owner, preferences, demo));
+        _page.Children.Add(Mcp.AssistantSettingsView.Create(owner, preferences, demo));
         Page("Application", "Démarrage, mises à jour et version installée.");
         Section("Démarrage");
         var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Margin = new Thickness(0, 3, 0, 4) };
@@ -82,6 +88,8 @@ internal sealed class SettingsWindow : ThemedWindow
             p => p.DownloadUpdatesAutomatically, (p, value) => p with { DownloadUpdatesAutomatically = value });
         Toggle("Installer au prochain démarrage du tracker", "Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation.",
             p => p.InstallUpdatesAtStartup, (p, value) => p with { InstallUpdatesAtStartup = value });
+        Toggle("Recevoir aussi les préversions", "Désactivé : versions stables uniquement. Activez pour essayer les versions bêta avant leur validation complète.",
+            p => p.IncludePrereleaseUpdates, (p, value) => p with { IncludePrereleaseUpdates = value });
         var lastUpdate = demo ? null : updates.ReadLastResult();
         _updateStatus = Ui.Text(demo ? "Les mises à jour sont désactivées dans la démonstration." : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : "Vérifiez les versions publiées sur le dépôt officiel.", 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 7, 0, 12); _page.Children.Add(_updateStatus);
         var actions = new WrapPanel();
@@ -101,13 +109,34 @@ internal sealed class SettingsWindow : ThemedWindow
         }
         if (!demo) { updates.PreparationChanged += PreparationChanged; ShowPreparation(); }
         _updateTimer.Tick += (_, _) => SyncUpdateButton();
-        _updateTimer.Start();
+        Loaded += (_, _) => { if (!_closed) { RefreshHealth(); _updateTimer.Start(); } };
+        Unloaded += (_, _) => _updateTimer.Stop();
+        Section("Diagnostic", true);
+        _page.Children.Add(_health);
+        var diagnostic = new Button { Content = "Préparer un diagnostic…", HorizontalAlignment = HorizontalAlignment.Left };
+        diagnostic.Click += (_, _) => ShowDiagnostic(); _page.Children.Add(diagnostic);
+        _page.Children.Add(Ui.Text("Aperçu avant copie. Aucun compte, quota, chemin personnel ni identifiant secret.", 11, "MutedBrush"));
         var quit = new Button { Content = "Quitter Codex Tracker", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-10, 19, 0, 0) };
         quit.Click += async (_, _) => await ((App)System.Windows.Application.Current).ExitAsync(); _page.Children.Add(quit);
         preferences.Changed += PreferencesChanged;
-        Closed += (_, _) => { _closed = true; _updateTimer.Stop(); _lifetime.Cancel(); preferences.Changed -= PreferencesChanged; updates.PreparationChanged -= PreparationChanged; };
         Sync();
         ShowPage("Général");
+    }
+    public void Dispose()
+    {
+        if (_closed) return;
+        _closed = true; _updateTimer.Stop(); _lifetime.Cancel();
+        _preferences.Changed -= PreferencesChanged; _updates.PreparationChanged -= PreparationChanged;
+        _pageScroll.Content = null; Content = null;
+    }
+    private void ReloadableSection(Func<FrameworkElement> create)
+    {
+        var host = new ContentControl { Content = create(), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var reload = new Button { Content = "Recharger la section", Style = (Style)FindResource("QuietButton"),
+            HorizontalAlignment = HorizontalAlignment.Left, FontSize = 11, Padding = new Thickness(0, 4, 0, 4),
+            ToolTip = "Relire la configuration actuelle. Les modifications non enregistrées de cette section seront abandonnées." };
+        reload.Click += (_, _) => { host.Content = create(); _pageScroll.ScrollToTop(); };
+        _page.Children.Add(reload); _page.Children.Add(host);
     }
     private void Page(string title, string description)
     {
@@ -120,7 +149,9 @@ internal sealed class SettingsWindow : ThemedWindow
     internal void ShowPage(string title)
     {
         if (!_pages.TryGetValue(title, out var page)) return;
-        CurrentPage = title; _pageScroll.Content = page.Content; _pageScroll.ScrollToTop();
+        if (CurrentPage != title || _pageScroll.Content is null)
+        { CurrentPage = title; _pageScroll.Content = page.Content; _pageScroll.ScrollToTop(); }
+        RefreshHealth();
         foreach (var (name, value) in _pages)
         {
             value.Navigation.SetResourceReference(BackgroundProperty, name == title ? "ButtonBrush" : "BackgroundBrush");
@@ -160,12 +191,55 @@ internal sealed class SettingsWindow : ThemedWindow
     private void Sync()
     {
         if (_closed) return;
+        if (_includePrereleases != _preferences.Current.IncludePrereleaseUpdates)
+        {
+            _includePrereleases = _preferences.Current.IncludePrereleaseUpdates;
+            _updates.SetIncludePrereleases(_includePrereleases);
+            _release = null; _nextCheckAt = null; _install.Visibility = Visibility.Collapsed;
+            _updateStatus.Text = _includePrereleases ? "Préversions incluses. Recherchez une mise à jour." : "Versions stables uniquement. Recherchez une mise à jour.";
+            ShowPreparation();
+            _ = ReloadPreparedAsync();
+        }
         _syncing = true; _themeSelector.SelectedValue = _preferences.Current.ThemeMode;
         _refreshSelector.SelectedValue = _preferences.Current.RefreshMinutes;
         foreach (var (box, read) in _toggles) box.IsChecked = read(_preferences.Current); _syncing = false;
         _updateStatus.Text = Display.SafeText(_updateStatus.Text, _preferences.Current.PrivacyMode);
+        RefreshHealth();
     }
-    private void ShowError(string message) => new TrackerDialog(this, "Action indisponible", Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();
+    internal void RefreshHealth()
+    {
+        if (_closed) return;
+        var messages = _owner.HealthWarnings();
+        if (_healthMessages.SequenceEqual(messages) && _recoveryRequired == _preferences.RecoveryRequired) return;
+        _healthMessages = messages; _recoveryRequired = _preferences.RecoveryRequired;
+        _health.Children.Clear();
+        foreach (var message in messages)
+        {
+            var notice = Ui.Text(message, 11, "MutedBrush"); notice.Margin = new Thickness(0, 0, 0, 10); _health.Children.Add(notice);
+        }
+        if (!_preferences.RecoveryRequired) return;
+        var acknowledge = new Button { Content = "Valider les réglages récupérés", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
+        acknowledge.Click += (_, _) =>
+        {
+            try { _preferences.AcknowledgeRecovery(); Sync(); }
+            catch (Exception) { ShowError("Les réglages récupérés n’ont pas pu être enregistrés. Les fichiers existants sont conservés."); }
+        };
+        _health.Children.Add(acknowledge);
+    }
+    private void ShowDiagnostic()
+    {
+        var report = _owner.BuildDiagnostic();
+        var dialog = new TrackerDialog(_owner, "Diagnostic à partager", report, "Copier", "Fermer");
+        if (dialog.ShowDialog() != true) return;
+        try { Clipboard.SetText(report); }
+        catch (Exception) { ShowError("Le presse-papiers est occupé. Réessayez dans quelques secondes."); }
+    }
+    private async Task ReloadPreparedAsync()
+    {
+        try { if (!_demo) await _updates.LoadPreparedAsync(_lifetime.Token); }
+        catch (OperationCanceledException) { }
+    }
+    private void ShowError(string message) => new TrackerDialog(_owner, "Action indisponible", Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();
     private async Task CheckAsync()
     {
         if (_demo) return;
@@ -186,7 +260,7 @@ internal sealed class SettingsWindow : ThemedWindow
     {
         _release = result.Release; _nextCheckAt = result.NextCheckAt;
         var text = result.IsVerifiedNow
-            ? _release is null ? "Vous utilisez la dernière version publiée." : $"Version {_release.Version} disponible."
+            ? _release is null ? $"Aucune version plus récente sur le canal {(_updates.IncludePrereleases ? "stable + préversions" : "stable")}." : $"Version {_release.Version} disponible."
             : result.Message + (_release is null ? " La version actuelle n’a pas été revérifiée." : $" Version {_release.Version} connue dans le cache.");
         if (result.VerifiedAt is { } checkedAt)
             text += $"\n{(result.IsVerifiedNow ? "Vérifié" : "Cache vérifié")} le {checkedAt.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
@@ -222,7 +296,7 @@ internal sealed class SettingsWindow : ThemedWindow
         try
         {
             await _updates.PrepareAsync(_release, _lifetime.Token);
-            if (!_closed) await ((MainWindow)Owner).InstallReadyUpdateAsync();
+            if (!_closed) await _owner.InstallReadyUpdateAsync();
         }
         catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Installation annulée."; }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }

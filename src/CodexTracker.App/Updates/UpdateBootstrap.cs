@@ -41,6 +41,7 @@ public static class UpdateBootstrap
             var health = Path.Combine(stage, "health.ready");
             await UpdateInstaller.InstallAsync(manifest.Target, manifest.StagedExecutable, manifest.OldHash, manifest.NewHash,
                 (target, verifyHealth, token) => LaunchAsync(target, verifyHealth ? health : null, manifest.RelaunchInBackground, token));
+            UpdateRegistration.Refresh(manifest.Target);
             await File.WriteAllTextAsync(Path.Combine(stage, "complete"), "complete");
             await WriteResultAsync("La mise à jour a été installée.", true);
         }
@@ -55,7 +56,12 @@ public static class UpdateBootstrap
     {
         var index = Array.IndexOf(args, "--update-health");
         if (index < 0 || index + 1 >= args.Length) return;
-        try { File.WriteAllText(ValidateStageFile(args[index + 1], "health.ready"), "ready"); }
+        try
+        {
+            File.WriteAllText(ValidateStageFile(args[index + 1], "health.ready"), "ready");
+            // The first update to this version can still be applied by an older helper.
+            if (Environment.ProcessPath is { } target) UpdateRegistration.Refresh(target);
+        }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
         catch (ArgumentException) { }

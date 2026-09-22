@@ -26,7 +26,7 @@ internal static class NotificationChecks
         var directory = Path.Combine(Path.GetTempPath(), "CodexTrackerUiTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         var preferences = new PreferencesStore(dataDirectory: directory);
-        var settings = new SettingsWindow(window, preferences, new UpdateService(), window.Theme, true);
+        var settings = window.Settings;
         var host = new Window { Owner = window, Width = 390, Height = 240, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.CenterOwner };
         try
         {
@@ -58,8 +58,13 @@ internal static class NotificationChecks
             var corrupt = await corruptRuntime.TestAsync(ReminderChannel.Windows);
             Check(corrupt.Status == DeliveryStatus.Failed && corrupt.Detail.Contains("journal") && !corrupt.Detail.Contains("démonstration"),
                 "Unreadable reminder journal reports a real failure instead of a demonstration status");
+            File.WriteAllText(Path.Combine(corruptDirectory, "reminder-journal.json"), "null");
+            using var invalidRuntime = new ReminderRuntime(service, new PreferencesStore(dataDirectory: corruptDirectory), false);
+            Check(invalidRuntime.Error is not null && (await invalidRuntime.TestAsync(ReminderChannel.Windows)).Status == DeliveryStatus.Failed
+                && File.ReadAllText(Path.Combine(corruptDirectory, "reminder-journal.json")) == "null",
+                "Structurally invalid journal suspends delivery without closing the app or erasing evidence");
 
-            settings.Show();
+            window.ShowSettings();
             foreach (var page in new[] { "Rappels", "Canaux" })
             {
                 settings.ShowPage(page); settings.UpdateLayout();
@@ -68,7 +73,7 @@ internal static class NotificationChecks
                 Check(!test.IsEnabled && !link.IsEnabled, $"{page} uses the shared Windows test and disables desktop actions in demo");
                 Check(link.ToolTip?.ToString() == "Ouvrir les paramètres des notifications Windows", $"{page} explains the explicit Windows settings action");
             }
-            settings.Close();
+            window.OpenPage("Comptes");
 
             var pending = new TaskCompletionSource<DeliveryResult>();
             var attempts = 0;
@@ -106,7 +111,7 @@ internal static class NotificationChecks
         }
         finally
         {
-            host.Close(); settings.Close();
+            host.Close(); window.OpenPage("Comptes");
             if (Directory.Exists(directory)) Directory.Delete(directory, true);
         }
     }

@@ -60,11 +60,11 @@ internal static class AssistantChecks
         foreach (var mode in new[] { ThemeMode.Light, ThemeMode.Dark })
         {
             p.Update(p => p with { ThemeMode = mode }); window.OpenPage("Assistants"); await Task.Delay(100);
-            var settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+            var settings = window.Settings;
             settings.UpdateLayout();
             Check(Tree(settings).OfType<CheckBox>().Any(b => Equals(b.Content, "Autoriser les assistants via MCP")), "Assistant controls render in " + mode);
             Check(Tree(settings).OfType<Button>().Any(b => Equals(b.Content, "Copier la configuration MCP")), "MCP configuration accessible by keyboard in " + mode);
-            settings.Close();
+            window.OpenPage("Comptes");
         }
         window.Assistant = null;
         Console.WriteLine($"PASS {_count} assistant WPF checks");

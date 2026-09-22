@@ -17,6 +17,8 @@ internal sealed class ProfileStore(string root) : IDisposable
 {
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
     private readonly string _root = Path.GetFullPath(root);
+    private readonly List<string> _recoveryWarnings = [];
+    public IReadOnlyList<string> RecoveryWarnings => _recoveryWarnings.AsReadOnly();
     private FileStream? _lease;
     private string Runtime => Path.Combine(_root, "observer-runtime");
     private string Usage => Path.Combine(_root, "usage");
@@ -38,19 +40,13 @@ internal sealed class ProfileStore(string root) : IDisposable
     public StoredSettings LoadSettings()
     {
         var path = Path.Combine(_root, "settings.json");
-        if (File.Exists(path))
+        var loaded = RecoverableJsonFile.Read(path, ParseSettings);
+        if (loaded.Value is { } settings)
         {
-            try
-            {
-                var settings = JsonSerializer.Deserialize<StoredSettings>(File.ReadAllText(path), Json) ?? throw new JsonException();
-                if (settings.Accounts is null || settings.Accounts.Any(a => a is null || string.IsNullOrWhiteSpace(a.Email) || !IsEmail(a.Email)) ||
-                    settings.Accounts.Select(a => a.Id).Distinct().Count() != settings.Accounts.Count ||
-                    settings.Accounts.Select(a => a.Email).Distinct(StringComparer.OrdinalIgnoreCase).Count() != settings.Accounts.Count)
-                    throw new JsonException();
-                return settings;
-            }
-            catch (JsonException) { throw new TrackerException("Les réglages locaux sont illisibles. Conservez settings.json avant de les réinitialiser."); }
+            if (loaded.RecoveryRequired) Warn("Les comptes ont été récupérés depuis la dernière sauvegarde locale valide. Le fichier d’origine est conservé.");
+            return settings;
         }
+        if (loaded.RecoveryRequired) throw new TrackerException("La liste des comptes et sa sauvegarde sont illisibles. Vos fichiers sont conservés ; aucune réinitialisation automatique n’a été effectuée. Restaurez une sauvegarde locale valide avant de relancer le tracker.");
         var seed = Path.Combine(_root, "initial-accounts.json");
         var emails = File.Exists(seed) ? JsonSerializer.Deserialize<string[]>(File.ReadAllText(seed), Json) ?? [] : [];
         return new(emails.Where(email => !string.IsNullOrWhiteSpace(email) && IsEmail(email)).Distinct(StringComparer.OrdinalIgnoreCase)
@@ -60,12 +56,37 @@ internal sealed class ProfileStore(string root) : IDisposable
     public Dictionary<Guid, AccountSnapshot> LoadSnapshots()
     {
         var path = Path.Combine(_root, "snapshots.json");
-        try { return File.Exists(path) ? JsonSerializer.Deserialize<Dictionary<Guid, AccountSnapshot>>(File.ReadAllText(path), Json) ?? [] : []; }
-        catch (JsonException) { return []; }
+        var loaded = RecoverableJsonFile.Read(path, ParseSnapshots);
+        if (loaded.RecoveryRequired) Warn(loaded.UsedBackup
+            ? "Les derniers relevés ont été récupérés depuis la sauvegarde locale. Leurs dates d’observation restent inchangées."
+            : "Les relevés locaux sont illisibles. Ils restent conservés ; seul le compte ouvert dans Codex peut être actualisé.");
+        return loaded.Value ?? [];
     }
 
-    public void SaveSettings(StoredSettings settings) => AtomicWrite(Path.Combine(_root, "settings.json"), JsonSerializer.SerializeToUtf8Bytes(settings, Json));
-    public void SaveSnapshots(Dictionary<Guid, AccountSnapshot> snapshots) => AtomicWrite(Path.Combine(_root, "snapshots.json"), JsonSerializer.SerializeToUtf8Bytes(snapshots, Json));
+    public void SaveSettings(StoredSettings settings) => RecoverableJsonFile.Write(Path.Combine(_root, "settings.json"), JsonSerializer.SerializeToUtf8Bytes(settings, Json), ParseSettings);
+    public void SaveSnapshots(Dictionary<Guid, AccountSnapshot> snapshots) => RecoverableJsonFile.Write(Path.Combine(_root, "snapshots.json"), JsonSerializer.SerializeToUtf8Bytes(snapshots, Json), ParseSnapshots);
+
+    private void Warn(string message) { if (!_recoveryWarnings.Contains(message)) _recoveryWarnings.Add(message); }
+
+    private static StoredSettings ParseSettings(byte[] bytes)
+    {
+        var settings = JsonSerializer.Deserialize<StoredSettings>(bytes, Json) ?? throw new JsonException();
+        if (settings.Accounts is null || settings.Accounts.Any(a => a is null || a.Id == Guid.Empty || string.IsNullOrWhiteSpace(a.Email) || !IsEmail(a.Email)) ||
+            settings.Accounts.Select(a => a.Id).Distinct().Count() != settings.Accounts.Count ||
+            settings.Accounts.Select(a => a.Email).Distinct(StringComparer.OrdinalIgnoreCase).Count() != settings.Accounts.Count)
+            throw new JsonException();
+        return settings;
+    }
+
+    private static Dictionary<Guid, AccountSnapshot> ParseSnapshots(byte[] bytes)
+    {
+        var values = JsonSerializer.Deserialize<Dictionary<Guid, AccountSnapshot>>(bytes, Json) ?? throw new JsonException();
+        if (values.Any(pair => pair.Key == Guid.Empty || pair.Value is not { Email: { Length: > 0 }, Buckets: not null } snapshot ||
+            !IsEmail(snapshot.Email) || snapshot.Buckets.Any(bucket => bucket is not { Id: not null, Windows: not null } ||
+                bucket.Windows.Any(window => window is null || !double.IsFinite(window.UsedPercent))) ||
+            snapshot.ResetCredits?.Any(credit => credit is not { Id: not null }) == true)) throw new JsonException();
+        return values;
+    }
 
     public AccountTelemetry LoadTelemetry(Guid accountId, DateTimeOffset now)
     {

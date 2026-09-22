@@ -1,7 +1,8 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center">Vos quotas Codex, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.8.4/CodexTracker-0.8.4-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.0/CodexTracker-0.9.0-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
 <p align="center">Windows 11 · x64 · Gratuit · Données locales — nécessite Codex installé</p>
+<p align="center"><sub>0.9 · version de stabilisation avant la 1.0</sub></p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
 <p align="center"><sub>Démonstration avec des comptes fictifs. <a href="docs/resets-week.png">Aperçu statique</a></sub></p>
@@ -32,9 +33,11 @@ Le bouton **flèche vers le coin**, à côté de **—**, masque le tracker dans
 ## Installer autrement ou aller plus loin
 
 - **Sans installation :** prenez le ZIP portable dans les [Releases](https://github.com/Aleqsd/codex-tracker/releases). Le petit fichier `.sha256` sert aux mises à jour automatiques ; vous pouvez l’ignorer.
-- **Mises à jour :** téléchargement automatique, puis bouton **Mettre à jour et relancer** ou installation au prochain démarrage. Options dans **Réglages → Application** ; comptes et réglages conservés.
+- **Mises à jour :** téléchargement automatique, puis bouton **Mettre à jour et relancer** ou installation au prochain démarrage. **Réglages → Application** permet aussi de recevoir les préversions ; seules les versions stables sont recherchées par défaut.
 - **WinGet :** [publication soumise à Microsoft](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
 - [Guide d’utilisation](docs/UTILISATION.md) · [Confidentialité](docs/PRIVACY.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues)
+
+Un problème ? **Réglages → Application → Préparer un diagnostic** donne un aperçu sans comptes ni secrets, à copier dans votre signalement.
 
 <details>
 <summary>Développer ou contribuer</summary>
