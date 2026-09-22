@@ -1,8 +1,8 @@
 # Version 0.9.1 — pied de page simplifié et profils conservés
 
-Le correctif retire les libellés secondaires du pied de page (« Local & privé » et l’action de masquage). L’action reste disponible dans le bouton de la barre de titre. La suite métier compte 381 tests réussis ; le smoke test WPF confirme la navigation, les notifications et le pied de page minimal après un second passage inchangé.
+Le correctif retire les libellés secondaires du pied de page (« Local & privé » et l’action de masquage). L’action reste disponible dans le bouton de la barre de titre. La [CI Windows du commit 444ef42](https://github.com/Aleqsd/codex-tracker/actions/runs/35749513811) valide les 381 tests métier, la suite WPF, l’installateur et le protocole MCP. Les deux derniers passages WPF locaux ont échoué sur l’ouverture du sélecteur de fuseau horaire ; la suite complète passe sur Windows CI. Le contrôle du pied de page a réussi dans les deux environnements.
 
-Un redémarrage propre de l’installation actuelle a relu les cinq profils locaux, leurs instantanés et les préférences sans modifier les secrets DPAPI ni l’historique. Les données privées restent hors du dépôt et des artefacts publics.
+L’installation réelle du binaire `0.9.1+444ef42` a réussi avec un code de sortie 0 et un exécutable identique à celui du paquet. Les cinq profils sont conservés, ainsi que les empreintes des préférences, secrets chiffrés et sept fichiers d’historique. Le processus relancé répond. La présence des données sur disque ne confirme pas à elle seule que toutes les lignes sont visibles dans l’interface. Les données privées restent hors du dépôt et des artefacts publics.
 
 # Version 0.9.0 — stabilisation avant la 1.0
 
