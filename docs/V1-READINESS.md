@@ -4,7 +4,7 @@ La 0.9 est une version de stabilisation. Une compilation verte ne valide pas à 
 
 ## Critères de sortie
 
-- [ ] Mise à niveau téléchargée depuis une Release publique : téléchargement automatique, bouton visible, installation au démarrage et conservation des données.
+- [x] Mise à niveau téléchargée depuis une Release publique : téléchargement automatique, bouton visible, installation au démarrage et conservation des données. Les deux parcours 0.8.4 → 0.9.0 ont réussi dans des profils Windows de CI vierges ; voir les preuves dans VALIDATION.md.
 - [x] Canal stable par défaut ; les préversions demandent un choix explicite. Changer de canal écarte le paquet et le cache de l’autre canal. Vérifié par tests HTTP, persistance et contrôles WPF.
 - [x] Fichiers endommagés : sauvegarde valide récupérée, avertissement visible, aucune réactivation silencieuse des rappels ou du MCP. Un journal d’envoi illisible suspend les rappels sans effacer les reçus. Vérifié avec fichiers fictifs et vraies vues WPF.
 - [ ] Installation et désinstallation sur un autre PC Windows 11 x64, avec un utilisateur standard. Premier lancement sans Codex, sans session puis avec une session.

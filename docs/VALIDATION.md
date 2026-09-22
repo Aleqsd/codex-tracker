@@ -1,5 +1,17 @@
 # Version 0.9.0 — stabilisation avant la 1.0
 
+## Mise à jour entre Releases publiques — 22 septembre 2026
+
+Les [deux essais Windows isolés](https://github.com/Aleqsd/codex-tracker/actions/runs/35721273263) du commit `d41286e` ont réussi avec les exécutables publics **0.8.4 → 0.9.0**, sans API simulée ni binaire recompilé :
+
+- L’application a téléchargé elle-même la mise à jour. Le ZIP correspond au checksum public et l’EXE installé au contenu vérifié de ce ZIP.
+- UI Automation a trouvé le bouton visible et activé. Un premier environnement a installé la mise à jour en invoquant ce bouton ; un second a quitté normalement puis installé automatiquement au lancement suivant.
+- Dans les deux cas, le moteur a enregistré le succès, la nouvelle application répondait et les quatre fichiers fictifs — comptes, préférences, relevé et historique — ont gardé leurs empreintes. Les instances ont ensuite quitté proprement.
+
+Les [rapports conservés](validation/public-update-0.8.4-to-0.9.0.json) ne contiennent que des résultats, dates, versions et empreintes publiques. Aucun compte personnel, identifiant ou envoi de notification externe. L’observation UI Automation reste distincte d’une observation humaine ; cet essai valide les binaires distribués sur Windows CI, pas un autre PC Windows 11 physique, un véritable démarrage Windows ou les nouveaux filtres de canaux de 0.9.0 à lui seul. La [recette reproductible](PUBLISHED-UPDATE-TEST.md) refuse les profils existants et s’arrête sans réessayer si GitHub limite les requêtes.
+
+## Tests de stabilisation
+
 - 381 tests métier réussis, dont les canaux stable/préversions, leur cache, les changements de canal pendant une préparation, la version Windows après installation, la récupération locale et les diagnostics de compatibilité.
 - 123 contrôles WPF réussis : Réglages est un véritable troisième onglet, les sections et brouillons restent présents, le clavier et le défilement compact fonctionnent, les avertissements de récupération et l’aperçu du diagnostic restent accessibles. Les notifications Windows ne sont pas émises réellement par ces tests.
 - Compilation Release sans avertissement. Revue croisée des canaux de mise à jour, de la récupération et de la durée de vie des réglages intégrés. Rendus fictifs Application compacts aux DPI 96/144/192, thèmes clair/sombre ; tour GIF régénéré avec les nouveaux onglets. Les rendus ne remplacent pas les essais entre écrans physiques.
@@ -13,7 +25,7 @@ La [CI Windows du commit d1775ce](https://github.com/Aleqsd/codex-tracker/action
 
 Installation réelle depuis 0.8.4 : code de sortie 0, binaire identique à celui publié, version Windows 0.9.0, processus relancé et réactif. Profils, préférences, identifiants DPAPI et historiques conservés. Les fichiers EXE et Setup sont encore non signés.
 
-L’essai de téléchargement automatique depuis la 0.8.4 n’a pas pu être terminé : GitHub a imposé une limitation des recherches anonymes jusqu’au 22/09/2026 à 12:39:56, Europe/Paris. Ce délai a été respecté ; l’installation ci-dessus passe par Setup. Les tests automatisés du téléchargement, du bouton et de l’installation au démarrage ne sont donc pas présentés comme une validation complète entre deux Releases publiques.
+L’essai initial de téléchargement automatique sur le poste local n’a pas pu être terminé : GitHub a imposé une limitation des recherches anonymes jusqu’au 22/09/2026 à 12:39:56, Europe/Paris. Ce délai a été respecté ; l’installation locale ci-dessus passe par Setup. Le parcours entre deux Releases publiques a ensuite été validé dans les deux environnements Windows isolés décrits en tête de cette page, sans déplacer ni modifier les comptes du poste local.
 
 # Version 0.8.4 — diagnostic des notifications Windows
 
