@@ -7,6 +7,14 @@
 
 Les validations restant à terminer avant une version stable sont suivies dans [V1-READINESS.md](V1-READINESS.md), en distinguant les tests simulés des essais sur de vrais postes.
 
+## Livraison 0.9.0
+
+La [CI Windows du commit d1775ce](https://github.com/Aleqsd/codex-tracker/actions/runs/35704541790) est verte. La [Release 0.9.0](https://github.com/Aleqsd/codex-tracker/releases/tag/v0.9.0) contient exactement l’installateur, le ZIP et son checksum ; les trois empreintes GitHub correspondent aux fichiers locaux. Les 14 tests MCP de processus passent sur l’exécutable autonome.
+
+Installation réelle depuis 0.8.4 : code de sortie 0, binaire identique à celui publié, version Windows 0.9.0, processus relancé et réactif. Profils, préférences, identifiants DPAPI et historiques conservés. Les fichiers EXE et Setup sont encore non signés.
+
+L’essai de téléchargement automatique depuis la 0.8.4 n’a pas pu être terminé : GitHub a imposé une limitation des recherches anonymes jusqu’au 22/09/2026 à 12:39:56, Europe/Paris. Ce délai a été respecté ; l’installation ci-dessus passe par Setup. Les tests automatisés du téléchargement, du bouton et de l’installation au démarrage ne sont donc pas présentés comme une validation complète entre deux Releases publiques.
+
 # Version 0.8.4 — diagnostic des notifications Windows
 
 - Les deux boutons de test partagent le même moteur, un résultat visible et le journal. Une transmission ne devient plus un faux statut « affiché » ; absence d’adaptateur, journal illisible et exception sont signalés explicitement.

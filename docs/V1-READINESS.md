@@ -11,7 +11,7 @@ La 0.9 est une version de stabilisation. Une compilation verte ne valide pas à 
 - [ ] Deux écrans physiques à DPI différents, sortie de veille, redémarrage d’Explorer et démarrage Windows. Les rendus WPF ne remplacent pas ces essais.
 - [ ] Utilisation quotidienne pendant une semaine par plusieurs personnes : consommation mémoire/CPU, collecte, réseau indisponible et notifications sans doublon.
 - [ ] Choix explicite pour la signature de distribution ; contrôler le résultat Authenticode sur l’EXE et l’installateur. Aucune signature n’est revendiquée tant que ces fichiers ne sont pas réellement signés.
-- [ ] CI Windows verte sur le commit livré ; EXE, ZIP et checksum publiés ; test MCP sur le binaire autonome et notes de version courtes.
+- [x] CI Windows verte sur le commit 0.9.0 livré ; EXE, ZIP et checksum publiés ; test MCP sur le binaire autonome et notes de version courtes. À répéter pour le futur binaire 1.0.
 
 Les preuves terminées sont consignées dans [VALIDATION.md](VALIDATION.md). Les cases correspondent à une validation complète, pas seulement à une implémentation.
 
