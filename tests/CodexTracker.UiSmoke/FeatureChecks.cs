@@ -136,12 +136,9 @@ internal static class FeatureChecks
             window.ShowPanel();
             Check(window.IsVisible && window.ShowInTaskbar && window.WindowState == WindowState.Normal,
                 "Reopening from tray restores the window and taskbar entry");
-            var footerHide = (Button)window.FindName("FooterHideToTrayButton");
-            Check(footerHide.IsVisible && Equals(footerHide.Content, "Masquer dans la barre d’état") && footerHide.ActualWidth > 100,
-                "Status bar explains the status-bar action");
-            footerHide.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            Check(!window.IsVisible && !window.ShowInTaskbar, "Footer tray action also removes the taskbar entry");
-            window.ShowPanel();
+            Check(window.FindName("FooterHideToTrayButton") is null &&
+                !Tree(window).OfType<TextBlock>().Any(text => text.Text is "Local & privé" or "Masquer dans la barre d’état"),
+                "Footer stays minimal without privacy or tray labels");
             Check(!resets.IsVisible && Tree(window).OfType<Button>().Any(b => b.ToolTip?.ToString() == "Changer le nom ou l’avatar"), "Returning to Accounts preserves the dashboard");
             Check(AccountAvatar.Initials("Alexandre Almeida") == "AA" && AccountAvatar.Initials("alexandre.almeida@example.test") == "AA" && AccountAvatar.Initials("Studio") == "ST" && AccountAvatar.Initials("") == "?", "Default avatars derive initials from names and email addresses");
             Check(AccountAvatar.Background(id).ToString() == AccountAvatar.Background(Guid.Parse(id.ToString())).ToString(), "Avatar color remains stable for an account");

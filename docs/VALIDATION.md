@@ -1,3 +1,9 @@
+# Version 0.9.1 — pied de page simplifié et profils conservés
+
+Le correctif retire les libellés secondaires du pied de page (« Local & privé » et l’action de masquage). L’action reste disponible dans le bouton de la barre de titre. La suite métier compte 381 tests réussis ; le smoke test WPF confirme la navigation, les notifications et le pied de page minimal après un second passage inchangé.
+
+Un redémarrage propre de l’installation actuelle a relu les cinq profils locaux, leurs instantanés et les préférences sans modifier les secrets DPAPI ni l’historique. Les données privées restent hors du dépôt et des artefacts publics.
+
 # Version 0.9.0 — stabilisation avant la 1.0
 
 ## Mise à jour entre Releases publiques — 22 septembre 2026
