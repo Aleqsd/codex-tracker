@@ -47,7 +47,7 @@ Changez de compte **dans Codex**. Le tracker observe son fichier de session en l
 
 Le bouton d’actualisation déclenche une vérification immédiate. Aucune connexion OAuth, bascule ni fermeture de Codex n’est effectuée par le tracker.
 
-Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par défaut. Dans **Réglages → Actualisation**, choisissez 1, 2 ou 5 minutes. Le mode adaptatif, facultatif, passe à 10 minutes après 5 minutes sans activité clavier ou souris, puis reprend la fréquence choisie à votre retour. Les changements sont appliqués sans redémarrage ; si le dernier relevé dépasse déjà le délai choisi, une collecte démarre au prochain contrôle (environ une seconde). L’actualisation manuelle et la détection des changements de compte restent immédiates. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. L’icône suit uniquement le compte actif détecté dans Codex. Sans compte actif, elle affiche une valeur indisponible ; aucun ancien relevé ne le remplace.
+Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par défaut. Dans **Réglages → Général → Actualisation**, choisissez 1, 2 ou 5 minutes. Le mode adaptatif, facultatif, passe à 10 minutes après 5 minutes sans activité clavier ou souris, puis reprend la fréquence choisie à votre retour. Les changements sont appliqués sans redémarrage ; si le dernier relevé dépasse déjà le délai choisi, une collecte démarre au prochain contrôle (environ une seconde). L’actualisation manuelle et la détection des changements de compte restent immédiates. Les autres comptes affichent leur **dernier relevé daté** ; leurs quotas peuvent avoir changé depuis. Ouvrez un compte dans Codex pour obtenir de nouvelles données. L’icône suit uniquement le compte actif détecté dans Codex. Sans compte actif, elle affiche une valeur indisponible ; aucun ancien relevé ne le remplace.
 
 À la sortie de veille, le tracker abandonne les anciennes requêtes et relit l’identité active avant de collecter les quotas. Le premier relevé de reprise reste silencieux et redémarre la période d’observation utilisée pour les prévisions. Les fenêtres sont ramenées dans la zone utile après un changement d’affichage ; l’aperçu se recale selon le moniteur et son DPI. L’icône est réaffirmée après une recréation de la barre des tâches.
 
@@ -63,11 +63,11 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 - Les dates précises utilisent le fuseau horaire Windows et son décalage UTC. Le compte à rebours complète l’heure exacte ; il ne confirme pas un reset tant que le serveur n’a pas actualisé la valeur.
 - En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
 
-Le bouton **flèche vers le coin**, juste à gauche de **—**, masque la fenêtre dans la barre d’état et la retire de la barre des tâches. Le bouton **Masquer dans la barre d’état** en bas à droite fait la même chose. Le suivi et les rappels restent actifs ; un clic sur l’icône dans la barre d’état rouvre la fenêtre. **—** conserve la réduction Windows habituelle. **✕** masque aussi l’application ; utilisez **Quitter** dans le menu de l’icône pour l’arrêter.
+Le bouton **flèche vers le coin**, juste à gauche de **—**, masque la fenêtre dans la barre d’état et la retire de la barre des tâches. Le suivi et les rappels restent actifs ; un clic sur l’icône dans la barre d’état rouvre la fenêtre. **—** conserve la réduction Windows habituelle. **✕** masque aussi l’application ; utilisez **Quitter** dans le menu de l’icône pour l’arrêter.
 
 Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai.
 
-Les réglages sont répartis en quatre rubriques : **Général**, **Notifications**, **Calendrier** et **Application**. Les menus « Icône et libellé » associent une icône discrète à chaque réglage et affichent une coche sur la valeur choisie et restent utilisables au clavier.
+L’onglet **Réglages**, à côté de **Comptes** et **Resets**, contient sept rubriques : **Général**, **Rappels**, **Canaux**, **Historique**, **Calendrier**, **Assistants** et **Application**. La section sélectionnée et les saisies restent présentes lorsque vous changez d’onglet. Les menus « Icône et libellé » associent une icône discrète à chaque réglage, affichent une coche sur la valeur choisie et restent utilisables au clavier.
 
 ![Réglages avec données fictives](settings.png)
 
@@ -151,7 +151,7 @@ Les profils, réglages, avatars importés, historiques et derniers relevés sont
 
 Les anciens coffres et sauvegardes de la version 0.1 ne sont ni utilisés ni modifiés lors de la mise à jour. Les métadonnées et derniers relevés sont conservés. Les nouveaux profils de travail temporaires sont nettoyés après collecte.
 
-Les préférences, profils et relevés disposent d’une copie locale `.bak`. Si le fichier principal est illisible, une copie valide est récupérée et un avertissement apparaît. Les préférences récupérées désactivent rappels, alertes et MCP : vérifiez-les avant de les réactiver. Le bouton **Valider les réglages récupérés** retire l’avertissement sans réactiver de fonction. Les fichiers endommagés sont conservés ; les journaux d’envoi ne sont jamais réinitialisés automatiquement.
+Les préférences, profils et relevés disposent d’une copie locale `.bak` d’une génération valide. Cette copie peut précéder les derniers ajouts ou changements ; elle ne constitue pas un historique complet. Si le fichier principal est illisible, une copie valide est récupérée et un avertissement apparaît. Les préférences récupérées désactivent rappels, alertes et MCP : vérifiez-les avant de les réactiver. Le bouton **Valider les réglages récupérés** retire l’avertissement sans réactiver de fonction. Les fichiers endommagés sont conservés ; les journaux d’envoi ne sont jamais réinitialisés automatiquement.
 
 Pour demander de l’aide, **Réglages → Application → Préparer un diagnostic** montre le texte exact avant copie. Ce rapport contient les versions, états techniques et dates de vérification, sans compte, quota, chemin personnel ni secret. Il n’envoie rien automatiquement.
 
@@ -172,7 +172,7 @@ dotnet run --project src/CodexTracker.App -- --demo
 ./scripts/build-installer.ps1 -InstallCompiler
 ```
 
-Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. La CI Windows compile la solution, lance les tests et produit le ZIP autonome ainsi que l’installateur.
+Les scripts de publication et de création de l’installateur utilisent par défaut la version de `Directory.Build.props` ; `-Version` permet de la préciser explicitement. Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. La CI Windows compile la solution, lance les tests et produit le ZIP autonome ainsi que l’installateur.
 
 La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocole en lecture seule) et `App` (WPF et zone de notification). Les tests utilisent des sessions fictives et ne modifient jamais votre connexion Codex. Ils couvrent les réponses de quotas, valeurs absentes, dates et changements d’heure, changements de fichiers, isolation des comptes et réponses réseau tardives. Les contrôles réels et leurs limites sont détaillés dans [VALIDATION.md](VALIDATION.md).
 

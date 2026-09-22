@@ -316,6 +316,107 @@ public sealed class TrackerServiceTests
         Assert.Equal(2, reader.Requests.Count);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{}")]
+    public async Task FiveProfilesSurviveOfflineRestartsFailedReadsAndActiveAccountChanges(string? unavailableSession)
+    {
+        using var directory = new TestDirectory();
+        var authPath = directory.File("auth.json");
+        var options = Options(directory);
+        var emails = Enumerable.Range(1, 5).Select(i => $"profile-{i}@example.test").ToArray();
+        var observed = DateTimeOffset.Parse("2026-09-20T12:00:00Z");
+        var snapshots = emails.Select((email, index) => new AccountSnapshot(email, index == 4 ? null : "plus",
+            index == 4 ? [] : [new("codex", "Codex", [new(index * 10, 10080, observed.AddDays(index + 1))])],
+            null, null, observed.AddMinutes(index))).ToArray();
+        var reader = new FakeReader
+        {
+            Handler = (profile, _, _) => Task.FromResult(snapshots[Array.IndexOf(emails, profile.Email)])
+        };
+        AccountProfile[] profiles;
+        await File.WriteAllBytesAsync(authPath, TestFixtures.Auth(emails[0], "profile-1"));
+        await using (var service = new TrackerService(authPath, options, reader))
+        {
+            await service.InitializeAsync();
+            foreach (var email in emails.Skip(1))
+            {
+                await File.WriteAllBytesAsync(authPath, TestFixtures.Auth(email, email));
+                await service.RefreshAsync();
+            }
+            profiles = service.State.Accounts.Select(a => a.Profile).ToArray();
+            Assert.Equal(5, profiles.Length);
+            AssertProfiles(service.State, profiles[4].Id);
+            MakeSessionUnavailable();
+            await service.RefreshAsync();
+            AssertProfiles(service.State);
+        }
+
+        var publishedCounts = new ConcurrentQueue<int>();
+        await using (var restarted = new TrackerService(authPath, options, reader))
+        {
+            restarted.Changed += (_, _) => publishedCounts.Enqueue(restarted.State.Accounts.Count);
+            await restarted.InitializeAsync();
+            await restarted.RefreshAsync();
+            await restarted.CompleteOnboardingAsync();
+            AssertProfiles(restarted.State);
+            Assert.Equal(5, reader.Requests.Count);
+
+            reader.Handler = (_, _, _) => Task.FromException<AccountSnapshot>(new TrackerException("Fixture: offline"));
+            await File.WriteAllBytesAsync(authPath, TestFixtures.Auth(emails[1], "profile-2"));
+            await restarted.RefreshAsync();
+            AssertProfiles(restarted.State, profiles[1].Id);
+            Assert.NotNull(restarted.State.ActiveAccount!.Error);
+            Assert.Equal(6, reader.Requests.Count);
+
+            snapshots[3] = snapshots[3] with { FetchedAt = observed.AddHours(1) };
+            reader.Handler = (profile, _, _) => Task.FromResult(snapshots[Array.IndexOf(emails, profile.Email)]);
+            await File.WriteAllBytesAsync(authPath, TestFixtures.Auth(emails[3], "profile-4"));
+            await restarted.RefreshAsync();
+            await restarted.SuspendAsync();
+            await restarted.ResumeAsync();
+            AssertProfiles(restarted.State, profiles[3].Id);
+            Assert.Equal(8, reader.Requests.Count);
+
+            MakeSessionUnavailable();
+            await restarted.RefreshAsync();
+            AssertProfiles(restarted.State);
+        }
+        Assert.NotEmpty(publishedCounts);
+        Assert.All(publishedCounts, count => Assert.Equal(5, count));
+
+        await using var offlineAgain = new TrackerService(authPath, options, reader);
+        await offlineAgain.InitializeAsync();
+        AssertProfiles(offlineAgain.State);
+        Assert.True(offlineAgain.State.OnboardingComplete);
+        Assert.Equal(8, reader.Requests.Count);
+
+        void MakeSessionUnavailable()
+        {
+            if (unavailableSession is null) File.Delete(authPath);
+            else File.WriteAllText(authPath, unavailableSession);
+        }
+
+        void AssertProfiles(TrackerState state, Guid? activeId = null)
+        {
+            Assert.Equal(profiles, state.Accounts.Select(a => a.Profile));
+            Assert.Equal(activeId, state.SelectedAccountId);
+            Assert.Equal(activeId, state.ActiveAccount?.Profile.Id);
+            foreach (var (account, expected) in state.Accounts.Zip(snapshots))
+            {
+                Assert.True(account.IsConnected);
+                Assert.Equal(account.Profile.Id == activeId, account.IsActiveInCodex);
+                var actual = Assert.IsType<AccountSnapshot>(account.Snapshot);
+                Assert.Equal(expected.Email, actual.Email);
+                Assert.Equal(expected.FetchedAt, actual.FetchedAt);
+                Assert.Equal(expected.PlanType, actual.PlanType);
+                Assert.Equal(expected.Buckets.SelectMany(b => b.Windows), actual.Buckets.SelectMany(b => b.Windows));
+                Assert.Null(actual.AvailableResetCredits);
+                Assert.Null(actual.ResetCredits);
+            }
+            Assert.Null(state.Accounts[4].Snapshot!.Weekly);
+        }
+    }
+
     [Fact]
     public async Task DisposingDuringInitialReadCancelsWorkAndReleasesTheStoreWithoutChangingAuth()
     {

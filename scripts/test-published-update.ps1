@@ -1,7 +1,7 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-Validates a real public 0.8.4 -> 0.9.0 update in a disposable Windows profile.
+Validates an update between public releases in a disposable Windows profile.
 .DESCRIPTION
 Without -Run, prints the plan only: no files, network requests or processes.
 -Run requires -DedicatedTestProfile and refuses existing Tracker or Codex data.
@@ -13,8 +13,9 @@ param(
     [switch]$Plan,
     [switch]$Run,
     [switch]$DedicatedTestProfile,
-    [ValidateSet('0.8.4')][string]$SourceVersion = '0.8.4',
-    [ValidateSet('0.9.0')][string]$TargetVersion = '0.9.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$SourceVersion = '0.9.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$TargetVersion = '0.9.1',
+    [switch]$IncludePrereleases,
     [ValidateSet('Startup', 'Button')][string]$InstallMode = 'Startup',
     [string]$ReportPath = 'artifacts/published-update/result.json'
 )
@@ -22,10 +23,16 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 if ($Plan -and $Run) { throw 'Choisir -Plan ou -Run, pas les deux.' }
+if ([version]$SourceVersion -lt [version]'0.8.4' -or [version]$TargetVersion -le [version]$SourceVersion) {
+    throw 'La source doit etre au moins 0.8.4 et la cible strictement plus recente.'
+}
+$channelAware = [version]$SourceVersion -ge [version]'0.9.0'
+$channel = if ($IncludePrereleases) { 'preview' } else { 'stable' }
 if (!$Run) {
     [ordered]@{
         mode = 'plan'; writesFiles = $false; usesNetwork = $false; launchesApplication = $false
         sourceVersion = $SourceVersion; targetVersion = $TargetVersion; installMode = $InstallMode
+        includePrereleases = [bool]$IncludePrereleases; channelAwareSource = $channelAware
         requires = @('Windows x64; PowerShell 7', 'Profil Windows jetable ou runner CI vierge',
             'Aucune donnee Codex/Tracker, aucune installation ou instance Tracker',
             'Opt-in explicite -Run -DedicatedTestProfile')
@@ -41,8 +48,9 @@ if (!$Run) {
 }
 
 $report = [ordered]@{
-    schema = 1; startedAt = [DateTimeOffset]::UtcNow.ToString('o'); finishedAt = $null
+    schema = 2; startedAt = [DateTimeOffset]::UtcNow.ToString('o'); finishedAt = $null
     sourceVersion = $SourceVersion; targetVersion = $TargetVersion; installMode = $InstallMode
+    includePrereleases = [bool]$IncludePrereleases; channelAwareSource = $channelAware
     status = 'failed'; stage = 'preflight'; failureCode = $null; retryAt = $null
     isolatedProfileChecked = $false; publicMetadataVerified = $false
     sourceArchiveVerified = $false; sourceExecutableVerified = $false
@@ -282,9 +290,11 @@ try {
     $source = @($releases | Where-Object { !$_.draft -and $_.tag_name -ceq "v$SourceVersion" })
     $target = @($releases | Where-Object { !$_.draft -and $_.tag_name -ceq "v$TargetVersion" })
     if ($source.Count -ne 1 -or $target.Count -ne 1) { Stop-Test 'required_public_release_missing' }
-    # 0.8.4 selects the newest SemVer, including a numerical GitHub prerelease.
-    # Refuse a changed release list instead of allowing an unexpected target.
+    if ($target[0].prerelease -and !$IncludePrereleases) { Stop-Test 'prerelease_requires_explicit_opt_in' }
+    # A legacy source selects all channels; modern sources respect the fixture's
+    # explicit opt-in. Refuse a newer eligible release instead of another target.
     foreach ($release in $releases) {
+        if ($channelAware -and !$IncludePrereleases -and ($release.prerelease -or $release.tag_name -match '-')) { continue }
         if (!$release.draft -and $release.tag_name -match '^v?(\d+\.\d+\.\d+)(?:[-+].*)?$' -and
             [version]$Matches[1] -gt [version]$TargetVersion) { Stop-Test 'newer_release_requires_recipe_review' }
     }
@@ -322,6 +332,7 @@ try {
     })
     Write-Json (Join-Path $dataRoot 'preferences.json') ([ordered]@{
         themeMode = 'Dark'; refreshMinutes = 5; downloadUpdatesAutomatically = $true; installUpdatesAtStartup = $true
+        includePrereleaseUpdates = [bool]$IncludePrereleases
         mcpEnabled = $false; alert20 = $false; alert10 = $false; alert5 = $false
         resetNotifications = $false; expiryNotifications = $false; reminderRules = @()
     })
@@ -343,12 +354,14 @@ try {
     $ownedRun = $true
     $sourceProcess = Start-TestTracker
     $updatesDirectory = Join-Path $dataRoot 'updates'
-    $preparedPath = Join-Path $updatesDirectory 'prepared-update.json'
+    $preparedName = if ($channelAware) { "prepared-update-$channel.json" } else { 'prepared-update.json' }
+    $cacheName = if ($channelAware -and $IncludePrereleases) { 'release-cache-preview.json' } else { 'release-cache.json' }
+    $preparedPath = Join-Path $updatesDirectory $preparedName
     $deadline = [DateTimeOffset]::UtcNow.AddMinutes(5)
     while (!(Test-Path -LiteralPath $preparedPath)) {
         $sourceProcess.Refresh()
         if ($sourceProcess.HasExited) { Stop-Test 'source_application_exited' }
-        $cachePath = Join-Path $updatesDirectory 'release-cache.json'
+        $cachePath = Join-Path $updatesDirectory $cacheName
         if (Test-Path -LiteralPath $cachePath) {
             $cache = Read-Json $cachePath
             if ($cache.RateLimited) {

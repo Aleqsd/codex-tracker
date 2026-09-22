@@ -1,6 +1,6 @@
 # Essai entre deux Releases publiques
 
-Cette recette valide **0.8.4 → 0.9.0** avec les exécutables publiés, sans compilation de remplacement ni API simulée. Elle ne constitue pas un essai Windows sur un autre PC physique et ne valide pas à elle seule les nouveaux filtres stable/préversions de 0.9.0.
+Cette recette vérifie une mise à niveau avec les exécutables publiés, sans compilation de remplacement ni API simulée. Elle accepte une source numérique depuis 0.8.4 et une cible strictement plus récente. Les preuves historiques **0.8.4 → 0.9.0** sont conservées dans VALIDATION.md ; modifier les versions ne constitue pas une nouvelle validation. Elle ne remplace pas un essai sur un autre PC physique.
 
 ## Environnement obligatoire
 
@@ -13,18 +13,20 @@ Le mode démo ne convient pas : il désactive volontairement la mise à jour aut
 PowerShell 7 est requis. Par défaut, la commande affiche seulement son plan, sans écriture, requête réseau ou lancement :
 
 ```powershell
-./scripts/test-published-update.ps1 -Plan
+./scripts/test-published-update.ps1 -Plan -IncludePrereleases
 ```
 
 Dans le profil de test uniquement :
 
 ```powershell
 ./scripts/test-published-update.ps1 -Run -DedicatedTestProfile `
-    -SourceVersion 0.8.4 -TargetVersion 0.9.0 -InstallMode Startup `
+    -SourceVersion 0.9.0 -TargetVersion 0.9.1 -IncludePrereleases -InstallMode Startup `
     -ReportPath artifacts/published-update/result.json
 ```
 
 Pour le chemin du bouton, utiliser `-InstallMode Button` **dans un second environnement vierge**. Le script invoque le bouton WPF avec UI Automation ; il ne contourne pas le moteur de mise à jour. Aucun SMS, appel ou email n’est configuré ou envoyé. Les alertes Windows et rappels sont désactivés dans les préférences fictives.
+
+Une cible déclarée préversion par GitHub exige `-IncludePrereleases`. Depuis la source 0.9.0, ce choix est appliqué aux préférences fictives et le script observe les vrais fichiers du canal stable ou préversion. Le workflow expose le même choix. Une version antérieure ne sait pas filtrer les canaux : son essai ne valide donc pas ce filtrage. Pour la future 1.0 stable, omettre l’option et indiquer les versions publiques voulues.
 
 ## Ce qui est vérifié
 

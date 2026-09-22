@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using CodexTracker.App;
 using CodexTracker.App.Updates;
 using CodexTracker.Core;
@@ -209,10 +210,23 @@ internal static class FeatureChecks
             var twilio = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Twilio · SMS et appels"); twilio.IsExpanded = true; settings.UpdateLayout();
             Check(Tree(twilio).OfType<PasswordBox>().Count() == 1 && Tree(twilio).OfType<Button>().Where(b => b.Content?.ToString()?.Contains("test") == true).All(b => !b.IsEnabled), "Twilio secrets use a masked field and demo cannot send real tests");
             var limits = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Limites et heures silencieuses"); limits.IsExpanded = true; settings.UpdateLayout();
-            var zone = Tree(limits).OfType<ComboBox>().Single(); zone.IsDropDownOpen = true; await Task.Delay(100);
+            var zone = Tree(limits).OfType<ComboBox>().Single();
+            var pageScroll = Field<ScrollViewer>(settings, "_pageScroll");
+            // Expansion queues Loaded and layout work; the timezone is below the expanded Twilio form.
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            zone.BringIntoView(); zone.Focus();
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            var zoneBounds = zone.TransformToAncestor(pageScroll).TransformBounds(new Rect(zone.RenderSize));
+            Check(zone.IsLoaded && zone.IsKeyboardFocused && zoneBounds.Top >= 0 && zoneBounds.Bottom <= pageScroll.ViewportHeight + 1,
+                "Timezone dropdown is loaded, visible in the settings viewport and keyboard-focused before opening");
+            var selectedZone = zone.SelectedItem;
+            zone.IsDropDownOpen = true;
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
             var popup = (Popup)zone.Template.FindName("PART_Popup", zone);
             var selectedItem = (ComboBoxItem)zone.ItemContainerGenerator.ContainerFromIndex(zone.SelectedIndex);
-            Check(popup.IsOpen && selectedItem is not null, "Themed dropdown opens and retains the selected timezone");
+            Check(popup.IsOpen && selectedZone is TimeZoneInfo && ReferenceEquals(zone.SelectedItem, selectedZone)
+                && selectedItem is { IsSelected: true, IsVisible: true, ActualHeight: > 0 },
+                "Themed dropdown opens and retains the selected timezone");
             zone.IsDropDownOpen = false;
             settings.ShowPage("Historique"); await Task.Delay(100);
             Check(Tree(settings).OfType<TextBlock>().Any(t => t.Text.StartsWith("Aucun rappel envoyé")), "Empty history explains local reminder tracking");

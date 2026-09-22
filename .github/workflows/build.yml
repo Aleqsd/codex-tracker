@@ -13,6 +13,11 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+      - name: Read application version
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content -LiteralPath Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          "TRACKER_VERSION=$version" >> $env:GITHUB_ENV
       - name: Restore
         run: dotnet restore CodexTracker.slnx
       - name: Validate PowerShell scripts
@@ -43,7 +48,10 @@ jobs:
           python-version: '3.13'
       - name: Test published executable MCP protocol with fictional data
         shell: pwsh
-        run: python scripts/test-mcp.py artifacts/publish/0.9.1/CodexTracker.exe
+        run: python scripts/test-mcp.py "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
+      - name: Test installer lifecycle in the dedicated runner profile
+        shell: pwsh
+        run: ./scripts/test-installer.ps1 -Run -DedicatedTestProfile -SetupPath "artifacts/CodexTracker-$env:TRACKER_VERSION-Setup.exe" -ExpectedVersion $env:TRACKER_VERSION -ReportPath artifacts/installer-lifecycle.json
       - uses: actions/upload-artifact@v7
         with:
           name: CodexTracker-win-x64
@@ -56,3 +64,8 @@ jobs:
         with:
           name: test-results
           path: tests/**/TestResults/*.trx
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: installer-lifecycle-results
+          path: artifacts/installer-lifecycle.json

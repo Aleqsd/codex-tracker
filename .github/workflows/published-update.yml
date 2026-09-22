@@ -6,13 +6,18 @@ on:
       source_version:
         description: Published version to update from
         required: true
-        default: '0.8.4'
+        default: '0.9.0'
         type: string
       target_version:
         description: Expected public version after the update
         required: true
-        default: '0.9.0'
+        default: '0.9.1'
         type: string
+      include_prereleases:
+        description: Explicitly allow a prerelease target
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -34,9 +39,11 @@ jobs:
           SOURCE_VERSION: ${{ inputs.source_version }}
           TARGET_VERSION: ${{ inputs.target_version }}
           INSTALL_MODE: ${{ matrix.mode }}
+          INCLUDE_PRERELEASES: ${{ inputs.include_prereleases }}
         run: |
           ./scripts/test-published-update.ps1 -Run -DedicatedTestProfile `
             -SourceVersion $env:SOURCE_VERSION -TargetVersion $env:TARGET_VERSION `
+            -IncludePrereleases:($env:INCLUDE_PRERELEASES -eq 'true') `
             -InstallMode $env:INSTALL_MODE -ReportPath artifacts/published-update/result.json
       - name: Keep the bounded validation report
         if: always()

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.9.0"
+  #error AppVersion is required; use scripts/build-installer.ps1
 #endif
 #ifndef PublishDir
   #error PublishDir is required

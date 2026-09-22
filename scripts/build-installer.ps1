@@ -1,6 +1,6 @@
 param(
     [ValidatePattern('^\d+\.\d+\.\d+([-.][a-zA-Z0-9.-]+)?$')]
-    [string]$Version = '0.9.1',
+    [string]$Version,
     [string]$PublishDirectory,
     [string]$OutputDirectory,
     [string]$Iscc,
@@ -9,6 +9,14 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
+if (-not $PSBoundParameters.ContainsKey('Version')) {
+    [xml]$buildProperties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw
+    $declaredVersion = [string]$buildProperties.Project.PropertyGroup.Version
+    if ($declaredVersion -notmatch '^\d+\.\d+\.\d+([-.][a-zA-Z0-9.-]+)?$') {
+        throw 'La version de Directory.Build.props est absente ou invalide.'
+    }
+    $Version = $declaredVersion
+}
 if (-not $PublishDirectory) { $PublishDirectory = Join-Path $repoRoot "artifacts/publish/$Version" }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repoRoot 'artifacts' }
 $PublishDirectory = [IO.Path]::GetFullPath($PublishDirectory)
