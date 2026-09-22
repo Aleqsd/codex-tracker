@@ -16,13 +16,16 @@ if (-not $PSBoundParameters.ContainsKey('Version')) {
 $publishRoot = Join-Path $repoRoot "artifacts/publish/$Version"
 & $Dotnet publish (Join-Path $repoRoot 'src/CodexTracker.App/CodexTracker.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -p:Version=$Version -o $publishRoot
 if ($LASTEXITCODE -ne 0) { throw 'La publication .NET a échoué.' }
-Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'LICENSE'), (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $publishRoot
+Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'AGENTS.md'), (Join-Path $repoRoot 'LICENSE'), (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $publishRoot
 New-Item -ItemType Directory -Path (Join-Path $publishRoot 'docs') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/licenses') -Destination (Join-Path $publishRoot 'docs') -Recurse -Force
-foreach ($document in @('dashboard.png', 'dashboard-light.png', 'advice.png', 'history.png', 'VALIDATION.md', 'tray-minimal.png', 'personalization.png', 'calendar.png', 'settings.png', 'resets.png', 'reminders.png', 'channels.png', 'installer.png', 'assistants.png', 'MCP.md', 'ARCHITECTURE.md', 'DESIGN.md', 'PRIVACY.md', 'WINGET.md', 'resets-week.png', 'updates.png', 'tour.gif', 'UTILISATION.md', 'V1-READINESS.md')) {
+foreach ($document in @('dashboard.png', 'dashboard-light.png', 'advice.png', 'history.png', 'VALIDATION.md', 'tray-minimal.png', 'personalization.png', 'calendar.png', 'settings.png', 'resets.png', 'reminders.png', 'channels.png', 'installer.png', 'assistants.png', 'MCP.md', 'ARCHITECTURE.md', 'DESIGN.md', 'PRIVACY.md', 'WINGET.md', 'resets-week.png', 'updates.png', 'tour.gif', 'UTILISATION.md', 'V1-READINESS.md', 'SIGNATURE.md', 'PUBLISHED-UPDATE-TEST.md')) {
     $source = Join-Path $repoRoot "docs/$document"
     if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $publishRoot "docs/$document") }
 }
+$validationDirectory = Join-Path $publishRoot 'docs/validation'
+New-Item -ItemType Directory -Path $validationDirectory -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs/validation') -Filter '*.json' -File | Copy-Item -Destination $validationDirectory
 $zipPath = Join-Path $repoRoot "artifacts/CodexTracker-$Version-win-x64.zip"
 Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $zipPath -Force
 $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()

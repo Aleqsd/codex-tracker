@@ -220,7 +220,10 @@ try {
 using System;
 using System.Runtime.InteropServices;
 public static class InstallerLifecycleWindow {
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string className, string title);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string className, string title);
+    // PowerShell converts $null to an empty string for string parameters. Keep the
+    // null class filter inside C# so FindWindow searches every window class.
+    public static IntPtr FindTrackerWindow() => FindWindow(null, "Codex Tracker");
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam, uint flags, uint timeout, out UIntPtr result);
@@ -231,7 +234,7 @@ public static class InstallerLifecycleWindow {
     $tracker = Start-OwnedProcess $runExe @('--background') -WindowStyle Normal
     $startupWatch = [Diagnostics.Stopwatch]::StartNew()
     while ($startupWatch.Elapsed.TotalSeconds -lt 10 -and !$tracker.HasExited) {
-        $handle = [InstallerLifecycleWindow]::FindWindow($null, 'Codex Tracker')
+        $handle = [InstallerLifecycleWindow]::FindTrackerWindow()
         $ownerId = 0u; $response = [UIntPtr]::Zero
         # Last-probe booleans only: no window titles, handles, paths or error text in the report.
         $report.observedWindowFound = $handle -ne [IntPtr]::Zero

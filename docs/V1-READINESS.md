@@ -16,7 +16,7 @@ La 0.9.1 est une version de stabilisation. La préparation de la 1.0 distingue l
 - [x] Installation locale de la 0.9.1 : exécutable attendu, processus réactif et conservation des profils, préférences, secrets chiffrés et historiques vérifiés.
 - [x] Affichage local des cinq comptes confirmé dans l’interface réelle de la 0.9.1 le 22 septembre 2026, avec cinq lignes et le compteur correspondant. Aucun fichier de données n’a été restauré ou modifié manuellement pour ce constat. La cause du précédent signalement de comptes absents n’est pas établie : ce constat ne démontre pas un correctif de persistance.
 
-Les preuves et limites sont consignées dans [VALIDATION.md](VALIDATION.md). Chaque case cochée vaut uniquement pour le scénario et la version indiqués. La suite WPF passe en CI pour la 0.9.1 ; deux passages locaux de cette version ont échoué sur le sélecteur de fuseau horaire.
+Les preuves et limites sont consignées dans [VALIDATION.md](VALIDATION.md). Chaque case cochée vaut uniquement pour le scénario et la version indiqués. La suite WPF passe en CI pour la 0.9.1. Deux passages locaux avaient échoué sur le sélecteur de fuseau horaire avant correction du harnais de test ; la suite complète passe désormais aussi localement avec cette correction, sans modification du contrôle de production.
 
 Le [test entre Releases publiques](PUBLISHED-UPDATE-TEST.md) dispose d’un workflow Windows dédié, lancé à la demande. Les chemins du bouton et du prochain démarrage utilisent chacun un profil éphémère distinct ; aucun compte personnel n’est nécessaire. La recette accepte désormais les versions numériques publiques et le canal choisi explicitement ; chaque paire nécessite une exécution et son propre rapport.
 
