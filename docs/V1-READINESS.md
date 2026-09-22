@@ -15,6 +15,8 @@ La 0.9 est une version de stabilisation. Une compilation verte ne valide pas à 
 
 Les preuves terminées sont consignées dans [VALIDATION.md](VALIDATION.md). Les cases correspondent à une validation complète, pas seulement à une implémentation.
 
+Le [test entre Releases publiques](PUBLISHED-UPDATE-TEST.md) dispose d’un workflow Windows dédié, lancé à la demande. Les chemins du bouton et du prochain démarrage utilisent chacun un profil éphémère distinct ; aucun compte personnel n’est nécessaire.
+
 ## Essai utilisateur, sans configuration avancée
 
 1. Installer le `Setup.exe`, ouvrir Codex et vérifier le compte détecté. Le tracker ne demande jamais de lui transmettre une session.

@@ -1,0 +1,48 @@
+name: Published Windows update
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_version:
+        description: Published version to update from
+        required: true
+        default: '0.8.4'
+        type: string
+      target_version:
+        description: Expected public version after the update
+        required: true
+        default: '0.9.0'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  published-update:
+    name: Public update (${{ matrix.mode }})
+    runs-on: windows-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [Startup, Button]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Exercise released executables in a fresh Windows profile
+        shell: pwsh
+        env:
+          SOURCE_VERSION: ${{ inputs.source_version }}
+          TARGET_VERSION: ${{ inputs.target_version }}
+          INSTALL_MODE: ${{ matrix.mode }}
+        run: |
+          ./scripts/test-published-update.ps1 -Run -DedicatedTestProfile `
+            -SourceVersion $env:SOURCE_VERSION -TargetVersion $env:TARGET_VERSION `
+            -InstallMode $env:INSTALL_MODE -ReportPath artifacts/published-update/result.json
+      - name: Keep the bounded validation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-update-${{ matrix.mode }}
+          path: artifacts/published-update/result.json
+          if-no-files-found: error
+          retention-days: 30
