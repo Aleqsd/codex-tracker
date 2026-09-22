@@ -128,7 +128,8 @@ internal static class FeatureChecks
             window.ShowPanel();
             Check(window.WindowState == WindowState.Normal && window.IsVisible, "Tray activation restores a minimized window");
             var hideToTray = (Button)window.FindName("HideToTrayButton");
-            Check(hideToTray.IsVisible && hideToTray.ActualWidth >= 30, "Dedicated tray control is visible next to minimize");
+            Check(hideToTray.IsVisible && hideToTray.ActualWidth >= 30 && hideToTray.ToolTip?.ToString()?.Contains("barre d’état") == true,
+                "Dedicated status-bar control is visible next to minimize");
             hideToTray.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(!window.IsVisible && !window.ShowInTaskbar && !window.Dispatcher.HasShutdownStarted,
                 "Tray control hides the window and taskbar entry without exiting");
@@ -136,8 +137,8 @@ internal static class FeatureChecks
             Check(window.IsVisible && window.ShowInTaskbar && window.WindowState == WindowState.Normal,
                 "Reopening from tray restores the window and taskbar entry");
             var footerHide = (Button)window.FindName("FooterHideToTrayButton");
-            Check(footerHide.IsVisible && Equals(footerHide.Content, "Masquer près de l’horloge") && footerHide.ActualWidth > 100,
-                "Status bar explains the tray action");
+            Check(footerHide.IsVisible && Equals(footerHide.Content, "Masquer dans la barre d’état") && footerHide.ActualWidth > 100,
+                "Status bar explains the status-bar action");
             footerHide.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(!window.IsVisible && !window.ShowInTaskbar, "Footer tray action also removes the taskbar entry");
             window.ShowPanel();

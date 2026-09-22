@@ -15,7 +15,7 @@ L’assistant suit le thème clair ou sombre de Windows, avec un accueil personn
 1. Téléchargez `CodexTracker-…-Setup.exe` depuis les [Releases](https://github.com/Aleqsd/codex-tracker/releases).
 2. Lancez l’installateur : il installe l’application pour votre utilisateur, sans droits administrateur, et crée son raccourci. La désinstallation depuis les paramètres Windows conserve vos données de suivi.
 3. Utilisez normalement Codex : le tracker détecte son compte ouvert. Chaque autre compte est ajouté automatiquement lorsque vous l’ouvrez dans Codex.
-4. Dans les paramètres Windows de la barre des tâches, rendez l’icône Codex Tracker visible près de l’horloge.
+4. Dans les paramètres Windows de la barre des tâches, rendez l’icône Codex Tracker visible dans la barre d’état.
 
 La distribution **WinGet** est préparée sous l’identifiant `Aleqsd.CodexTracker`. La disponibilité dépend de la validation Microsoft ; voir le [guide WinGet](WINGET.md).
 
@@ -61,7 +61,7 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 - Les dates précises utilisent le fuseau horaire Windows et son décalage UTC. Le compte à rebours complète l’heure exacte ; il ne confirme pas un reset tant que le serveur n’a pas actualisé la valeur.
 - En cas d’erreur, les dernières valeurs et leur ancienneté sont conservées. Une information absente reste « indisponible », jamais zéro.
 
-Le bouton **flèche vers un bac**, juste à gauche de **—**, masque la fenêtre près de l’horloge et la retire de la barre des tâches. Le bouton **Masquer près de l’horloge** en bas à droite fait la même chose. Le suivi et les rappels restent actifs ; un clic sur l’icône près de l’horloge rouvre la fenêtre. **—** conserve la réduction Windows habituelle. **✕** masque aussi l’application ; utilisez **Quitter** dans le menu de l’icône pour l’arrêter.
+Le bouton **flèche vers le coin**, juste à gauche de **—**, masque la fenêtre dans la barre d’état et la retire de la barre des tâches. Le bouton **Masquer dans la barre d’état** en bas à droite fait la même chose. Le suivi et les rappels restent actifs ; un clic sur l’icône dans la barre d’état rouvre la fenêtre. **—** conserve la réduction Windows habituelle. **✕** masque aussi l’application ; utilisez **Quitter** dans le menu de l’icône pour l’arrêter.
 
 Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai.
 

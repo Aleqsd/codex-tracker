@@ -1,3 +1,8 @@
+# Version 0.8.3 — bouton de barre d’état
+
+- Variante 03 appliquée : flèche diagonale vers le coin, placée entre Réglages et Réduire. Les libellés de l’action utilisent « barre d’état » dans la fenêtre, le pied de page, l’onboarding et l’installateur.
+- Aperçu sombre compact inspecté ; 68 contrôles de personnalisation/actualisation/calendrier, 9 contrôles d’activation WPF et 14 contrôles MCP conservés.
+
 # Version 0.8.2 — mises à jour et zone de notification
 
 - 305 tests métier, dont 14 nouveaux cas : téléchargement partagé, préparation atomique, validation après redémarrage, mode hors ligne, annulation, horaires, anciennes préférences, anti-boucle et conservation du paquet précédent après un échec. La revue a aussi corrigé le nettoyage d’une préparation valide après un arrêt entre l’écriture du journal et le retrait du marqueur temporaire.

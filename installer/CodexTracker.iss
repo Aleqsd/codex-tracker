@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.8.2"
+  #define AppVersion "0.8.3"
 #endif
 #ifndef PublishDir
   #error PublishDir is required
@@ -66,12 +66,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
 french.WelcomeLabel1=Bienvenue dans%nCodex Tracker
-french.WelcomeLabel2=Vos comptes, vos quotas et vos prochains resets.%nAccessibles en un clic, près de l’horloge.%n%nL’installation prend quelques instants et ne nécessite pas de droits administrateur.%n%nVos comptes et réglages existants sont conservés.
+french.WelcomeLabel2=Vos comptes, vos quotas et vos prochains resets.%nAccessibles en un clic, dans la barre d’état.%n%nL’installation prend quelques instants et ne nécessite pas de droits administrateur.%n%nVos comptes et réglages existants sont conservés.
 french.FinishedHeadingLabel=Tout est prêt.
 french.WizardSelectTasks=Un dernier réglage
 french.SelectTasksDesc=Retrouvez Codex Tracker comme vous le souhaitez.
 french.SelectTasksLabel2=Ce choix reste modifiable à tout moment dans les réglages de l’application.
-french.FinishedLabel=Codex Tracker est installé.%n%nRetrouvez l’icône près de l’horloge pour consulter vos quotas et configurer vos rappels.%n%nVous pouvez rendre cette icône toujours visible depuis les paramètres de la barre des tâches Windows.
+french.FinishedLabel=Codex Tracker est installé.%n%nRetrouvez l’icône dans la barre d’état pour consulter vos quotas et configurer vos rappels.%n%nVous pouvez rendre cette icône toujours visible depuis les paramètres de la barre des tâches Windows.
 english.WelcomeLabel1=Welcome to%nCodex Tracker
 english.WelcomeLabel2=Your accounts, quotas and upcoming resets.%nOne click away, next to the clock.%n%nSetup takes a moment and does not require administrator rights.%n%nYour existing accounts and preferences are preserved.
 english.FinishedHeadingLabel=You’re all set.
@@ -137,14 +137,14 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
   if not CloseTracker() then
-    Result := 'Codex Tracker est encore ouvert. Quittez-le depuis son icône près de l’horloge, puis réessayez.';
+    Result := 'Codex Tracker est encore ouvert. Quittez-le depuis son icône dans la barre d’état, puis réessayez.';
 end;
 
 function InitializeUninstall(): Boolean;
 begin
   Result := CloseTracker();
   if not Result then
-    MsgBox('Quittez Codex Tracker depuis son icône près de l’horloge avant de le désinstaller.', mbError, MB_OK);
+    MsgBox('Quittez Codex Tracker depuis son icône dans la barre d’état avant de le désinstaller.', mbError, MB_OK);
 end;
 
 // Deliberately no UninstallDelete entry: private data under LocalAppData\CodexTracker is preserved.
