@@ -4,6 +4,10 @@ Les trois manifestes de la [première soumission Microsoft](https://github.com/m
 
 Le générateur lit désormais la version du projet par défaut et accepte le chemin du candidat signé. Il compare toujours les octets publics avant d’écrire les manifestes. Quatorze contrôles isolés passent avec téléchargement et validateur simulés : version et URL, trois fichiers, CRLF, empreinte, divergence du paquet public sans écrasement du manifeste existant, erreur réseau, checksum local invalide, version bêta refusée, chemin explicite sans checksum séparé et échec du validateur. Ces contrôles rejoignent les workflows Windows ; ils ne valent pas approbation Microsoft.
 
+La [CI Windows sur `109410f`](https://github.com/Aleqsd/codex-tracker/actions/runs/35832082507) réussit : préparation WinGet, gardes de signature, tests métier et WPF, compilation autonome, protocole MCP et cycle de l’installateur. Aucun code de l’application installée n’a changé pour cette préparation ; les paquets publics 0.9.2 restent immuables.
+
+Le contrôle NuGet `dotnet list CodexTracker.slnx package --vulnerable --include-transitive --format json`, exécuté le 23 septembre 2026 avec la source `https://api.nuget.org/v3/index.json`, ne signale aucune dépendance vulnérable pour les cinq projets. C’est un constat à cette date sur les avis connus, pas un audit complet du code ni une garantie sur de futurs avis.
+
 # Préparation de signature — 23 septembre 2026
 
 La [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933069) et la [répétition complète du workflow de signature](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933693) réussissent sur `9811e76`. Les contrôles couvrent les tests métier et WPF, les 28 gardes de signature, le protocole MCP sur le binaire autonome et le cycle de l’installateur avec données fictives conservées. L’empreinte de l’exécutable réellement installé est vérifiée contre celle du candidat.
