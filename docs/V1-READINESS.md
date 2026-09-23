@@ -22,6 +22,7 @@ Le parcours de signature est manuel et sa répétition ne contacte pas SignPath.
 - [x] Canal stable par défaut ; les préversions demandent un choix explicite. Changer de canal écarte le paquet et le cache de l’autre canal. Vérifié par tests HTTP, persistance et contrôles WPF.
 - [x] Fichiers endommagés : sauvegarde valide récupérée, avertissement visible, aucune réactivation silencieuse des rappels ou du MCP. Un journal d’envoi illisible suspend les rappels sans effacer les reçus. Vérifié avec fichiers fictifs et vraies vues WPF.
 - [x] Réglages intégrés au troisième onglet : navigation entre sept sections, conservation des saisies, avertissements de récupération et diagnostic sans comptes ni secrets. Couvert par les contrôles WPF ; les essais physiques restent distincts.
+- [x] Échec de démarrage MCP après 20 secondes : code de sortie non nul et explication sur stderr, sans texte parasite sur stdout. Régression reproduite sur la 0.9.2, corrigée et validée sur le candidat autonome et en [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35840768129). Prêt pour la prochaine version, pas encore inclus dans une Release.
 
 ## Vérifications déjà obtenues
 

@@ -4,6 +4,8 @@ Une connexion locale acceptée mais privée de son message initial reproduit le 
 
 Le candidat autonome corrigé passe la même reproduction en **20,2 secondes**, ainsi que les **14 contrôles du protocole MCP**, dont le démarrage à froid, deux clients simultanés, les conflits de révision et l’arrêt normal des deux ponts. `scripts/test-mcp-startup.ps1` utilise un canal nommé de démonstration unique et ne démarre ni collecteur ni envoi. Ce test rejoint les workflows de compilation et de préparation de signature. Il ne modifie pas l’installation 0.9.2 de l’utilisateur et n’est pas une nouvelle Release.
 
+La [CI Windows sur `968b225`](https://github.com/Aleqsd/codex-tracker/actions/runs/35840768129) est entièrement réussie, y compris le délai MCP réel, le protocole publié, les tests métier/WPF et le cycle de l’installateur. Le correctif est prêt pour la prochaine version ; les fichiers de la Release 0.9.2 n’ont pas été remplacés.
+
 # Préparation WinGet — 23 septembre 2026
 
 Les trois manifestes de la [première soumission Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) ciblent maintenant la 0.9.2. Le Setup public a été téléchargé et comparé au fichier local : SHA-256 `2d0aaff5368b6a0adb4872a5320ac4384d0c807c1f5ceb200ab91b56cfd0951d`. `winget validate` réussit réellement. Aucune installation via manifeste local ni activation de `LocalManifestFiles` n’a été effectuée.
