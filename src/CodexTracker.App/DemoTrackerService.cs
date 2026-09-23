@@ -7,7 +7,7 @@ internal sealed class DemoTrackerService : ITrackerService
     private readonly Dictionary<Guid, IReadOnlyList<UsageSample>> _history = new();
     public TrackerState State { get; private set; }
     public DemoTrackerService() : this(false) { }
-    public DemoTrackerService(bool showAdvice)
+    public DemoTrackerService(bool showAdvice, bool showExpectedResets = false)
     {
         var now = PreviewClock.UtcNow;
         string[] emails = ["alex@example.com", "studio@example.com", "projets@example.com", "recherche@example.com", "perso@example.com"];
@@ -18,6 +18,13 @@ internal sealed class DemoTrackerService : ITrackerService
             new AccountSnapshot(email, plans[i], [new QuotaBucket("codex", "Codex", [new QuotaWindow(100 - fiveHour[i], 300, now.AddHours(2 + i).AddMinutes(14)), new QuotaWindow(100 - weekly[i], 10080, now.AddDays(2 + i % 3).AddHours(14).AddMinutes(32))])],
                 i == 0 ? 3 : i % 3, [new ResetCredit($"demo-{i}", "Crédit de reset", now.AddDays(-5), i == 0 ? now.AddHours(23) : now.AddDays(4 + i))], i == 0 ? now.AddSeconds(-26) : showAdvice && i == 2 ? now.AddMinutes(-12) : now.AddHours(-2 * i).AddMinutes(-12),
                 PlanMultiplier: i == 0 ? 20 : i == 2 ? 5 : null, SubscriptionStartedAt: i == 3 ? null : now.AddMonths(-4 - i), SubscriptionEndsAt: i == 3 ? null : now.AddDays(28 - i)), IsActiveInCodex: i == 0, IsConnected: true)).ToArray();
+        if (showExpectedResets)
+        {
+            var snapshot = accounts[1].Snapshot!;
+            accounts[1] = accounts[1] with { Snapshot = snapshot with {
+                Buckets = [new("codex", "Codex", [new(82, 10080, now.AddMinutes(-12)), new(65, 300, now.AddMinutes(-12))])]
+            } };
+        }
         State = new TrackerState(accounts, accounts[0].Profile.Id, OnboardingComplete: true);
         foreach (var account in accounts)
         {

@@ -65,6 +65,7 @@ internal static class Program
                 await RequestShow(handle);
                 CheckRendered(window, "Repeated activation retains the same rendered window");
                 await FeatureChecks.Run(window, service);
+                await ExpectedResetChecks.Run(window, service);
                 await SettingsNavigationChecks.Run(window);
                 await NotificationChecks.Run(window);
                 await ReliabilityChecks.Run();

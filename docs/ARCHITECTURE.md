@@ -27,6 +27,8 @@ Utiliser `ThemeManager`, les styles d’App.xaml et les petits composants d’Ui
 
 ## Journaux et limites
 
+`ExpectedReset` projette les échéances passées des comptes inactifs sans modifier les snapshots, historiques, prévisions ou conseils. Les occurrences locales `expected/…`, délai zéro et canal Windows uniquement, passent par `ReminderDispatcher` et son journal avant envoi. `ResetNotifications` les active ; le rattrapage est limité à 24 heures et à une fenêtre réelle. Les échéances futures utilisent toujours `ReminderPlanner`. Le journal conservé 30 jours couvre toute la durée de validité d’une estimation, empêchant son renvoi après purge.
+
 Le journal des rappels conserve 30 jours et les clés nécessaires aux échéances futures. Les reçus d’actions MCP conservent uniquement UUID, empreinte, statut, date et résultat sans arguments. Ils ne sont pas purgés automatiquement, afin qu’un ancien UUID ne déclenche pas un second test ; au-delà de 10 000 reçus, les nouvelles mutations sont refusées. Une demande en attente ne conserve son contenu qu’en mémoire et expire après cinq minutes.
 
 Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte Codex, ni exécuter des commandes arbitraires, ni éditer des fichiers. La modification du code se fait dans le dépôt avec les outils habituels de l’assistant.

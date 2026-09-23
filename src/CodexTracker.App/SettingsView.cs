@@ -67,7 +67,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         thresholds.Children.Add(PreferenceCheck("10 %", p => p.Alert10, (p, v) => p with { Alert10 = v }));
         thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); _page.Children.Add(thresholds);
         _page.Children.Add(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
-        Toggle("Prévenir après un reset", null, p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
+        Toggle("Prévenir après un reset", "Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille.", p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
         ReloadableSection(() => ReminderSettingsView.Channels(preferences, owner.Reminders, demo, _commands));
         Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");

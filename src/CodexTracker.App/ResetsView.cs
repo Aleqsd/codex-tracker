@@ -256,8 +256,10 @@ internal sealed class ResetsView : UserControl
     {
         foreach (var (entry, countdown, freshness) in _rows)
         {
-            countdown.Text = entry.At is null ? "Non communiquée par Codex" : entry.At > now ? Display.Countdown(entry.At) : entry.Kind == ResetKind.Reserve ? "Expiration passée" : "Reset à confirmer dans Codex";
-            countdown.SetResourceReference(TextBlock.ForegroundProperty, entry.At <= now || (entry.Kind == ResetKind.Reserve && entry.At - now <= TimeSpan.FromDays(1)) ? "WarningBrush" : "MutedBrush");
+            var expected = ExpectedReset.For(entry.Account, entry.Kind, now) is { } reset && reset.At == entry.At;
+            countdown.Text = expected ? "≈100 % · à confirmer" : entry.At is null ? "Non communiquée par Codex" : entry.At > now ? Display.Countdown(entry.At) : entry.Kind == ResetKind.Reserve ? "Expiration passée" : "Reset à confirmer dans Codex";
+            countdown.ToolTip = expected ? "Quota probablement rechargé selon l’échéance du dernier relevé, si le compte n’a pas été utilisé ailleurs. Ouvrez-le dans Codex pour confirmer." : null;
+            countdown.SetResourceReference(TextBlock.ForegroundProperty, expected ? "GoodBrush" : entry.At <= now || (entry.Kind == ResetKind.Reserve && entry.At - now <= TimeSpan.FromDays(1)) ? "WarningBrush" : "MutedBrush");
             freshness.Text = entry.Account.Error is not null ? "Dernier essai en échec · relevé conservé" : entry.Account.Snapshot is { } snapshot ? $"{(entry.Account.IsActiveInCodex ? "Actif · " : "")}relevé {Display.Age(snapshot.FetchedAt)}" : "Aucun relevé";
             freshness.ToolTip = $"Dernier relevé : {Display.Exact(entry.Account.Snapshot?.FetchedAt)}\n{entry.Account.Error}";
         }

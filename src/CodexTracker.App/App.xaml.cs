@@ -81,7 +81,7 @@ public partial class App : System.Windows.Application
                     catch (Exception) { /* Continue opening the working version; allow a manual retry. */ }
                 }
             }
-            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice")) : new Codex.TrackerService(options: new()
+            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice"), e.Args.Contains("--demo-resets")) : new Codex.TrackerService(options: new()
             {
                 RedirectedDataDirectories = Codex.DesktopEnvironment.FindRedirectedStores(),
                 RefreshIntervalProvider = () =>

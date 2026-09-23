@@ -53,6 +53,10 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 
 ## Lire le tableau de bord
 
+**Compte inactif après un reset :** un encart indique les comptes probablement rechargés. La semaine affiche **≈100 % — estimé** ; le survol conserve le quota réellement mesuré et les dates exactes. L’estimation suppose que le compte n’a pas été utilisé ailleurs. Elle disparaît dès un nouveau relevé ou au plus tard après une fenêtre complète (7 jours pour la semaine, 5 heures pour le quota court) ; aucune date suivante n’est inventée.
+
+**Réglages → Rappels → Prévenir après un reset** commande aussi les notifications Windows des comptes inactifs. Vérification chaque minute, après collecte et à la reprise : une alerte par compte, fenêtre et échéance, groupée si plusieurs resets arrivent ensemble. Après interruption, seules les échéances des dernières 24 heures encore estimables sont annoncées. Les SMS, appels et emails ne sont pas utilisés pour ces estimations. Windows reste maître de l’affichage, notamment en mode Ne pas déranger.
+
 - La vue principale présente le compte actif puis une ligne par compte. Le compte actif reste automatiquement en tête ; les autres gardent un ordre stable. Le bouton **…** ouvre les détails et l’historique.
 - Les thèmes clair et sombre suivent Windows, avec un choix manuel dans les réglages. Le dessin de l’icône s’adapte également au thème.
 - **Hebdomadaire** : quota restant de la fenêtre de 10 080 minutes du bucket `codex`. Une limite de cinq heures n’est jamais présentée comme une limite hebdomadaire.

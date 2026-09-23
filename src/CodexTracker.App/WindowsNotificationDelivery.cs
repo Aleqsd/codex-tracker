@@ -32,7 +32,7 @@ internal sealed class WindowsNotificationDelivery(
                 _ => null
             };
             if (reason is not null) return deferWhenBusy
-                ? new(DeliveryStatus.Deferred, reason + " Le rappel sera réessayé tant que l’échéance est à venir.")
+                ? new(DeliveryStatus.Deferred, reason + " Le rappel sera réessayé tant qu’il reste pertinent.")
                 : new(DeliveryStatus.Skipped, reason + " Quittez ce mode puis réessayez.");
             show(title, body);
             // A successful shell call is not evidence that a banner was displayed or read.

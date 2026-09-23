@@ -27,6 +27,8 @@ Vérifier le débordement, les textes coupés, le focus clavier et la distinctio
 
 ## Resets : agenda et semaine
 
+Les comptes inactifs dont une échéance connue vient de passer ont un encart sobre et une annotation `≈100 % — estimé`. Le bouton **Voir** fait défiler la liste jusqu’au compte concerné, y compris en petite fenêtre. Le survol donne date, dernier pourcentage mesuré et hypothèse d’absence d’utilisation ailleurs. `GoodBrush` accompagne le texte sans remplacer l’indication d’incertitude. L’aperçu `--demo --demo-resets` utilise un compte fictif dans cet état.
+
 Le choix Agenda / Semaine utilise `ResetKindFilter` dans un groupe radio distinct des types de resets. La semaine garde sept colonnes, marque aujourd’hui par un trait neutre et utilise les mêmes icônes de type. Les comptes longs sont tronqués avec un survol complet. La priorité est un encart informatif sans bordure de bouton ; seules les commandes de navigation sont cliquables. L’aperçu `-View Semaine` entre dans la matrice de démonstration.
 
 ## Tour animé du README

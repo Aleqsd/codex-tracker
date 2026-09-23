@@ -269,6 +269,43 @@ public sealed class ReminderTests
         journal.Put(new(Occurrence(ReminderChannel.Windows) with { Key = "old", At = Now.AddDays(-31) }, DeliveryStatus.Shown, Now.AddDays(-31), ""));
         journal.Prune(Now); Assert.Single(journal.Entries);
     }
+    [Fact]
+    public async Task InactiveResetsGroupAtDeadlinePersistBeforeSendingAndSurviveRestart()
+    {
+        using var f = new Fixture(); f.ExpectedResets = true; f.Rules = []; f.State = State(Now);
+        await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.Equal(2, f.Desktop[0].Count);
+        Assert.All(f.Desktop[0], r => Assert.True(ReminderPlanner.IsExpectedReset(r)));
+        Assert.True(f.PersistedBeforeWindows); Assert.Equal(0, f.Handler.Requests);
+        f.Recreate(); f.Clock.Now = Now.AddMinutes(1); await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop);
+    }
+    [Theory]
+    [InlineData("disabled")] [InlineData("deleted")] [InlineData("active")] [InlineData("changed")]
+    public async Task DeferredExpectedResetIsCancelledWhenItBecomesObsolete(string reason)
+    {
+        using var f = new Fixture(); f.ExpectedResets = true; f.Rules = []; f.State = State(Now);
+        f.WindowsResult = new(DeliveryStatus.Deferred, "Occupé"); await f.Dispatcher.TickAsync();
+        switch (reason)
+        {
+            case "disabled": f.ExpectedResets = false; break;
+            case "deleted": f.State = new([], null); break;
+            case "active": f.State = f.State with { Accounts = f.State.Accounts.Select(a => a with { IsActiveInCodex = true }).ToArray() }; break;
+            case "changed": f.State = State(Now.AddHours(2)); break;
+        }
+        await f.Dispatcher.TickAsync(); Assert.Single(f.Desktop);
+        Assert.All(f.Journal.Entries, d => Assert.Equal(DeliveryStatus.Cancelled, d.Status));
+        Assert.Equal(0, f.Handler.Requests);
+    }
+    [Fact]
+    public async Task ResumeAfterDeadlineEmitsOnlyTheExpectedResetAndNeverExternalSends()
+    {
+        using var f = new Fixture(); f.ExpectedResets = true;
+        f.State = State(Now.AddMinutes(2)); f.Rules = Rule(ReminderChannel.Sms);
+        f.Clock.Now = Now.AddHours(1); await f.Dispatcher.TickAsync();
+        Assert.Single(f.Desktop); Assert.All(f.Desktop[0], r => Assert.True(ReminderPlanner.IsExpectedReset(r)));
+        Assert.Equal(0, f.Handler.Requests);
+    }
     private sealed class Clock : TimeProvider { public DateTimeOffset Now { get; set; } = ReminderTests.Now; public override DateTimeOffset GetUtcNow() => Now; }
     private sealed class Handler : HttpMessageHandler
     {
@@ -289,10 +326,10 @@ public sealed class ReminderTests
         public readonly Clock Clock = new(); public readonly Handler Handler = new(); private readonly HttpClient _http;
         public TrackerState State = ReminderTests.State(); public ReminderRule[] Rules = Rule(); public PhonePolicy Policy = new();
         public readonly Dictionary<string, DateTimeOffset> Legacy = []; public readonly List<IReadOnlyList<ReminderOccurrence>> Desktop = [];
-        public DeliveryResult WindowsResult = new(DeliveryStatus.Accepted, "Transmis à Windows ; affichage non confirmé."); public bool WindowsThrows, PersistedBeforeWindows;
+        public DeliveryResult WindowsResult = new(DeliveryStatus.Accepted, "Transmis à Windows ; affichage non confirmé."); public bool WindowsThrows, PersistedBeforeWindows, ExpectedResets;
         public NotificationSecretStore Secrets; public ReminderJournal Journal = null!; public ReminderDispatcher Dispatcher = null!;
         public Fixture() { _http = new(Handler); Secrets = new(_directory.Root); Secrets.Save(Config); Recreate(); }
-        public void Recreate() { Journal = new(_directory.Root); Dispatcher = new(Journal, Secrets, new(_http), () => State, () => Rules, () => Policy, () => Legacy, ShowWindows, Clock); }
+        public void Recreate() { Journal = new(_directory.Root); Dispatcher = new(Journal, Secrets, new(_http), () => State, () => Rules, () => Policy, () => Legacy, ShowWindows, Clock, () => ExpectedResets); }
         private DeliveryResult ShowWindows(IReadOnlyList<ReminderOccurrence> rows)
         {
             Desktop.Add(rows);

@@ -136,6 +136,12 @@ public partial class MainWindow : Window
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Hide_Click(object sender, RoutedEventArgs e) => HideToTray();
     private void Recovery_Click(object sender, RoutedEventArgs e) => OpenPage("Application");
+    private void ExpectedReset_Click(object sender, RoutedEventArgs e)
+    {
+        var account = _model.Accounts.FirstOrDefault(a => a.HasResetEstimate);
+        if (account is null) return;
+        if (AccountsList.ItemContainerGenerator.ContainerFromItem(account) is FrameworkElement row) row.BringIntoView();
+    }
     internal string[] HealthWarnings() => new[] { _preferences.RecoveryWarning, Reminders.Error, AssistantError }
         .Concat((_service as Codex.TrackerService)?.RecoveryWarnings ?? [])
         .Where(message => !string.IsNullOrWhiteSpace(message)).Select(message => message!).Distinct().ToArray();

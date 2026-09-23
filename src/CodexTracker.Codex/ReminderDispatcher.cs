@@ -6,7 +6,8 @@ public sealed class ReminderDispatcher(
     ReminderJournal journal, NotificationSecretStore secrets, NotificationProviders providers,
     Func<TrackerState> state, Func<ReminderRule[]> rules, Func<PhonePolicy> phone,
     Func<IReadOnlyDictionary<string, DateTimeOffset>> legacySent,
-    Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null)
+    Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null,
+    Func<bool>? expectedResetNotifications = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -21,7 +22,7 @@ public sealed class ReminderDispatcher(
         {
             Error = null;
             var now = _clock.GetUtcNow(); journal.Prune(now);
-            var due = ReminderPlanner.Due(state(), rules(), now);
+            var due = Due(now);
             var valid = due.Select(r => r.Key).ToHashSet();
             foreach (var pending in journal.Entries.Where(d => d.Status == DeliveryStatus.Deferred && !valid.Contains(d.Occurrence.Key)).ToArray())
                 journal.Put(pending with { Status = DeliveryStatus.Cancelled, UpdatedAt = now, Detail = "Échéance dépassée, règle désactivée ou événement modifié." });
@@ -34,7 +35,7 @@ public sealed class ReminderDispatcher(
                     token.ThrowIfCancellationRequested();
                     if (journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status != DeliveryStatus.Deferred)) continue;
                     // Recheck after every await: deleted accounts/disabled rules cannot leave an active queue behind.
-                    if (!ReminderPlanner.Due(state(), rules(), _clock.GetUtcNow()).Any(x => x.Key == r.Key)) continue;
+                    if (!Due(_clock.GetUtcNow()).Any(x => x.Key == r.Key)) continue;
                     var legacy = r.Kind == ResetKind.Reserve && legacySent().ContainsKey(CalendarExport.Identity(r.AccountId, "credit", r.CreditId!, r.At));
                     if (r.LeadMinutes != urgent || legacy) { Put(r, DeliveryStatus.Skipped, legacy ? "Rappel déjà envoyé avant migration." : "Rappel remplacé par le délai le plus proche."); continue; }
                     if (r.Channel == ReminderChannel.Windows) { desktop.Add(r); continue; }
@@ -54,7 +55,7 @@ public sealed class ReminderDispatcher(
             if (desktop.Count > 0)
             {
                 token.ThrowIfCancellationRequested();
-                var current = ReminderPlanner.Due(state(), rules(), _clock.GetUtcNow()).Select(r => r.Key).ToHashSet();
+                var current = Due(_clock.GetUtcNow()).Select(r => r.Key).ToHashSet();
                 desktop = desktop.Where(r => current.Contains(r.Key)).ToList();
                 foreach (var r in desktop) Put(r, DeliveryStatus.Submitting, "Transmission à Windows.");
                 if (desktop.Count > 0)
@@ -77,6 +78,13 @@ public sealed class ReminderDispatcher(
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or System.Text.Json.JsonException)
         { Error = "Rappels suspendus : impossible de lire ou d’enregistrer les données locales."; }
         finally { _gate.Release(); }
+    }
+    private IReadOnlyList<ReminderOccurrence> Due(DateTimeOffset now)
+    {
+        var current = state();
+        return ReminderPlanner.Due(current, rules(), now)
+            .Concat(expectedResetNotifications?.Invoke() == true ? ExpectedReset.Due(current, now) : [])
+            .ToArray();
     }
     private void Put(ReminderOccurrence r, DeliveryStatus status, string text) => journal.Put(new(r, status, _clock.GetUtcNow(), text));
     private DeliveryResult SendWindows(IReadOnlyList<ReminderOccurrence> occurrences)

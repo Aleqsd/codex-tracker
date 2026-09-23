@@ -1,3 +1,9 @@
+# Version 0.9.3 — resets probables des comptes inactifs
+
+Les contrôles locaux couvrent l’instant exact du reset, les observations futures ou incohérentes, l’isolation des comptes et fenêtres, les dates absentes, les quotas invalides, les changements de fuseau, la fin de validité après une fenêtre, le rattrapage et l’absence d’envoi externe. Le journal est écrit avant transmission à Windows ; la répétition après redémarrage et l’annulation des reports après désactivation, suppression, changement de compte actif ou d’échéance sont testées avec un adaptateur simulé.
+
+Les contrôles WPF vérifient les thèmes clair/sombre et fenêtres normale/compacte, le libellé explicite d’estimation, les détails datés, le défilement par **Voir**, le clavier et le retrait de l’estimation après un relevé. Les captures fictives sont produites à 96/144/192 DPI dans `artifacts/previews/expected-resets-*`. Elles ne remplacent pas un essai multi-écrans physique. Les données mesurées, historiques, conseils et pourcentage de l’icône restent inchangés.
+
 # Échec de démarrage MCP — après la 0.9.2 publiée
 
 Une connexion locale acceptée mais privée de son message initial reproduit le délai de 20 secondes sur l’exécutable publié 0.9.2 : le pont quittait avec le code 0, sans expliquer l’échec. Le correctif renvoie le code 1 et un message utile sur stderr, tout en conservant stdout vide. Une fermeture après connexion conserve le code 0.

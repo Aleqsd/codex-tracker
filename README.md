@@ -1,8 +1,8 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center">Vos quotas Codex, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.2/CodexTracker-0.9.2-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.3/CodexTracker-0.9.3-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
 <p align="center">Windows 11 · x64 · Gratuit · Données locales — nécessite Codex installé</p>
-<p align="center"><sub>0.9.2 · version de stabilisation avant la 1.0</sub></p>
+<p align="center"><sub>0.9.3 · version de stabilisation avant la 1.0</sub></p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
 <p align="center"><sub>Démonstration avec des comptes fictifs. <a href="docs/resets-week.png">Aperçu statique</a></sub></p>
@@ -25,6 +25,8 @@ Le bouton **flèche vers le coin**, à côté de **—**, masque le tracker dans
 ## Bon à savoir
 
 **Seul le compte actif dans Codex est actualisé**, toutes les deux minutes par défaut. Les autres conservent leur dernier relevé daté. Une date ou une valeur absente reste inconnue.
+
+**Un autre compte a probablement récupéré son quota ?** Une notification Windows et un encart le signalent après son échéance. **≈100 % — estimé** reste à confirmer en ouvrant ce compte dans Codex ; le dernier quota mesuré est conservé au survol.
 
 **Les rappels nécessitent un PC éveillé et le tracker ouvert.** Le démarrage avec Windows est facultatif. Aucun service distant n’est nécessaire pour les notifications Windows.
 

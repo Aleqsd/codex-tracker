@@ -76,6 +76,17 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string CompactStatus => HasError ? "à vérifier" : IsActive ? "actif" : _account.Snapshot is not null ? Display.Age(_account.Snapshot.FetchedAt) : "à détecter";
     public string RowSubtitle => $"{PlanBadge} · {CompactStatus}";
     public string SummaryLabel => IsActive ? "Compte actif dans Codex" : "Dernier relevé disponible";
+    private ExpectedReset? WeeklyEstimate => ExpectedReset.For(_account, ResetKind.Weekly, PreviewClock.UtcNow);
+    private ExpectedReset? ShortEstimate => ExpectedReset.For(_account, ResetKind.Short, PreviewClock.UtcNow);
+    public bool HasWeeklyEstimate => WeeklyEstimate is not null;
+    public bool HasResetEstimate => HasWeeklyEstimate || ShortEstimate is not null;
+    public string WeeklyDisplayNumber => HasWeeklyEstimate ? "≈100%" : WeeklyNumber;
+    public Brush WeeklyDisplayBrush => HasWeeklyEstimate ? Display.Green : WeeklyBrush;
+    public string EstimateLabel => HasWeeklyEstimate && ShortEstimate is not null ? "Semaine + 5 h probablement à 100 %"
+        : HasWeeklyEstimate ? "Semaine probablement à 100 %" : ShortEstimate is not null ? "5 h probablement à 100 %" : "";
+    public string EstimateHint => string.Join("\n\n", new[] { WeeklyEstimate, ShortEstimate }.OfType<ExpectedReset>().Select(r =>
+        $"{ReminderPlanner.Label(r.Kind)} prévu le {Display.Exact(r.At)} · {Display.Zone(r.At)}.\nDernier quota mesuré : {Display.Percent(r.LastRemainingPercent)} le {Display.Exact(r.ObservedAt)}.\nProbablement revenu à 100 % si le compte n’a pas été utilisé ailleurs. Ouvrez ce compte dans Codex pour confirmer."));
+    public string WeeklyHint => HasWeeklyEstimate ? EstimateHint : $"Dernier quota mesuré : {WeeklyNumber}\nRelevé : {Display.Exact(_account.Snapshot?.FetchedAt)}";
     public string WeeklyNumber => Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent);
     public double WeeklyPercent => _account.Snapshot?.Weekly?.RemainingPercent ?? 0;
     public Brush WeeklyBrush => Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
@@ -86,8 +97,8 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetCountdown => Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCompact => ResetCountdown.Replace("Dans ", "");
-    public string ResetHint => $"{ResetExact}\n{ResetZone}";
+    public string ResetCompact => HasWeeklyEstimate ? "Reset passé" : ResetCountdown.Replace("Dans ", "");
+    public string ResetHint => HasWeeklyEstimate ? EstimateHint : $"{ResetExact}\n{ResetZone}";
     public string SummaryReset => $"Reset hebdomadaire {ResetCountdown.ToLowerInvariant()}";
     public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
     public string ReserveSummary => Display.ReserveSummary(_account.Snapshot);
@@ -122,6 +133,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
         get
         {
             var lines = new List<string> { Email, $"Offre : {PlanBadge}", SubscriptionDetails, "", Freshness, "" };
+            if (HasResetEstimate) { lines.Add(EstimateHint); lines.Add(""); }
             foreach (var bucket in _account.Snapshot?.Buckets ?? [])
             {
                 lines.Add(Display.SafeText(bucket.Name ?? bucket.Id, _preferences.Current.PrivacyMode));
@@ -147,6 +159,17 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool HasActive => Active is not null;
     public bool IsEmpty => Accounts.Count == 0;
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
+    public bool HasExpectedResets => Accounts.Any(a => a.HasResetEstimate);
+    public string ExpectedResetsTitle
+    {
+        get
+        {
+            var count = Accounts.Count(a => a.HasResetEstimate);
+            return count == 1 ? "Un autre compte est probablement rechargé" : $"{count} autres comptes sont probablement rechargés";
+        }
+    }
+    public string ExpectedResetsNames => string.Join(" · ", Accounts.Where(a => a.HasResetEstimate).Select(a => a.Email));
+    public string ExpectedResetsHint => string.Join("\n\n", Accounts.Where(a => a.HasResetEstimate).Select(a => $"{a.Email}\n{a.EstimateHint}"));
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
 
@@ -182,7 +205,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     {
         foreach (var account in Accounts) account.Tick();
         Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow);
-        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint) })
+        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)

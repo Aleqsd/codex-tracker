@@ -234,7 +234,7 @@ internal static class ReminderSettingsView
             if (entries.Length == 0) rows.Children.Add(Hint("Aucun rappel envoyé. Les événements des 30 derniers jours apparaîtront ici."));
             foreach (var item in entries)
             {
-                var panel = Panel(); var title = Ui.Text($"{ChannelName(item.Occurrence.Channel)} · {ReminderPlanner.Label(item.Occurrence.Kind)}", 13); title.FontWeight = FontWeights.SemiBold; panel.Children.Add(title);
+                var panel = Panel(); var title = Ui.Text($"{ChannelName(item.Occurrence.Channel)} · {ReminderPlanner.Label(item.Occurrence.Kind)}{(ReminderPlanner.IsExpectedReset(item.Occurrence) ? " · estimation" : "")}", 13); title.FontWeight = FontWeights.SemiBold; panel.Children.Add(title);
                 panel.Children.Add(Hint($"{item.Occurrence.AccountName}\n{item.UpdatedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\n{item.Detail}"));
                 root.ToolTip = "Les notifications acceptées ne sont pas nécessairement lues ou livrées.";
                 var border = new Border { Child = panel, BorderThickness = new Thickness(0, 0, 0, 1) }; border.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); rows.Children.Add(border);

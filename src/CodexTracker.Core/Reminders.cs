@@ -46,7 +46,11 @@ public static class ReminderPlanner
     }
     public static string EventKey(ReminderOccurrence r) => $"{r.AccountId}/{r.Kind}/{r.CreditId}/{r.At.UtcTicks}/{r.Channel}";
     public static string Label(ResetKind kind) => kind switch { ResetKind.Weekly => "Reset hebdomadaire", ResetKind.Short => "Reset 5 heures", _ => "Expiration de réserve" };
-    public static string Body(ReminderOccurrence r) => $"{r.AccountName} · {Label(r.Kind)}\nÉchéance : {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans Codex.";
+    public static bool IsExpectedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("expected/", StringComparison.Ordinal);
+    public static string Title(ReminderOccurrence r) => IsExpectedReset(r) ? "Compte probablement rechargé" : Label(r.Kind);
+    public static string Body(ReminderOccurrence r) => IsExpectedReset(r)
+        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nReset prévu le {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans Codex."
+        : $"{r.AccountName} · {Label(r.Kind)}\nÉchéance : {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans Codex.";
     public static TimeZoneInfo Zone(PhonePolicy policy) => TimeZoneInfo.FindSystemTimeZoneById(policy.TimeZoneId);
     public static bool IsQuiet(DateTimeOffset now, PhonePolicy policy)
     {
