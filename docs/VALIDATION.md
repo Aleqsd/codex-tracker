@@ -4,6 +4,8 @@ Les contrôles locaux couvrent l’instant exact du reset, les observations futu
 
 Les contrôles WPF vérifient les thèmes clair/sombre et fenêtres normale/compacte, le libellé explicite d’estimation, les détails datés, le défilement par **Voir**, le clavier et le retrait de l’estimation après un relevé. Les captures fictives sont produites à 96/144/192 DPI dans `artifacts/previews/expected-resets-*`. Elles ne remplacent pas un essai multi-écrans physique. Les données mesurées, historiques, conseils et pourcentage de l’icône restent inchangés.
 
+La [CI Windows sur `1432ed3`](https://github.com/Aleqsd/codex-tracker/actions/runs/35888849557) réussit : **413 tests métier**, contrôles WPF, **14 contrôles du protocole MCP** sur le binaire autonome, délai de démarrage MCP et cycle complet de l’installateur. Le paquet de cette CI est installé localement après sauvegarde ; les fichiers privés restent inchangés pendant l’installation et les observations sont conservées après relance. L’empreinte du binaire installé correspond à celle du ZIP validé : `a25a6015dd992e204df17d49fdb799e901449d75ad03eb0a3989056e1935e4ae`. Cette version inclut aussi le correctif MCP décrit ci-dessous. Les alertes sont vérifiées avec un adaptateur Windows simulé ; aucune réception réelle d’une nouvelle alerte de reset n’est revendiquée.
+
 # Échec de démarrage MCP — après la 0.9.2 publiée
 
 Une connexion locale acceptée mais privée de son message initial reproduit le délai de 20 secondes sur l’exécutable publié 0.9.2 : le pont quittait avec le code 0, sans expliquer l’échec. Le correctif renvoie le code 1 et un message utile sur stderr, tout en conservant stdout vide. Une fermeture après connexion conserve le code 0.
