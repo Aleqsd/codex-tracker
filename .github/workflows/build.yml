@@ -55,6 +55,9 @@ jobs:
       - name: Test published executable MCP protocol with fictional data
         shell: pwsh
         run: python scripts/test-mcp.py "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
+      - name: Test real MCP startup deadline
+        shell: pwsh
+        run: ./scripts/test-mcp-startup.ps1 -ExecutablePath "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
       - name: Test installer lifecycle in the dedicated runner profile
         shell: pwsh
         run: ./scripts/test-installer.ps1 -Run -DedicatedTestProfile -SetupPath "artifacts/CodexTracker-$env:TRACKER_VERSION-Setup.exe" -ExpectedVersion $env:TRACKER_VERSION -ReportPath artifacts/installer-lifecycle.json

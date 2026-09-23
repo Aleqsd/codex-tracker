@@ -1,3 +1,9 @@
+# Échec de démarrage MCP — après la 0.9.2 publiée
+
+Une connexion locale acceptée mais privée de son message initial reproduit le délai de 20 secondes sur l’exécutable publié 0.9.2 : le pont quittait avec le code 0, sans expliquer l’échec. Le correctif renvoie le code 1 et un message utile sur stderr, tout en conservant stdout vide. Une fermeture après connexion conserve le code 0.
+
+Le candidat autonome corrigé passe la même reproduction en **20,2 secondes**, ainsi que les **14 contrôles du protocole MCP**, dont le démarrage à froid, deux clients simultanés, les conflits de révision et l’arrêt normal des deux ponts. `scripts/test-mcp-startup.ps1` utilise un canal nommé de démonstration unique et ne démarre ni collecteur ni envoi. Ce test rejoint les workflows de compilation et de préparation de signature. Il ne modifie pas l’installation 0.9.2 de l’utilisateur et n’est pas une nouvelle Release.
+
 # Préparation WinGet — 23 septembre 2026
 
 Les trois manifestes de la [première soumission Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) ciblent maintenant la 0.9.2. Le Setup public a été téléchargé et comparé au fichier local : SHA-256 `2d0aaff5368b6a0adb4872a5320ac4384d0c807c1f5ceb200ab91b56cfd0951d`. `winget validate` réussit réellement. Aucune installation via manifeste local ni activation de `LocalManifestFiles` n’a été effectuée.

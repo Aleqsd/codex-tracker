@@ -10,9 +10,9 @@ La **0.9.2** est la version de stabilisation courante. Le problème de comptes a
 - [x] Notifications Windows confirmées visibles par l’utilisateur après installation de la 0.8.4. Le réglage « Ne pas déranger » a été résolu par l’utilisateur. Cela ne valide pas tous les autres postes.
 - [x] Intégration SignPath préparée avec vérification Authenticode, éditeur et horodatage, contrôle de l’EXE réellement installé et séparation des répétitions non signées. Les 28 contrôles passent. La [CI complète](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933069) et la [répétition du parcours de release](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933693) réussissent sur `9811e76` ; aucune signature du projet n’est revendiquée.
 - [x] Candidature SignPath envoyée le 23 septembre 2026 ; réception confirmée par le formulaire, sans inscription aux communications commerciales.
-- [x] Première soumission WinGet mise à niveau vers la 0.9.2 corrigée : Setup public retéléchargé, empreinte identique et manifeste validé localement. La [PR Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) reste soumise à leurs nouveaux contrôles et à la revue manuelle ; le paquet n’est pas annoncé disponible dans le catalogue.
+- [x] Première soumission WinGet mise à niveau vers la 0.9.2 corrigée : Setup public retéléchargé, empreinte identique et manifeste validé localement. Les contrôles Microsoft, dont installation et analyse du Setup, ont réussi. La [PR Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) attend toujours la revue manuelle ; le paquet n’est pas annoncé disponible dans le catalogue.
 - [x] Préparation WinGet couverte par 14 contrôles isolés et [CI Windows complète](https://github.com/Aleqsd/codex-tracker/actions/runs/35832082507) verte sur `109410f`. Aucun avis de vulnérabilité NuGet remonté pour les dépendances directes et transitives lors du contrôle du 23 septembre ; cela ne remplace pas un audit du code.
-- [ ] Acceptation SignPath obtenue, MFA et rôles configurés, première signature réelle vérifiée.
+- [ ] Choisir une voie de signature admissible puis vérifier sa première signature réelle. La candidature Foundation n’a pas obtenu d’accès ; ce point n’est plus simplement en attente de réponse. Voir [les alternatives et leurs contraintes](SIGNATURE.md).
 - [ ] Essais matériels et bêta ci-dessous, puis fabrication et validation de l’exécutable final 1.0.
 
 Le parcours de signature est manuel et sa répétition ne contacte pas SignPath. Son admission et ses délais dépendent de la fondation ; une préparation ou un test simulé ne suffit pas à cocher la signature.
@@ -48,7 +48,7 @@ Pour chaque essai, conserver la version exacte, la date, Windows et sa configura
 
 ## Validation du candidat 1.0
 
-- [ ] Finaliser la signature SignPath et contrôler le résultat Authenticode sur l’EXE et l’installateur du candidat. La [préparation de la signature](SIGNATURE.md) décrit la configuration prévue et son activation après acceptation. Aucune signature n’est revendiquée tant que ces fichiers ne sont pas réellement signés.
+- [ ] Finaliser la voie de signature retenue et contrôler le résultat sur les fichiers du candidat. La [préparation de la signature](SIGNATURE.md) décrit l’intégration existante et les alternatives. Aucune signature n’est revendiquée tant que les fichiers ne sont pas réellement signés.
 - [ ] Exécuter la CI Windows et le test MCP sur le binaire autonome exact destiné à la 1.0 ; résoudre ou expliquer toute différence avec les essais locaux.
 - [ ] Vérifier le Setup, le ZIP et leurs SHA-256, les notes courtes et la mise à niveau depuis la version publique retenue, en conservant les données existantes. Les preuves des 0.9.0 et 0.9.1 restent un historique, pas la validation du candidat.
 - [ ] Consigner les résultats des essais physiques et bêta ci-dessus, ainsi que les limites des intégrations facultatives, avant de décider la sortie stable.

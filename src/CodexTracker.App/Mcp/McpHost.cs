@@ -11,12 +11,14 @@ internal static class McpHost
 {
     internal static async Task<int> RunAsync(string[] args)
     {
+        var connected = false;
         try
         {
             // WPF is never constructed in this process. stdout belongs exclusively to MCP.
             await using var client = new LocalClient(args);
             // Even an idle MCP host must be attached so app shutdown releases its executable for updates.
             await client.Start(CancellationToken.None);
+            connected = true;
             var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = [], DisableDefaults = true });
             builder.Logging.ClearProviders();
             builder.Services.AddSingleton(client);
@@ -24,7 +26,12 @@ internal static class McpHost
             using var host = builder.Build();
             await host.RunAsync(client.Closed); return 0;
         }
-        catch (OperationCanceledException) { return 0; }
+        catch (OperationCanceledException) when (connected) { return 0; }
+        catch (OperationCanceledException)
+        {
+            await Console.Error.WriteLineAsync("Codex Tracker MCP : démarrage impossible après 20 secondes. Ouvrez le tracker, puis reconnectez le client.");
+            return 1;
+        }
         catch (Exception error) { await Console.Error.WriteLineAsync(args.Contains("--demo") ? error.ToString() : "Codex Tracker MCP indisponible. Reconnectez le client et vérifiez les réglages Assistants."); return 1; }
     }
 }

@@ -1,6 +1,6 @@
 # Distribution WinGet
 
-Identifiant : `Aleqsd.CodexTracker`. La version 0.9.2 est soumise dans la [demande Microsoft #438574](https://github.com/microsoft/winget-pkgs/pull/438574), pour inclure le correctif de stockage des comptes dès la première publication. Le CLA du contributeur est validé. Les contrôles de la version précédente avaient réussi, avec une revue manuelle Microsoft encore attendue ; les nouveaux manifestes doivent repasser leurs propres contrôles. La disponibilité dans le catalogue public dépend de la validation et de la fusion du manifeste par Microsoft ; construire le manifeste ne publie pas le paquet.
+Identifiant : `Aleqsd.CodexTracker`. La version 0.9.2 est soumise dans la [demande Microsoft #438574](https://github.com/microsoft/winget-pkgs/pull/438574), pour inclure le correctif de stockage des comptes dès la première publication. Le CLA et tous les contrôles techniques de cette version ont réussi, notamment l’analyse et l’installation du Setup. La revue de politique reste manuelle, confirmée par Microsoft le 23 septembre 2026. La disponibilité dans le catalogue public dépend encore de cette revue et de la fusion du manifeste ; construire ou valider le manifeste ne publie pas le paquet.
 
 Après intégration dans le catalogue :
 

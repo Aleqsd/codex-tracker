@@ -39,7 +39,7 @@ Le bouton **flèche vers le coin**, à côté de **—**, masque le tracker dans
 
 Un problème ? **Réglages → Application → Préparer un diagnostic** donne un aperçu sans comptes ni secrets, à copier dans votre signalement.
 
-[Code signing policy](docs/CODE-SIGNING-POLICY.md) — candidature SignPath envoyée, en attente d’acceptation. Les exécutables actuels ne sont pas encore signés.
+[Code signing policy](docs/CODE-SIGNING-POLICY.md) — les exécutables actuels ne sont pas encore signés. Aucun service de signature n’est activé.
 
 <details>
 <summary>Développer ou contribuer</summary>

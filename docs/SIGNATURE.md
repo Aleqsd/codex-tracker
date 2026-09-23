@@ -4,13 +4,24 @@
 
 L’application et l’installateur 0.9.2 sont **non signés** (`NotSigned`). Aucun certificat de distribution n’est configuré pour le projet. Les checksums SHA-256 contrôlent l’intégrité des paquets ; ils ne constituent pas une signature d’éditeur.
 
-## Candidature en cours
+## État du programme gratuit
 
 [SignPath Foundation](https://signpath.org/) propose une signature gratuite pour des projets open source acceptés. Codex Tracker est public, sous licence MIT et déjà distribué, mais ces caractéristiques ne garantissent pas son admission : la fondation examine aussi la réputation du projet, l’origine vérifiable des binaires et ses autres [conditions](https://signpath.org/terms.html).
 
 La [candidature](https://signpath.org/apply.html) a été envoyée le **23 septembre 2026**, après accord explicite du propriétaire sur les conditions et le traitement de ses coordonnées. Le formulaire a confirmé « Form submitted ». Les communications commerciales n’ont pas été activées. Les coordonnées ne sont pas publiées dans le dépôt.
 
-L’admission reste en attente : aucun certificat ni accès de signature n’est encore configuré. La MFA, les rôles de revue et d’approbation et les restrictions d’origine devront être vérifiés avant activation. Aucun achat n’a été effectué.
+Cette candidature n’a pas obtenu d’accès au programme Foundation. Aucun certificat ni accès de signature n’est configuré, et l’intégration préparée reste désactivée. La MFA, les rôles de revue et d’approbation et les restrictions d’origine devront être vérifiés si un accès est obtenu ultérieurement. Aucun achat n’a été effectué. Les échanges privés ne sont pas publiés.
+
+## Choix de distribution à décider
+
+État des offres consultées le 23 septembre 2026, sans souscription :
+
+- **Conserver Setup/ZIP non signés** pendant la stabilisation : aucun coût ajouté, mais les avertissements Windows restent possibles. Un certificat auto-signé ne résout pas la confiance publique.
+- **Microsoft Store en MSIX** : Microsoft signe le paquet après certification ; cette voie ne signe pas gratuitement le Setup EXE actuel. Elle exige une adaptation du stockage MSIX, des mises à jour, du lancement MCP et des notifications. Aucun paquet Store n’est préparé ni validé aujourd’hui.
+- **Azure Artifact Signing** : environ 9,99 USD/mois ; les particuliers sont limités aux États-Unis et au Canada, les organisations peuvent notamment être établies dans l’UE. Ne pas supposer l’éligibilité d’un particulier en France. [Comparatif Microsoft](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options).
+- **SignPath payant** : la page proposée affiche Starter à 500 USD/an hors taxes, payé d’avance ; le certificat EV annoncé exige une organisation légalement enregistrée. Le coût seul ne garantit donc pas l’éligibilité. [Offres du prestataire](https://docs.signpath.io/change-subscription).
+
+La voie gratuite MSIX est une étude distincte, pas un changement de format automatique. Un éventuel certificat commercial exige de vérifier identité admissible, coût total et CI avant tout engagement. Aucune date de livraison signée n’est promise.
 
 ## Intégration après acceptation ou fourniture d’un certificat
 

@@ -48,3 +48,5 @@ Une action `unknown` n’est pas répétée automatiquement : vérifier le journ
 Les données retournées sont transmises au client assistant et peuvent être traitées par son fournisseur d’IA. Le canal local n’isole pas l’application d’un autre programme malveillant exécuté sous le même utilisateur Windows.
 
 Après une mise à jour ou la fermeture du tracker, reconnecter le serveur depuis le client assistant. Un nouveau processus MCP redémarrera le tracker si nécessaire.
+
+Le code courant distingue un échec de démarrage d’une fermeture normale : si le tracker ne termine pas sa connexion en 20 secondes, le pont sort avec le code 1 et explique sur la sortie d’erreur qu’il faut ouvrir le tracker puis reconnecter le client. Sa sortie standard reste réservée au protocole. Ce correctif est postérieur à la 0.9.2 publiée. `scripts/test-mcp-startup.ps1 -ExecutablePath <exe-publié>` le vérifie avec un canal de démonstration volontairement bloqué, sans lire de comptes ni modifier les réglages réels.

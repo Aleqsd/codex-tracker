@@ -152,6 +152,8 @@ jobs:
           $report | ConvertTo-Json -Depth 5 | Set-Content artifacts/signing-validation.json -Encoding utf8
       - name: Test final executable MCP protocol
         run: python scripts/test-mcp.py "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
+      - name: Test final executable MCP startup deadline
+        run: ./scripts/test-mcp-startup.ps1 -ExecutablePath "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
       - name: Test final installer lifecycle
         run: |
           $report = Get-Content artifacts/signing-validation.json -Raw | ConvertFrom-Json
