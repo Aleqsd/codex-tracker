@@ -1,3 +1,9 @@
+# Préparation de signature — 23 septembre 2026
+
+La [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933069) et la [répétition complète du workflow de signature](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933693) réussissent sur `9811e76`. Les contrôles couvrent les tests métier et WPF, les 28 gardes de signature, le protocole MCP sur le binaire autonome et le cycle de l’installateur avec données fictives conservées. L’empreinte de l’exécutable réellement installé est vérifiée contre celle du candidat.
+
+Le [rapport conservé](validation/signing-rehearsal-2026-09-23.json) indique `mode: unsigned-rehearsal` et `signed: false`. Les étapes SignPath ont été volontairement ignorées ; ce succès ne valide pas leur acceptation par le service ni une signature réelle. Les fichiers de répétition n’ont pas remplacé les paquets publics et aucune donnée personnelle n’a été utilisée.
+
 # Mise à niveau publique 0.9.1 → 0.9.2 — 23 septembre 2026
 
 Les [deux parcours Windows isolés](https://github.com/Aleqsd/codex-tracker/actions/runs/35827491176) ont réussi avec les paquets déjà publiés et le canal **stable** : téléchargement automatique par l’application, contrôle du bouton visible et activé, installation par bouton ou au lancement suivant, correspondance du binaire final aux empreintes publiques et conservation des fichiers fictifs. Les instances ont quitté proprement. Les [rapports](validation/public-update-0.9.1-to-0.9.2.json) distinguent ces contrôles de l’observation humaine et des essais sur matériel physique.

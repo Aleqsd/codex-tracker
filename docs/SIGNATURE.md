@@ -4,11 +4,13 @@
 
 L’application et l’installateur 0.9.2 sont **non signés** (`NotSigned`). Aucun certificat de distribution n’est configuré pour le projet. Les checksums SHA-256 contrôlent l’intégrité des paquets ; ils ne constituent pas une signature d’éditeur.
 
-## Piste recommandée à étudier
+## Candidature en cours
 
 [SignPath Foundation](https://signpath.org/) propose une signature gratuite pour des projets open source acceptés. Codex Tracker est public, sous licence MIT et déjà distribué, mais ces caractéristiques ne garantissent pas son admission : la fondation examine aussi la réputation du projet, l’origine vérifiable des binaires et ses autres [conditions](https://signpath.org/terms.html).
 
-Avant de déposer une [candidature](https://signpath.org/apply.html), le propriétaire doit valider les conditions, l’authentification multifacteur, les rôles de revue et d’approbation, ainsi que la politique de signature et de confidentialité. Aucun compte, abonnement ou achat n’a été créé et aucune candidature n’a été envoyée pour cette préparation.
+La [candidature](https://signpath.org/apply.html) a été envoyée le **23 septembre 2026**, après accord explicite du propriétaire sur les conditions et le traitement de ses coordonnées. Le formulaire a confirmé « Form submitted ». Les communications commerciales n’ont pas été activées. Les coordonnées ne sont pas publiées dans le dépôt.
+
+L’admission reste en attente : aucun certificat ni accès de signature n’est encore configuré. La MFA, les rôles de revue et d’approbation et les restrictions d’origine devront être vérifiés avant activation. Aucun achat n’a été effectué.
 
 ## Intégration après acceptation ou fourniture d’un certificat
 
@@ -23,6 +25,8 @@ Les [options officielles Microsoft](https://learn.microsoft.com/en-us/windows/ap
 ## Intégration préparée
 
 La [politique publique](CODE-SIGNING-POLICY.md) indique les rôles prévus et les limites. Le workflow **Prepare signed Windows release** est manuel, limité à `main` et ne publie aucune Release. Son mode répétition ne contacte pas SignPath et ne revendique aucune signature.
+
+La [répétition complète du 23 septembre](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933693) a réussi sur `9811e76` : compilation, tests, création des trois livrables, protocole MCP et cycle installation/réinstallation/désinstallation. L’empreinte de l’EXE réellement installé correspond au candidat. Le [rapport](validation/signing-rehearsal-2026-09-23.json) indique explicitement `signed: false` ; ces fichiers de répétition ne remplacent pas la Release 0.9.2 distribuée.
 
 ### Configuration après acceptation
 

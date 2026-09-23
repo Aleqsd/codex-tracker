@@ -1,6 +1,6 @@
 # Code signing policy
 
-**Current status: SignPath integration prepared; admission and signing access pending. Released Codex Tracker binaries are currently unsigned.** This page does not claim approval by SignPath Foundation.
+**Current status: application submitted on 23 September 2026; admission and signing access pending. Released Codex Tracker binaries are currently unsigned.** The application form confirmed receipt. This page does not claim approval by SignPath Foundation.
 
 Codex Tracker is maintained by [Aleqsd](https://github.com/Aleqsd). The intended signing process uses [SignPath Foundation](https://signpath.org/) for this MIT-licensed project, subject to its acceptance and conditions.
 
