@@ -1,3 +1,9 @@
+# Préparation WinGet — 23 septembre 2026
+
+Les trois manifestes de la [première soumission Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) ciblent maintenant la 0.9.2. Le Setup public a été téléchargé et comparé au fichier local : SHA-256 `2d0aaff5368b6a0adb4872a5320ac4384d0c807c1f5ceb200ab91b56cfd0951d`. `winget validate` réussit réellement. Aucune installation via manifeste local ni activation de `LocalManifestFiles` n’a été effectuée.
+
+Le générateur lit désormais la version du projet par défaut et accepte le chemin du candidat signé. Il compare toujours les octets publics avant d’écrire les manifestes. Quatorze contrôles isolés passent avec téléchargement et validateur simulés : version et URL, trois fichiers, CRLF, empreinte, divergence du paquet public sans écrasement du manifeste existant, erreur réseau, checksum local invalide, version bêta refusée, chemin explicite sans checksum séparé et échec du validateur. Ces contrôles rejoignent les workflows Windows ; ils ne valent pas approbation Microsoft.
+
 # Préparation de signature — 23 septembre 2026
 
 La [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933069) et la [répétition complète du workflow de signature](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933693) réussissent sur `9811e76`. Les contrôles couvrent les tests métier et WPF, les 28 gardes de signature, le protocole MCP sur le binaire autonome et le cycle de l’installateur avec données fictives conservées. L’empreinte de l’exécutable réellement installé est vérifiée contre celle du candidat.

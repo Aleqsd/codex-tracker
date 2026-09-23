@@ -10,6 +10,7 @@ La **0.9.2** est la version de stabilisation courante. Le problème de comptes a
 - [x] Notifications Windows confirmées visibles par l’utilisateur après installation de la 0.8.4. Le réglage « Ne pas déranger » a été résolu par l’utilisateur. Cela ne valide pas tous les autres postes.
 - [x] Intégration SignPath préparée avec vérification Authenticode, éditeur et horodatage, contrôle de l’EXE réellement installé et séparation des répétitions non signées. Les 28 contrôles passent. La [CI complète](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933069) et la [répétition du parcours de release](https://github.com/Aleqsd/codex-tracker/actions/runs/35827933693) réussissent sur `9811e76` ; aucune signature du projet n’est revendiquée.
 - [x] Candidature SignPath envoyée le 23 septembre 2026 ; réception confirmée par le formulaire, sans inscription aux communications commerciales.
+- [x] Première soumission WinGet mise à niveau vers la 0.9.2 corrigée : Setup public retéléchargé, empreinte identique et manifeste validé localement. La [PR Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) reste soumise à leurs nouveaux contrôles et à la revue manuelle ; le paquet n’est pas annoncé disponible dans le catalogue.
 - [ ] Acceptation SignPath obtenue, MFA et rôles configurés, première signature réelle vérifiée.
 - [ ] Essais matériels et bêta ci-dessous, puis fabrication et validation de l’exécutable final 1.0.
 

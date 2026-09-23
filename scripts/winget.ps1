@@ -1,16 +1,34 @@
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.8.2'
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
+    [string]$InstallerPath
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$installer = Join-Path $repoRoot "artifacts/CodexTracker-$Version-Setup.exe"
+if (-not $PSBoundParameters.ContainsKey('Version')) {
+    $declaredVersion = [string]([xml](Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
+    if ($declaredVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Le manifeste WinGet exige une version stable numérique dans Directory.Build.props.' }
+    $Version = $declaredVersion
+}
+$installer = if ($InstallerPath) { [IO.Path]::GetFullPath($InstallerPath) } else { Join-Path $repoRoot "artifacts/CodexTracker-$Version-Setup.exe" }
 if (!(Test-Path -LiteralPath $installer)) { throw "Construisez l’installateur de cette version avant le manifeste." }
 $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
-$checksum = (Get-Content -LiteralPath "$installer.sha256").Split(' ')[0]
-if ($hash -ne $checksum) { throw "Le SHA-256 de l’installateur diffère du fichier publié." }
+# Signed release candidates intentionally contain no separate Setup checksum.
+# Always verify the actual public bytes, not just a sidecar from a local build.
+if (Test-Path -LiteralPath "$installer.sha256") {
+    $checksum = (Get-Content -LiteralPath "$installer.sha256" -Raw).Trim().Split(' ')[0]
+    if ($hash -ne $checksum) { throw "Le SHA-256 de l’installateur diffère du checksum local." }
+}
+$url = "https://github.com/Aleqsd/codex-tracker/releases/download/v$Version/CodexTracker-$Version-Setup.exe"
+$download = [IO.Path]::GetTempFileName()
+try {
+    Invoke-WebRequest -Uri $url -OutFile $download -TimeoutSec 180
+    if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne $hash) {
+        throw "Le fichier public diffère de l’installateur local. Aucun manifeste modifié."
+    }
+}
+finally { Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue }
 $folder = Join-Path $repoRoot "artifacts/winget/manifests/a/Aleqsd/CodexTracker/$Version"
 New-Item -ItemType Directory -Path $folder -Force | Out-Null
-$url = "https://github.com/Aleqsd/codex-tracker/releases/download/v$Version/CodexTracker-$Version-Setup.exe"
 @"
 # yaml-language-server: `$schema=https://aka.ms/winget-manifest.version.1.12.0.schema.json
 PackageIdentifier: Aleqsd.CodexTracker
@@ -69,6 +87,10 @@ Installers:
 ManifestType: installer
 ManifestVersion: 1.12.0
 "@ | Set-Content -LiteralPath (Join-Path $folder 'Aleqsd.CodexTracker.installer.yaml') -Encoding utf8
+Get-ChildItem -LiteralPath $folder -Filter '*.yaml' -File | ForEach-Object {
+    $yaml = [IO.File]::ReadAllText($_.FullName).Replace("`r`n", "`n").Replace("`n", "`r`n")
+    [IO.File]::WriteAllText($_.FullName, $yaml, [Text.UTF8Encoding]::new($false))
+}
 & winget validate --manifest $folder --disable-interactivity
 if ($LASTEXITCODE) { throw 'Validation WinGet échouée.' }
 Write-Output $folder

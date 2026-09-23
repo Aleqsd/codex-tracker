@@ -67,6 +67,7 @@ jobs:
           dotnet run --project tests/CodexTracker.UiSmoke/CodexTracker.UiSmoke.csproj -c Release --no-build
           if ($LASTEXITCODE) { throw 'WPF checks failed.' }
           ./scripts/test-release-signing.ps1
+          ./scripts/test-winget.ps1
       - name: Publish application
         run: ./scripts/publish.ps1
       - name: Read application metadata
