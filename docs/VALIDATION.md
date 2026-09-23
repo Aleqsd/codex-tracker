@@ -1,3 +1,15 @@
+# Version 0.9.2 — stockage Windows unifié, 23 septembre 2026
+
+La disparition répétée est expliquée : un lancement depuis Codex héritait de la redirection MSIX d’AppData, tandis qu’un lancement depuis le bureau utilisait le dossier normal. Le chemin affiché par les variables d’environnement était identique. Le diagnostic a été confirmé par le chemin physique d’un fichier ouvert, puis par un lancement avec le contexte du bureau Windows. Les observations précédentes ci-dessous ne suffisaient donc pas à exclure ce défaut.
+
+- [CI Windows du commit 6585b66](https://github.com/Aleqsd/codex-tracker/actions/runs/35825263224) verte : **396 tests métier**, suite WPF, **14 contrôles MCP** sur l’exécutable publié et cycle installation/réinstallation/désinstallation avec données fictives conservées.
+- Treize régressions supplémentaires couvrent la fusion de cinq et deux profils fictifs, les dates et valeurs inconnues, les GUID différents ou en conflit, les historiques réattribués, les sources occupées ou endommagées, la reprise de migration et l’absence de résurrection après suppression volontaire.
+- Installation locale réelle de `0.9.2+6585b66`, empreinte du binaire installé identique au paquet. Récupération des anciens comptes et vérification des lignes dans l’arbre d’accessibilité de la fenêtre réelle.
+- Après fermeture puis lancement depuis l’environnement Codex affecté, le lanceur s’est terminé et le processus du tracker a démarré avec le contexte du bureau. Le stockage n’est plus redirigé, les comptes restent visibles et tous les anciens relevés sont conservés ou remplacés par une observation plus récente. Un seul processus principal reste ouvert.
+- Données et captures personnelles exclues du dépôt. Aucun compte Codex changé, aucune reconnexion ni notification externe de test. Les copies privées d’origine et la sauvegarde de migration sont conservées.
+
+Voir [le mécanisme de récupération et ses limites](STORAGE-RECOVERY.md). Ces contrôles ne constituent pas une campagne sur toutes les versions de Windows ou tous les environnements d’entreprise.
+
 # Préparation de la 1.0 — 22 septembre 2026
 
 - L’arbre d’accessibilité de l’application installée 0.9.1 expose le compteur de cinq comptes et leurs cinq lignes avec leurs derniers relevés. Aucun fichier privé n’a été modifié pour cette observation. La cause de l’affichage antérieur à deux comptes reste indéterminée ; aucun correctif de persistance n’est revendiqué.
