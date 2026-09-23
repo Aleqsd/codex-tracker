@@ -30,6 +30,9 @@ jobs:
           }
       - name: Build
         run: dotnet build CodexTracker.slnx -c Release --no-restore
+      - name: Test release signature guards
+        shell: pwsh
+        run: ./scripts/test-release-signing.ps1
       - name: Test
         run: dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx"
       - name: Test WPF activation and account features

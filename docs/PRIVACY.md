@@ -23,4 +23,6 @@ Les canaux et le MCP peuvent être désactivés depuis les réglages. Les fiches
 
 La désinstallation conserve les données pour permettre une réinstallation. Pour tout supprimer, quittez le tracker puis supprimez son dossier `%LOCALAPPDATA%\CodexTracker`. Les événements déjà importés dans Google Agenda, les messages transmis et les données du client assistant doivent être supprimés dans les services correspondants.
 
+Après une récupération d’un ancien stockage Windows redirigé, une copie peut aussi subsister dans `%LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Local\CodexTracker`. Elle est conservée pour éviter une perte de données. Pour effacer cette copie, supprimer uniquement ce sous-dossier `CodexTracker`, jamais le dossier du package Codex entier. Les sauvegardes privées créées manuellement hors du dossier principal doivent également être gérées séparément.
+
 Questions ou signalements : [dépôt du projet](https://github.com/Aleqsd/codex-tracker). Ne publiez jamais de clés, sessions ou captures de comptes personnels dans une issue.

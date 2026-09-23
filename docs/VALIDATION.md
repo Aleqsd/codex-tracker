@@ -1,3 +1,7 @@
+# Mise à niveau publique 0.9.1 → 0.9.2 — 23 septembre 2026
+
+Les [deux parcours Windows isolés](https://github.com/Aleqsd/codex-tracker/actions/runs/35827491176) ont réussi avec les paquets déjà publiés et le canal **stable** : téléchargement automatique par l’application, contrôle du bouton visible et activé, installation par bouton ou au lancement suivant, correspondance du binaire final aux empreintes publiques et conservation des fichiers fictifs. Les instances ont quitté proprement. Les [rapports](validation/public-update-0.9.1-to-0.9.2.json) distinguent ces contrôles de l’observation humaine et des essais sur matériel physique.
+
 # Version 0.9.2 — stockage Windows unifié, 23 septembre 2026
 
 La disparition répétée est expliquée : un lancement depuis Codex héritait de la redirection MSIX d’AppData, tandis qu’un lancement depuis le bureau utilisait le dossier normal. Le chemin affiché par les variables d’environnement était identique. Le diagnostic a été confirmé par le chemin physique d’un fichier ouvert, puis par un lancement avec le contexte du bureau Windows. Les observations précédentes ci-dessous ne suffisaient donc pas à exclure ce défaut.

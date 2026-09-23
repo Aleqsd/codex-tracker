@@ -13,8 +13,8 @@ param(
     [switch]$Plan,
     [switch]$Run,
     [switch]$DedicatedTestProfile,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$SourceVersion = '0.9.0',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$TargetVersion = '0.9.1',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$SourceVersion = '0.9.1',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$TargetVersion = '0.9.2',
     [switch]$IncludePrereleases,
     [ValidateSet('Startup', 'Button')][string]$InstallMode = 'Startup',
     [string]$ReportPath = 'artifacts/published-update/result.json'

@@ -1,0 +1,170 @@
+name: Prepare signed Windows release
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: 'Request real SignPath signatures (requires acceptance and configuration)'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: signed-windows-release
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: pwsh
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Aleqsd/codex-tracker'
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      SIGNING_REQUESTED: ${{ inputs.sign }}
+      SIGNPATH_ENABLED: ${{ vars.SIGNPATH_ENABLED }}
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+      SIGNPATH_APP_CONFIGURATION: ${{ vars.SIGNPATH_APP_CONFIGURATION }}
+      SIGNPATH_INSTALLER_CONFIGURATION: ${{ vars.SIGNPATH_INSTALLER_CONFIGURATION }}
+      SIGNPATH_CERTIFICATE_SUBJECT: ${{ vars.SIGNPATH_CERTIFICATE_SUBJECT }}
+    steps:
+      - name: Require explicit signing configuration
+        env:
+          SIGNPATH_TOKEN_PRESENT: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+        run: |
+          if ($env:SIGNING_REQUESTED -eq 'true') {
+            if ($env:SIGNPATH_ENABLED -ne 'true' -or $env:SIGNPATH_TOKEN_PRESENT -ne 'true') {
+              throw 'SignPath is not enabled or its token is missing. No unsigned fallback.'
+            }
+            foreach ($name in @('SIGNPATH_ORGANIZATION_ID', 'SIGNPATH_PROJECT_SLUG', 'SIGNPATH_SIGNING_POLICY_SLUG', 'SIGNPATH_APP_CONFIGURATION', 'SIGNPATH_INSTALLER_CONFIGURATION', 'SIGNPATH_CERTIFICATE_SUBJECT')) {
+              if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) { throw "Missing configuration: $name" }
+            }
+          }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Read version
+        run: |
+          $version = [string]([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw 'Invalid version.' }
+          "TRACKER_VERSION=$version" >> $env:GITHUB_ENV
+      - name: Build and test
+        run: |
+          dotnet restore CodexTracker.slnx
+          if ($LASTEXITCODE) { throw 'Restore failed.' }
+          dotnet build CodexTracker.slnx -c Release --no-restore
+          if ($LASTEXITCODE) { throw 'Build failed.' }
+          dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj -c Release --no-build
+          if ($LASTEXITCODE) { throw 'Tests failed.' }
+          dotnet run --project tests/CodexTracker.UiSmoke/CodexTracker.UiSmoke.csproj -c Release --no-build
+          if ($LASTEXITCODE) { throw 'WPF checks failed.' }
+          ./scripts/test-release-signing.ps1
+      - name: Publish application
+        run: ./scripts/publish.ps1
+      - name: Read application metadata
+        id: app_metadata
+        run: |
+          . ./scripts/release-signing.ps1
+          $identity = Assert-ReleaseIdentity "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe" $env:TRACKER_VERSION
+          "product_name=$($identity.ProductName | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
+          "product_version=$($identity.ProductVersion | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: inputs.sign
+        id: unsigned_app
+        with:
+          name: unsigned-application
+          path: artifacts/publish/${{ env.TRACKER_VERSION }}/CodexTracker.exe
+          if-no-files-found: error
+          retention-days: 7
+      - name: Sign application (manual approval in SignPath)
+        if: inputs.sign
+        uses: SignPath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_APP_CONFIGURATION }}
+          github-artifact-id: ${{ steps.unsigned_app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: artifacts/signpath/application
+          parameters: |
+            productName: ${{ steps.app_metadata.outputs.product_name }}
+            productVersion: ${{ steps.app_metadata.outputs.product_version }}
+      - name: Verify and use signed application
+        if: inputs.sign
+        run: |
+          . ./scripts/release-signing.ps1
+          $signed = 'artifacts/signpath/application/CodexTracker.exe'
+          $null = Assert-ReleaseIdentity $signed $env:TRACKER_VERSION
+          $null = Assert-ReleaseSignature $signed $env:SIGNPATH_CERTIFICATE_SUBJECT
+          Copy-Item -LiteralPath $signed -Destination "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
+      - name: Build installer containing the verified application
+        run: ./scripts/build-installer.ps1 -InstallCompiler
+      - name: Read installer metadata
+        id: installer_metadata
+        run: |
+          . ./scripts/release-signing.ps1
+          $identity = Assert-ReleaseIdentity "artifacts/CodexTracker-$env:TRACKER_VERSION-Setup.exe" $env:TRACKER_VERSION
+          "product_name=$($identity.ProductName | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
+          "product_version=$($identity.ProductVersion | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: inputs.sign
+        id: unsigned_setup
+        with:
+          name: unsigned-installer
+          path: artifacts/CodexTracker-${{ env.TRACKER_VERSION }}-Setup.exe
+          if-no-files-found: error
+          retention-days: 7
+      - name: Sign installer (manual approval in SignPath)
+        if: inputs.sign
+        uses: SignPath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_CONFIGURATION }}
+          github-artifact-id: ${{ steps.unsigned_setup.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: artifacts/signpath/installer
+          parameters: |
+            version: ${{ toJSON(env.TRACKER_VERSION) }}
+            productName: ${{ steps.installer_metadata.outputs.product_name }}
+            productVersion: ${{ steps.installer_metadata.outputs.product_version }}
+      - name: Assemble and verify final deliverables
+        run: |
+          . ./scripts/release-signing.ps1
+          $sign = $env:SIGNING_REQUESTED -eq 'true'
+          $setup = if ($sign) { "artifacts/signpath/installer/CodexTracker-$env:TRACKER_VERSION-Setup.exe" } else { "artifacts/CodexTracker-$env:TRACKER_VERSION-Setup.exe" }
+          $report = New-ReleaseBundle -PublishDirectory "artifacts/publish/$env:TRACKER_VERSION" -InstallerPath $setup -OutputDirectory artifacts/release-candidate -Version $env:TRACKER_VERSION -UnsignedRehearsal:(!$sign) -ExpectedSignerSubject $env:SIGNPATH_CERTIFICATE_SUBJECT
+          $report | ConvertTo-Json -Depth 5 | Set-Content artifacts/signing-validation.json -Encoding utf8
+      - name: Test final executable MCP protocol
+        run: python scripts/test-mcp.py "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
+      - name: Test final installer lifecycle
+        run: |
+          $report = Get-Content artifacts/signing-validation.json -Raw | ConvertFrom-Json
+          ./scripts/test-installer.ps1 -Run -DedicatedTestProfile -SetupPath "artifacts/release-candidate/CodexTracker-$env:TRACKER_VERSION-Setup.exe" -ExpectedVersion $env:TRACKER_VERSION -ExpectedExecutableSha256 $report.applicationSha256 -ReportPath artifacts/installer-lifecycle.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ inputs.sign && 'release-candidate-signed' || 'release-candidate-UNSIGNED-REHEARSAL' }}
+          path: artifacts/release-candidate/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: signing-validation
+          path: |
+            artifacts/signing-validation.json
+            artifacts/installer-lifecycle.json

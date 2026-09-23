@@ -54,3 +54,9 @@ Les versions stables sont sélectionnées par défaut. `IncludePrereleaseUpdates
 `RecoverableJsonFile` maintient une génération `.bak` validée pour les préférences, profils et relevés, et préserve le contenu endommagé avant remplacement. Il ne doit jamais restaurer un ancien journal d’envoi, reçu MCP ou identifiant. Une récupération des préférences coupe les rappels, alertes et MCP ; `RecoveryPending` garde l’avertissement visible jusqu’à un acquittement explicite. L’acquittement ne réactive rien.
 
 `CodexCompatibilityDiagnostic` expose uniquement des enums et dates. Le rapport de support est une projection explicite, sans sérialisation des comptes, préférences complètes, chemins, exceptions ou secrets. `CODEX_HOME` est résolu au démarrage ; le modifier nécessite de relancer le tracker.
+
+### Stockage et environnement Windows (0.9.2)
+
+Avant toute préférence ou collecte réelle, `EntryPoint` vérifie le chemin physique d’un fichier temporaire. Un processus lancé depuis un environnement MSIX peut hériter de sa redirection même sans identité de package. `DesktopEnvironment` relance alors le tracker avec le contexte du bureau, sans élévation. Le nouveau processus revérifie le chemin et refuse une seconde redirection : jamais de boucle ou de profil vide de remplacement. Le mode démo reste isolé ; le pont MCP conserve ses flux standard et n’ouvre aucun stockage.
+
+Sous le verrou exclusif du magasin normal, `ProfileStore.Recovery` rapproche une seule fois les anciens profils du cache Codex par adresse, choisit les relevés selon `FetchedAt`, réattribue les historiques et sauvegarde les fichiers d’origine. Les sources restent intactes. Le journal de migration empêche de réimporter un compte supprimé volontairement. Un journal endommagé bloque la fusion ; ne jamais effacer ce journal pour contourner une erreur. Voir [STORAGE-RECOVERY.md](STORAGE-RECOVERY.md).

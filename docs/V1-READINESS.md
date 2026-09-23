@@ -1,6 +1,18 @@
 # Préparer la version 1.0
 
-La 0.9.1 est une version de stabilisation. La préparation de la 1.0 distingue les fonctions implémentées, les vérifications déjà réalisées et les essais encore nécessaires. Une compilation verte ne valide pas à elle seule tous les comportements de Windows ou les services facultatifs.
+La **0.9.2** est la version de stabilisation courante. Le problème de comptes absents est expliqué et corrigé : la redirection MSIX créait deux stockages selon le mode de lancement. La signature de distribution, les essais physiques restants et la validation du binaire final restent nécessaires avant une 1.0 signée.
+
+## État au 23 septembre 2026
+
+- [x] Stockage unifié, récupération des anciens comptes et vérification réelle après lancement normal puis depuis Codex. Les données d’origine restent sauvegardées. Voir [STORAGE-RECOVERY.md](STORAGE-RECOVERY.md).
+- [x] **396 tests métier**, suite WPF, protocole MCP publié et cycle de l’installateur réussis en [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35825263224).
+- [x] Mise à niveau publique **0.9.1 → 0.9.2**, canal stable : téléchargement par l’application, bouton visible, installation par bouton et au prochain démarrage, puis conservation des données fictives. [Deux parcours réussis](https://github.com/Aleqsd/codex-tracker/actions/runs/35827491176), [rapports](validation/public-update-0.9.1-to-0.9.2.json).
+- [x] Notifications Windows confirmées visibles par l’utilisateur après installation de la 0.8.4. Le réglage « Ne pas déranger » a été résolu par l’utilisateur. Cela ne valide pas tous les autres postes.
+- [x] Intégration SignPath préparée avec vérification Authenticode, éditeur et horodatage, contrôle de l’EXE réellement installé et séparation des répétitions non signées. Les 28 contrôles locaux passent ; aucune signature du projet n’est revendiquée.
+- [ ] Candidature SignPath envoyée, acceptation obtenue, MFA et rôles configurés, première signature réelle vérifiée.
+- [ ] Essais matériels et bêta ci-dessous, puis fabrication et validation de l’exécutable final 1.0.
+
+Le parcours de signature est manuel et sa répétition ne contacte pas SignPath. Son admission et ses délais dépendent de la fondation ; une préparation ou un test simulé ne suffit pas à cocher la signature.
 
 ## Fonctions implémentées et couvertes
 
@@ -15,7 +27,7 @@ La 0.9.1 est une version de stabilisation. La préparation de la 1.0 distingue l
 - [x] CI Windows verte sur le commit livré `444ef42` (0.9.1) : 381 tests métier, suite WPF, construction de l’installateur et test MCP sur le binaire autonome. Cela ne valide pas un futur binaire 1.0.
 - [x] Validation renforcée sur `18a3ae8` : 383 tests métier, suite WPF et protocole MCP sur l’exécutable publié. Cycle réel de l’installateur en profil CI vierge : premier lancement sans Codex, fenêtre visible et réactive, arrêt propre, réinstallation et désinstallation conservant les données fictives. Ce Windows Server de CI ne remplace pas le poste Windows 11 standard ci-dessous.
 - [x] Installation locale de la 0.9.1 : exécutable attendu, processus réactif et conservation des profils, préférences, secrets chiffrés et historiques vérifiés.
-- [x] Affichage local des cinq comptes confirmé dans l’interface réelle de la 0.9.1 le 22 septembre 2026, avec cinq lignes et le compteur correspondant. Aucun fichier de données n’a été restauré ou modifié manuellement pour ce constat. La cause du précédent signalement de comptes absents n’est pas établie : ce constat ne démontre pas un correctif de persistance.
+- [x] Affichage local des cinq comptes confirmé dans l’interface réelle de la 0.9.1 le 22 septembre 2026. Ce constat historique ne prouvait pas la correction : le défaut de redirection a été identifié le lendemain et traité dans la 0.9.2, avec un test des deux contextes de lancement.
 
 Les preuves et limites sont consignées dans [VALIDATION.md](VALIDATION.md). Chaque case cochée vaut uniquement pour le scénario et la version indiqués. La suite WPF passe en CI pour la 0.9.1. Deux passages locaux avaient échoué sur le sélecteur de fuseau horaire avant correction du harnais de test ; la suite complète passe désormais aussi localement avec cette correction, sans modification du contrôle de production.
 
@@ -27,13 +39,13 @@ Le [test entre Releases publiques](PUBLISHED-UPDATE-TEST.md) dispose d’un work
 - [ ] Changer réellement de compte dans Codex ; vérifier l’identité active, la présence des autres comptes et les dates de leurs derniers relevés, puis fermer et rouvrir le tracker. Les transitions avec fichiers fictifs et le constat local des cinq lignes ne remplacent pas ce parcours.
 - [ ] Utiliser deux écrans physiques à DPI différents, sortir de veille, redémarrer Explorer et vérifier le démarrage avec Windows. Les rendus WPF et messages Windows simulés ne remplacent pas ces essais.
 - [ ] Confirmer la réception d’une notification Windows sur le poste d’essai, y compris l’effet de « Ne pas déranger ». Les contrôles simulés ne prouvent pas sa réception.
-- [ ] Utiliser quotidiennement le tracker pendant une semaine à plusieurs : relever mémoire/CPU, comportement de la collecte, perte et retour du réseau, notifications sans doublon et éventuelle réapparition de comptes absents. Si ce dernier symptôme réapparaît, consigner les étapes et états de l’interface avant toute restauration ; sa cause reste à reproduire.
+- [ ] Utiliser quotidiennement la 0.9.2 ou un candidat ultérieur pendant une semaine à plusieurs : relever mémoire/CPU, comportement de la collecte, perte et retour du réseau, notifications sans doublon et éventuelle réapparition de comptes absents. En cas de nouveau signalement, vérifier le contexte de lancement et le chemin physique du stockage avant toute restauration.
 
 Pour chaque essai, conserver la version exacte, la date, Windows et sa configuration d’affichage, les étapes, le résultat attendu et le résultat observé. N’inclure ni adresses, ni quotas réels, ni dossiers privés dans les preuves publiques.
 
 ## Validation du candidat 1.0
 
-- [ ] Décider de la signature de distribution et contrôler le résultat Authenticode sur l’EXE et l’installateur du candidat. La [préparation de la signature](SIGNATURE.md) décrit l’état non signé et une piste gratuite soumise à acceptation. Aucune signature n’est revendiquée tant que ces fichiers ne sont pas réellement signés.
+- [ ] Finaliser la signature SignPath et contrôler le résultat Authenticode sur l’EXE et l’installateur du candidat. La [préparation de la signature](SIGNATURE.md) décrit la configuration prévue et son activation après acceptation. Aucune signature n’est revendiquée tant que ces fichiers ne sont pas réellement signés.
 - [ ] Exécuter la CI Windows et le test MCP sur le binaire autonome exact destiné à la 1.0 ; résoudre ou expliquer toute différence avec les essais locaux.
 - [ ] Vérifier le Setup, le ZIP et leurs SHA-256, les notes courtes et la mise à niveau depuis la version publique retenue, en conservant les données existantes. Les preuves des 0.9.0 et 0.9.1 restent un historique, pas la validation du candidat.
 - [ ] Consigner les résultats des essais physiques et bêta ci-dessus, ainsi que les limites des intégrations facultatives, avant de décider la sortie stable.

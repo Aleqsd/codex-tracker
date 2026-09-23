@@ -14,6 +14,8 @@ param(
     [switch]$DedicatedTestProfile,
     [string]$SetupPath = '',
     [string]$ExpectedVersion = '',
+    [ValidatePattern('^[0-9a-fA-F]{64}$')]
+    [string]$ExpectedExecutableSha256,
     [string]$ReportPath = 'artifacts/installer-lifecycle.json'
 )
 $ErrorActionPreference = 'Stop'
@@ -40,6 +42,7 @@ $report = [ordered]@{
     expectedVersion = $null; installedVersion = $null; isolatedProfileChecked = $false
     initialInstallExitCode = $null; reinstallExitCode = $null; uninstallExitCode = $null
     executableVerified = $false; registrationVerified = $false
+    installedExecutableHashVerified = $null
     backgroundStartupResponding = $false; noCodexSessionChecked = $false; applicationExitClean = $null
     observedWindowFound = $false; observedWindowOwned = $false; observedWindowVisible = $false
     observedDispatcherResponding = $false; observedStoreLock = $false; observedProcessExited = $false
@@ -118,6 +121,10 @@ function Assert-Installed {
     }
     $report.installedVersion = $ExpectedVersion
     $report.executableVerified = $true
+    if ($ExpectedExecutableSha256) {
+        $report.installedExecutableHashVerified = (Get-FileHash -LiteralPath $runExe -Algorithm SHA256).Hash -ieq $ExpectedExecutableSha256
+        if (!$report.installedExecutableHashVerified) { Stop-Test 'installed_executable_hash_mismatch' }
+    }
     if (!(Test-Path -LiteralPath $registration)) { Stop-Test 'per_user_registration_missing' }
     $installed = Get-ItemProperty -LiteralPath $registration
     if ([IO.Path]::GetFullPath($installed.InstallLocation).TrimEnd('\') -ine $installDirectory -or

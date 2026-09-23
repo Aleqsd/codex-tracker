@@ -13,14 +13,14 @@ Le mode démo ne convient pas : il désactive volontairement la mise à jour aut
 PowerShell 7 est requis. Par défaut, la commande affiche seulement son plan, sans écriture, requête réseau ou lancement :
 
 ```powershell
-./scripts/test-published-update.ps1 -Plan -IncludePrereleases
+./scripts/test-published-update.ps1 -Plan
 ```
 
 Dans le profil de test uniquement :
 
 ```powershell
 ./scripts/test-published-update.ps1 -Run -DedicatedTestProfile `
-    -SourceVersion 0.9.0 -TargetVersion 0.9.1 -IncludePrereleases -InstallMode Startup `
+    -SourceVersion 0.9.1 -TargetVersion 0.9.2 -InstallMode Startup `
     -ReportPath artifacts/published-update/result.json
 ```
 
