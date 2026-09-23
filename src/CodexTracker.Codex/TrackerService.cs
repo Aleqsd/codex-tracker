@@ -14,6 +14,7 @@ public sealed record TrackerServiceOptions
     public TimeSpan DetectionInterval { get; init; } = TimeSpan.FromSeconds(2);
     public bool AutomaticRefresh { get; init; } = true;
     public bool MonitorAuthChanges { get; init; } = true;
+    public IReadOnlyList<string> RedirectedDataDirectories { get; init; } = [];
 }
 
 public interface IAccountUsageReader
@@ -73,6 +74,7 @@ public sealed class TrackerService : ITrackerService
             if (_disposed) throw new OperationCanceledException("Codex Tracker se ferme.");
             if (_initialized) return;
             _store.Open();
+            _store.RecoverRedirectedStores(_options.RedirectedDataDirectories);
             var settings = _store.LoadSettings();
             var snapshots = _store.LoadSnapshots();
             foreach (var profile in settings.Accounts) _telemetry[profile.Id] = _store.LoadTelemetry(profile.Id, DateTimeOffset.UtcNow);

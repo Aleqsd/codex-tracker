@@ -83,6 +83,7 @@ public partial class App : System.Windows.Application
             }
             _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice")) : new Codex.TrackerService(options: new()
             {
+                RedirectedDataDirectories = Codex.DesktopEnvironment.FindRedirectedStores(),
                 RefreshIntervalProvider = () =>
                 {
                     var p = preferences.Current;

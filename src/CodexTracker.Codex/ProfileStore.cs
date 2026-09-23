@@ -13,7 +13,7 @@ internal sealed record AccountTelemetry(IReadOnlyList<UsageSample> Samples, Quot
 }
 
 // Only display metadata is persisted. Legacy credential vaults are never opened or modified.
-internal sealed class ProfileStore(string root) : IDisposable
+internal sealed partial class ProfileStore(string root) : IDisposable
 {
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
     private readonly string _root = Path.GetFullPath(root);
