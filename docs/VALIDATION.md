@@ -6,6 +6,8 @@ Les tests couvrent les candidats PATH/local/npm, leur ordre et déduplication, l
 
 La compilation locale Release passe sans avertissement ; les **425 tests métier** et les contrôles WPF réussissent. Le relevé réel est vérifié séparément des tests simulés, avec le collecteur corrigé et la découverte automatique, sans modification du magasin de comptes installé.
 
+La [CI Windows sur `2f6cf09`](https://github.com/Aleqsd/codex-tracker/actions/runs/35978841968) est verte, y compris le protocole MCP sur l’exécutable autonome, son délai de démarrage et le cycle de l’installateur. Le paquet exact de cette CI a été installé après sauvegarde : les fichiers privés sont inchangés pendant l’installation, les comptes et relevés précédents restent présents après relance, et un nouveau relevé est reçu. L’interface réelle confirme la disparition de l’erreur et l’heure actualisée. SHA-256 de l’exécutable installé : `e72f7b34a4bc8423bb60612604f8a56bdc0990e62ce2fb93ccee7e4feebc85e6`.
+
 # Version 0.9.3 — resets probables des comptes inactifs
 
 Les contrôles locaux couvrent l’instant exact du reset, les observations futures ou incohérentes, l’isolation des comptes et fenêtres, les dates absentes, les quotas invalides, les changements de fuseau, la fin de validité après une fenêtre, le rattrapage et l’absence d’envoi externe. Le journal est écrit avant transmission à Windows ; la répétition après redémarrage et l’annulation des reports après désactivation, suppression, changement de compte actif ou d’échéance sont testées avec un adaptateur simulé.
