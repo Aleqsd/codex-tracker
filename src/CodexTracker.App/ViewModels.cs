@@ -182,7 +182,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
                 return _state.IsBusy ? "Première actualisation…" : _state.ActiveAccount is null ? "En attente du compte actif" : "Aucun relevé reçu";
             var at = snapshot.FetchedAt.ToLocalTime();
             var date = at.ToString(at.Date == DateTimeOffset.Now.Date ? "HH:mm:ss" : "dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("fr-FR"));
-            return $"Dernière mise à jour : {date}" + (_state.IsBusy ? " · actualisation…" : _state.ActiveAccount.Error is not null ? " · échec du dernier essai" : "");
+            return $"Dernière mise à jour : {date}" + (_state.IsBusy ? " · actualisation…" : _state.ActiveAccount.Error is not null ? " · échec de lecture des quotas" : "");
         }
     }
     public string StatusHint => _state.ActiveAccount?.Snapshot is { } snapshot

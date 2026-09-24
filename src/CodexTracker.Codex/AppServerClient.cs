@@ -22,8 +22,12 @@ internal sealed class AppServerClient : IAsyncDisposable
 
     public static async Task<AppServerClient> StartAsync(string executable, string home, bool externalAuth,
         Func<CancellationToken, Task<object>>? rereadDesktopTokens, CancellationToken cancellationToken)
+        => await StartAsync([executable], home, externalAuth, rereadDesktopTokens, cancellationToken);
+
+    public static async Task<AppServerClient> StartAsync(IReadOnlyList<string> executables, string home, bool externalAuth,
+        Func<CancellationToken, Task<object>>? rereadDesktopTokens, CancellationToken cancellationToken)
     {
-        var start = new ProcessStartInfo(executable)
+        var start = new ProcessStartInfo
         {
             UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
@@ -38,7 +42,12 @@ internal sealed class AppServerClient : IAsyncDisposable
         foreach (var name in new[] { "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN",
             "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT", "CODEX_SQLITE_HOME" })
             start.Environment.Remove(name);
-        var process = Process.Start(start) ?? throw new TrackerException("Impossible de démarrer le service Codex.", CodexFailureCode.ServiceUnavailable);
+        var process = CodexLocator.StartProcess(executables, executable =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            start.FileName = executable;
+            return Process.Start(start) ?? throw new TrackerException("Impossible de démarrer le service Codex.", CodexFailureCode.ServiceUnavailable);
+        });
         AppServerClient client;
         try { client = new AppServerClient(process, rereadDesktopTokens); }
         catch

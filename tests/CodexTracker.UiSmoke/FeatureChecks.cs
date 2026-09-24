@@ -260,7 +260,7 @@ internal static class FeatureChecks
             var status = new DashboardViewModel(true, preferences); status.Update(service.State);
             Check(status.StatusText.Contains(observed.ToLocalTime().ToString("HH:mm:ss")) && status.StatusHint.Contains("UTC"), "Footer shows the actual observation time and timezone");
             status.Update(service.State with { Accounts = service.State.Accounts.Select(a => a.IsActiveInCodex ? a with { Error = "offline" } : a).ToArray() });
-            Check(status.StatusText.Contains(observed.ToLocalTime().ToString("HH:mm:ss")) && status.StatusText.Contains("échec"), "Failed refresh keeps the last successful observation time");
+            Check(status.StatusText.Contains(observed.ToLocalTime().ToString("HH:mm:ss")) && status.StatusText.Contains("échec de lecture des quotas"), "Failed quota read is distinct from an application update and keeps the last observation time");
 
             var opened = new List<Uri>();
             var calendar = new CalendarWindow(window, service, preferences, theme, openBrowser: opened.Add); calendar.Show();

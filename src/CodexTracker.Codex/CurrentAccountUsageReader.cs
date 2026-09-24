@@ -10,13 +10,15 @@ internal sealed class CurrentAccountUsageReader(string authPath, ProfileStore st
     {
         var identity = await ReadIdentityAsync(authPath, cancellationToken);
         Validate(identity, profile.Email, expectedAccountId);
-        var executable = options.CodexExecutablePath ?? CodexLocator.FindExecutable()
-            ?? throw MissingExecutable();
-        if (!File.Exists(executable)) throw MissingExecutable();
+        // An installed MSIX binary may exist but refuse execution after a desktop update.
+        // Keep all already-installed candidates so process creation can use the accessible copy.
+        IReadOnlyList<string> executables = options.CodexExecutablePath is { } explicitPath
+            ? [explicitPath] : CodexLocator.FindExecutables();
+        if (executables.Count == 0) throw MissingExecutable();
         var home = store.CreateRuntime();
         try
         {
-            await using var client = await AppServerClient.StartAsync(executable, home, true, async token =>
+            await using var client = await AppServerClient.StartAsync(executables, home, true, async token =>
             {
                 var current = await ReadIdentityAsync(authPath, token);
                 Validate(current, profile.Email, expectedAccountId);

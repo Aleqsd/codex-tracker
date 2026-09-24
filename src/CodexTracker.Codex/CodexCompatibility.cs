@@ -6,7 +6,7 @@ public enum CodexServiceStatus { NotChecked, Missing, Compatible, Incompatible, 
 public enum CodexFailureCode
 {
     None, Unknown, InvalidHome, SessionMissing, SessionUnreadable, UnsupportedSession, SessionExpired,
-    CodexNotFound, ProtocolUnsupported, ServiceUnavailable, RequestTimedOut, AccountChanged
+    CodexNotFound, ProtocolUnsupported, ServiceUnavailable, RequestTimedOut, AccountChanged, CodexLaunchFailed
 }
 
 // Deliberately contains no paths, identity, credentials, quotas, or exception text. Safe to copy for support.

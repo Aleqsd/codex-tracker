@@ -1,3 +1,11 @@
+# Version 0.9.4 — accès au collecteur Codex
+
+La panne est reproduite sur Windows : une copie native de Codex trouvée dans le PATH existe mais son lancement échoue avec l’erreur système 5 (accès refusé). Une autre copie déjà installée par Codex démarre et lit les quotas du compte courant. Après correction, la découverte automatique passe ce même essai réel dans un dossier de diagnostic isolé. Aucune connexion, écriture de session, modification d’ACL ou élévation n’est nécessaire.
+
+Les tests couvrent les candidats PATH/local/npm, leur ordre et déduplication, les exécutables disparus ou impossibles à démarrer, l’arrêt au premier démarrage réussi, l’annulation et les erreurs qui ne doivent pas déclencher de nouvel essai. Les erreurs ne révèlent ni chemin privé ni message système brut. Le pied de fenêtre précise désormais **« échec de lecture des quotas »**, pour éviter la confusion avec les mises à jour de l’application. Les tests ne lancent aucun exécutable fictif et n’effectuent aucun envoi externe.
+
+La compilation locale Release passe sans avertissement ; les **425 tests métier** et les contrôles WPF réussissent. Le relevé réel est vérifié séparément des tests simulés, avec le collecteur corrigé et la découverte automatique, sans modification du magasin de comptes installé.
+
 # Version 0.9.3 — resets probables des comptes inactifs
 
 Les contrôles locaux couvrent l’instant exact du reset, les observations futures ou incohérentes, l’isolation des comptes et fenêtres, les dates absentes, les quotas invalides, les changements de fuseau, la fin de validité après une fenêtre, le rattrapage et l’absence d’envoi externe. Le journal est écrit avant transmission à Windows ; la répétition après redémarrage et l’annulation des reports après désactivation, suppression, changement de compte actif ou d’échéance sont testées avec un adaptateur simulé.
