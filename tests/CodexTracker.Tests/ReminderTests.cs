@@ -324,6 +324,21 @@ public sealed class ReminderTests
         await f.Dispatcher.TickAsync(); Assert.Single(f.Desktop); Assert.Equal(0, f.Handler.Requests);
         if (disable) Assert.All(f.Journal.Entries, d => Assert.Equal(DeliveryStatus.Cancelled, d.Status));
     }
+    [Fact]
+    public async Task GlobalNotificationWaitsForSourceRecoveryWithoutDiscardingItsReceipt()
+    {
+        using var f = new Fixture(); f.ExpectedResets = true; f.Rules = [];
+        var announcement = new GlobalResetAnnouncement("source-outage", "Example", "https://example.com/reset", "https://example.com/scope",
+            Now.AddMinutes(-20), Now.AddMinutes(-10), Now, ["pro"], [ResetKind.Weekly]);
+        var account = f.State.Accounts[0];
+        account = account with { Snapshot = account.Snapshot! with { PlanType = "pro", FetchedAt = Now.AddHours(-2) } };
+        f.State = new([account], null) { GlobalResetFeed = new([announcement], Now, "Source unavailable") };
+        await f.Dispatcher.TickAsync(); Assert.Empty(f.Desktop);
+        Assert.Equal(DeliveryStatus.Deferred, Assert.Single(f.Journal.Entries).Status);
+        f.State = f.State with { GlobalResetFeed = new([announcement], Now) };
+        await f.Dispatcher.TickAsync(); Assert.Single(f.Desktop);
+        f.Recreate(); await f.Dispatcher.TickAsync(); Assert.Single(f.Desktop); Assert.Equal(0, f.Handler.Requests);
+    }
     private sealed class Clock : TimeProvider { public DateTimeOffset Now { get; set; } = ReminderTests.Now; public override DateTimeOffset GetUtcNow() => Now; }
     private sealed class Handler : HttpMessageHandler
     {

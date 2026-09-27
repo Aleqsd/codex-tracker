@@ -78,3 +78,8 @@ jobs:
         with:
           name: installer-lifecycle-results
           path: artifacts/installer-lifecycle.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fictional-global-reset-previews
+          path: artifacts/previews/global-*.png

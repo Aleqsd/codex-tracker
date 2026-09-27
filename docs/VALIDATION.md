@@ -1,3 +1,9 @@
+# Version 0.9.6 — contrôle et explications des annonces
+
+Régressions supplémentaires : raison précise d’absence d’estimation, portée limitée dans une fin de phrase, ordre des mots Codex/quotas, fenêtre courte seule, contrôle manuel et double clic, désactivation/réactivation rapide avec réponse tardive, annulation pendant la veille, délai HTTP 429 conservé, source supprimée et alerte différée jusqu’au retour des sources. La notification compte les comptes distincts et garde la mention des autres rappels. Les prestataires et notifications sont simulés, sans envoi externe réel.
+
+Les vérifications WPF sont exécutées sur la CI : explications par compte, section repliable conservée après collecte, annonce consultable après un nouveau relevé, contrôle manuel inactif en démo, clair/sombre, fenêtres normale/compacte et rendus 96/144/192 DPI. Les captures exclusivement fictives sont jointes à la CI sous `fictional-global-reset-previews`. Aucun test UI local n’est lancé pendant Final Fantasy XIV.
+
 # Version 0.9.5 — annonces de resets généraux
 
 Les 447 tests métier passent localement. Les nouvelles régressions simulent le flux public et X : scope payant/Free, crédits et promesses, contexte manquant, auteur incorrect, correction ultérieure, dates dérivées de l’identifiant, réponses trop grandes, redirection, panne, délai de reprise, désactivation pendant une requête, ancienneté, nouvelle observation et changement d’heure. Les notifications Windows sont simulées : écriture avant envoi, regroupement, absence de doublon après redémarrage et annulation des reports. Aucun SMS, appel ou email réel.

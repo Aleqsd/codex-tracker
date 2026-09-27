@@ -10,6 +10,10 @@ Le tracker peut signaler qu’un compte inactif est **probablement à 100 %** ap
 
 **Réglages → Rappels → Annonces de resets généraux** affiche l’état et la date de vérification. L’option peut être désactivée indépendamment des rappels habituels. Les sources sont consultables au clavier et à la souris dans l’onglet **Resets**.
 
+Le bouton **Vérifier les annonces** relit les sources sans actualiser vos comptes. Il autorise au maximum un contrôle manuel par minute ; une limitation du prestataire impose 30 minutes d’attente, y compris après une veille ou une désactivation/réactivation. Le dernier contrôle réussi, le prochain essai et une vérification en cours sont affichés séparément. Désactiver l’option annule la requête en cours ; une réponse tardive ne peut pas rétablir les estimations.
+
+Dans **Resets**, l’encart indique le nombre de comptes probablement rechargés et le temps restant de validité. **Détail des comptes** explique le résultat pour chaque quota : estimation, compte actif, relevé plus récent, offre hors portée, données insuffisantes ou estimation expirée. Un relevé plus récent ne signifie pas que le reset est confirmé. Les détails restent ouverts après actualisation et l’annonce reste consultable quand aucune estimation n’est nécessaire. Les notifications regroupées comptent les comptes, pas leurs fenêtres de quota.
+
 ## Sources et prudence
 
 L’[index public communautaire de shixi-11](https://shixilin.com/ai/codex-claude-resets/) sert uniquement à découvrir des URL. Ses classifications, traductions et textes ne décident jamais d’un reset. Aucun code de ce projet n’est intégré.
@@ -24,6 +28,6 @@ X oEmbed ne prouve pas le lien entre deux messages. Une confirmation vague ne r�
 
 Les quotas, échéances, crédits, historique, prévisions et pourcentage de l’icône restent les mesures de Codex. Les estimations constituent une présentation séparée. Dans Resets, les anciennes dates sont explicitement à reconfirmer ; aucune nouvelle échéance n’est inventée. Pendant l’estimation, les rappels de ces anciennes échéances de quota sont suspendus, sans modifier les règles ; les réserves restent indépendantes.
 
-Les preuves publiques restent en mémoire. Au redémarrage, elles doivent être revérifiées ; les notifications déjà envoyées restent dédupliquées par le journal persistant. En cas de panne après une vérification réussie, les preuves précédentes restent datées et expirent normalement. Désactiver la détection retire immédiatement ses estimations et annule les notifications encore différées.
+Les preuves publiques restent en mémoire. Au redémarrage, elles doivent être revérifiées ; les notifications déjà envoyées restent dédupliquées par le journal persistant. En cas de panne temporaire après une vérification réussie, les preuves précédentes restent datées et expirent normalement, mais une alerte encore en attente attend un contrôle réussi. Une source supprimée, inaccessible par refus ou dont le format/identité ne peut plus être validé retire les estimations. Désactiver la détection retire immédiatement ses estimations et annule les notifications encore différées.
 
 La démo `--demo --demo-global-resets` utilise uniquement des comptes, liens et annonces fictifs, sans réseau.

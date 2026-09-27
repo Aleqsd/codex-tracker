@@ -38,7 +38,12 @@ public sealed class ReminderDispatcher(
                     if (!Due(_clock.GetUtcNow()).Any(x => x.Key == r.Key)) continue;
                     var legacy = r.Kind == ResetKind.Reserve && legacySent().ContainsKey(CalendarExport.Identity(r.AccountId, "credit", r.CreditId!, r.At));
                     if (r.LeadMinutes != urgent || legacy) { Put(r, DeliveryStatus.Skipped, legacy ? "Rappel déjà envoyé avant migration." : "Rappel remplacé par le délai le plus proche."); continue; }
-                    if (r.Channel == ReminderChannel.Windows) { desktop.Add(r); continue; }
+                    if (r.Channel == ReminderChannel.Windows)
+                    {
+                        if (ReminderPlanner.IsGlobalReset(r) && state().GlobalResetFeed?.Error is not null)
+                        { Defer(r, "En attente d’une nouvelle vérification des sources publiques."); continue; }
+                        desktop.Add(r); continue;
+                    }
                     var configuration = secrets.Read();
                     if (!NotificationProviders.Configured(r.Channel, configuration)) { Put(r, DeliveryStatus.Cancelled, "Canal désactivé ou configuration incomplète."); continue; }
                     if (r.Channel is ReminderChannel.Sms or ReminderChannel.Call)
@@ -56,7 +61,8 @@ public sealed class ReminderDispatcher(
             {
                 token.ThrowIfCancellationRequested();
                 var current = Due(_clock.GetUtcNow()).Select(r => r.Key).ToHashSet();
-                desktop = desktop.Where(r => current.Contains(r.Key)).ToList();
+                desktop = desktop.Where(r => current.Contains(r.Key) &&
+                    (!ReminderPlanner.IsGlobalReset(r) || state().GlobalResetFeed?.Error is null)).ToList();
                 foreach (var r in desktop) Put(r, DeliveryStatus.Submitting, "Transmission à Windows.");
                 if (desktop.Count > 0)
                 {

@@ -15,6 +15,8 @@ internal sealed class ResetsView : UserControl
     private readonly Button _refresh;
     private readonly Grid _heading;
     private readonly List<(ResetScheduleEntry Entry, TextBlock Countdown, TextBlock Freshness)> _rows = [];
+    private readonly HashSet<string> _openAnnouncements = [];
+    private readonly List<GlobalResetCard> _announcementCards = [];
     private TrackerState _state = new([], null);
     private DateTimeOffset? _nextBoundary;
     private bool _syncing;
@@ -102,7 +104,7 @@ internal sealed class ResetsView : UserControl
         _heading.Visibility = _weekView ? Visibility.Collapsed : Visibility.Visible;
         _reserves.Visibility = _weekView ? Visibility.Collapsed : Visibility.Visible;
         _summary.ToolTip = _reserves.Text + "\n" + _reserves.ToolTip;
-        _rows.Clear(); _timeline.Children.Clear();
+        _rows.Clear(); _timeline.Children.Clear(); _announcementCards.Clear();
         AddGlobalAnnouncement(accounts, now);
         if (_kindFilter is null or ResetKind.Reserve) AddPriority(accountId, accounts, now);
         if (_weekView) AddWeek(entries, now);
@@ -121,34 +123,17 @@ internal sealed class ResetsView : UserControl
     }
     private void AddGlobalAnnouncement(AccountState[] accounts, DateTimeOffset now)
     {
-        var kinds = _kindFilter is { } kind ? new[] { kind } : new[] { ResetKind.Weekly, ResetKind.Short };
-        var applicable = accounts.SelectMany(account => kinds.Select(kind => GlobalResetAnnouncement.For(account, kind, _state.GlobalResetFeed, now)))
-            .OfType<GlobalResetAnnouncement>().DistinctBy(a => a.Id).OrderByDescending(a => a.ReportedAt).ToArray();
-        foreach (var announcement in applicable)
+        if (accounts.Length == 0 || _kindFilter == ResetKind.Reserve) return;
+        foreach (var announcement in (_state.GlobalResetFeed?.Announcements ?? []).Where(a => a.IsCurrent(now)).OrderByDescending(a => a.ReportedAt))
         {
-            var panel = new StackPanel();
-            var title = Ui.Text("Reset général · annoncé comme terminé", 13); title.FontWeight = FontWeights.SemiBold; panel.Children.Add(title);
-            panel.Children.Add(Ui.Text($"Annonce du {Display.Exact(announcement.ReportedAt)} · {Display.Zone(announcement.ReportedAt)}", 11, "MutedBrush"));
-            var names = string.Join(" · ", accounts.Where(account => kinds.Any(kind => announcement.Applies(account, kind, now))).Select(AccountName));
-            panel.Children.Add(Ui.Text(names + " · ≈100 % estimé", 12, "GoodBrush"));
-            panel.Children.Add(Ui.Text("À confirmer dans Codex. Les dates ci-dessous proviennent des anciens relevés ; aucune nouvelle échéance n’est déduite de l’annonce.", 11, "MutedBrush"));
-            var links = new WrapPanel();
-            foreach (var (label, url) in new[] { ("Voir la confirmation ↗", announcement.SourceUrl), ("Voir les comptes concernés ↗", announcement.AnnouncementUrl) }.DistinctBy(x => x.Item2))
-            {
-                var button = new Button { Content = label, ToolTip = url, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(0, 6, 14, 0), FontSize = 11 };
-                button.Click += (_, _) =>
+            var kinds = announcement.Kinds.Where(k => _kindFilter is null || k == _kindFilter).Distinct().Order().ToArray();
+            if (kinds.Length == 0) continue;
+            var card = new GlobalResetCard(announcement, accounts, kinds, AccountName, _state.GlobalResetFeed?.Error,
+                _openAnnouncements.Contains(announcement.Id), open =>
                 {
-                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
-                    catch (Exception) { button.ToolTip = "Impossible d’ouvrir le navigateur. " + url; }
-                };
-                links.Children.Add(button);
-            }
-            panel.Children.Add(links);
-            if (_state.GlobalResetFeed?.Error is { } error) panel.Children.Add(Ui.Text(error, 11, "MutedBrush"));
-            var border = new Border { Name = "GlobalResetNotice", Child = panel, Padding = new Thickness(12, 10, 12, 10), BorderThickness = new Thickness(2, 0, 0, 0), Margin = new Thickness(0, 8, 0, 8) };
-            border.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); border.SetResourceReference(Border.BorderBrushProperty, "GoodBrush");
-            border.ToolTip = $"Sources vérifiées le {Display.Exact(announcement.VerifiedAt)}. Estimation hebdomadaire valable jusqu’au {Display.Exact(announcement.ReportedAt.AddHours(24))}. Le compte actif garde son quota mesuré.";
-            _timeline.Children.Add(border);
+                    if (open) _openAnnouncements.Add(announcement.Id); else _openAnnouncements.Remove(announcement.Id);
+                });
+            _announcementCards.Add(card); _timeline.Children.Add(card);
         }
     }
     private void AddPriority(Guid? accountId, AccountState[] accounts, DateTimeOffset now)
@@ -289,6 +274,7 @@ internal sealed class ResetsView : UserControl
     }
     private void UpdateTimes(DateTimeOffset now)
     {
+        foreach (var card in _announcementCards) card.Tick();
         foreach (var (entry, countdown, freshness) in _rows)
         {
             var reset = ExpectedReset.For(entry.Account, entry.Kind, now, _state.GlobalResetFeed);

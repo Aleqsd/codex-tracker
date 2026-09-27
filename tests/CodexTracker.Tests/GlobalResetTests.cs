@@ -77,6 +77,10 @@ public sealed class GlobalResetTests
     [InlineData("We've reset usage limits in Codex for all paid users except Pro.")]
     [InlineData("We haven't reset usage limits in Codex for all paid users.")]
     [InlineData("Resets all propagated. That will be all. Have a fantastic weekend.")]
+    [InlineData("We've reset usage limits in Codex for all paid users in the beta.")]
+    [InlineData("We've reset usage limits in Codex for all paid users who signed up today.")]
+    [InlineData("Someone said. We've reset usage limits in Codex for all paid users.")]
+    [InlineData("We've reset usage limits in Codex for all paid users. Restrictions apply.")]
     public async Task PromisesCreditsUnknownScopesAndUnreviewedContextNeverBecomeCompleted(string text)
     {
         var posts = new Dictionary<string, string> { [Id(Now.AddHours(-1))] = text, [Id(Now.AddHours(-2))] = Context };
@@ -88,6 +92,112 @@ public sealed class GlobalResetTests
     {
         var item = Assert.Single((await Read(new() { [Id(Now.AddHours(-1))] = $"We've now reset weekly usage limits in Codex for {scope}." })).Announcements);
         Assert.Equal(free, item.Plans.Contains("free")); Assert.Equal([ResetKind.Weekly], item.Kinds);
+    }
+    [Fact]
+    public async Task ProductBeforeLimitsAndSpecificWindowRemainBounded()
+    {
+        var item = Assert.Single((await Read(new() { [Id(Now.AddMinutes(-2))] = "We've reset Codex 5-hour usage limits for all paid users. Enjoy!" })).Announcements);
+        Assert.Equal([ResetKind.Short], item.Kinds); Assert.DoesNotContain("free", item.Plans);
+    }
+
+    [Fact]
+    public void AccountReasonsDistinguishObservationAndEligibilityWithoutImplyingAConfirmedReset()
+    {
+        var a = Announcement; var account = Account();
+        Assert.Equal(GlobalResetAccountStatus.Estimated, a.StatusFor(account, ResetKind.Weekly, Now));
+        Assert.Equal(GlobalResetAccountStatus.NotCovered, a.StatusFor(Account("free"), ResetKind.Weekly, Now));
+        Assert.Equal(GlobalResetAccountStatus.InsufficientData, a.StatusFor(Account(null), ResetKind.Weekly, Now));
+        Assert.Equal(GlobalResetAccountStatus.Active, a.StatusFor(account with { IsActiveInCodex = true }, ResetKind.Weekly, Now));
+        Assert.Equal(GlobalResetAccountStatus.NewerObservation, a.StatusFor(account with { Snapshot = account.Snapshot! with { FetchedAt = a.AnnouncedAt } }, ResetKind.Weekly, Now));
+        Assert.Equal(GlobalResetAccountStatus.Expired, a.StatusFor(account, ResetKind.Short, Now));
+    }
+
+    private sealed class ControlledReader : IGlobalResetReader
+    {
+        public int Calls;
+        public Exception? Failure;
+        public TaskCompletionSource? Hold;
+        public CancellationToken LastToken;
+        public async Task<GlobalResetFeedState> ReadAsync(DateTimeOffset now, CancellationToken token = default)
+        {
+            Calls++; LastToken = token;
+            if (Hold is { } hold) await hold.Task; // Simulates a transport completing after cancellation.
+            if (Failure is { } error) throw error;
+            return new([Announcement], now);
+        }
+    }
+    [Fact]
+    public void DesktopSummaryCountsAccountsInsteadOfWindowsAndKeepsOtherRemindersVisible()
+    {
+        var accounts = new[] { Account(), Account(), Account() };
+        var fresh = Announcement with { ReportedAt = Now.AddHours(-1) };
+        var rows = ExpectedReset.Due(new(accounts, null) { GlobalResetFeed = new([fresh]) }, Now);
+        Assert.Equal(6, rows.Count);
+        var summary = DesktopReminderText.For(rows);
+        Assert.Contains("3 comptes", summary.Title); Assert.Contains("(+1)", summary.Body);
+        Assert.Contains("probablement", summary.Body); Assert.Contains("relevés datés", summary.Body);
+        Assert.DoesNotContain("6 événements", summary.Title);
+        var other = rows[0] with { Key = "ordinary-reminder", LeadMinutes = 60 };
+        Assert.Contains("D’autres rappels", DesktopReminderText.For([.. rows, other]).Body);
+        Assert.Equal(ReminderPlanner.Body(other), DesktopReminderText.For([other]).Body);
+    }
+    [Fact]
+    public async Task RapidDisableReenableAndConcurrentChecksCannotRestoreAnOldResponse()
+    {
+        bool enabled = true; var reader = new ControlledReader { Hold = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var monitor = new GlobalResetMonitor(reader, () => enabled);
+        var first = monitor.CheckAsync(Now); Assert.True(monitor.State!.IsChecking);
+        await monitor.CheckAsync(Now, manual: true); Assert.Equal(1, reader.Calls);
+        enabled = false; monitor.Synchronize(); Assert.True(reader.LastToken.IsCancellationRequested); Assert.Null(monitor.State);
+        enabled = true; monitor.Synchronize(); reader.Hold.SetResult(); await first;
+        Assert.Empty(monitor.State!.Announcements); Assert.False(monitor.State.IsChecking);
+        reader.Hold = null; await monitor.CheckAsync(Now.AddSeconds(1)); Assert.Empty(monitor.State!.Announcements);
+        await monitor.CheckAsync(Now.AddMinutes(1)); Assert.Single(monitor.State!.Announcements);
+        Assert.Equal(2, reader.Calls);
+    }
+    [Fact]
+    public async Task ManualChecksBypassRegularScheduleButRespectCooldownAndRateLimit()
+    {
+        var reader = new ControlledReader(); var monitor = new GlobalResetMonitor(reader, () => true);
+        await monitor.CheckAsync(Now); Assert.Equal(Now.AddMinutes(15), monitor.State!.NextCheckAt);
+        await monitor.CheckAsync(Now.AddSeconds(59), manual: true); Assert.Equal(1, reader.Calls);
+        await monitor.CheckAsync(Now.AddMinutes(1), manual: true); Assert.Equal(2, reader.Calls);
+        reader.Failure = new HttpRequestException("Do not show raw provider details", null, HttpStatusCode.TooManyRequests);
+        await monitor.CheckAsync(Now.AddMinutes(2), manual: true);
+        Assert.Equal(Now.AddMinutes(32), monitor.State!.ManualRetryAt);
+        await monitor.CheckAsync(Now.AddMinutes(31), manual: true); Assert.Equal(3, reader.Calls);
+        Assert.DoesNotContain("provider", monitor.State.Error);
+    }
+    [Fact]
+    public async Task TogglingOrSleepingCannotBypassAProviderCooldown()
+    {
+        bool enabled = true;
+        var reader = new ControlledReader { Failure = new HttpRequestException("Rate limited", null, HttpStatusCode.TooManyRequests) };
+        var monitor = new GlobalResetMonitor(reader, () => enabled); await monitor.CheckAsync(Now);
+        monitor.Suspend(); await monitor.CheckAsync(Now.AddMinutes(1)); Assert.Equal(1, reader.Calls);
+        enabled = false; monitor.Synchronize(); enabled = true; monitor.Synchronize();
+        await monitor.CheckAsync(Now.AddMinutes(1), manual: true); Assert.Equal(1, reader.Calls);
+        await monitor.CheckAsync(Now.AddMinutes(30), manual: true); Assert.Equal(2, reader.Calls);
+    }
+    [Theory]
+    [InlineData(404)] [InlineData(410)] [InlineData(401)] [InlineData(403)]
+    public async Task WithdrawnOrUnavailableOriginalRemovesEstimates(int status)
+    {
+        var reader = new ControlledReader(); var monitor = new GlobalResetMonitor(reader, () => true);
+        await monitor.CheckAsync(Now); Assert.Single(monitor.State!.Announcements);
+        reader.Failure = new HttpRequestException("private transport details", null, (HttpStatusCode)status);
+        await monitor.CheckAsync(Now.AddMinutes(1), manual: true);
+        Assert.Empty(monitor.State!.Announcements); Assert.Contains("retirées", monitor.State.Error);
+        Assert.Equal(Now, monitor.State.CheckedAt); Assert.Equal(Now.AddMinutes(1), monitor.State.LastAttemptAt);
+    }
+    [Fact]
+    public async Task SuspendCancelsRequestAndResumeCanCheckAgain()
+    {
+        var reader = new ControlledReader { Hold = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var monitor = new GlobalResetMonitor(reader, () => true); var pending = monitor.CheckAsync(Now);
+        monitor.Suspend(); Assert.True(reader.LastToken.IsCancellationRequested);
+        reader.Hold.SetResult(); await pending; Assert.Empty(monitor.State!.Announcements);
+        reader.Hold = null; await monitor.CheckAsync(Now.AddMinutes(1)); Assert.Single(monitor.State!.Announcements);
     }
     [Fact]
     public async Task MissingContextCorrectionAndStalePostsCannotPromoteAnEstimate()
@@ -160,7 +270,7 @@ public sealed class GlobalResetTests
     public async Task MonitorBacksOffKeepsDatedEvidenceAndDisableDiscardsLateResponse()
     {
         var handler = new Handler(ReviewedPair()); using var http = new HttpClient(handler);
-        bool enabled = true; var monitor = new GlobalResetMonitor(new(http), () => enabled);
+        bool enabled = true; var monitor = new GlobalResetMonitor(new GlobalResetReader(http), () => enabled);
         await monitor.CheckAsync(Now); var calls = handler.Calls;
         await monitor.CheckAsync(Now.AddMinutes(14)); Assert.Equal(calls, handler.Calls);
         handler.Fail = true; await monitor.CheckAsync(Now.AddMinutes(15));
@@ -171,7 +281,7 @@ public sealed class GlobalResetTests
 
         var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var slow = new HttpClient(new Handler(ReviewedPair()) { Hold = hold });
-        var late = new GlobalResetMonitor(new(slow), () => enabled); var request = late.CheckAsync(Now);
+        var late = new GlobalResetMonitor(new GlobalResetReader(slow), () => enabled); var request = late.CheckAsync(Now);
         enabled = false; hold.SetResult(); await request; enabled = true;
         Assert.Empty(late.State!.Announcements);
     }

@@ -91,18 +91,22 @@ public partial class MainWindow : Window
         _settings?.RefreshHealth();
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
-    private void Preferences_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(async () =>
+    private void Preferences_Changed(object? sender, EventArgs e)
     {
-        var changed = _updates.IncludePrereleases != _preferences.Current.IncludePrereleaseUpdates;
-        _updates.SetIncludePrereleases(_preferences.Current.IncludePrereleaseUpdates);
-        UpdateModel(); UpdatePresentation();
-        _automaticUpdates?.SetEnabled(!_installingUpdate && _preferences.Current.DownloadUpdatesAutomatically);
-        if (changed)
+        _service.SynchronizeGlobalResetMonitoring();
+        Dispatcher.InvokeAsync(async () =>
         {
-            try { await _updates.LoadPreparedAsync(_lifetime.Token); }
-            catch (OperationCanceledException) { }
-        }
-    });
+            var changed = _updates.IncludePrereleases != _preferences.Current.IncludePrereleaseUpdates;
+            _updates.SetIncludePrereleases(_preferences.Current.IncludePrereleaseUpdates);
+            UpdateModel(); UpdatePresentation();
+            _automaticUpdates?.SetEnabled(!_installingUpdate && _preferences.Current.DownloadUpdatesAutomatically);
+            if (changed)
+            {
+                try { await _updates.LoadPreparedAsync(_lifetime.Token); }
+                catch (OperationCanceledException) { }
+            }
+        });
+    }
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; HideToTray(); } }
     private void HideToTray() { Hide(); ShowInTaskbar = false; }

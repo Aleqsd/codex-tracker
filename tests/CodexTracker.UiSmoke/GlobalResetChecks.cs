@@ -45,11 +45,29 @@ internal static class GlobalResetChecks
                 Check(source.Focus() && source.IsKeyboardFocused && source.ActualWidth >= source.DesiredSize.Width, "Source link is keyboard accessible and not cropped");
                 Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("anciens relevés")), "Agenda distinguishes old deadlines from global reset evidence");
                 foreach (var dpi in new[] { 96, 144, 192 }) window.SaveScreenshot(Path.GetFullPath($"artifacts/previews/global-agenda-{mode}-{compact}-{dpi}.png"), dpi);
+                var detail = Tree(resets).OfType<Expander>().Single(e => e.Header?.ToString() == "Détail des comptes (5)");
+                detail.IsExpanded = true; window.UpdateLayout();
+                Check(Tree(detail).OfType<TextBlock>().Any(t => t.Text.Contains("Hors de la portée")) &&
+                    Tree(detail).OfType<TextBlock>().Any(t => t.Text.Contains("Compte actif")), "Account details explain scope exclusions and measured active quota");
+                resets.Update(demo.State); window.UpdateLayout();
+                Check(Tree(resets).OfType<Expander>().Single().IsExpanded, "Announcement details stay expanded after collection refresh");
+                if (!compact)
+                {
+                    window.Height = 900; window.UpdateLayout();
+                    window.SaveScreenshot(Path.GetFullPath($"artifacts/previews/global-details-{mode}-96.png"), 96);
+                }
             }
             PreviewClock.Fixed = PreviewClock.UtcNow.AddHours(24); model.Tick(); resets.Tick(); window.UpdateLayout();
             Check(!model.HasGlobalReset && !Tree(resets).OfType<Border>().Any(b => b.Name == "GlobalResetNotice"), "Source banner expires without a new account read");
             model.Update(demo.State with { GlobalResetFeed = null });
             Check(!model.HasGlobalReset, "Disabling announcement monitoring removes estimates immediately");
+            PreviewClock.Fixed = clock ?? DateTimeOffset.UtcNow;
+            var recent = demo.State with { Accounts = demo.State.Accounts.Select(a => a with { Snapshot = a.Snapshot! with { FetchedAt = PreviewClock.UtcNow } }).ToArray() };
+            resets.Update(recent); window.UpdateLayout();
+            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("Relevé plus récent")), "A public announcement remains readable after accounts get newer observations");
+            window.OpenPage("Rappels"); window.UpdateLayout();
+            var manual = Tree(window.Settings).OfType<Button>().Single(b => b.Content?.ToString() == "Vérifier les annonces");
+            Check(!manual.IsEnabled, "Demo cannot fetch public sources through the manual check button");
         }
         finally
         {

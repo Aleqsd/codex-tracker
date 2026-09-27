@@ -72,7 +72,7 @@ public sealed class TrackerService : ITrackerService
         if (_options.GlobalResetMonitoringEnabled is { } enabled)
         {
             _publicHttp = GlobalResetReader.CreateHttpClient();
-            _globalResets = new(new(_publicHttp), enabled);
+            _globalResets = new(new GlobalResetReader(_publicHttp), enabled);
             _globalResets.Changed += (_, _) => Changed?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -129,6 +129,14 @@ public sealed class TrackerService : ITrackerService
 
     public Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default) => RefreshAsync(cancellationToken);
 
+    public void SynchronizeGlobalResetMonitoring() => _globalResets?.Synchronize();
+    public async Task CheckGlobalResetAnnouncementsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_globalResets is null || _disposed || _suspended) return;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+        await _globalResets.CheckAsync(DateTimeOffset.UtcNow, linked.Token, manual: true);
+    }
+
     public async Task SuspendAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
@@ -136,6 +144,7 @@ public sealed class TrackerService : ITrackerService
         {
             if (_disposed || _suspended) return;
             _suspended = true;
+            _globalResets?.Suspend();
             RestartObservation();
             Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
                 StatusMessage = "Suivi en pause pendant la veille" });

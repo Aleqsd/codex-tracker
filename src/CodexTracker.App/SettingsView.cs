@@ -26,6 +26,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     private bool _includePrereleases;
     private readonly StackPanel _health = new();
     private readonly TextBlock _announcementsStatus = Ui.Text("", 11, "MutedBrush");
+    private readonly Button _checkAnnouncements = new() { Content = "Vérifier les annonces", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 9, 0, 0) };
     private string[] _healthMessages = [];
     private bool _recoveryRequired;
     private readonly bool _demo;
@@ -73,6 +74,14 @@ internal sealed class SettingsView : UserControl, IDisposable
         Toggle("Vérifier les annonces publiques", "Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables.", p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
         _page.Children.Add(Ui.Text("Les comptes inactifs concernés affichent ≈100 % pendant 24 h maximum (5 h pour le quota court). Le dernier relevé reste conservé. Les notifications suivent le réglage « Prévenir après un reset ».", 11, "MutedBrush"));
         _announcementsStatus.Margin = new Thickness(0, 8, 0, 0); _page.Children.Add(_announcementsStatus);
+        _checkAnnouncements.Click += async (_, _) =>
+        {
+            _checkAnnouncements.IsEnabled = false;
+            try { await _owner.TrackerService.CheckGlobalResetAnnouncementsAsync(_lifetime.Token); }
+            catch (OperationCanceledException) { }
+            finally { if (!_closed) RefreshHealth(); }
+        };
+        _page.Children.Add(_checkAnnouncements);
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
         ReloadableSection(() => ReminderSettingsView.Channels(preferences, owner.Reminders, demo, _commands));
         Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
@@ -217,8 +226,16 @@ internal sealed class SettingsView : UserControl, IDisposable
         var feed = _owner.TrackerService.State.GlobalResetFeed;
         _announcementsStatus.Text = !_preferences.Current.MonitorGlobalResets ? "Vérification désactivée."
             : _demo ? "Démonstration · aucun accès réseau."
-            : (feed?.CheckedAt is { } checkedAt ? $"Dernière vérification : {Display.Exact(checkedAt)} · {Display.Zone(checkedAt)}" : "En attente de vérification des sources…") +
-                (feed?.Error is { } error ? "\n" + error : "");
+            : (feed?.IsChecking == true ? "Vérification des sources en cours…\n" : "") +
+                (feed?.CheckedAt is { } checkedAt ? $"Dernier contrôle réussi : {Display.Exact(checkedAt)} · {Display.Zone(checkedAt)}" : "Aucun contrôle réussi pour le moment.") +
+                (feed?.Error is { } error ? "\n" + error : feed?.CheckedAt is not null && feed.Announcements.All(a => !a.IsCurrent(PreviewClock.UtcNow)) ? "\nAucune annonce récente reconnue." : "") +
+                (feed?.NextCheckAt is { } next && !feed.IsChecking ? next <= PreviewClock.UtcNow ? "\nProchaine vérification imminente." : $"\nProchain essai : {Display.Exact(next)}" : "");
+        _checkAnnouncements.Content = feed?.IsChecking == true ? "Vérification…" : "Vérifier les annonces";
+        _checkAnnouncements.IsEnabled = !_demo && _preferences.Current.MonitorGlobalResets && feed?.IsChecking != true &&
+            !(PreviewClock.UtcNow < feed?.ManualRetryAt);
+        _checkAnnouncements.ToolTip = _demo ? "Aucun accès réseau dans la démonstration." : feed?.ManualRetryAt > PreviewClock.UtcNow
+            ? $"Prochain contrôle manuel possible le {Display.Exact(feed.ManualRetryAt)}. Les limites de la source sont respectées."
+            : "Relit les annonces publiques sans actualiser les comptes. Un contrôle manuel par minute maximum.";
         var messages = _owner.HealthWarnings();
         if (_healthMessages.SequenceEqual(messages) && _recoveryRequired == _preferences.RecoveryRequired) return;
         _healthMessages = messages; _recoveryRequired = _preferences.RecoveryRequired;

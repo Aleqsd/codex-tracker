@@ -40,6 +40,8 @@ public interface ITrackerService : IAsyncDisposable
     UsageForecast GetForecast(Guid accountId);
     Task InitializeAsync(CancellationToken cancellationToken = default);
     Task RefreshAsync(CancellationToken cancellationToken = default);
+    Task CheckGlobalResetAnnouncementsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    void SynchronizeGlobalResetMonitoring() { }
     Task SuspendAsync(CancellationToken cancellationToken = default);
     Task ResumeAsync(CancellationToken cancellationToken = default);
     Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default);

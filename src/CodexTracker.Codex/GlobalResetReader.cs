@@ -6,7 +6,12 @@ using CodexTracker.Core;
 namespace CodexTracker.Codex;
 
 /// <summary>Public discovery only. Neither the feed's classifications nor its text are evidence.</summary>
-public sealed class GlobalResetReader(HttpClient http)
+public interface IGlobalResetReader
+{
+    Task<GlobalResetFeedState> ReadAsync(DateTimeOffset now, CancellationToken token = default);
+}
+
+public sealed class GlobalResetReader(HttpClient http) : IGlobalResetReader
 {
     public const string FeedUrl = "https://shixilin.com/ai/codex-claude-resets/events.json";
     private static readonly string[] Authors = ["thsottiaux", "OpenAI", "OpenAIDevs"];
@@ -73,7 +78,7 @@ public sealed class GlobalResetReader(HttpClient http)
         // Deliberately narrow grammar. Unknown wording stays unknown. Requiring scope and
         // product in the same sentence avoids borrowing them from a quote or another topic.
         var match = Regex.Match(text,
-            @"(?:^|[.!]\s+)(?:update: )?we(?:'ve| have) (?:now |just )?reset (?:the )?(?<kind>weekly |5-hour |5-hour and weekly )?(?:usage |rate )limits (?:in |for )?codex for (?<scope>all paid users|all users across all plans)[.!]?(?:$|\s)",
+            @"\A(?:update: )?we(?:'ve| have) (?:now |just )?reset (?:the )?(?:codex (?<kind>weekly |5-hour |5-hour and weekly )?(?:usage |rate )limits|(?<kind>weekly |5-hour |5-hour and weekly )?(?:usage |rate )limits (?:in |for )codex) for (?<scope>all paid users|all users across all plans)(?:[.!](?:\s|$)|$)",
             RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         if (!match.Success) return false;
         plans = match.Groups["scope"].Value == "all paid users" ? PaidPlans : [.. PaidPlans, "free"];
@@ -84,7 +89,7 @@ public sealed class GlobalResetReader(HttpClient http)
         return true;
     }
     private static bool UnsafeScope(string text) => Match(text,
-        @"\b(banked|credits?|reserve|except|excluding|only|some|eligible|affected|might|maybe|hypothetical|quote|not|haven't|didn't|won't)\b|\?");
+        @"\b(banked|credits?|reserve|except|excluding|only|some|eligible|affected|might|maybe|hypothetical|quote|not|haven't|didn't|won't|unless|restricted|restrictions?|limited to|correction|incorrect|mistake)\b|\?");
     private static string Normalize(string text) => Regex.Replace(text.Replace('’', '\'').ToLowerInvariant(), @"\s+", " ", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Trim();
     private static bool Match(string text, string pattern) => Regex.IsMatch(text, pattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
