@@ -53,6 +53,8 @@ public partial class MainWindow : Window
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences);
         InitializeComponent();
+        AppVersionLabel.Text = $"v{_updates.CurrentVersion}";
+        AppVersionLabel.ToolTip = $"Version installée : {_updates.CurrentVersion}";
         _updates.PreparationChanged += UpdatePreparationChanged;
         UpdatePresentation();
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync()); ResetsTab.Content = _resets;
