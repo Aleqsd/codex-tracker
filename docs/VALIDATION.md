@@ -6,6 +6,8 @@ Les contrôles WPF passent avec les vraies vues et des données fictives, en cla
 
 Vérification réseau distincte le 27 septembre 2026 : le lecteur de production retrouve la paire de posts du 26 septembre et valide les deux originaux via `publish.x.com`. L’ancien hôte `publish.twitter.com` redirige ; le lecteur utilise directement le nouvel hôte et refuse les redirections. Aucun compte local n’a été transmis. La réception visuelle d’une nouvelle notification réelle n’est pas revendiquée.
 
+La [CI Windows du commit `9f90312`](https://github.com/Aleqsd/codex-tracker/actions/runs/36297681623) est entièrement verte : 447 tests métier, contrôles WPF, protocole MCP publié, délai de démarrage et cycle de l’installateur. Son paquet exact a été installé silencieusement après sauvegarde : fichiers privés inchangés pendant l’installation, cinq comptes conservés, anciennes observations préservées et nouveau quota reçu après relance. SHA-256 du binaire installé : `12abb6493ced635fcbadd03dafdb9467e2a4ec79bac0cffa3081dee2cef14f81`. Les tests UI locaux sont désormais bloqués si Final Fantasy XIV est en cours ; la suite Windows continue de s’exécuter sur la CI.
+
 # Version 0.9.4 — accès au collecteur Codex
 
 La panne est reproduite sur Windows : une copie native de Codex trouvée dans le PATH existe mais son lancement échoue avec l’erreur système 5 (accès refusé). Une autre copie déjà installée par Codex démarre et lit les quotas du compte courant. Après correction, la découverte automatique passe ce même essai réel dans un dossier de diagnostic isolé. Aucune connexion, écriture de session, modification d’ACL ou élévation n’est nécessaire.
