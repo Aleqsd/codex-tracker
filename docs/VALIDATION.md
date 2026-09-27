@@ -1,3 +1,11 @@
+# Version 0.9.7 — version visible et mise à jour automatique revérifiée
+
+Le pied de fenêtre affiche la version de l’exécutable courant, avec les couleurs du thème et une largeur réservée en fenêtre compacte. La [CI Windows du commit `dae5afc`](https://github.com/Aleqsd/codex-tracker/actions/runs/36299775302) est verte : 463 tests métier, suite WPF, 14 contrôles MCP publié et cycle de l’installateur. Les aperçus fictifs ont été inspectés en clair/sombre et en petite fenêtre ; aucun test UI n’a été lancé sur le poste pendant Final Fantasy XIV.
+
+Les [deux parcours publics 0.9.5 → 0.9.6](https://github.com/Aleqsd/codex-tracker/actions/runs/36299805764) réussissent dans des profils Windows CI vierges : téléchargement automatique par le tracker, bouton visible et activé, installation par bouton ou au lancement suivant, binaire attendu et données fictives conservées. Les [rapports](validation/public-update-0.9.5-to-0.9.6.json) distinguent l’automatisation UI d’une observation humaine. Le moteur reste inchangé dans la 0.9.7 ; la vérification au démarrage puis toutes les six heures, le téléchargement et l’installation d’un paquet déjà prêt sont conservés.
+
+L’installateur exact de la CI 0.9.7 a été appliqué silencieusement après sauvegarde : fichiers privés inchangés pendant l’installation, cinq comptes et leurs observations conservés, nouveau quota reçu après relance en arrière-plan et processus réactif. SHA-256 du binaire installé : `93d39a6b84de0cabc758c6b97f2e28534c4b6a995c9bc7320916eaceda4cda37`.
+
 # Version 0.9.6 — contrôle et explications des annonces
 
 Régressions supplémentaires : raison précise d’absence d’estimation, portée limitée dans une fin de phrase, ordre des mots Codex/quotas, fenêtre courte seule, contrôle manuel et double clic, désactivation/réactivation rapide avec réponse tardive, annulation pendant la veille, délai HTTP 429 conservé, source supprimée et alerte différée jusqu’au retour des sources. La notification compte les comptes distincts et garde la mention des autres rappels. Les prestataires et notifications sont simulés, sans envoi externe réel.
