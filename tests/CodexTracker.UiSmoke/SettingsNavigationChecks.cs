@@ -40,7 +40,10 @@ internal static class SettingsNavigationChecks
             window.OpenPage("Comptes"); await Task.Delay(50); window.ShowSettings(); await Task.Delay(50);
             Check(ReferenceEquals(settings, window.Settings) && settings.CurrentPage == "Canaux" && draft.Text == "fictitious unsaved draft",
                 "Changing main tabs preserves the current settings section and unsaved input");
+            window.Activate(); window.UpdateLayout();
+            await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             draft.BringIntoView(); draft.Focus();
+            Check(draft.IsKeyboardFocused, "Draft owns keyboard focus before a background health change");
             window.AssistantError = "État fictif : service local momentanément indisponible.";
             await Task.Delay(1150);
             Check(draft.IsKeyboardFocused && draft.Text == "fictitious unsaved draft" && ReferenceEquals(settings, window.Settings),

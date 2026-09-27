@@ -27,6 +27,10 @@ Utiliser `ThemeManager`, les styles d’App.xaml et les petits composants d’Ui
 
 ## Journaux et limites
 
+`GlobalResetReader` lit un index public uniquement pour ses URL puis vérifie les originaux avec X oEmbed. `GlobalResetMonitor` est facultatif dans `TrackerServiceOptions`, absent des tests et démos sauf adaptateur simulé. Il vérifie toutes les 15 min, recule à 30 min après un échec et conserve uniquement des preuves publiques en mémoire. `TrackerState.GlobalResetFeed` projette cet état sans modifier le magasin de profils. Voir [les restrictions de reconnaissance](GLOBAL-RESETS.md).
+
+`GlobalResetAnnouncement.Applies` exige une offre/fenêtre connue, un relevé antérieur à l’annonce initiale et un compte inactif. Les occurrences `global/{post}/{compte}/{type}`, Windows uniquement, réutilisent le journal et le dispatcher existants. Leur durée maximale de 24 h reste inférieure à la conservation des reçus de 30 jours. Le bouton de l’encart ouvre Resets ; le quota réel de l’icône ne change pas.
+
 `ExpectedReset` projette les échéances passées des comptes inactifs sans modifier les snapshots, historiques, prévisions ou conseils. Les occurrences locales `expected/…`, délai zéro et canal Windows uniquement, passent par `ReminderDispatcher` et son journal avant envoi. `ResetNotifications` les active ; le rattrapage est limité à 24 heures et à une fenêtre réelle. Les échéances futures utilisent toujours `ReminderPlanner`. Le journal conservé 30 jours couvre toute la durée de validité d’une estimation, empêchant son renvoi après purge.
 
 Le journal des rappels conserve 30 jours et les clés nécessaires aux échéances futures. Les reçus d’actions MCP conservent uniquement UUID, empreinte, statut, date et résultat sans arguments. Ils ne sont pas purgés automatiquement, afin qu’un ancien UUID ne déclenche pas un second test ; au-delà de 10 000 reçus, les nouvelles mutations sont refusées. Une demande en attente ne conserve son contenu qu’en mémoire et expire après cinq minutes.

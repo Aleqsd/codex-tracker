@@ -37,6 +37,8 @@ Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Pyth
 
 ## Vérification proportionnée
 
+Ne jamais lancer les tests UI locaux, aperçus ou automatisations qui activent une fenêtre pendant que Final Fantasy XIV tourne (`ffxiv_dx11.exe` ou `ffxiv.exe`) : ils peuvent faire quitter le plein écran du jeu. Vérifier les processus en lecture seule avant ces actions ; reporter le contrôle local ou utiliser la CI. Ne pas fermer/minimiser le jeu. Les compilations et tests métier sans interface restent possibles.
+
 Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Avant une release : CI Windows verte sur le commit publié, installer + ZIP + SHA-256, test réel stdio et préservation des données existantes.
 
 ## Présentation publique

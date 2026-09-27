@@ -138,6 +138,7 @@ public partial class MainWindow : Window
     private void Recovery_Click(object sender, RoutedEventArgs e) => OpenPage("Application");
     private void ExpectedReset_Click(object sender, RoutedEventArgs e)
     {
+        if (_model.HasGlobalReset) { ShowResets(); return; }
         var account = _model.Accounts.FirstOrDefault(a => a.HasResetEstimate);
         if (account is null) return;
         if (AccountsList.ItemContainerGenerator.ContainerFromItem(account) is FrameworkElement row) row.BringIntoView();

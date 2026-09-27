@@ -224,8 +224,8 @@ internal sealed class TrayController : IDisposable
         if (rows.Count == 0) return new(DeliveryStatus.Failed, "Aucun rappel à transmettre à Windows.");
         if (rows.Count == 1 && rows[0].Key.StartsWith("test/", StringComparison.Ordinal))
             return _desktop.Send("Codex Tracker · Test", "Les alertes de quota et de reset apparaîtront ici. Cliquez pour ouvrir l’onglet Resets.");
-        var first = rows.OrderByDescending(ReminderPlanner.IsExpectedReset).First();
-        return _desktop.Send(rows.Count == 1 ? ReminderPlanner.Title(first) : $"{rows.Count} événements Codex",
+        var first = rows.OrderByDescending(ReminderPlanner.IsGlobalReset).ThenByDescending(ReminderPlanner.IsExpectedReset).First();
+        return _desktop.Send(ReminderPlanner.IsGlobalReset(first) ? "Reset général · quotas à vérifier" : rows.Count == 1 ? ReminderPlanner.Title(first) : $"{rows.Count} événements Codex",
             ReminderPlanner.Body(first) + (rows.Count > 1 ? $"\n{rows.Count - 1} autre(s) événement(s) dans l’onglet Resets." : ""), deferWhenBusy: true);
     }
     internal static Icon CreateIcon(string number, Color color)

@@ -14,6 +14,7 @@ public sealed record TrackerServiceOptions
     public TimeSpan DetectionInterval { get; init; } = TimeSpan.FromSeconds(2);
     public bool AutomaticRefresh { get; init; } = true;
     public bool MonitorAuthChanges { get; init; } = true;
+    public Func<bool>? GlobalResetMonitoringEnabled { get; init; }
     public IReadOnlyList<string> RedirectedDataDirectories { get; init; } = [];
 }
 
@@ -35,6 +36,9 @@ public sealed class TrackerService : ITrackerService
     private CancellationTokenSource _identityLifetime = new();
     private AuthFileMonitor? _monitor;
     private Task? _timer;
+    private Task? _announcementTimer;
+    private readonly HttpClient? _publicHttp;
+    private readonly GlobalResetMonitor? _globalResets;
     private Task? _refresh;
     private long _generation;
     private long _requestSequence;
@@ -50,7 +54,8 @@ public sealed class TrackerService : ITrackerService
     private CodexCompatibilityDiagnostic _compatibility;
     public event EventHandler? Changed;
     public event EventHandler<QuotaNotification>? Notification;
-    public TrackerState State { get; private set; } = new([], null, StatusMessage: "Détection du compte Codex…");
+    private TrackerState _state = new([], null, StatusMessage: "Détection du compte Codex…");
+    public TrackerState State => _state with { GlobalResetFeed = _globalResets?.State };
     public CodexCompatibilityDiagnostic GetCompatibilityDiagnostic() => _compatibility;
     public IReadOnlyList<string> RecoveryWarnings => _store.RecoveryWarnings;
 
@@ -64,6 +69,12 @@ public sealed class TrackerService : ITrackerService
         _options = options ?? new();
         _store = new(_options.DataDirectory);
         _reader = reader ?? new CurrentAccountUsageReader(_authPath ?? "", _store, _options);
+        if (_options.GlobalResetMonitoringEnabled is { } enabled)
+        {
+            _publicHttp = GlobalResetReader.CreateHttpClient();
+            _globalResets = new(new(_publicHttp), enabled);
+            _globalResets.Changed += (_, _) => Changed?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -104,6 +115,7 @@ public sealed class TrackerService : ITrackerService
                 _monitor.Start();
             }
             if (_options.AutomaticRefresh) _timer = RunTimerAsync();
+            if (_globalResets is not null) _announcementTimer = RunAnnouncementsAsync();
         }
         finally { _gate.Release(); }
         await (await QueueRefreshAsync(cancellationToken)).WaitAsync(cancellationToken);
@@ -426,7 +438,19 @@ public sealed class TrackerService : ITrackerService
     }
     private void Update(Guid id, Func<AccountState, AccountState> update) => Set(State with
     { Accounts = State.Accounts.Select(a => a.Profile.Id == id ? update(a) : a).ToArray() });
-    private void Set(TrackerState state) { State = state; Changed?.Invoke(this, EventArgs.Empty); }
+    private void Set(TrackerState state) { _state = state; Changed?.Invoke(this, EventArgs.Empty); }
+    private async Task RunAnnouncementsAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+        try
+        {
+            do
+            {
+                if (!_suspended) await _globalResets!.CheckAsync(DateTimeOffset.UtcNow, _lifetime.Token);
+            } while (await timer.WaitForNextTickAsync(_lifetime.Token));
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+    }
     private void RequireInitialized()
     {
         if (_disposed) throw new OperationCanceledException("Codex Tracker se ferme.");
@@ -472,6 +496,8 @@ public sealed class TrackerService : ITrackerService
         _lifetime.Cancel();
         if (_monitor is not null) await _monitor.DisposeAsync();
         if (_timer is not null) await _timer;
+        if (_announcementTimer is not null) await _announcementTimer;
+        _publicHttp?.Dispose();
         await Task.WhenAll(requests);
         _identityLifetime.Dispose();
         _lifetime.Dispose();

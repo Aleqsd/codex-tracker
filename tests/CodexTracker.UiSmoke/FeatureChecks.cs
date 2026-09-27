@@ -206,7 +206,7 @@ internal static class FeatureChecks
             Tree(week).OfType<Button>().Single(b => b.Content?.ToString() == "Enregistrer ces rappels").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(settingsPreferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(60) && r.Channels.Contains(ReminderChannel.Sms))
                 && !settingsPreferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.LeadMinutes.Contains(1440) && r.Channels.Contains(ReminderChannel.Sms)), "Actual controls persist independent channels per lead");
-            settings.ShowPage("Canaux"); await Task.Delay(100);
+            settings.ShowPage("Canaux"); await Dispatcher.Yield(DispatcherPriority.ApplicationIdle); settings.UpdateLayout();
             var twilio = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Twilio · SMS et appels"); twilio.IsExpanded = true; settings.UpdateLayout();
             Check(Tree(twilio).OfType<PasswordBox>().Count() == 1 && Tree(twilio).OfType<Button>().Where(b => b.Content?.ToString()?.Contains("test") == true).All(b => !b.IsEnabled), "Twilio secrets use a masked field and demo cannot send real tests");
             var limits = Tree(settings).OfType<Expander>().Single(e => e.Header?.ToString() == "Limites et heures silencieuses"); limits.IsExpanded = true; settings.UpdateLayout();

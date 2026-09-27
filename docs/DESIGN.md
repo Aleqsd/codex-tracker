@@ -27,6 +27,8 @@ Vérifier le débordement, les textes coupés, le focus clavier et la distinctio
 
 ## Resets : agenda et semaine
 
+Les annonces publiques vérifiées réutilisent l’encart d’estimation. **Voir** ouvre Resets, avec date, fuseau, comptes concernés et liens vers la confirmation et la portée. La mention « annoncé comme terminé » distingue la déclaration publique d’un quota mesuré. `--demo --demo-global-resets` produit des aperçus fictifs ; la suite WPF couvre clair/sombre, normal/compact et 96/144/192 DPI.
+
 Les comptes inactifs dont une échéance connue vient de passer ont un encart sobre et une annotation `≈100 % — estimé`. Le bouton **Voir** fait défiler la liste jusqu’au compte concerné, y compris en petite fenêtre. Le survol donne date, dernier pourcentage mesuré et hypothèse d’absence d’utilisation ailleurs. `GoodBrush` accompagne le texte sans remplacer l’indication d’incertitude. L’aperçu `--demo --demo-resets` utilise un compte fictif dans cet état.
 
 Le choix Agenda / Semaine utilise `ResetKindFilter` dans un groupe radio distinct des types de resets. La semaine garde sept colonnes, marque aujourd’hui par un trait neutre et utilise les mêmes icônes de type. Les comptes longs sont tronqués avec un survol complet. La priorité est un encart informatif sans bordure de bouton ; seules les commandes de navigation sont cliquables. L’aperçu `-View Semaine` entre dans la matrice de démonstration.

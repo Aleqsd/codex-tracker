@@ -19,6 +19,17 @@ internal static class Program
     [STAThread]
     private static int Main()
     {
+        foreach (var name in new[] { "ffxiv_dx11", "ffxiv" })
+        {
+            var games = System.Diagnostics.Process.GetProcessesByName(name);
+            var running = games.Length > 0;
+            foreach (var game in games) game.Dispose();
+            if (running)
+            {
+                Console.Error.WriteLine("SKIPPED: Final Fantasy XIV est en cours. Tests WPF reportés pour préserver le plein écran ; utiliser la CI.");
+                return 2;
+            }
+        }
         var app = new TestApplication();
         app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         System.Xml.Linq.XNamespace ns = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
@@ -66,6 +77,7 @@ internal static class Program
                 CheckRendered(window, "Repeated activation retains the same rendered window");
                 await FeatureChecks.Run(window, service);
                 await ExpectedResetChecks.Run(window, service);
+                await GlobalResetChecks.Run(window, service);
                 await SettingsNavigationChecks.Run(window);
                 await NotificationChecks.Run(window);
                 await ReliabilityChecks.Run();

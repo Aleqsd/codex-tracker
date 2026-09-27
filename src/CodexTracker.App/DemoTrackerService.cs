@@ -7,7 +7,7 @@ internal sealed class DemoTrackerService : ITrackerService
     private readonly Dictionary<Guid, IReadOnlyList<UsageSample>> _history = new();
     public TrackerState State { get; private set; }
     public DemoTrackerService() : this(false) { }
-    public DemoTrackerService(bool showAdvice, bool showExpectedResets = false)
+    public DemoTrackerService(bool showAdvice, bool showExpectedResets = false, bool showGlobalResets = false)
     {
         var now = PreviewClock.UtcNow;
         string[] emails = ["alex@example.com", "studio@example.com", "projets@example.com", "recherche@example.com", "perso@example.com"];
@@ -26,6 +26,9 @@ internal sealed class DemoTrackerService : ITrackerService
             } };
         }
         State = new TrackerState(accounts, accounts[0].Profile.Id, OnboardingComplete: true);
+        if (showGlobalResets) State = State with { GlobalResetFeed = new([
+            new("demo-reset", "Source fictive", "https://example.com/reset-demo", "https://example.com/reset-scope-demo",
+                now.AddHours(-2), now.AddHours(-1), now.AddMinutes(-1), ["plus", "pro"], [ResetKind.Weekly, ResetKind.Short])], now.AddMinutes(-1)) };
         foreach (var account in accounts)
         {
             var samples = new List<UsageSample>();

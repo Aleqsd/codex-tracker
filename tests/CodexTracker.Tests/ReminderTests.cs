@@ -306,6 +306,24 @@ public sealed class ReminderTests
         Assert.Single(f.Desktop); Assert.All(f.Desktop[0], r => Assert.True(ReminderPlanner.IsExpectedReset(r)));
         Assert.Equal(0, f.Handler.Requests);
     }
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task GlobalResetNotificationPersistsAndCanBeCancelledBeforeDeferredDelivery(bool disable)
+    {
+        using var f = new Fixture(); f.ExpectedResets = true; f.Rules = [];
+        var announcement = new GlobalResetAnnouncement("public-test", "Example", "https://example.com/reset", "https://example.com/scope",
+            Now.AddMinutes(-20), Now.AddMinutes(-10), Now, ["plus", "pro"], [ResetKind.Weekly, ResetKind.Short]);
+        var account = f.State.Accounts[0];
+        account = account with { Snapshot = account.Snapshot! with { PlanType = "pro", FetchedAt = Now.AddHours(-2) } };
+        f.State = new([account], null) { GlobalResetFeed = new([announcement]) };
+        if (disable) f.WindowsResult = new(DeliveryStatus.Deferred, "Windows occupé");
+        await f.Dispatcher.TickAsync(); Assert.Single(f.Desktop); Assert.True(f.PersistedBeforeWindows);
+        Assert.All(f.Desktop[0], r => Assert.True(ReminderPlanner.IsGlobalReset(r)));
+        f.Recreate();
+        if (disable) f.State = f.State with { GlobalResetFeed = null };
+        await f.Dispatcher.TickAsync(); Assert.Single(f.Desktop); Assert.Equal(0, f.Handler.Requests);
+        if (disable) Assert.All(f.Journal.Entries, d => Assert.Equal(DeliveryStatus.Cancelled, d.Status));
+    }
     private sealed class Clock : TimeProvider { public DateTimeOffset Now { get; set; } = ReminderTests.Now; public override DateTimeOffset GetUtcNow() => Now; }
     private sealed class Handler : HttpMessageHandler
     {

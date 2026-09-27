@@ -1,3 +1,11 @@
+# Version 0.9.5 — annonces de resets généraux
+
+Les 447 tests métier passent localement. Les nouvelles régressions simulent le flux public et X : scope payant/Free, crédits et promesses, contexte manquant, auteur incorrect, correction ultérieure, dates dérivées de l’identifiant, réponses trop grandes, redirection, panne, délai de reprise, désactivation pendant une requête, ancienneté, nouvelle observation et changement d’heure. Les notifications Windows sont simulées : écriture avant envoi, regroupement, absence de doublon après redémarrage et annulation des reports. Aucun SMS, appel ou email réel.
+
+Les contrôles WPF passent avec les vraies vues et des données fictives, en clair/sombre, fenêtres normale/compacte et rendus 96/144/192 DPI. Ils contrôlent le clavier, les liens de source, le retrait après expiration et les quotas mesurés inchangés. Deux tests existants attendent désormais le chargement de la page et vérifient la prise de focus avant de tester sa conservation. Ces captures ne remplacent pas une campagne multi-écrans physique.
+
+Vérification réseau distincte le 27 septembre 2026 : le lecteur de production retrouve la paire de posts du 26 septembre et valide les deux originaux via `publish.x.com`. L’ancien hôte `publish.twitter.com` redirige ; le lecteur utilise directement le nouvel hôte et refuse les redirections. Aucun compte local n’a été transmis. La réception visuelle d’une nouvelle notification réelle n’est pas revendiquée.
+
 # Version 0.9.4 — accès au collecteur Codex
 
 La panne est reproduite sur Windows : une copie native de Codex trouvée dans le PATH existe mais son lancement échoue avec l’erreur système 5 (accès refusé). Une autre copie déjà installée par Codex démarre et lit les quotas du compte courant. Après correction, la découverte automatique passe ce même essai réel dans un dossier de diagnostic isolé. Aucune connexion, écriture de session, modification d’ACL ou élévation n’est nécessaire.

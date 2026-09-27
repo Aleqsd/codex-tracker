@@ -9,6 +9,9 @@ param(
     [switch]$Matrix
 )
 $ErrorActionPreference = 'Stop'
+if (Get-Process -Name ffxiv_dx11,ffxiv -ErrorAction SilentlyContinue) {
+    throw 'Final Fantasy XIV est en cours : tests UI et aperçus reportés pour préserver le plein écran. La compilation et les tests métier peuvent être lancés séparément ; utiliser la CI pour les vues.'
+}
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {

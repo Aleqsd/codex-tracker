@@ -76,8 +76,9 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string CompactStatus => HasError ? "à vérifier" : IsActive ? "actif" : _account.Snapshot is not null ? Display.Age(_account.Snapshot.FetchedAt) : "à détecter";
     public string RowSubtitle => $"{PlanBadge} · {CompactStatus}";
     public string SummaryLabel => IsActive ? "Compte actif dans Codex" : "Dernier relevé disponible";
-    private ExpectedReset? WeeklyEstimate => ExpectedReset.For(_account, ResetKind.Weekly, PreviewClock.UtcNow);
-    private ExpectedReset? ShortEstimate => ExpectedReset.For(_account, ResetKind.Short, PreviewClock.UtcNow);
+    private ExpectedReset? WeeklyEstimate => ExpectedReset.For(_account, ResetKind.Weekly, PreviewClock.UtcNow, _state.GlobalResetFeed);
+    private ExpectedReset? ShortEstimate => ExpectedReset.For(_account, ResetKind.Short, PreviewClock.UtcNow, _state.GlobalResetFeed);
+    public GlobalResetAnnouncement? GlobalAnnouncement => WeeklyEstimate?.Announcement ?? ShortEstimate?.Announcement;
     public bool HasWeeklyEstimate => WeeklyEstimate is not null;
     public bool HasResetEstimate => HasWeeklyEstimate || ShortEstimate is not null;
     public string WeeklyDisplayNumber => HasWeeklyEstimate ? "≈100%" : WeeklyNumber;
@@ -85,7 +86,8 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string EstimateLabel => HasWeeklyEstimate && ShortEstimate is not null ? "Semaine + 5 h probablement à 100 %"
         : HasWeeklyEstimate ? "Semaine probablement à 100 %" : ShortEstimate is not null ? "5 h probablement à 100 %" : "";
     public string EstimateHint => string.Join("\n\n", new[] { WeeklyEstimate, ShortEstimate }.OfType<ExpectedReset>().Select(r =>
-        $"{ReminderPlanner.Label(r.Kind)} prévu le {Display.Exact(r.At)} · {Display.Zone(r.At)}.\nDernier quota mesuré : {Display.Percent(r.LastRemainingPercent)} le {Display.Exact(r.ObservedAt)}.\nProbablement revenu à 100 % si le compte n’a pas été utilisé ailleurs. Ouvrez ce compte dans Codex pour confirmer."));
+        (r.Announcement is { } a ? $"Reset général annoncé comme terminé le {Display.Exact(a.ReportedAt)} · {Display.Zone(a.ReportedAt)}.\nSource : {a.SourceUrl}\nPortée : {a.AnnouncementUrl}\nEstimation valable jusqu’au {Display.Exact(a.ReportedAt.AddHours(r.Kind == ResetKind.Short ? 5 : 24))}.\n" : $"{ReminderPlanner.Label(r.Kind)} prévu le {Display.Exact(r.At)} · {Display.Zone(r.At)}.\n") +
+        $"Dernier quota mesuré : {Display.Percent(r.LastRemainingPercent)} le {Display.Exact(r.ObservedAt)}.\nProbablement revenu à 100 % si le compte n’a pas été utilisé ailleurs. Ouvrez ce compte dans Codex pour confirmer."));
     public string WeeklyHint => HasWeeklyEstimate ? EstimateHint : $"Dernier quota mesuré : {WeeklyNumber}\nRelevé : {Display.Exact(_account.Snapshot?.FetchedAt)}";
     public string WeeklyNumber => Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent);
     public double WeeklyPercent => _account.Snapshot?.Weekly?.RemainingPercent ?? 0;
@@ -97,7 +99,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetCountdown => Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCompact => HasWeeklyEstimate ? "Reset passé" : ResetCountdown.Replace("Dans ", "");
+    public string ResetCompact => WeeklyEstimate?.Announcement is not null ? "À reconfirmer" : HasWeeklyEstimate ? "Reset passé" : ResetCountdown.Replace("Dans ", "");
     public string ResetHint => HasWeeklyEstimate ? EstimateHint : $"{ResetExact}\n{ResetZone}";
     public string SummaryReset => $"Reset hebdomadaire {ResetCountdown.ToLowerInvariant()}";
     public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
@@ -160,6 +162,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsEmpty => Accounts.Count == 0;
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
     public bool HasExpectedResets => Accounts.Any(a => a.HasResetEstimate);
+    public bool HasGlobalReset => Accounts.Any(a => a.GlobalAnnouncement is not null);
+    public string ExpectedResetsCaption => HasGlobalReset ? "Reset général annoncé · estimation datée et sources dans Resets" : "Reset prévu passé · estimation à confirmer dans Codex";
     public string ExpectedResetsTitle
     {
         get
@@ -205,7 +209,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     {
         foreach (var account in Accounts) account.Tick();
         Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow);
-        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint) })
+        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)

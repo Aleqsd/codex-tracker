@@ -23,6 +23,7 @@ internal sealed record TrackerPreferences
     public bool Alert10 { get; init; } = true;
     public bool Alert5 { get; init; } = true;
     public bool ResetNotifications { get; init; } = true;
+    public bool MonitorGlobalResets { get; init; } = true;
     public bool HoverPreview { get; init; } = true;
     public int RefreshMinutes { get; init; } = 2;
     public bool AdaptiveRefresh { get; init; }
@@ -95,7 +96,7 @@ internal sealed class PreferencesStore
     private static TrackerPreferences DisableNotifications(TrackerPreferences value) => value with
     {
         McpEnabled = false, Alert20 = false, Alert10 = false, Alert5 = false,
-        ResetNotifications = false, ExpiryNotifications = false,
+        ResetNotifications = false, MonitorGlobalResets = false, ExpiryNotifications = false,
         ReminderRules = value.ReminderRules!.Select(rule => rule with { Enabled = false }).ToArray()
     };
     private static TrackerPreferences Normalize(TrackerPreferences value) => value with

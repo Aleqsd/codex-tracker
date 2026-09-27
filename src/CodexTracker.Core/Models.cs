@@ -26,6 +26,7 @@ public sealed record AccountState(AccountProfile Profile, AccountSnapshot? Snaps
 public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? SelectedAccountId,
     bool IsBusy = false, string? StatusMessage = null, bool OnboardingComplete = false)
 {
+    public GlobalResetFeedState? GlobalResetFeed { get; init; }
     public AccountState? ActiveAccount => Accounts.FirstOrDefault(a => a.IsActiveInCodex);
     public AccountState? SelectedAccount => ActiveAccount;
 }

@@ -81,9 +81,10 @@ public partial class App : System.Windows.Application
                     catch (Exception) { /* Continue opening the working version; allow a manual retry. */ }
                 }
             }
-            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice"), e.Args.Contains("--demo-resets")) : new Codex.TrackerService(options: new()
+            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice"), e.Args.Contains("--demo-resets"), e.Args.Contains("--demo-global-resets")) : new Codex.TrackerService(options: new()
             {
                 RedirectedDataDirectories = Codex.DesktopEnvironment.FindRedirectedStores(),
+                GlobalResetMonitoringEnabled = () => preferences.Current.MonitorGlobalResets,
                 RefreshIntervalProvider = () =>
                 {
                     var p = preferences.Current;

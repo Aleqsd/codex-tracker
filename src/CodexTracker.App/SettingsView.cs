@@ -25,6 +25,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     private bool _syncing, _closed;
     private bool _includePrereleases;
     private readonly StackPanel _health = new();
+    private readonly TextBlock _announcementsStatus = Ui.Text("", 11, "MutedBrush");
     private string[] _healthMessages = [];
     private bool _recoveryRequired;
     private readonly bool _demo;
@@ -68,6 +69,10 @@ internal sealed class SettingsView : UserControl, IDisposable
         thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); _page.Children.Add(thresholds);
         _page.Children.Add(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
         Toggle("Prévenir après un reset", "Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille.", p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
+        Section("Annonces de resets généraux", true);
+        Toggle("Vérifier les annonces publiques", "Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables.", p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
+        _page.Children.Add(Ui.Text("Les comptes inactifs concernés affichent ≈100 % pendant 24 h maximum (5 h pour le quota court). Le dernier relevé reste conservé. Les notifications suivent le réglage « Prévenir après un reset ».", 11, "MutedBrush"));
+        _announcementsStatus.Margin = new Thickness(0, 8, 0, 0); _page.Children.Add(_announcementsStatus);
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
         ReloadableSection(() => ReminderSettingsView.Channels(preferences, owner.Reminders, demo, _commands));
         Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
@@ -209,6 +214,11 @@ internal sealed class SettingsView : UserControl, IDisposable
     internal void RefreshHealth()
     {
         if (_closed) return;
+        var feed = _owner.TrackerService.State.GlobalResetFeed;
+        _announcementsStatus.Text = !_preferences.Current.MonitorGlobalResets ? "Vérification désactivée."
+            : _demo ? "Démonstration · aucun accès réseau."
+            : (feed?.CheckedAt is { } checkedAt ? $"Dernière vérification : {Display.Exact(checkedAt)} · {Display.Zone(checkedAt)}" : "En attente de vérification des sources…") +
+                (feed?.Error is { } error ? "\n" + error : "");
         var messages = _owner.HealthWarnings();
         if (_healthMessages.SequenceEqual(messages) && _recoveryRequired == _preferences.RecoveryRequired) return;
         _healthMessages = messages; _recoveryRequired = _preferences.RecoveryRequired;
