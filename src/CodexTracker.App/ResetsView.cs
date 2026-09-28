@@ -43,14 +43,14 @@ internal sealed class ResetsView : UserControl
         _accounts = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Id", Tag = FindResource("AccountsIcon") };
         export.Click += (_, _) => calendar((_accounts.SelectedItem as ResetAccountChoice)?.Id);
         System.Windows.Automation.AutomationProperties.SetName(_accounts, "Filtrer les resets par compte");
-        _accounts.SelectionChanged += (_, _) => { if (!_syncing) Render(); }; filters.Children.Add(_accounts);
+        _accounts.SelectionChanged += (_, _) => { if (!_syncing) Render(animate: true); }; filters.Children.Add(_accounts);
         _refresh = new Button { Content = "Actualiser", Style = (Style)FindResource("QuietButton"), ToolTip = "Actualise le compte actif dans Codex ; les autres conservent leur dernier relevé" };
         _refresh.Click += (_, _) => refresh();
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var agenda = new RadioButton { Content = "Agenda", GroupName = "ResetView", IsChecked = true, Style = (Style)FindResource("ResetKindFilter") };
         _weekChoice = new RadioButton { Content = "Semaine", GroupName = "ResetView", Style = (Style)FindResource("ResetKindFilter") };
-        agenda.Checked += (_, _) => { _weekView = false; Render(); };
-        _weekChoice.Checked += (_, _) => { _weekView = true; Render(); };
+        agenda.Checked += (_, _) => { _weekView = false; Render(animate: true); };
+        _weekChoice.Checked += (_, _) => { _weekView = true; Render(animate: true); };
         System.Windows.Automation.AutomationProperties.SetName(agenda, "Vue agenda des resets");
         System.Windows.Automation.AutomationProperties.SetName(_weekChoice, "Vue semaine des resets");
         actions.Children.Add(agenda); actions.Children.Add(_weekChoice); _refresh.Margin = new Thickness(8, 0, 0, 0); actions.Children.Add(_refresh);
@@ -63,7 +63,7 @@ internal sealed class ResetsView : UserControl
             content.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
             var choice = new RadioButton { Content = content, Tag = kind, GroupName = "ResetKinds", IsChecked = kind is null, Style = (Style)FindResource("ResetKindFilter"), Margin = new Thickness(0, 0, 4, 0) };
             System.Windows.Automation.AutomationProperties.SetName(choice, label);
-            choice.Checked += (_, _) => { _kindFilter = kind; Render(); };
+            choice.Checked += (_, _) => { _kindFilter = kind; Render(animate: true); };
             kinds.Children.Add(choice);
         }
         var types = new Grid(); types.ColumnDefinitions.Add(new ColumnDefinition()); types.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -87,7 +87,7 @@ internal sealed class ResetsView : UserControl
     }
     private string AccountName(AccountState account) => PrivacyText.Account(account.Profile, _state, _preferences.Current);
     internal void ShowWeek() => _weekChoice.IsChecked = true;
-    private void Render()
+    private void Render(bool animate = false)
     {
         var accountId = (_accounts.SelectedItem as ResetAccountChoice)?.Id;
         var accounts = _state.Accounts.Where(a => accountId is null || a.Profile.Id == accountId).ToArray();
@@ -120,6 +120,7 @@ internal sealed class ResetsView : UserControl
             .Concat((_state.GlobalResetFeed?.Announcements ?? []).SelectMany(a => new[] { a.ReportedAt.AddHours(5), a.ReportedAt.AddHours(24) }))
             .Where(at => at > now).Order().Cast<DateTimeOffset?>().FirstOrDefault();
         UpdateTimes(now);
+        if (animate) UiMotion.FadeIn(_timeline);
     }
     private void AddGlobalAnnouncement(AccountState[] accounts, DateTimeOffset now)
     {
@@ -179,7 +180,7 @@ internal sealed class ResetsView : UserControl
         {
             var button = new Button { Content = label, ToolTip = name, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(9, 5, 9, 5) };
             System.Windows.Automation.AutomationProperties.SetName(button, name);
-            button.Click += (_, _) => { _week = shift == 0 ? ResetCalendar.Monday(DateOnly.FromDateTime(PreviewClock.UtcNow.LocalDateTime)) : _week.AddDays(shift); Render(); };
+            button.Click += (_, _) => { _week = shift == 0 ? ResetCalendar.Monday(DateOnly.FromDateTime(PreviewClock.UtcNow.LocalDateTime)) : _week.AddDays(shift); Render(animate: true); };
             buttons.Children.Add(button);
         }
         Grid.SetColumn(buttons, 1); navigation.Children.Add(buttons); _timeline.Children.Add(navigation);

@@ -164,7 +164,10 @@ internal sealed class SettingsView : UserControl, IDisposable
     {
         if (!_pages.TryGetValue(title, out var page)) return;
         if (CurrentPage != title || _pageScroll.Content is null)
-        { CurrentPage = title; _pageScroll.Content = page.Content; _pageScroll.ScrollToTop(); }
+        {
+            CurrentPage = title; _pageScroll.Content = page.Content; _pageScroll.ScrollToTop();
+            UiMotion.FadeIn(_pageScroll);
+        }
         RefreshHealth();
         foreach (var (name, value) in _pages)
         {

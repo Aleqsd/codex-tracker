@@ -57,6 +57,7 @@ public partial class App : System.Windows.Application
             if (e.Args.Contains("--preview"))
             {
                 if (!IsDemo) throw new ArgumentException("Les aperçus nécessitent --demo.");
+                UiMotion.Suppressed = true;
                 PreviewClock.Fixed = DateTimeOffset.Parse("2026-09-21T12:00:00Z");
                 RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
                 System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");

@@ -18,6 +18,12 @@ Interface française, sobre, neutre et compacte. Afficher l’information essent
 - Pied de fenêtre : état de collecte à gauche, version réellement exécutée à droite en texte discret. Réserver sa largeur pour qu’elle reste lisible en fenêtre compacte ; ne pas afficher la version distante à cet endroit.
 - Confirmation MCP : action, destinataire, effet et expiration ; jamais afficher de clé.
 
+## Animations
+
+Les changements d’onglet, de section des réglages et de filtre de l’agenda utilisent un fondu de 180 ms. Les boutons se compriment légèrement pendant l’appui (80 ms), puis reviennent à leur taille normale (140 ms). Les chevrons tournent en 140 ms ; listes déroulantes et détails repliables apparaissent en fondu. Les animations restent décoratives : aucun délai de navigation, déplacement de formulaire ou interpolation des quotas.
+
+`UiMotion` respecte la désactivation des animations Windows et le contraste élevé. Les rafraîchissements automatiques ne relancent pas les transitions de navigation. Les éléments masqués ou retirés arrêtent leur animation ; les aperçus `--preview` montrent directement l’état final pour conserver des captures reproductibles. Les couleurs restent liées aux ressources dynamiques du thème.
+
 ## Aperçus reproductibles
 
 `scripts/dev.ps1 -Action Preview` lance les vraies vues en mode démo avec une horloge de présentation fixe. `-View` choisit Comptes, Resets ou une section des réglages ; `-Theme`, `-Size` et `-Dpi` contrôlent le rendu.

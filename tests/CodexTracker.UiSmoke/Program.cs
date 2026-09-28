@@ -33,10 +33,19 @@ internal static class Program
         var app = new TestApplication();
         app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         System.Xml.Linq.XNamespace ns = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        System.Xml.Linq.XNamespace motion = "clr-namespace:CodexTracker.App;assembly=CodexTracker";
         var sourceXaml = System.Xml.Linq.XDocument.Load("src/CodexTracker.App/App.xaml");
         var resources = new System.Xml.Linq.XElement(ns + "ResourceDictionary",
             new System.Xml.Linq.XAttribute(System.Xml.Linq.XNamespace.Xmlns + "x", "http://schemas.microsoft.com/winfx/2006/xaml"),
+            new System.Xml.Linq.XAttribute(System.Xml.Linq.XNamespace.Xmlns + "motion", motion.NamespaceName),
             sourceXaml.Root!.Element(ns + "Application.Resources")!.Elements());
+        // Loose XAML in the test assembly must qualify the app's attached attributes as well as setters.
+        foreach (var attribute in resources.Descendants().SelectMany(element => element.Attributes())
+            .Where(a => a.Name.NamespaceName == "clr-namespace:CodexTracker.App").ToArray())
+        {
+            attribute.Parent!.SetAttributeValue(motion + attribute.Name.LocalName, attribute.Value);
+            attribute.Remove();
+        }
         app.Resources = (ResourceDictionary)System.Windows.Markup.XamlReader.Parse(resources.ToString());
         app.Dispatcher.BeginInvoke(async () =>
         {
@@ -75,6 +84,7 @@ internal static class Program
                 CheckRendered(window, "Activation restores a minimized window");
                 await RequestShow(handle);
                 CheckRendered(window, "Repeated activation retains the same rendered window");
+                await MotionChecks.Run(window);
                 await FeatureChecks.Run(window, service);
                 await ExpectedResetChecks.Run(window, service);
                 await GlobalResetChecks.Run(window, service);
