@@ -41,8 +41,18 @@ internal static class TypographyChecks
 
     internal static void AssertBundled(DependencyObject root)
     {
+        if (root is Window window && (TextOptions.GetTextFormattingMode(window) != TextFormattingMode.Ideal ||
+            TextOptions.GetTextRenderingMode(window) != TextRenderingMode.Auto ||
+            TextOptions.GetTextHintingMode(window) != TextHintingMode.Fixed || RenderOptions.GetClearTypeHint(window) != ClearTypeHint.Enabled))
+            throw new InvalidOperationException("Window does not use the shared natural text rendering policy");
         foreach (var element in Tree(root).OfType<FrameworkElement>().Where(e => e.IsVisible && e is TextBlock or Control))
         {
+            // Hinting is inherited by the renderer's visual state, not as a dependency-property value.
+            // Auto on a child therefore preserves the window's Fixed hinting; only explicit overrides differ.
+            if (TextOptions.GetTextFormattingMode(element) != TextFormattingMode.Ideal ||
+                TextOptions.GetTextRenderingMode(element) != TextRenderingMode.Auto || TextOptions.GetTextHintingMode(element) == TextHintingMode.Animated)
+                throw new InvalidOperationException($"Text rendering override in {element.GetType().Name} ({element.Name}): " +
+                    $"{TextOptions.GetTextFormattingMode(element)}/{TextOptions.GetTextRenderingMode(element)}/{TextOptions.GetTextHintingMode(element)}");
             var family = (FontFamily)element.GetValue(TextElement.FontFamilyProperty);
             var weight = (FontWeight)element.GetValue(TextElement.FontWeightProperty);
             var style = (FontStyle)element.GetValue(TextElement.FontStyleProperty);

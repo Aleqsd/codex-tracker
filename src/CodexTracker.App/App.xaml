@@ -2,14 +2,17 @@
  <Application.Resources>
   <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
   <FontFamily x:Key="AppFontFamily">/CodexTracker;component/Assets/Fonts/#Roboto</FontFamily>
-  <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/><Setter Property="TextOptions.TextFormattingMode" Value="Display"/></Style>
+  <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/><Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/></Style>
   <!-- Applied explicitly by derived windows: implicit Window styles do not match subclasses. -->
   <Style TargetType="Window">
    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
    <Setter Property="UseLayoutRounding" Value="True"/><Setter Property="SnapsToDevicePixels" Value="True"/>
-   <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
-   <!-- Neutral antialiasing avoids RGB fringes on small text at fractional Windows scaling. -->
-   <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale"/>
+   <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
+   <!-- Natural glyph positioning and system smoothing keep text fluid at fractional DPI. -->
+   <Setter Property="TextOptions.TextRenderingMode" Value="Auto"/>
+   <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+   <!-- Theme backgrounds are opaque; transparency introduced by children is still handled by WPF. -->
+   <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
   </Style>
   <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="12"/></Style>
   <Style x:Key="Eyebrow" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="FontSize" Value="10"/><Setter Property="FontWeight" Value="Medium"/></Style>
