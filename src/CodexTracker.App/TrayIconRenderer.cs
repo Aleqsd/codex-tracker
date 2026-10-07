@@ -30,8 +30,8 @@ internal static class TrayIconRenderer
         int barHeight = Math.Max(1, (int)Math.Round(pixelSize / 20d));
         int barY = pixelSize - barHeight - Math.Max(1, (int)Math.Round(pixelSize / 20d));
 
-        // Rasterize hinted text at its final physical size. Resizing an enlarged
-        // outline loses the font's pixel alignment and softens these tiny digits.
+        // Rasterize hinted text at its final physical size. Tiny icons need solid
+        // pixels: grayscale edges soften stems that are only one pixel wide.
         using var glyph = FitGlyph(label, foreground, pixelSize, out var bounds);
         var bitmap = new Bitmap(pixelSize, pixelSize, PixelFormat.Format32bppArgb);
         try
@@ -65,7 +65,9 @@ internal static class TrayIconRenderer
             try
             {
                 using var graphics = Graphics.FromImage(glyph);
-                graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                graphics.TextRenderingHint = size <= 32
+                    ? TextRenderingHint.SingleBitPerPixelGridFit
+                    : TextRenderingHint.AntiAliasGridFit;
                 using var font = new Font("Segoe UI Semibold", fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
                 using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
                 format.FormatFlags |= StringFormatFlags.NoClip;

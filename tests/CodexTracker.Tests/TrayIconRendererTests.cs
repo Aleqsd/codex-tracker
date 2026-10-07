@@ -33,8 +33,10 @@ public sealed class TrayIconRendererTests
                 antialiased |= alpha is > 0 and < 255;
             }
             Assert.True(visible, $"No visible digits: {label}, {size}px");
-            // A hinted horizontal dash can land exactly on whole pixels.
-            if (label != "--") Assert.True(antialiased, $"No antialiasing: {label}, {size}px");
+            // After conversion to a native HICON, low-DPI digits must stay fully
+            // opaque or transparent, so their one-pixel stems retain contrast.
+            if (size <= 32) Assert.False(antialiased, $"Soft digits: {label}, {size}px");
+            else if (label != "--") Assert.True(antialiased, $"No high-DPI antialiasing: {label}, {size}px");
         }
     }
 

@@ -1,8 +1,8 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center">Vos quotas Codex et Claude Code, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.9/CodexTracker-0.9.9-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.10/CodexTracker-0.9.10-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
 <p align="center">Windows 11 · x64 · Gratuit · Données locales — avec Codex ou Claude Code installé</p>
-<p align="center"><sub>0.9.9 · suivi Claude corrigé et rendu de la barre d’état affiné</sub></p>
+<p align="center"><sub>0.9.10 · chiffres plus nets dans la barre d’état</sub></p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
 <p align="center"><sub>Démonstration avec des comptes fictifs. <a href="docs/resets-week.png">Aperçu statique</a></sub></p>
