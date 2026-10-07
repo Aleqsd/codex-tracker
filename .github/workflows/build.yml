@@ -91,3 +91,8 @@ jobs:
         with:
           name: fictional-provider-previews
           path: artifacts/previews/providers-*.png
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fictional-tray-previews
+          path: artifacts/previews/tray-*.png

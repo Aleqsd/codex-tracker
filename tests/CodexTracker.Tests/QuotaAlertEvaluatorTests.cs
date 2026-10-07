@@ -75,6 +75,67 @@ public sealed class QuotaAlertEvaluatorTests
         Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(5, 19, reset: Start.AddDays(8)), restored.State).Notifications);
     }
 
+    [Theory]
+    [InlineData(UsageWindowKind.Weekly)]
+    [InlineData(UsageWindowKind.Short)]
+    public void UndatedFullQuotaRearmsEveryThresholdWithoutInventingAReset(UsageWindowKind kind)
+    {
+        var state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(0, 25, kind), null).State;
+        var first = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(2, 4, kind), state);
+        Assert.Equal(new int?[] { 20, 10, 5 }, first.Notifications.Select(n => n.Threshold));
+        var full = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(4, 100, kind), first.State);
+        Assert.Empty(full.Notifications);
+        var second = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(6, 4, kind), full.State);
+        Assert.Equal(new int?[] { 20, 10, 5 }, second.Notifications.Select(n => n.Threshold));
+        Assert.All(second.Notifications, n => Assert.Equal(kind, n.Window));
+        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(8, 3, kind), second.State).Notifications);
+        var window = kind == UsageWindowKind.Weekly ? full.State.Weekly : full.State.Short;
+        Assert.Null(window!.ResetsAt); Assert.Null(window.LastObservedReset);
+    }
+
+    [Theory]
+    [InlineData(25)]
+    [InlineData(99.99)]
+    public void UndatedPartialCorrectionDoesNotReplayThresholds(double corrected)
+    {
+        var state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(0, 25), null).State;
+        state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(2, 4), state).State;
+        state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(4, corrected), state).State;
+        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(6, 4), state).Notifications);
+    }
+
+    [Fact]
+    public void OldUndatedFullObservationCannotRearmThresholds()
+    {
+        var state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(0, 25), null).State;
+        state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(2, 4), state).State;
+        var old = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(1, 100), state);
+        Assert.Equal(state, old.State); Assert.Empty(old.Notifications);
+        state = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(4, 25), old.State).State;
+        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(6, 4), state).Notifications);
+    }
+
+    [Fact]
+    public void KnownPeriodFullCorrectionDoesNotRearmThresholds()
+    {
+        var state = QuotaAlertEvaluator.Observe(Profile, Snapshot(0, 25), null).State;
+        state = QuotaAlertEvaluator.Observe(Profile, Snapshot(2, 4), state).State;
+        state = QuotaAlertEvaluator.Observe(Profile, Snapshot(4, 100), state).State;
+        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(6, 4), state).Notifications);
+    }
+
+    [Fact]
+    public void LegacyUndatedFullStateWithAnOldMaskRearmsOnTheNextObservation()
+    {
+        var legacy = new QuotaAlertState(new(100, null, Start, NotifiedThresholdMask: 7));
+        var next = QuotaAlertEvaluator.Observe(Profile, UndatedSnapshot(2, 19), legacy);
+        Assert.Equal(20, Assert.Single(next.Notifications).Threshold);
+    }
+
+    private static AccountSnapshot UndatedSnapshot(int minutes, double remaining, UsageWindowKind kind = UsageWindowKind.Weekly) =>
+        new(Profile.Email, "pro", [new("claude", "Claude Code", [new(100 - remaining, kind == UsageWindowKind.Weekly ? 10080 : 300, null)])],
+            null, null, Start.AddMinutes(minutes));
+
     private static AccountSnapshot Snapshot(int minutes, double remaining, DateTimeOffset? reset = null, double? shortRemaining = null)
     {
         List<QuotaWindow> windows = [new(100 - remaining, 10080, reset ?? Start.AddDays(7))];

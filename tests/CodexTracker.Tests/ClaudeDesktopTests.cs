@@ -95,4 +95,37 @@ public sealed class ClaudeDesktopTests
         Assert.Equal(new[] { personal, work }, restarted.State.Accounts.Select(a => a.Profile.Id));
         Assert.Equal(personal, restarted.State.ActiveAccount!.Profile.Id);
     }
+
+    [Fact]
+    public async Task DesktopThresholdsRearmAfterObservedFullQuotaAndSurviveRestart()
+    {
+        using var directory = new TestDirectory(); ClaudeFixture.SignIn(directory);
+        var path = directory.File("plan-usage-history.json"); var at = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var options = new TrackerServiceOptions { DataDirectory = directory.File("data"), ClaudeLocation = ClaudeFixture.Location(directory),
+            ClaudeDesktopUsagePaths = [path], AutomaticRefresh = false, MonitorAuthChanges = false };
+        File.WriteAllText(path, History(at, Organization, new { fh = 75, sd = 75 }));
+        Guid id;
+        await using (var service = new TrackerService(directory.File("missing-auth.json"), options))
+        {
+            var alerts = new List<QuotaNotification>(); service.Notification += (_, alert) => alerts.Add(alert);
+            await service.InitializeAsync(); id = service.State.ActiveAccount!.Profile.Id;
+            Assert.Empty(alerts);
+            File.WriteAllText(path, History(at.AddMinutes(2), Organization, new { fh = 85, sd = 85 }));
+            await service.RefreshAsync();
+            Assert.Equal(2, alerts.Count); Assert.All(alerts, n => Assert.Equal(20, n.Threshold));
+            alerts.Clear();
+            File.WriteAllText(path, History(at.AddMinutes(4), Organization, new { fh = 0, sd = 0 }));
+            await service.RefreshAsync(); Assert.Empty(alerts);
+        }
+        await using var restarted = new TrackerService(directory.File("missing-auth.json"), options);
+        var notifications = new List<QuotaNotification>(); restarted.Notification += (_, alert) => notifications.Add(alert);
+        await restarted.InitializeAsync(); Assert.Empty(notifications); Assert.Equal(id, restarted.State.ActiveAccount!.Profile.Id);
+        File.WriteAllText(path, History(at.AddMinutes(6), Organization, new { fh = 85, sd = 85 }));
+        await restarted.RefreshAsync();
+        Assert.Equal(2, notifications.Count);
+        Assert.All(notifications, n => { Assert.Equal(NotificationKind.Threshold, n.Kind); Assert.Equal(20, n.Threshold); });
+        Assert.Equal(new[] { UsageWindowKind.Weekly, UsageWindowKind.Short }, notifications.Select(n => n.Window));
+        await restarted.RefreshAsync(); Assert.Equal(2, notifications.Count);
+        Assert.Null(restarted.State.ActiveAccount.Snapshot!.Weekly!.ResetsAt); Assert.Null(restarted.State.ActiveAccount.Snapshot.Short!.ResetsAt);
+    }
 }

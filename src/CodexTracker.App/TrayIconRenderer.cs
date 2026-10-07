@@ -1,20 +1,16 @@
 using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Color = System.Drawing.Color;
-using FontFamily = System.Drawing.FontFamily;
-using Matrix = System.Drawing.Drawing2D.Matrix;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace CodexTracker.App;
 
 internal static class TrayIconRenderer
 {
-    private const int Supersampling = 4;
-
     internal static Icon Render(string number, Color color, bool dark, int pixelSize)
     {
         using var bitmap = RenderBitmap(number, color, dark, pixelSize);
@@ -34,43 +30,16 @@ internal static class TrayIconRenderer
         int barHeight = Math.Max(1, (int)Math.Round(pixelSize / 20d));
         int barY = pixelSize - barHeight - Math.Max(1, (int)Math.Round(pixelSize / 20d));
 
-        using var high = new Bitmap(pixelSize * Supersampling, pixelSize * Supersampling, PixelFormat.Format32bppPArgb);
-        using (var graphics = Graphics.FromImage(high))
-        {
-            graphics.Clear(Color.Transparent);
-            graphics.ScaleTransform(Supersampling, Supersampling);
-            graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var family = new FontFamily("Segoe UI Semibold");
-            using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
-            using var path = new GraphicsPath();
-            path.AddString(label, family, (int)System.Drawing.FontStyle.Regular, 64, PointF.Empty, format);
-            var bounds = path.GetBounds();
-            // Fit the visible glyphs, not the font's em box and invisible leading.
-            // This is the approved B rendering: at 20 px the digits get ~13 px of height.
-            float maxHeight = (float)Math.Round(pixelSize * .65);
-            float scale = Math.Min((pixelSize - 2f) / bounds.Width, maxHeight / bounds.Height);
-            float width = bounds.Width * scale, height = bounds.Height * scale;
-            float x = (float)Math.Round((pixelSize - width) / 2);
-            float y = (float)Math.Round(((known ? barY - 2 : pixelSize) - height) / 2);
-            using var transform = new Matrix(scale, 0, 0, scale, x - bounds.X * scale, y - bounds.Y * scale);
-            path.Transform(transform);
-            using var ink = new SolidBrush(foreground);
-            graphics.FillPath(ink, path);
-        }
-
+        // Rasterize hinted text at its final physical size. Resizing an enlarged
+        // outline loses the font's pixel alignment and softens these tiny digits.
+        using var glyph = FitGlyph(label, foreground, pixelSize, out var bounds);
         var bitmap = new Bitmap(pixelSize, pixelSize, PixelFormat.Format32bppArgb);
         try
         {
             using var graphics = Graphics.FromImage(bitmap);
-            graphics.CompositingMode = CompositingMode.SourceCopy;
-            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            using var attributes = new ImageAttributes();
-            attributes.SetWrapMode(WrapMode.TileFlipXY);
-            // Downsample ourselves into the final shell size; Explorer receives no
-            // larger glyph bitmap to rescale. Premultiplied alpha avoids dark halos.
-            graphics.DrawImage(high, new Rectangle(0, 0, pixelSize, pixelSize), 0, 0, high.Width, high.Height, GraphicsUnit.Pixel, attributes);
-            graphics.CompositingMode = CompositingMode.SourceOver;
+            int x = (pixelSize - bounds.Width) / 2;
+            int y = ((known ? barY - 2 : pixelSize) - bounds.Height) / 2;
+            graphics.DrawImageUnscaled(glyph, x - bounds.X, y - bounds.Y);
             if (known)
             {
                 int inset = Math.Max(1, (int)Math.Round(pixelSize / 10d));
@@ -84,6 +53,48 @@ internal static class TrayIconRenderer
             return bitmap;
         }
         catch { bitmap.Dispose(); throw; }
+    }
+
+    private static Bitmap FitGlyph(string label, Color color, int size, out Rectangle bounds)
+    {
+        int maxHeight = (int)Math.Round(size * .65);
+        float fontSize = size * .9f;
+        for (;;)
+        {
+            var glyph = new Bitmap(size * 3, size * 2, PixelFormat.Format32bppArgb);
+            try
+            {
+                using var graphics = Graphics.FromImage(glyph);
+                graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                using var font = new Font("Segoe UI Semibold", fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
+                using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
+                format.FormatFlags |= StringFormatFlags.NoClip;
+                using var brush = new SolidBrush(color);
+                graphics.DrawString(label, font, brush, 0, 0, format);
+                bounds = InkBounds(glyph);
+                if (bounds.Width <= size - 2 && bounds.Height <= maxHeight) return glyph;
+                fontSize = Math.Min(fontSize - .5f, fontSize * Math.Min((size - 2f) / bounds.Width, (float)maxHeight / bounds.Height));
+            }
+            catch { glyph.Dispose(); throw; }
+            glyph.Dispose();
+        }
+    }
+
+    private static Rectangle InkBounds(Bitmap glyph)
+    {
+        var data = glyph.LockBits(new(0, 0, glyph.Width, glyph.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            var pixels = new byte[data.Stride * glyph.Height];
+            Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
+            int left = glyph.Width, top = glyph.Height, right = -1, bottom = -1;
+            for (int y = 0; y < glyph.Height; y++)
+            for (int x = 0; x < glyph.Width; x++)
+                if (pixels[y * data.Stride + x * 4 + 3] != 0)
+                { left = Math.Min(left, x); top = Math.Min(top, y); right = Math.Max(right, x); bottom = Math.Max(bottom, y); }
+            return right < 0 ? Rectangle.Empty : Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
+        }
+        finally { glyph.UnlockBits(data); }
     }
 
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);

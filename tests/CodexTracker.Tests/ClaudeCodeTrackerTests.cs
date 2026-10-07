@@ -63,6 +63,69 @@ public sealed class ClaudeCodeTrackerTests
     }
 
     [Fact]
+    public async Task ClaudeAloneRespectsTheRefreshIntervalAfterEveryAutomaticRead()
+    {
+        using var directory = new TestDirectory(); ClaudeFixture.SignIn(directory);
+        var claude = new Reader("claude");
+        var times = new ConcurrentQueue<long>();
+        var thirdRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        claude.Handler = (profile, _) =>
+        {
+            times.Enqueue(System.Diagnostics.Stopwatch.GetTimestamp());
+            if (times.Count >= 3) thirdRead.TrySetResult();
+            return Task.FromResult(claude.Snapshot(profile));
+        };
+        var interval = TimeSpan.FromSeconds(2);
+        await using var service = new TrackerService(directory.File("missing-auth.json"), Options(directory) with
+        {
+            AutomaticRefresh = true, RefreshIntervalProvider = () => interval
+        }, new Reader("codex"), claude);
+        await service.InitializeAsync();
+        await thirdRead.Task.WaitAsync(TimeSpan.FromSeconds(12));
+        var reads = times.ToArray();
+        // Compare automatic reads, excluding the initial read and its startup work.
+        var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(reads[1], reads[2]);
+        Assert.True(elapsed >= interval - TimeSpan.FromMilliseconds(150), $"Automatic reads were only {elapsed} apart.");
+    }
+
+    [Fact]
+    public async Task FrequentNativeClaudeObservationsDoNotPostponeCodexPeriodicReads()
+    {
+        using var directory = new TestDirectory(); ClaudeFixture.SignIn(directory);
+        var auth = directory.File("auth.json"); File.WriteAllBytes(auth, TestFixtures.Auth());
+        var usage = directory.File("plan-usage-history.json"); File.WriteAllText(usage, "{}");
+        var codex = new Reader("codex"); var claude = new Reader("claude");
+        await using var service = new TrackerService(auth, Options(directory, monitor: true) with
+        {
+            ClaudeDesktopUsagePaths = [usage], AutomaticRefresh = true,
+            RefreshIntervalProvider = () => TimeSpan.FromSeconds(2)
+        }, codex, claude);
+        await service.InitializeAsync(); await Task.Delay(500);
+        var baseline = codex.Reads.Count; var claudeBaseline = claude.Reads.Count;
+        var nextCodex = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        codex.Handler = (profile, _) => { if (codex.Reads.Count > baseline) nextCodex.TrySetResult(); return Task.FromResult(codex.Snapshot(profile)); };
+        using var stop = new CancellationTokenSource();
+        var observations = Task.Run(async () =>
+        {
+            for (var i = 0; !stop.IsCancellationRequested; i++)
+            {
+                await File.WriteAllTextAsync(usage, System.Text.Json.JsonSerializer.Serialize(new { version = 2, observation = i }), stop.Token);
+                await Task.Delay(100, stop.Token);
+            }
+        });
+        try
+        {
+            await nextCodex.Task.WaitAsync(TimeSpan.FromSeconds(8));
+            Assert.True(claude.Reads.Count >= claudeBaseline + 2, "Native Claude observations must refresh independently during the interval.");
+        }
+        finally
+        {
+            stop.Cancel();
+            try { await observations; } catch (OperationCanceledException) { }
+        }
+    }
+
+    [Fact]
     public async Task SwitchingClaudeDuringSlowReadIgnoresOldResponseAndDoesNotCancelCodex()
     {
         using var directory = new TestDirectory(); ClaudeFixture.SignIn(directory, "a@example.test");

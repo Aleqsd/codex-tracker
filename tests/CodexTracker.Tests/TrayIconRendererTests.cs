@@ -33,7 +33,8 @@ public sealed class TrayIconRendererTests
                 antialiased |= alpha is > 0 and < 255;
             }
             Assert.True(visible, $"No visible digits: {label}, {size}px");
-            Assert.True(antialiased, $"No antialiasing: {label}, {size}px");
+            // A hinted horizontal dash can land exactly on whole pixels.
+            if (label != "--") Assert.True(antialiased, $"No antialiasing: {label}, {size}px");
         }
     }
 

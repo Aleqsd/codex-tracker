@@ -56,6 +56,7 @@ internal static class Program
             try
             {
                 if (args.Contains("--providers-only")) { await ProviderChecks.Run(); return; }
+                if (args.Contains("--tray-only")) { await TrayChecks.Run(); return; }
                 service = (ITrackerService)Activator.CreateInstance(Assembly.GetType("CodexTracker.App.DemoTrackerService")!, true)!;
                 var preferences = Activator.CreateInstance(Assembly.GetType("CodexTracker.App.PreferencesStore")!, Instance, null, [false, null], null)!;
                 window = (MainWindow)Activator.CreateInstance(typeof(MainWindow), Instance, null, [service, true, preferences, new UpdateService()], null)!;
@@ -93,6 +94,7 @@ internal static class Program
                 await NotificationChecks.Run(window);
                 await ReliabilityChecks.Run();
                 await ProviderChecks.Run();
+                await TrayChecks.Run();
                 ((System.Windows.Controls.Button)window.FindName("HideToTrayButton")).RaiseEvent(
                     new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Check(!window.ShowInTaskbar && !IsWindowVisible(handle), "Tray hiding removes the native visible window");

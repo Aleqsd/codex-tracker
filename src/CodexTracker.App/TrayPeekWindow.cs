@@ -25,6 +25,10 @@ internal sealed class TrayPeekWindow : Window
     public TrayPeekWindow(Action open)
     {
         SetResourceReference(StyleProperty, typeof(Window));
+        // This window has an opaque background: use the system's text smoothing
+        // instead of the grayscale mode used elsewhere for neutral screenshots.
+        TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
+        RenderOptions.SetClearTypeHint(this, ClearTypeHint.Enabled);
         Title = "Aperçu Codex Tracker";
         Width = 322;
         SizeToContent = SizeToContent.Height;

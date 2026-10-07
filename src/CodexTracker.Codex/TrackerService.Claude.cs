@@ -26,6 +26,9 @@ public sealed partial class TrackerService
 
     private async Task<Task> QueueBothRefreshesAsync(CancellationToken token)
     {
+        // Only the shared refresh advances the periodic schedule. Native Claude
+        // observations remain immediate without postponing the next Codex poll.
+        Interlocked.Exchange(ref _lastRefreshStarted, System.Diagnostics.Stopwatch.GetTimestamp());
         var codex = await QueueRefreshAsync(token);
         var claude = _options.DetectClaudeCode ? await QueueClaudeRefreshAsync(token) : Task.CompletedTask;
         return Task.WhenAll(codex, claude);

@@ -134,7 +134,12 @@ public static class QuotaAlertEvaluator
         if (observedAt <= previous.ObservedAt) return previous;
         var advances = previous.ResetsAt is { } oldReset && window.ResetsAt is { } newReset && newReset > oldReset;
         var newPeriod = advances && (previous.LastObservedReset is null || window.ResetsAt > previous.LastObservedReset);
-        var mask = newPeriod ? 0 : previous.NotifiedThresholdMask;
+        // Desktop Claude has no reset date. A measured full quota rearms thresholds,
+        // without declaring a reset; partial corrections keep their deduplication.
+        // The prior observation also repairs masks persisted by older versions at 100%.
+        var undatedFullQuota = window.ResetsAt is null && remaining == 100 ||
+            previous.ResetsAt is null && previous.Remaining == 100;
+        var mask = newPeriod || undatedFullQuota ? 0 : previous.NotifiedThresholdMask;
         var lastReset = previous.LastObservedReset;
         if (window.ResetsAt is { } currentReset && (lastReset is null || currentReset > lastReset)) lastReset = currentReset;
         var continuous = !suppress && observedAt - previous.ObservedAt <= UsageAnalytics.MaximumObservationGap;

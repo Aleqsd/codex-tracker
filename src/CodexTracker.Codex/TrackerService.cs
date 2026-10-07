@@ -293,7 +293,6 @@ public sealed partial class TrackerService : ITrackerService
             PruneOldHistory(DateTimeOffset.UtcNow);
             if (_activeKey is null || _accountId is null) return Task.CompletedTask;
             if (_refresh is { IsCompleted: false }) return _refresh;
-            _lastRefreshStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             var active = State.Accounts.Single(a => a.IsActiveInCodex);
             var sequence = ++_requestSequence;
             _refresh = RefreshCoreAsync(active.Profile, _accountId, _generation, _identityLifetime.Token);
