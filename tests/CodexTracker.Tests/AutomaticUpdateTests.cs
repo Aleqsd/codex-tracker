@@ -67,15 +67,17 @@ public sealed partial class UpdateTests
         Assert.Equal(retry, await service.LoadPreparedAsync());
     }
 
-    [Fact]
-    public async Task InstalledOrOlderPreparedVersionIsNeverAppliedAgain()
+    [Theory]
+    [InlineData("0.4.0")]
+    [InlineData("0.5.0-polices.1")]
+    public async Task InstalledOrOlderPreparedVersionIsNeverAppliedAgain(string installedVersion)
     {
         using var directory = new TestDirectory();
         var zip = Zip(("CodexTracker.exe", "MZ-fixture-new"));
         using var client = PackageClient(zip);
         using (var service = new UpdateService("0.3.0", client, directory.File("cache.json")))
             await service.PrepareAsync(Release(zip.Length));
-        using var updated = new UpdateService("0.4.0", client, directory.File("cache.json"));
+        using var updated = new UpdateService(installedVersion, client, directory.File("cache.json"));
         Assert.Null(await updated.LoadPreparedAsync());
         Assert.False(File.Exists(directory.File("prepared-update-stable.json")));
     }

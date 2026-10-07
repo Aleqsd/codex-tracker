@@ -463,7 +463,7 @@ public sealed class TrackerServiceTests
     {
         DataDirectory = directory.File("data"),
         CodexExecutablePath = directory.File("not-a-real-codex.exe"),
-        AutomaticRefresh = false,
+        DetectClaudeCode = false, AutomaticRefresh = false,
         MonitorAuthChanges = false
     };
 

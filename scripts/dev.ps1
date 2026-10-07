@@ -5,7 +5,9 @@ param(
     [ValidateSet('Comptes','Resets','Semaine','Général','Rappels','Canaux','Historique','Calendrier','Assistants','Application')][string]$View = 'Comptes',
     [ValidateSet('light','dark')][string]$Theme = 'dark',
     [ValidateSet('normal','compact')][string]$Size = 'normal',
-    [ValidateSet(96,144,192)][int]$Dpi = 96,
+    [ValidateSet(96,120,144,192)][int]$Dpi = 96,
+    [switch]$Claude,
+    [switch]$ManualReset,
     [switch]$Matrix
 )
 $ErrorActionPreference = 'Stop'
@@ -15,6 +17,9 @@ if (Get-Process -Name ffxiv_dx11,ffxiv -ErrorAction SilentlyContinue) {
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
+    $demoOptions = @()
+    if ($Claude) { $demoOptions += "--demo-claude" }
+    if ($ManualReset) { $demoOptions += "--demo-manual-reset" }
     & $Dotnet build CodexTracker.slnx -c Release
     if ($LASTEXITCODE) { throw 'Compilation échouée.' }
     if ($Action -eq 'Check') {
@@ -27,16 +32,18 @@ try {
         $env:DOTNET_ROOT = Split-Path -Parent $dotnetCommand
         & $Python scripts/test-mcp.py (Join-Path $root 'src/CodexTracker.App/bin/Release/net10.0-windows/CodexTracker.exe')
         if ($LASTEXITCODE) { throw 'Tests MCP échoués.' }
+        & $Python scripts/test-claude.py (Join-Path $root 'src/CodexTracker.App/bin/Release/net10.0-windows/CodexTracker.exe')
+        if ($LASTEXITCODE) { throw 'Tests du collecteur Claude Code échoués.' }
     } elseif ($Action -eq 'Demo') {
-        & $Dotnet run --project src/CodexTracker.App -c Release --no-build -- --demo --theme $Theme
+        & $Dotnet run --project src/CodexTracker.App -c Release --no-build -- --demo --theme $Theme @demoOptions
     } else {
         $views = if ($Matrix) { @('Comptes','Resets','Semaine','Assistants') } else { @($View) }
         $themes = if ($Matrix) { @('light','dark') } else { @($Theme) }
         $sizes = if ($Matrix) { @('normal','compact') } else { @($Size) }
-        $dpis = if ($Matrix) { @(96,144,192) } else { @($Dpi) }
+        $dpis = if ($Matrix) { @(96,120,144,192) } else { @($Dpi) }
         foreach ($v in $views) { foreach ($t in $themes) { foreach ($s in $sizes) { foreach ($d in $dpis) {
             $output = Join-Path $root "artifacts/previews/$v-$t-$s-$d.png"
-            & $Dotnet run --project src/CodexTracker.App -c Release --no-build -- --demo --preview $output --view $v --theme $t --size $s --dpi $d
+            & $Dotnet run --project src/CodexTracker.App -c Release --no-build -- --demo --preview $output --view $v --theme $t --size $s --dpi $d @demoOptions
             if ($LASTEXITCODE -or !(Test-Path -LiteralPath $output)) { throw "Aperçu échoué : $output" }
             Write-Output $output
         } } } }

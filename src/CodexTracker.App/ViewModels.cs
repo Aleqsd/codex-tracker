@@ -60,6 +60,12 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public AccountViewModel(AccountState account, TrackerState state, PreferencesStore preferences) { _account = account; _state = state; _preferences = preferences; }
     public void Update(AccountState account, TrackerState state) { _account = account; _state = state; Tick(); }
     public void Tick() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    private TrackerState PresentationState => _state with { ManualCodexReset = _preferences.Current.ManualCodexReset };
+    public bool HasManualWeeklyReset => PresentationState.ManualCodexReset?.Applies(_account, ResetKind.Weekly, PreviewClock.UtcNow) == true;
+    public bool HasManualShortReset => PresentationState.ManualCodexReset?.Applies(_account, ResetKind.Short, PreviewClock.UtcNow) == true;
+    public bool HasManualReset => HasManualWeeklyReset || HasManualShortReset;
+    public string WeeklyDisplayLabel => HasManualWeeklyReset ? "restant · déclaré" : "restant";
+    public string ManualResetHint => !HasManualReset ? "" : $"Reset Codex déclaré pour le {Display.Exact(PresentationState.ManualCodexReset!.At)} · {Display.Zone(PresentationState.ManualCodexReset.At)}.\n100 % déclaré, sous réserve d’une utilisation depuis le reset.\nDernier quota mesuré : {Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent)} le {Display.Exact(_account.Snapshot?.FetchedAt)}.\nLes prochains relevés mesurés sont prioritaires.";
     public Guid Id => _account.Profile.Id;
     public string Email => PrivacyText.Account(_account.Profile, _state, _preferences.Current);
     public ImageSource? Avatar => _preferences.Current.PrivacyMode ? null : AvatarStore.Load(_preferences.DataDirectory, _preferences.Current.Appearances.GetValueOrDefault(Id)?.AvatarFile);
@@ -67,46 +73,57 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string IdentityHint => _preferences.Current.PrivacyMode ? Email : _account.Profile.Email;
     public string Initials => AccountAvatar.Initials(Email);
     public Brush AvatarBackground => HasAvatar ? ThemeManager.GetBrush("AvatarBrush") : AccountAvatar.Background(Id);
-    public bool IsActive => _account.IsActiveInCodex;
+    public string ProviderName => _account.Profile.ProviderName;
+    public bool IsClaude => _account.Profile.Provider == AccountProvider.ClaudeCode;
+    public bool ShowProviderHeader { get; private set; }
+    public string ProviderCount { get; private set; } = "";
+    internal void SetProviderHeader(bool show, int count)
+    {
+        ShowProviderHeader = show; ProviderCount = count == 1 ? "1 compte" : $"{count} comptes"; Tick();
+    }
+    public bool HasReserves => _account.Profile.Provider == AccountProvider.Codex;
+    public bool IsActive => _account.IsActive;
     public bool IsSelected => IsActive;
     public bool IsIdle => !_state.IsBusy;
     public bool CanRemove => IsIdle && !IsActive;
-    public string Plan => _account.Snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", string other => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(other), _ => _account.IsConnected ? "Offre inconnue" : "À détecter" };
-    public string PlanBadge => _account.Snapshot?.PlanMultiplier is int multiplier ? $"{Plan} {multiplier}×" : Plan;
+    public string Plan => (_account.Snapshot?.PlanType ?? _account.Profile.ProviderPlanType)?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", "team" => "Équipe", "enterprise" => "Entreprise", string other => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(other), _ => _account.IsConnected ? "Offre inconnue" : "À détecter" };
+    public string PlanBadge => (_account.Snapshot?.PlanMultiplier ?? _account.Profile.ProviderPlanMultiplier) is int multiplier ? $"{Plan} {multiplier}×" : Plan;
     public string CompactStatus => HasError ? "à vérifier" : IsActive ? "actif" : _account.Snapshot is not null ? Display.Age(_account.Snapshot.FetchedAt) : "à détecter";
-    public string RowSubtitle => $"{PlanBadge} · {CompactStatus}";
-    public string SummaryLabel => IsActive ? "Compte actif dans Codex" : "Dernier relevé disponible";
-    private ExpectedReset? WeeklyEstimate => ExpectedReset.For(_account, ResetKind.Weekly, PreviewClock.UtcNow, _state.GlobalResetFeed);
-    private ExpectedReset? ShortEstimate => ExpectedReset.For(_account, ResetKind.Short, PreviewClock.UtcNow, _state.GlobalResetFeed);
+    public string Organization => _preferences.Current.PrivacyMode ? "" : _account.Profile.OrganizationName is { } name ? " · " + name : "";
+    public string RowSubtitle => $"{PlanBadge}{Organization} · {CompactStatus}";
+    public string SummaryLabel => IsActive ? $"Compte actif dans {ProviderName}{Organization}" : $"{ProviderName}{Organization} · dernier relevé disponible";
+    private ExpectedReset? WeeklyEstimate => ExpectedReset.For(_account, ResetKind.Weekly, PreviewClock.UtcNow, _state.GlobalResetFeed, PresentationState.ManualCodexReset);
+    private ExpectedReset? ShortEstimate => ExpectedReset.For(_account, ResetKind.Short, PreviewClock.UtcNow, _state.GlobalResetFeed, PresentationState.ManualCodexReset);
     public GlobalResetAnnouncement? GlobalAnnouncement => WeeklyEstimate?.Announcement ?? ShortEstimate?.Announcement;
     public bool HasWeeklyEstimate => WeeklyEstimate is not null;
     public bool HasResetEstimate => HasWeeklyEstimate || ShortEstimate is not null;
-    public string WeeklyDisplayNumber => HasWeeklyEstimate ? "≈100%" : WeeklyNumber;
-    public Brush WeeklyDisplayBrush => HasWeeklyEstimate ? Display.Green : WeeklyBrush;
-    public string EstimateLabel => HasWeeklyEstimate && ShortEstimate is not null ? "Semaine + 5 h probablement à 100 %"
+    public bool HasResetNotice => HasResetEstimate || HasManualReset;
+    public string WeeklyDisplayNumber => HasManualWeeklyReset ? "100%" : HasWeeklyEstimate ? "≈100%" : WeeklyNumber;
+    public Brush WeeklyDisplayBrush => HasManualWeeklyReset || HasWeeklyEstimate ? Display.Green : WeeklyBrush;
+    public string EstimateLabel => HasManualReset ? "Reset Codex déclaré" : HasWeeklyEstimate && ShortEstimate is not null ? "Semaine + 5 h probablement à 100 %"
         : HasWeeklyEstimate ? "Semaine probablement à 100 %" : ShortEstimate is not null ? "5 h probablement à 100 %" : "";
-    public string EstimateHint => string.Join("\n\n", new[] { WeeklyEstimate, ShortEstimate }.OfType<ExpectedReset>().Select(r =>
+    public string EstimateHint => HasManualReset ? ManualResetHint : string.Join("\n\n", new[] { WeeklyEstimate, ShortEstimate }.OfType<ExpectedReset>().Select(r =>
         (r.Announcement is { } a ? $"Reset général annoncé comme terminé le {Display.Exact(a.ReportedAt)} · {Display.Zone(a.ReportedAt)}.\nSource : {a.SourceUrl}\nPortée : {a.AnnouncementUrl}\nEstimation valable jusqu’au {Display.Exact(a.ReportedAt.AddHours(r.Kind == ResetKind.Short ? 5 : 24))}.\n" : $"{ReminderPlanner.Label(r.Kind)} prévu le {Display.Exact(r.At)} · {Display.Zone(r.At)}.\n") +
-        $"Dernier quota mesuré : {Display.Percent(r.LastRemainingPercent)} le {Display.Exact(r.ObservedAt)}.\nProbablement revenu à 100 % si le compte n’a pas été utilisé ailleurs. Ouvrez ce compte dans Codex pour confirmer."));
-    public string WeeklyHint => HasWeeklyEstimate ? EstimateHint : $"Dernier quota mesuré : {WeeklyNumber}\nRelevé : {Display.Exact(_account.Snapshot?.FetchedAt)}";
-    public string WeeklyNumber => Display.Percent(_account.Snapshot?.Weekly?.RemainingPercent);
-    public double WeeklyPercent => _account.Snapshot?.Weekly?.RemainingPercent ?? 0;
-    public Brush WeeklyBrush => Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
+        $"Dernier quota mesuré : {Display.Percent(r.LastRemainingPercent)} le {Display.Exact(r.ObservedAt)}.\nProbablement revenu à 100 % si le compte n’a pas été utilisé ailleurs. Ouvrez ce compte dans {ProviderName} pour confirmer."));
+    public string WeeklyHint => HasManualWeeklyReset ? ManualResetHint : HasWeeklyEstimate ? EstimateHint : $"Dernier quota mesuré : {WeeklyNumber}\nRelevé : {Display.Exact(_account.Snapshot?.FetchedAt)}";
+    public string WeeklyNumber => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow));
+    public double WeeklyPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow) ?? 0;
+    public Brush WeeklyBrush => HasManualWeeklyReset ? Display.Green : Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
     public Brush CardBorder => ThemeManager.GetBrush(IsSelected ? "FocusBrush" : "LineBrush");
     public Brush RowBackground => ThemeManager.GetBrush(IsSelected ? "PanelBrush" : "BackgroundBrush");
-    public string ShortWindowRemaining => Display.Percent(_account.Snapshot?.Short?.RemainingPercent);
-    public string ShortSummary => $"5 h : {ShortWindowRemaining}";
+    public string ShortWindowRemaining => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
+    public string ShortSummary => $"5 h : {ShortWindowRemaining}" + (HasManualShortReset ? " · déclaré" : "");
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCountdown => Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetCountdown => HasManualWeeklyReset ? "À reconfirmer" : Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetCompact => WeeklyEstimate?.Announcement is not null ? "À reconfirmer" : HasWeeklyEstimate ? "Reset passé" : ResetCountdown.Replace("Dans ", "");
-    public string ResetHint => HasWeeklyEstimate ? EstimateHint : $"{ResetExact}\n{ResetZone}";
+    public string ResetHint => HasManualWeeklyReset ? ManualResetHint : HasWeeklyEstimate ? EstimateHint : $"{ResetExact}\n{ResetZone}";
     public string SummaryReset => $"Reset hebdomadaire {ResetCountdown.ToLowerInvariant()}";
     public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
-    public string ReserveSummary => Display.ReserveSummary(_account.Snapshot);
+    public string ReserveSummary => HasReserves ? Display.ReserveSummary(_account.Snapshot) : "Pas de resets en réserve";
     public string ReserveBadge => $"↺ {ReserveCount}";
     public Brush ReserveBrush => ThemeManager.GetBrush(_account.Snapshot?.AvailableResetCredits > 0 ? "TextBrush" : "MutedBrush");
-    public string ReserveHint => Display.ReserveHint(_account.Snapshot, _preferences.Current.PrivacyMode);
+    public string ReserveHint => HasReserves ? Display.ReserveHint(_account.Snapshot, _preferences.Current.PrivacyMode) : "Claude Code ne communique pas de resets en réserve.";
     public string SubscriptionSummary
     {
         get
@@ -126,7 +143,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
         get
         {
             if (_account.IsRefreshing) return "Actualisation en cours…";
-            if (_account.Snapshot is null) return "Ouvrez ce compte dans Codex pour détecter ses quotas.";
+            if (_account.Snapshot is null) return HasError ? Error : $"Ouvrez ce compte dans {ProviderName} pour détecter ses quotas.";
             return IsActive ? $"Mis à jour {Display.Age(_account.Snapshot.FetchedAt)}" : $"Dernier relevé {Display.Age(_account.Snapshot.FetchedAt)} · quota figé tant que ce compte est inactif";
         }
     }
@@ -135,7 +152,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
         get
         {
             var lines = new List<string> { Email, $"Offre : {PlanBadge}", SubscriptionDetails, "", Freshness, "" };
-            if (HasResetEstimate) { lines.Add(EstimateHint); lines.Add(""); }
+            if (HasResetEstimate || HasManualReset) { lines.Add(EstimateHint); lines.Add(""); }
             foreach (var bucket in _account.Snapshot?.Buckets ?? [])
             {
                 lines.Add(Display.SafeText(bucket.Name ?? bucket.Id, _preferences.Current.PrivacyMode));
@@ -158,12 +175,16 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow); }
     public bool IsDemo { get; }
     public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive);
+    public IReadOnlyList<AccountViewModel> ActiveAccounts => Accounts.Where(a => a.IsActive).ToArray();
     public bool HasActive => Active is not null;
     public bool IsEmpty => Accounts.Count == 0;
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
+    public bool HasManualReset => Accounts.Any(a => a.HasManualReset);
+    public string ManualResetCaption => _preferences.Current.ManualCodexReset is { } reset ? $"Reset Codex déclaré le {Display.Exact(reset.At)} · {Accounts.Count(a => a.HasManualReset)} compte(s) en attente d’un nouveau relevé" : "";
+    public string ManualResetHint => string.Join("\n\n", Accounts.Where(a => a.HasManualReset).Select(a => a.ManualResetHint));
     public bool HasExpectedResets => Accounts.Any(a => a.HasResetEstimate);
     public bool HasGlobalReset => Accounts.Any(a => a.GlobalAnnouncement is not null);
-    public string ExpectedResetsCaption => HasGlobalReset ? "Reset général annoncé · estimation datée et sources dans Resets" : "Reset prévu passé · estimation à confirmer dans Codex";
+    public string ExpectedResetsCaption => HasGlobalReset ? "Reset général annoncé · estimation datée et sources dans Resets" : "Reset prévu passé · estimation à confirmer dans le compte concerné";
     public string ExpectedResetsTitle
     {
         get
@@ -177,7 +198,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
 
-    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccount?.Error is not null ? "DangerBrush" : "MutedBrush");
+    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccounts.Any(a => a.Error is not null) ? "DangerBrush" : "MutedBrush");
     public string StatusText
     {
         get
@@ -186,12 +207,11 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
                 return _state.IsBusy ? "Première actualisation…" : _state.ActiveAccount is null ? "En attente du compte actif" : "Aucun relevé reçu";
             var at = snapshot.FetchedAt.ToLocalTime();
             var date = at.ToString(at.Date == DateTimeOffset.Now.Date ? "HH:mm:ss" : "dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("fr-FR"));
-            return $"Dernière mise à jour : {date}" + (_state.IsBusy ? " · actualisation…" : _state.ActiveAccount.Error is not null ? " · échec de lecture des quotas" : "");
+            return $"Dernière mise à jour : {date}" + (_state.IsBusy ? " · actualisation…" : _state.ActiveAccounts.Any(a => a.Error is not null) ? " · échec de lecture des quotas" : "");
         }
     }
-    public string StatusHint => _state.ActiveAccount?.Snapshot is { } snapshot
-        ? $"Dernier relevé reçu : {Display.Exact(snapshot.FetchedAt)}\n{Display.Zone(snapshot.FetchedAt)}\n{_state.ActiveAccount.Error ?? _state.StatusMessage}"
-        : _state.StatusMessage ?? "Ouvrez votre compte dans Codex.";
+    public string StatusHint => _state.ActiveAccounts.Count == 0 ? _state.StatusMessage ?? "Ouvrez votre compte dans Codex ou Claude Code."
+        : string.Join("\n\n", _state.ActiveAccounts.Select(a => $"{a.Profile.ProviderName} · dernier relevé reçu : {Display.Exact(a.Snapshot?.FetchedAt)}\n{Display.Zone(a.Snapshot?.FetchedAt)}\n{a.Error ?? _state.StatusMessage}"));
     private AccountAdvice Advice { get; set; }
     public Guid? AdviceAccountId => Advice.Kind == AccountAdviceKind.VerifyInCodex ? Advice.AccountId : null;
     public bool HasAdvice => AdviceAccountId is not null;
@@ -209,18 +229,23 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     {
         foreach (var account in Accounts) account.Tick();
         Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow);
-        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption) })
+        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption), nameof(HasManualReset), nameof(ManualResetCaption), nameof(ManualResetHint) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)
     {
-        _state = state;
+        _state = state = state with { ManualCodexReset = _preferences.Current.ManualCodexReset };
         Advice = AccountAdvisor.Evaluate(state, PreviewClock.UtcNow);
         var source = state.Accounts.Select((account, index) => (account, index));
-        var sorted = source.OrderByDescending(a => a.account.IsActiveInCodex).ThenBy(a => a.index);
+        var sorted = source.OrderBy(a => a.account.Profile.Provider).ThenByDescending(a => a.account.IsActive).ThenBy(a => a.index);
         var ordered = sorted.Select(a => a.account).ToArray();
         var existing = Accounts.ToDictionary(a => a.Id);
         var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences); }).ToArray();
+        foreach (var group in next.GroupBy(a => a.ProviderName))
+        {
+            var first = true; var count = group.Count();
+            foreach (var account in group) { account.SetProviderHeader(first, count); first = false; }
+        }
         if (!Accounts.Select(a => a.Id).SequenceEqual(next.Select(a => a.Id))) { Accounts.Clear(); foreach (var vm in next) Accounts.Add(vm); }
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     }

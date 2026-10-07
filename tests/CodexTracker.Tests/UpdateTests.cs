@@ -20,6 +20,20 @@ public sealed partial class UpdateTests
     public void ReleasesUseSemanticOrdering(string left, string right, int sign) =>
         Assert.Equal(sign, Math.Sign(SemanticVersion.Parse(left)!.CompareTo(SemanticVersion.Parse(right))));
 
+    [Theory]
+    [InlineData("0.9.7", false, null)]
+    [InlineData("0.9.7", true, null)]
+    [InlineData("0.9.8", false, "0.9.8")]
+    [InlineData("0.9.8", true, "0.9.8")]
+    public async Task LocalFixSkipsPreviousStableButAcceptsNextStable(string available, bool previews, string? expected)
+    {
+        using var client = new HttpClient(new FakeHandler(_ => ReleasesResponse(available)));
+        using var service = new UpdateService("0.9.8-polices.3", client);
+        service.SetIncludePrereleases(previews);
+
+        Assert.Equal(expected, (await service.CheckAsync())?.Version);
+    }
+
     [Fact]
     public async Task CheckIncludesPreviewsAndRequiresBothOfficialAssets()
     {

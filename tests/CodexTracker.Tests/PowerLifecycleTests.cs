@@ -133,7 +133,7 @@ public sealed class PowerLifecycleTests
 
     private static TrackerServiceOptions Options(TestDirectory directory) => new()
     {
-        DataDirectory = directory.File("data"), AutomaticRefresh = false, MonitorAuthChanges = false,
+        DataDirectory = directory.File("data"), DetectClaudeCode = false, AutomaticRefresh = false, MonitorAuthChanges = false,
         RequestTimeout = TimeSpan.FromSeconds(5)
     };
     private static AccountSnapshot Snapshot(string email, double remaining) => new(email, "plus",

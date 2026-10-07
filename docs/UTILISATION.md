@@ -51,6 +51,18 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 
 À la sortie de veille, le tracker abandonne les anciennes requêtes et relit l’identité active avant de collecter les quotas. Le premier relevé de reprise reste silencieux et redémarre la période d’observation utilisée pour les prévisions. Les fenêtres sont ramenées dans la zone utile après un changement d’affichage ; l’aperçu se recale selon le moniteur et son DPI. L’icône est réaffirmée après une recréation de la barre des tâches.
 
+## Claude Code
+
+Le tracker détecte aussi le profil sélectionné dans Claude Code sur Windows, y compris l’onglet Code de l’application Claude. Une même adresse chez Codex et Claude crée des comptes distincts. Les comptes personnels et d’entreprise Claude sont séparés par leur organisation native et nommés dans les vues, même avec la même adresse. Le compte actif de chaque outil est suivi ; leurs autres comptes conservent leur dernier relevé daté. L’icône privilégie Codex lorsqu’ils sont tous deux connectés, puis Claude si Codex est déconnecté.
+
+Les derniers quotas du cache local de l’application Claude sont lus automatiquement, avec leur date d’observation. Le cache ne fournit pas les dates des prochains resets : elles restent inconnues. Pour recevoir aussi les quotas du terminal et leurs échéances, utilisez **Réglages → Général → Claude Code → Copier le réglage Claude Code**, puis fusionnez-le dans vos réglages utilisateur Claude Code. [Étapes et limites](CLAUDE-CODE.md). Sans relevé reçu, les quotas restent inconnus.
+
+## Déclarer un reset général Codex
+
+Si un reset général Codex a été effectué, cliquez sur **Reset Codex…** dans Comptes et indiquez sa date et son heure locale. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
+
+La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). Les prochaines échéances seront connues après ce nouveau relevé. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées.
+
 ## Lire le tableau de bord
 
 **Compte inactif après un reset :** un encart indique les comptes probablement rechargés. La semaine affiche **≈100 % — estimé** ; le survol conserve le quota réellement mesuré et les dates exactes. L’estimation suppose que le compte n’a pas été utilisé ailleurs. Elle disparaît dès un nouveau relevé ou au plus tard après une fenêtre complète (7 jours pour la semaine, 5 heures pour le quota court) ; aucune date suivante n’est inventée.

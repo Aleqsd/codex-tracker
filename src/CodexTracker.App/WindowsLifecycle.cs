@@ -11,6 +11,15 @@ internal static class WindowsLifecycle
         => GetWindowRect(handle, out var rect) ? rect.Value : null;
     public static double Scale(IntPtr handle) => WindowPlacement.Scale(GetDpiForWindow(handle));
 
+    public static int TrayIconPixelSize()
+    {
+        // The notification area follows the taskbar's monitor, which can differ
+        // from the one containing the tracker window.
+        var taskbar = FindWindow("Shell_TrayWnd", null);
+        uint dpi = taskbar == IntPtr.Zero ? GetDpiForSystem() : GetDpiForWindow(taskbar);
+        return Math.Clamp(GetSystemMetricsForDpi(49 /* SM_CXSMICON */, dpi == 0 ? 96 : dpi), 16, 256);
+    }
+
     public static PixelRect WorkArea(PixelPoint anchor)
     {
         var point = new NativePoint { X = anchor.X, Y = anchor.Y };
@@ -42,6 +51,9 @@ internal static class WindowsLifecycle
     [StructLayout(LayoutKind.Sequential)] private struct MonitorInfo { public int Size; public NativeRect Monitor, Work; public uint Flags; }
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rectangle);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern uint GetDpiForSystem();
+    [DllImport("user32.dll")] private static extern int GetSystemMetricsForDpi(int index, uint dpi);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string className, string? windowName);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(NativePoint point, uint flags);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromRect(ref NativeRect rect, uint flags);

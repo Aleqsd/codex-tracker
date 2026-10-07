@@ -60,6 +60,16 @@ internal sealed class SettingsView : UserControl, IDisposable
         Section("Actualisation", true);
         _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
         Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
+        Section("Claude Code", true);
+        _page.Children.Add(Ui.Text("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session.", 11, "MutedBrush"));
+        var copyClaude = new Button { Content = "Copier le réglage Claude Code", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 9, 0, 0), IsEnabled = !demo };
+        copyClaude.Click += (_, _) =>
+        {
+            try { System.Windows.Clipboard.SetText(Codex.ClaudeCodeObservations.Configuration(Environment.ProcessPath!)); copyClaude.Content = "Réglage copié"; }
+            catch (Exception) { ShowError("Le presse-papiers est indisponible. Réessayez."); }
+        };
+        _page.Children.Add(copyClaude);
+        _page.Children.Add(Ui.Text("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées.", 11, "MutedBrush"));
         Page("Rappels", "Choisissez les échéances, les comptes et les canaux utiles.");
         ReloadableSection(() => ReminderSettingsView.Rules(preferences, owner.TrackerService, _commands));
         Section("Quotas");

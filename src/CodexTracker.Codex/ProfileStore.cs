@@ -71,9 +71,9 @@ internal sealed partial class ProfileStore(string root) : IDisposable
     private static StoredSettings ParseSettings(byte[] bytes)
     {
         var settings = JsonSerializer.Deserialize<StoredSettings>(bytes, Json) ?? throw new JsonException();
-        if (settings.Accounts is null || settings.Accounts.Any(a => a is null || a.Id == Guid.Empty || string.IsNullOrWhiteSpace(a.Email) || !IsEmail(a.Email)) ||
+        if (settings.Accounts is null || settings.Accounts.Any(a => a is null || a.Id == Guid.Empty || !Enum.IsDefined(a.Provider) || string.IsNullOrWhiteSpace(a.Email) || !IsEmail(a.Email) || a.ProviderAccountId?.Length > 256 || a.OrganizationName?.Length > 200) ||
             settings.Accounts.Select(a => a.Id).Distinct().Count() != settings.Accounts.Count ||
-            settings.Accounts.Select(a => a.Email).Distinct(StringComparer.OrdinalIgnoreCase).Count() != settings.Accounts.Count)
+            settings.Accounts.Select(a => a.IdentityKey).Distinct(StringComparer.Ordinal).Count() != settings.Accounts.Count)
             throw new JsonException();
         return settings;
     }
@@ -132,7 +132,7 @@ internal sealed partial class ProfileStore(string root) : IDisposable
     public static bool IsEmail(string email) => System.Net.Mail.MailAddress.TryCreate(email.Trim(), out var address) &&
         string.Equals(address.Address, email.Trim(), StringComparison.OrdinalIgnoreCase) && address.Host.Contains('.');
 
-    private static void SecureDirectory(string path)
+    internal static void SecureDirectory(string path)
     {
         var directory = Directory.CreateDirectory(path);
         var sid = WindowsIdentity.GetCurrent().User ?? throw new TrackerException("L'identité Windows est indisponible.");

@@ -15,7 +15,7 @@ public sealed class TrackerTelemetryServiceTests
         await File.WriteAllBytesAsync(authPath, originalAuth);
         var now = DateTimeOffset.UtcNow;
         var reader = new ControlledReader(now.AddMinutes(-4), 22, now.AddDays(7));
-        var options = new TrackerServiceOptions { DataDirectory = directory.File("data"), AutomaticRefresh = false, MonitorAuthChanges = false };
+        var options = new TrackerServiceOptions { DataDirectory = directory.File("data"), DetectClaudeCode = false, AutomaticRefresh = false, MonitorAuthChanges = false };
         Guid accountId;
         await using (var service = new TrackerService(authPath, options, reader))
         {
@@ -67,7 +67,7 @@ public sealed class TrackerTelemetryServiceTests
         var now = DateTimeOffset.UtcNow;
         var reader = new ControlledReader(now.AddMinutes(-4), 4, now.AddDays(1));
         await using var service = new TrackerService(authPath,
-            new() { DataDirectory = directory.File("data"), AutomaticRefresh = false, MonitorAuthChanges = false }, reader);
+            new() { DataDirectory = directory.File("data"), DetectClaudeCode = false, AutomaticRefresh = false, MonitorAuthChanges = false }, reader);
         var notifications = new List<QuotaNotification>();
         service.Notification += (_, notification) => notifications.Add(notification);
         await service.InitializeAsync();

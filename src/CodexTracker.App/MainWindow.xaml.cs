@@ -212,6 +212,13 @@ public partial class MainWindow : Window
     }
     private static Guid Id(object sender) => (Guid)((FrameworkElement)sender).Tag;
     private async void Import_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.ImportCurrentAccountAsync(_lifetime.Token));
+    private void ManualCodexReset_Click(object sender, RoutedEventArgs e) => OpenManualCodexReset();
+    internal ManualCodexResetWindow OpenManualCodexReset()
+    {
+        var existing = OwnedWindows.OfType<ManualCodexResetWindow>().FirstOrDefault();
+        if (existing is not null) { existing.Activate(); return existing; }
+        var editor = new ManualCodexResetWindow(this); editor.Show(); return editor;
+    }
     private async void Onboarding_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.CompleteOnboardingAsync(_lifetime.Token));
     private void Details_Click(object sender, RoutedEventArgs e) => OpenHistory(Id(sender));
     private void Avatar_Click(object sender, RoutedEventArgs e) => OpenAppearance(Id(sender));

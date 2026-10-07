@@ -31,7 +31,14 @@ internal sealed class ThemeManager : IDisposable
             var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!;
             brush.Freeze(); System.Windows.Application.Current.Resources[key] = brush;
         }
+        System.Windows.Application.Current.Resources["CodexProviderIcon"] = ProviderIcon(IsDark ? "codex-dark.png" : "codex-light.png");
+        System.Windows.Application.Current.Resources["ClaudeProviderIcon"] = ProviderIcon("claude.png");
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+    private static System.Windows.Media.Imaging.BitmapImage ProviderIcon(string name)
+    {
+        var image = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/CodexTracker;component/Assets/Providers/" + name));
+        image.Freeze(); return image;
     }
     public static Brush GetBrush(string key) => (Brush)System.Windows.Application.Current.FindResource(key);
     public static Color GetColor(string key) => ((SolidColorBrush)GetBrush(key)).Color;

@@ -28,3 +28,13 @@ La désinstallation conserve les données pour permettre une réinstallation. Po
 Après une récupération d’un ancien stockage Windows redirigé, une copie peut aussi subsister dans `%LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Local\CodexTracker`. Elle est conservée pour éviter une perte de données. Pour effacer cette copie, supprimer uniquement ce sous-dossier `CodexTracker`, jamais le dossier du package Codex entier. Les sauvegardes privées créées manuellement hors du dossier principal doivent également être gérées séparément.
 
 Questions ou signalements : [dépôt du projet](https://github.com/Aleqsd/codex-tracker). Ne publiez jamais de clés, sessions ou captures de comptes personnels dans une issue.
+
+## Claude Code et déclarations manuelles
+
+La détection Claude Code lit les fichiers locaux natifs et ne conserve que l’identité et les métadonnées d’abonnement. Ses jetons ne sont ni copiés dans le profil du tracker, ni transmis à un serveur, ni utilisés pour un appel HTTP. Le branchement facultatif reçoit les données documentées de la barre de statut : seuls les quotas et leurs dates sont conservés, sans projet, chemin de transcription, contenu de conversation ou clé.
+
+L’application Claude est prise en charge par lecture seule de son cache `plan-usage-history.json`. Seul le dernier relevé daté de l’organisation sélectionnée est importé. L’UUID du compte et de l’organisation, son nom et l’offre distinguent les comptes personnels et d’entreprise sur une même adresse. La configuration Desktop, les cookies, les jetons chiffrés et les conversations ne sont pas lus par cette collecte.
+
+Les sessions natives ont une association locale au compte pour ignorer les relevés retardés d’un ancien compte. Les associations de plus de 30 jours sont retirées au démarrage d’une nouvelle session. Les relevés restent dans le stockage privé Windows du tracker.
+
+Une déclaration de reset Codex conserve uniquement l’heure du reset et l’heure de sa saisie dans les préférences. Elle change la présentation locale et se retire devant de nouvelles observations, sans effacer l’historique ni agir sur votre compte.

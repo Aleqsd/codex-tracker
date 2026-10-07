@@ -45,12 +45,12 @@ internal sealed class TrackerControl : IDisposable
         if (_window.AssistantError is not null) throw new InvalidOperationException("assistant_unavailable");
         if (!_preferences.Current.McpEnabled) throw new InvalidOperationException("mcp_disabled: activez Assistants dans les réglages du tracker.");
         var revision = Revision;
-        var state = _window.TrackerService.State;
+        var state = _window.TrackerService.State with { ManualCodexReset = _preferences.Current.ManualCodexReset };
         switch (method)
         {
-            case "status": return new { revision, version = typeof(App).Assembly.GetName().Version?.ToString(), activeAccountId = state.ActiveAccount?.Profile.Id, state.IsBusy, connections = Connections, reminderError = _window.Reminders.Error };
-            case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, a.IsActiveInCodex, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", snapshot = a.Snapshot }) };
-            case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, e.Kind, e.At, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }) };
+            case "status": return new { revision, version = typeof(App).Assembly.GetName().Version?.ToString(), activeAccountId = state.ActiveAccount?.Profile.Id, activeAccountIds = state.ActiveAccounts.Select(a => a.Profile.Id), manualCodexReset = state.ManualCodexReset, state.IsBusy, connections = Connections, reminderError = _window.Reminders.Error };
+            case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, provider = a.Profile.Provider.ToString(), organization = a.Profile.OrganizationName, a.IsActive, a.IsActiveInCodex, a.IsActiveInClaudeCode, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", manualReset = state.ManualCodexReset?.Applies(a, ResetKind.Weekly, DateTimeOffset.UtcNow) == true, displayedWeeklyRemaining = QuotaPresentation.Remaining(state, a, ResetKind.Weekly, DateTimeOffset.UtcNow), snapshot = a.Snapshot }) };
+            case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, provider = e.Account.Profile.Provider.ToString(), e.Kind, e.At, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }) };
             case "history": return new { revision, entries = _window.Reminders.History.OrderByDescending(h => h.UpdatedAt).Take(200).ToArray() };
             case "preferences": return new { revision, settings = General.From(_preferences.Current), phone = _preferences.Current.PhonePolicy };
             case "rules": return new { revision, rules = _preferences.Current.ReminderRules };

@@ -43,7 +43,7 @@ internal static class ExpectedResetChecks
                 var number = Tree(window).OfType<TextBlock>().Single(t => t.Text == "≈100%");
                 Check(number.IsVisible && number.ActualWidth >= number.DesiredSize.Width && Tree(window).OfType<TextBlock>().Any(t => t.Text == "estimé" && t.IsVisible),
                     "Approximate percentage is visible without clipping and explicitly labelled");
-                var refresh = Tree(window).OfType<Button>().First(b => b.ToolTip?.ToString() == "Actualiser et détecter le compte Codex");
+                var refresh = Tree(window).OfType<Button>().First(b => b.ToolTip?.ToString() == "Actualiser et détecter les comptes Codex et Claude Code");
                 Check(refresh.Focus() && refresh.IsKeyboardFocused, "Account refresh remains keyboard accessible");
                 var show = (Button)window.FindName("ShowExpectedResetButton");
                 Check(show.Focus() && show.IsKeyboardFocused, "Reached-reset action is keyboard accessible");

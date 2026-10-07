@@ -6,7 +6,11 @@ public sealed record ReminderRule(ResetKind Kind, bool Enabled, int[] LeadMinute
 public sealed record PhonePolicy(int SmsPerDay = 5, int CallsPerDay = 1, bool QuietEnabled = true,
     int QuietStart = 22, int QuietEnd = 8, string TimeZoneId = "Europe/Paris");
 public sealed record ReminderOccurrence(string Key, Guid AccountId, string AccountName, ResetKind Kind,
-    string? CreditId, DateTimeOffset At, DateTimeOffset ObservedAt, int LeadMinutes, ReminderChannel Channel, string? SourceUrl = null);
+    string? CreditId, DateTimeOffset At, DateTimeOffset ObservedAt, int LeadMinutes, ReminderChannel Channel, string? SourceUrl = null,
+    AccountProvider Provider = AccountProvider.Codex)
+{
+    public string ProviderName => Provider == AccountProvider.ClaudeCode ? "Claude Code" : "Codex";
+}
 public sealed record ReminderDelivery(ReminderOccurrence Occurrence, DeliveryStatus Status, DateTimeOffset UpdatedAt,
     string Detail, string? ProviderId = null, DateTimeOffset? AttemptedAt = null, bool IsTest = false);
 public sealed record DeliveryResult(DeliveryStatus Status, string Detail, string? ProviderId = null);
@@ -29,7 +33,7 @@ public static class ReminderPlanner
     public static IReadOnlyList<ReminderOccurrence> Due(TrackerState state, IEnumerable<ReminderRule> rules, DateTimeOffset now)
     {
         var result = new List<ReminderOccurrence>();
-        foreach (var entry in ResetSchedule.Entries(state))
+        foreach (var entry in ResetSchedule.Entries(state, now: now))
         {
             if (entry.At is not { } at || at <= now || entry.Account.Snapshot is not { } snapshot || snapshot.FetchedAt > now) continue;
             if (GlobalResetAnnouncement.For(entry.Account, entry.Kind, state.GlobalResetFeed, now) is not null) continue;
@@ -40,7 +44,7 @@ public static class ReminderPlanner
             {
                 var identity = CalendarExport.Identity(entry.Account.Profile.Id, entry.Kind.ToString(), entry.CreditId ?? "quota", at);
                 result.Add(new($"{identity}/{lead}/{channel}", entry.Account.Profile.Id, entry.Account.Profile.Email,
-                    entry.Kind, entry.CreditId, at, snapshot.FetchedAt, lead, channel));
+                    entry.Kind, entry.CreditId, at, snapshot.FetchedAt, lead, channel, Provider: entry.Account.Profile.Provider));
             }
         }
         return result.DistinctBy(r => r.Key).OrderBy(r => r.At).ThenBy(r => r.LeadMinutes).ToArray();
@@ -51,10 +55,10 @@ public static class ReminderPlanner
     public static bool IsExpectedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && (r.Key.StartsWith("expected/", StringComparison.Ordinal) || IsGlobalReset(r));
     public static string Title(ReminderOccurrence r) => IsGlobalReset(r) ? "Reset général annoncé comme terminé" : IsExpectedReset(r) ? "Compte probablement rechargé" : Label(r.Kind);
     public static string Body(ReminderOccurrence r) => IsGlobalReset(r)
-        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nConfirmation publique du {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans Codex ; source dans Resets."
+        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nConfirmation publique du {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {r.ProviderName} ; source dans Resets."
         : IsExpectedReset(r)
-        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nReset prévu le {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans Codex."
-        : $"{r.AccountName} · {Label(r.Kind)}\nÉchéance : {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans Codex.";
+        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nReset prévu le {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {r.ProviderName}."
+        : $"{r.AccountName} · {Label(r.Kind)}\nÉchéance : {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans {r.ProviderName}.";
     public static TimeZoneInfo Zone(PhonePolicy policy) => TimeZoneInfo.FindSystemTimeZoneById(policy.TimeZoneId);
     public static bool IsQuiet(DateTimeOffset now, PhonePolicy policy)
     {

@@ -6,6 +6,24 @@ internal static class EntryPoint
     public static int Main(string[] args)
     {
         if (args.Contains("--mcp")) return Mcp.McpHost.RunAsync(args).GetAwaiter().GetResult();
+        if (args.Contains("--claude-statusline") || args.Contains("--claude-session-start"))
+        {
+            try
+            {
+                var dataOption = Array.IndexOf(args, "--claude-data-directory");
+                var directory = dataOption >= 0 && dataOption + 1 < args.Length ? args[dataOption + 1] : new Codex.TrackerServiceOptions().DataDirectory;
+                if (!System.IO.Path.IsPathFullyQualified(directory)) return 0;
+                var location = Codex.ClaudeCodeLocation.Resolve(Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR"),
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+                using var input = new System.IO.StreamReader(Console.OpenStandardInput(), System.Text.Encoding.UTF8);
+                using var output = new System.IO.StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false));
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+                new Codex.ClaudeCodeObservations(directory, location).RunAsync(input, output,
+                    args.Contains("--claude-session-start"), timeout.Token).GetAwaiter().GetResult();
+            }
+            catch (Exception) { /* A local collector must never interrupt Claude's task or open a window. */ }
+            return 0;
+        }
         // MCP owns no store and retains its original stdio. Its UI child passes here.
         if (!args.Contains("--demo"))
         {

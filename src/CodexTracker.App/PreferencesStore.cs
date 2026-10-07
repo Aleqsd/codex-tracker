@@ -24,6 +24,7 @@ internal sealed record TrackerPreferences
     public bool Alert5 { get; init; } = true;
     public bool ResetNotifications { get; init; } = true;
     public bool MonitorGlobalResets { get; init; } = true;
+    public ManualCodexReset? ManualCodexReset { get; init; }
     public bool HoverPreview { get; init; } = true;
     public int RefreshMinutes { get; init; } = 2;
     public bool AdaptiveRefresh { get; init; }
@@ -88,6 +89,7 @@ internal sealed class PreferencesStore
     private static TrackerPreferences Parse(byte[] bytes)
     {
         var value = JsonSerializer.Deserialize<TrackerPreferences>(bytes, Json) ?? throw new JsonException("Préférences absentes.");
+        if (value.ManualCodexReset is { } reset && reset.At > reset.DeclaredAt) throw new JsonException("Déclaration de reset invalide.");
         if (!Enum.IsDefined(value.ThemeMode)) value = value with { ThemeMode = ThemeMode.System };
         if (!Enum.IsDefined(value.SortMode)) value = value with { SortMode = SortMode.Active };
         return Normalize(value);
@@ -118,6 +120,9 @@ internal sealed class PreferencesStore
 
 internal static class PrivacyText
 {
+    public static string ContextualAccount(AccountProfile profile, TrackerState state, TrackerPreferences preferences) =>
+        Account(profile, state, preferences) + (!preferences.PrivacyMode && profile.Provider == AccountProvider.ClaudeCode &&
+            profile.OrganizationName is { } organization ? " · " + organization : "");
     public static string Account(AccountProfile profile, TrackerState state, TrackerPreferences preferences) =>
         preferences.Appearances.GetValueOrDefault(profile.Id)?.Name is { Length: > 0 } name ? name : profile.Email;
     public static string Email(string email, bool privacy) => privacy ? "Compte masqué" : email;

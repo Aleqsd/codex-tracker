@@ -82,10 +82,11 @@ public partial class App : System.Windows.Application
                     catch (Exception) { /* Continue opening the working version; allow a manual retry. */ }
                 }
             }
-            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice"), e.Args.Contains("--demo-resets"), e.Args.Contains("--demo-global-resets")) : new Codex.TrackerService(options: new()
+            _service = IsDemo ? new DemoTrackerService(e.Args.Contains("--demo-advice"), e.Args.Contains("--demo-resets"), e.Args.Contains("--demo-global-resets"), e.Args.Contains("--demo-claude"), e.Args.Contains("--demo-manual-reset")) : new Codex.TrackerService(options: new()
             {
                 RedirectedDataDirectories = Codex.DesktopEnvironment.FindRedirectedStores(),
                 GlobalResetMonitoringEnabled = () => preferences.Current.MonitorGlobalResets,
+                ManualCodexResetProvider = () => preferences.Current.ManualCodexReset,
                 RefreshIntervalProvider = () =>
                 {
                     var p = preferences.Current;
@@ -98,6 +99,7 @@ public partial class App : System.Windows.Application
                 if (themeArgument >= 0 && themeArgument + 1 < e.Args.Length)
                     preferences.Update(p => p with { ThemeMode = e.Args[themeArgument + 1] == "light" ? CodexTracker.App.ThemeMode.Light : CodexTracker.App.ThemeMode.Dark });
             }
+            if (IsDemo && e.Args.Contains("--demo-manual-reset")) preferences.Update(p => p with { ManualCodexReset = new(PreviewClock.UtcNow.AddMinutes(-30), PreviewClock.UtcNow) });
             var window = new MainWindow(_service, IsDemo, preferences, updates);
             if (IsDemo && e.Args.Contains("--demo-update")) window.PresentUpdate("0.9.0", false);
             window.Title = windowTitle;
@@ -143,7 +145,9 @@ public partial class App : System.Windows.Application
             if (peekArgument >= 0 && peekArgument + 1 < e.Args.Length)
             {
                 if (!IsDemo) throw new InvalidOperationException("--peek-screenshot nécessite --demo.");
-                _tray.SavePeekScreenshot(Path.GetFullPath(e.Args[peekArgument + 1]));
+                int dpiArgument = Array.IndexOf(e.Args, "--dpi");
+                double dpi = dpiArgument >= 0 && dpiArgument + 1 < e.Args.Length && double.TryParse(e.Args[dpiArgument + 1], out var parsed) ? Math.Clamp(parsed, 96, 288) : 96;
+                _tray.SavePeekScreenshot(Path.GetFullPath(e.Args[peekArgument + 1]), dpi);
             }
             foreach (var option in new[] { "--details-screenshot", "--settings-screenshot" })
             {
@@ -186,7 +190,7 @@ public partial class App : System.Windows.Application
         Window target = window;
         if (Option("--size", "normal") == "compact") { target.Width = Math.Max(target.MinWidth, 660); target.Height = Math.Max(target.MinHeight, 500); }
         var dpi = double.Parse(Option("--dpi", "96"), System.Globalization.CultureInfo.InvariantCulture);
-        if (dpi is not (96 or 144 or 192)) throw new ArgumentException("DPI : 96, 144 ou 192.");
+        if (dpi is not (96 or 120 or 144 or 192)) throw new ArgumentException("DPI : 96, 120, 144 ou 192.");
         await Task.Delay(200); target.UpdateLayout(); Ui.SaveScreenshot(target, Path.GetFullPath(Option("--preview", "artifacts/preview.png")), dpi);
     }
 

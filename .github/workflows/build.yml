@@ -55,6 +55,9 @@ jobs:
       - name: Test published executable MCP protocol with fictional data
         shell: pwsh
         run: python scripts/test-mcp.py "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
+      - name: Test published Claude collectors with fictional data
+        shell: pwsh
+        run: python scripts/test-claude.py "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
       - name: Test real MCP startup deadline
         shell: pwsh
         run: ./scripts/test-mcp-startup.ps1 -ExecutablePath "artifacts/publish/$env:TRACKER_VERSION/CodexTracker.exe"
@@ -83,3 +86,8 @@ jobs:
         with:
           name: fictional-global-reset-previews
           path: artifacts/previews/global-*.png
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fictional-provider-previews
+          path: artifacts/previews/providers-*.png

@@ -32,6 +32,13 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
             throw new ArgumentException("Configuration du canal incomplète.");
         secrets.Save(value); preferences.Touch();
     }
+    internal void DeclareCodexReset(DateTimeOffset? at, DateTimeOffset now, string expected)
+    {
+        CheckRevision(expected);
+        if (at > now) throw new ArgumentException("Le reset doit avoir eu lieu : choisissez une date et une heure passées.");
+        if (preferences.Current.ManualCodexReset?.At == at) return;
+        SavePreferences(p => p with { ManualCodexReset = at is { } time ? new(time, now) : null }, expected);
+    }
     internal static void ValidateRules(ReminderRule[] rules)
     {
         if (rules is null || rules.Length > 64 || rules.Any(r => r is null || !Enum.IsDefined(r.Kind) || r.LeadMinutes is null || r.Channels is null

@@ -8,7 +8,7 @@ internal sealed class GlobalResetCard : Border
     private readonly TextBlock _validity = Ui.Text("", 11, "MutedBrush");
 
     internal GlobalResetCard(GlobalResetAnnouncement announcement, AccountState[] accounts, ResetKind[] kinds,
-        Func<AccountState, string> name, string? error, bool expanded, Action<bool> expansion)
+        Func<AccountState, string> name, string? error, bool expanded, Action<bool> expansion, ManualCodexReset? manualReset = null)
     {
         _announcement = announcement; _kinds = kinds;
         Name = "GlobalResetNotice"; Padding = new Thickness(12, 10, 12, 10);
@@ -19,8 +19,10 @@ internal sealed class GlobalResetCard : Border
         panel.Children.Add(Ui.Text($"{Display.Exact(announcement.ReportedAt)} · {Display.Zone(announcement.ReportedAt)}", 11, "MutedBrush"));
         var scope = announcement.Plans.Contains("free") ? "Tous les abonnements" : "Abonnements payants concernés";
         panel.Children.Add(Ui.Text(scope + " · " + string.Join(" + ", kinds.Select(k => k == ResetKind.Weekly ? "semaine" : "5 h")), 11, "MutedBrush"));
-        var estimated = accounts.Count(a => kinds.Any(k => announcement.Applies(a, k, PreviewClock.UtcNow)));
-        var summary = Ui.Text(estimated == 0 ? "Les quotas mesurés restent prioritaires · aucune estimation pour cette sélection."
+        bool Declared(AccountState account, ResetKind kind) => manualReset?.Applies(account, kind, PreviewClock.UtcNow) == true;
+        var declared = accounts.Any(a => kinds.Any(k => Declared(a, k)));
+        var estimated = accounts.Count(a => kinds.Any(k => !Declared(a, k) && announcement.Applies(a, k, PreviewClock.UtcNow)));
+        var summary = Ui.Text(estimated == 0 ? declared ? "Le reset déclaré manuellement est prioritaire pour les comptes concernés." : "Les quotas mesurés restent prioritaires · aucune estimation pour cette sélection."
             : $"{estimated} compte{(estimated == 1 ? "" : "s")} probablement rechargé{(estimated == 1 ? "" : "s")} · ≈100 % à confirmer", 12, estimated == 0 ? "MutedBrush" : "GoodBrush");
         summary.Margin = new Thickness(0, 6, 0, 2); panel.Children.Add(summary); panel.Children.Add(_validity);
 
@@ -33,6 +35,11 @@ internal sealed class GlobalResetCard : Border
             row.Children.Add(identity);
             foreach (var kind in kinds)
             {
+                if (Declared(account, kind))
+                {
+                    row.Children.Add(Ui.Text((kind == ResetKind.Weekly ? "Semaine" : "5 h") + " · 100 % déclaré · reset manuel prioritaire", 11, "GoodBrush"));
+                    continue;
+                }
                 var status = announcement.StatusFor(account, kind, PreviewClock.UtcNow);
                 row.Children.Add(Ui.Text((kind == ResetKind.Weekly ? "Semaine" : "5 h") + " · " + StatusLabel(status), 11,
                     status == GlobalResetAccountStatus.Estimated ? "GoodBrush" : "MutedBrush"));
@@ -56,7 +63,7 @@ internal sealed class GlobalResetCard : Border
         }
         panel.Children.Add(links);
         if (error is not null) panel.Children.Add(Ui.Text(error, 11, "WarningBrush"));
-        ToolTip = $"Sources vérifiées le {Display.Exact(announcement.VerifiedAt)}. Le compte actif conserve toujours son quota mesuré.";
+        ToolTip = $"Sources vérifiées le {Display.Exact(announcement.VerifiedAt)}. Les nouveaux relevés et les déclarations manuelles restent prioritaires.";
         Tick();
     }
 

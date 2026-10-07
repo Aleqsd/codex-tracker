@@ -5,7 +5,7 @@ Application Windows .NET 10 / WPF, interface française. Lire README.md, docs/AR
 ## Carte du projet
 
 - `src/CodexTracker.Core` : modèles et règles pures (quotas, échéances, rappels).
-- `src/CodexTracker.Codex` : détection passive de Codex, persistance privée, DPAPI, prestataires et journal d’envoi.
+- `src/CodexTracker.Codex` : détection passive de Codex et Claude Code, persistance privée, DPAPI, prestataires et journal d’envoi.
 - `src/CodexTracker.App` : interface WPF, barre des tâches et cycle de vie. `ApplicationCommands` partage les validations entre UI et MCP ; `Mcp` contient le transport et les outils.
 - `tests/CodexTracker.Tests` : métier, intégrations simulées et mise à jour. `tests/CodexTracker.UiSmoke` : vraies fenêtres avec données fictives.
 
@@ -27,8 +27,9 @@ Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Pyth
 ## Invariants
 
 - Ne jamais committer comptes personnels, sessions, quotas réels, clés, journaux privés ou captures de l’application réelle. Utiliser `--demo` pour les aperçus.
-- Le compte actif est détecté dans Codex. Pas de connexion OAuth, bascule de compte ou écriture de la session Codex.
-- Seul le compte actif est actualisé ; garder les dates d’observation des autres et leurs valeurs inconnues. Une échéance passée ne prouve pas qu’un quota a été restauré.
+- Le compte sélectionné de chaque outil est détecté dans ses métadonnées natives. Pas de connexion OAuth, bascule de compte ou écriture des sessions Codex/Claude Code. Claude : cache Desktop versionné et lié à l’organisation, ou barre de statut documentée, sans requête avec ses jetons. Séparer les organisations sur une même adresse.
+- Seul le compte actif de chaque fournisseur est actualisé ; garder les dates d’observation des autres et leurs valeurs inconnues. Une échéance passée ne prouve pas qu’un quota a été restauré.
+- Un reset Codex déclaré manuellement reste une projection datée et annulable : conserver les relevés mesurés, les réserves et les comptes Claude. Un nouveau relevé est prioritaire.
 - Aucun SMS, appel ou email réel dans les tests. Utiliser le moteur existant et ses limites, jamais un envoi HTTP parallèle.
 - MCP désactivé par défaut. Clés en écriture seule, DPAPI utilisateur, aucune clé dans les erreurs. Demandes externes validées localement et idempotentes.
 - Les fichiers de préférences ont un seul propriétaire : le processus WPF. Passer par les commandes communes et vérifier la révision pour les modifications MCP.

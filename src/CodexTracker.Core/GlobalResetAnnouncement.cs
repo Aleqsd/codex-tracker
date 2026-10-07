@@ -16,6 +16,7 @@ public sealed record GlobalResetAnnouncement(string Id, string Author, string So
 
     public GlobalResetAccountStatus StatusFor(AccountState account, ResetKind kind, DateTimeOffset now)
     {
+        if (account.Profile.Provider != AccountProvider.Codex) return GlobalResetAccountStatus.NotCovered;
         if (!IsCurrent(now) || now >= ExpiresAt(kind)) return GlobalResetAccountStatus.Expired;
         if (!Kinds.Contains(kind)) return GlobalResetAccountStatus.NotCovered;
         if (account.Snapshot is not { } snapshot || snapshot.FetchedAt > now ||

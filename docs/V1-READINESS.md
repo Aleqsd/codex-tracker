@@ -37,9 +37,20 @@ Les preuves et limites sont consignées dans [VALIDATION.md](VALIDATION.md). Cha
 
 Le [test entre Releases publiques](PUBLISHED-UPDATE-TEST.md) dispose d’un workflow Windows dédié, lancé à la demande. Les chemins du bouton et du prochain démarrage utilisent chacun un profil éphémère distinct ; aucun compte personnel n’est nécessaire. La recette accepte désormais les versions numériques publiques et le canal choisi explicitement ; chaque paire nécessite une exécution et son propre rapport.
 
+## Nouveau PC Windows 11 — 28 septembre 2026
+
+L’utilisateur confirme avoir installé le Setup sur ce nouveau PC sans incident. Le poste est sous Windows 11 Professionnel x64, build 26200. Ce retour valide l’installation rapportée ; il ne valide pas une désinstallation, un premier lancement sans Codex ou un changement réel de compte. L’utilisateur indique ne pas encore avoir effectué le parcours changement de compte puis fermeture/réouverture du tracker.
+
+L’exécutable installé est le correctif local **0.9.8-polices.3**, identique au candidat local vérifié par SHA-256, et reste non signé. Il précède le commit d’animations `57464bb`. L’enregistrement Windows affiche encore **0.9.8-polices.1** : cet écart de métadonnées reste à corriger. L’instance tourne avec élévation ; l’accès à son canal local est refusé depuis le processus de contrôle non élevé. Le lancement et l’accès MCP sans élévation restent donc à vérifier.
+
+Contrôles passifs réussis sur l’instance existante : chemin physique du stockage attendu, verrou exclusif présent, fichiers JSON et sauvegardes lisibles, processus réactif sans activation de fenêtre, démarrage avec Windows configuré vers l’installation. Pendant **130,7 secondes**, un nouveau relevé automatique est arrivé, les comptes présents sont conservés et les empreintes des préférences et de la session Codex restent inchangées. Les six mesures de mémoire restent à **176,5 Mio** et le CPU moyen représente **0,155 % d’un cœur logique**. Cette courte observation ne remplace pas une semaine de bêta ni un test de fuite mémoire. Aucun événement de plantage visant `CodexTracker.exe` n’a été trouvé dans le journal Application sur les deux derniers jours.
+
+Le test du délai de démarrage MCP passe sur cet exécutable installé : un canal de démonstration volontairement bloqué provoque l’erreur attendue en **20,1 secondes**, code 1, stdout vide et explication sur stderr. Aucun envoi externe ni changement de réglage. FFXIV étant actif, aucune fenêtre n’a été ouverte ; les interactions, la veille, les écrans physiques et la réception d’une notification restent non testés sur ce poste.
+
 ## Essais physiques et bêta à terminer
 
-- [ ] Installer et désinstaller sur un autre PC Windows 11 x64, avec un utilisateur standard. Vérifier le premier lancement sans Codex, sans session puis avec une session.
+- [x] Installation du Setup sur un nouveau PC Windows 11 x64 confirmée par l’utilisateur le 28 septembre 2026, complétée par les contrôles passifs ci-dessus.
+- [ ] Compléter la recette en utilisateur non élevé : lancement et accès MCP, désinstallation avec conservation des données, premier lancement sans Codex, sans session puis avec une session. Le processus actuellement élevé ne valide pas ce parcours.
 - [ ] Changer réellement de compte dans Codex ; vérifier l’identité active, la présence des autres comptes et les dates de leurs derniers relevés, puis fermer et rouvrir le tracker. Les transitions avec fichiers fictifs et le constat local des cinq lignes ne remplacent pas ce parcours.
 - [ ] Utiliser deux écrans physiques à DPI différents, sortir de veille, redémarrer Explorer et vérifier le démarrage avec Windows. Les rendus WPF et messages Windows simulés ne remplacent pas ces essais.
 - [ ] Confirmer la réception d’une notification Windows sur le poste d’essai, y compris l’effet de « Ne pas déranger ». Les contrôles simulés ne prouvent pas sa réception.

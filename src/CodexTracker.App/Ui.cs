@@ -64,6 +64,7 @@ internal class ThemedWindow : Window
     private readonly ThemeManager _theme;
     public ThemedWindow(Window owner, string title, ThemeManager theme, double width, double height)
     {
+        SetResourceReference(StyleProperty, typeof(Window));
         Owner = owner; _theme = theme; Title = title; Width = width; Height = height;
         MinWidth = Math.Min(width, 440); MinHeight = 390; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize; ShowInTaskbar = false; UseLayoutRounding = true;

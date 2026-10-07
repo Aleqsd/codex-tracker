@@ -11,6 +11,7 @@ internal sealed class TrackerDialog : Window
     public StackPanel Extra { get; } = new();
     public TrackerDialog(Window owner, string title, string message, string? acceptText, string? cancelText, bool withInput = false)
     {
+        SetResourceReference(StyleProperty, typeof(Window));
         _rawMessage = message;
         for (Window? ancestor = owner; ancestor is not null; ancestor = ancestor.Owner)
             if (ancestor is MainWindow main) { _preferences = main.Preferences; break; }

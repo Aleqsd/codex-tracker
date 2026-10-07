@@ -22,7 +22,7 @@ internal sealed class CalendarWindow : ThemedWindow
     private bool _closed;
     private IReadOnlyList<CalendarEntry> Entries() => CalendarExport.Entries(
         _accountId is { } id ? _service.State with { Accounts = _service.State.Accounts.Where(a => a.Profile.Id == id).ToArray() } : _service.State,
-        p => PrivacyText.Account(p, _service.State, _preferences.Current), DateTimeOffset.UtcNow);
+        p => PrivacyText.ContextualAccount(p, _service.State, _preferences.Current), DateTimeOffset.UtcNow);
 
     public CalendarWindow(Window owner, ITrackerService service, PreferencesStore preferences, ThemeManager theme, Guid? accountId = null, Action<Uri>? openBrowser = null)
         : base(owner, "Calendrier", theme, 580, 600)
@@ -72,7 +72,7 @@ internal sealed class CalendarWindow : ThemedWindow
     {
         if (_closed) return;
         var entries = Entries(); _export.IsEnabled = entries.Count > 0; _google.IsEnabled = entries.Count > 0;
-        _summary.Text = entries.Count == 0 ? "Aucune échéance future disponible. Actualisez le compte dans Codex." : $"{entries.Count} échéances connues · prochaine le {Display.Exact(entries[0].StartsAt)}";
+        _summary.Text = entries.Count == 0 ? "Aucune échéance future disponible. Actualisez le compte dans Codex ou Claude Code." : $"{entries.Count} échéances connues · prochaine le {Display.Exact(entries[0].StartsAt)}";
         _summary.ToolTip = entries.Count == 0 ? null : Display.Zone(entries[0].StartsAt);
         if (_displayed.SequenceEqual(entries)) return;
         _displayed = entries; _events.Children.Clear();

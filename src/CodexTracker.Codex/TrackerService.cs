@@ -8,6 +8,9 @@ public sealed record TrackerServiceOptions
 {
     public string DataDirectory { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexTracker");
     public string? CodexExecutablePath { get; init; }
+    public bool DetectClaudeCode { get; init; } = true;
+    public ClaudeCodeLocation? ClaudeLocation { get; init; }
+    public IReadOnlyList<string>? ClaudeDesktopUsagePaths { get; init; }
     public TimeSpan RefreshInterval { get; init; } = TimeSpan.FromMinutes(2);
     public Func<TimeSpan>? RefreshIntervalProvider { get; init; }
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(35);
@@ -15,6 +18,7 @@ public sealed record TrackerServiceOptions
     public bool AutomaticRefresh { get; init; } = true;
     public bool MonitorAuthChanges { get; init; } = true;
     public Func<bool>? GlobalResetMonitoringEnabled { get; init; }
+    public Func<ManualCodexReset?>? ManualCodexResetProvider { get; init; }
     public IReadOnlyList<string> RedirectedDataDirectories { get; init; } = [];
 }
 
@@ -23,7 +27,7 @@ public interface IAccountUsageReader
     Task<AccountSnapshot> ReadAsync(AccountProfile profile, string expectedAccountId, CancellationToken cancellationToken);
 }
 
-public sealed class TrackerService : ITrackerService
+public sealed partial class TrackerService : ITrackerService
 {
     private readonly string? _authPath;
     private readonly TrackerServiceOptions _options;
@@ -55,11 +59,11 @@ public sealed class TrackerService : ITrackerService
     public event EventHandler? Changed;
     public event EventHandler<QuotaNotification>? Notification;
     private TrackerState _state = new([], null, StatusMessage: "Détection du compte Codex…");
-    public TrackerState State => _state with { GlobalResetFeed = _globalResets?.State };
+    public TrackerState State => _state with { GlobalResetFeed = _globalResets?.State, ManualCodexReset = _options.ManualCodexResetProvider?.Invoke() };
     public CodexCompatibilityDiagnostic GetCompatibilityDiagnostic() => _compatibility;
     public IReadOnlyList<string> RecoveryWarnings => _store.RecoveryWarnings;
 
-    public TrackerService(string? authFilePath = null, TrackerServiceOptions? options = null, IAccountUsageReader? reader = null)
+    public TrackerService(string? authFilePath = null, TrackerServiceOptions? options = null, IAccountUsageReader? reader = null, IAccountUsageReader? claudeReader = null)
     {
         var location = CodexAuthLocation.Resolve(authFilePath, Environment.GetEnvironmentVariable("CODEX_HOME"),
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
@@ -69,6 +73,12 @@ public sealed class TrackerService : ITrackerService
         _options = options ?? new();
         _store = new(_options.DataDirectory);
         _reader = reader ?? new CurrentAccountUsageReader(_authPath ?? "", _store, _options);
+        _claudeLocation = _options.ClaudeLocation ?? ClaudeCodeLocation.Resolve(Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR"),
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        _claudeObservations = new(_options.DataDirectory, _claudeLocation);
+        _claudeDesktopUsagePaths = _options.ClaudeDesktopUsagePaths ?? ClaudeDesktopUsageReader.ResolvePaths(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+        _claudeReader = claudeReader ?? new ClaudeCodeUsageReader(_claudeLocation, _claudeObservations, _claudeDesktopUsagePaths);
         if (_options.GlobalResetMonitoringEnabled is { } enabled)
         {
             _publicHttp = GlobalResetReader.CreateHttpClient();
@@ -100,7 +110,7 @@ public sealed class TrackerService : ITrackerService
             _initialized = true;
         }
         finally { _gate.Release(); }
-        await DetectAsync(cancellationToken);
+        await DetectSourcesAsync(cancellationToken);
         await _gate.WaitAsync(cancellationToken);
         try
         {
@@ -114,17 +124,18 @@ public sealed class TrackerService : ITrackerService
                 }, _options.DetectionInterval);
                 _monitor.Start();
             }
+            StartClaudeMonitors();
             if (_options.AutomaticRefresh) _timer = RunTimerAsync();
             if (_globalResets is not null) _announcementTimer = RunAnnouncementsAsync();
         }
         finally { _gate.Release(); }
-        await (await QueueRefreshAsync(cancellationToken)).WaitAsync(cancellationToken);
+        await (await QueueBothRefreshesAsync(cancellationToken)).WaitAsync(cancellationToken);
     }
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
-        await DetectAsync(cancellationToken);
-        await (await QueueRefreshAsync(cancellationToken)).WaitAsync(cancellationToken);
+        await DetectSourcesAsync(cancellationToken);
+        await (await QueueBothRefreshesAsync(cancellationToken)).WaitAsync(cancellationToken);
     }
 
     public Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default) => RefreshAsync(cancellationToken);
@@ -146,6 +157,7 @@ public sealed class TrackerService : ITrackerService
             _suspended = true;
             _globalResets?.Suspend();
             RestartObservation();
+            RestartClaudeObservation();
             Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
                 StatusMessage = "Suivi en pause pendant la veille" });
         }
@@ -160,9 +172,12 @@ public sealed class TrackerService : ITrackerService
             if (_disposed) throw new OperationCanceledException("Codex Tracker se ferme.");
             _suspended = false;
             RestartObservation();
+            RestartClaudeObservation();
             if (!_initialized) return;
             var active = State.Accounts.FirstOrDefault(a => a.IsActiveInCodex);
             if (active is not null) _activeObservation = new(active.Profile.Id, DateTimeOffset.UtcNow);
+            var claude = State.Accounts.FirstOrDefault(a => a.IsActiveInClaudeCode);
+            if (claude is not null) _claudeActiveObservation = new(claude.Profile.Id, DateTimeOffset.UtcNow);
             Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
                 StatusMessage = "Sortie de veille · vérification du compte Codex…" });
         }
@@ -187,10 +202,12 @@ public sealed class TrackerService : ITrackerService
     public UsageForecast GetForecast(Guid accountId)
     {
         var state = State.Accounts.FirstOrDefault(a => a.Profile.Id == accountId);
-        var observation = _activeObservation;
-        if (state is not { IsActiveInCodex: true } || observation is null || observation.AccountId != accountId)
-            return new(null, null, "Ouvrez ce compte dans Codex pour estimer sa consommation actuelle.");
+        var observation = state?.Profile.Provider == AccountProvider.ClaudeCode ? _claudeActiveObservation : _activeObservation;
+        if (state is not { IsActive: true } || observation is null || observation.AccountId != accountId)
+            return new(null, null, $"Ouvrez ce compte dans {state?.Profile.ProviderName ?? "Codex"} pour estimer sa consommation actuelle.");
         if (state.Error is not null) return new(null, null, "L'estimation est suspendue jusqu'au prochain relevé disponible.");
+        if (State.ManualCodexReset is { } reset && (reset.Applies(state, ResetKind.Weekly, DateTimeOffset.UtcNow) || reset.Applies(state, ResetKind.Short, DateTimeOffset.UtcNow)))
+            return new(null, null, "Un reset Codex a été déclaré. L’estimation reprendra après un nouveau relevé mesuré.");
         var now = DateTimeOffset.UtcNow;
         var since = observation.StartedAt > now.AddHours(-1) ? observation.StartedAt : now.AddHours(-1);
         var samples = GetHistory(accountId).Where(s => s.Timestamp >= since).ToArray();
@@ -232,7 +249,7 @@ public sealed class TrackerService : ITrackerService
             var key = identity is null ? null : identity.Email.ToUpperInvariant() + "\n" + identity.AccountId;
             if (key == _activeKey)
             {
-                if (key is null) Set(State with { StatusMessage = warning, SelectedAccountId = null });
+                if (key is null && !State.Accounts.Any(a => a.IsActiveInClaudeCode)) Set(State with { StatusMessage = warning, SelectedAccountId = null });
                 return;
             }
             _identityLifetime.Cancel();
@@ -244,11 +261,12 @@ public sealed class TrackerService : ITrackerService
             _activeKey = key;
             _accountId = identity?.AccountId;
             _refresh = null;
-            var accounts = State.Accounts.Select(a => a with { IsActiveInCodex = false, IsRefreshing = false }).ToList();
+            var accounts = State.Accounts.Select(a => a.Profile.Provider == AccountProvider.Codex
+                ? a with { IsActiveInCodex = false, IsRefreshing = false } : a).ToList();
             Guid? selected = null;
             if (identity is not null)
             {
-                var index = accounts.FindIndex(a => SameEmail(a.Profile.Email, identity.Email));
+                var index = accounts.FindIndex(a => a.Profile.Provider == AccountProvider.Codex && SameEmail(a.Profile.Email, identity.Email));
                 if (index < 0)
                 {
                     accounts.Add(new(new(Guid.NewGuid(), identity.Email)));
@@ -258,8 +276,9 @@ public sealed class TrackerService : ITrackerService
                 selected = accounts[index].Profile.Id;
                 _activeObservation = new(selected.Value, DateTimeOffset.UtcNow);
             }
-            Set(State with { Accounts = accounts.ToArray(), SelectedAccountId = selected, IsBusy = false,
-                StatusMessage = identity is null ? warning : "Compte Codex détecté · lecture des quotas…" });
+            Set(State with { Accounts = accounts.ToArray(), SelectedAccountId = selected ?? accounts.FirstOrDefault(a => a.IsActive)?.Profile.Id,
+                IsBusy = accounts.Any(a => a.IsRefreshing),
+                StatusMessage = identity is null && accounts.Any(a => a.IsActiveInClaudeCode) ? State.StatusMessage : identity is null ? warning : "Compte Codex détecté · lecture des quotas…" });
             Save();
         }
         finally { _gate.Release(); }
@@ -351,7 +370,7 @@ public sealed class TrackerService : ITrackerService
                                 CheckedAt = DateTimeOffset.UtcNow
                             };
                             Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsRefreshing = false, Error = error });
-                            Set(State with { IsBusy = false, StatusMessage = error ?? "À jour · changements de compte détectés automatiquement" });
+                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? "À jour · changements de compte détectés automatiquement" });
                             Save();
                         }
                     }
@@ -369,13 +388,13 @@ public sealed class TrackerService : ITrackerService
         }
     }
 
-    private IReadOnlyList<QuotaNotification> RecordObservation(AccountProfile profile, AccountSnapshot snapshot, long generation)
+    private IReadOnlyList<QuotaNotification> RecordObservation(AccountProfile profile, AccountSnapshot snapshot, long generation, bool claude = false)
     {
         var previous = _telemetry.GetValueOrDefault(profile.Id) ?? AccountTelemetry.Empty;
         var samples = UsageAnalytics.Append(previous.Samples, UsageAnalytics.FromSnapshot(profile.Id, snapshot));
         var evaluation = QuotaAlertEvaluator.Observe(profile, snapshot, previous.Alerts,
-            suppressNotifications: _notificationBaselineGeneration != generation);
-        _notificationBaselineGeneration = generation;
+            suppressNotifications: (claude ? _claudeNotificationBaselineGeneration : _notificationBaselineGeneration) != generation);
+        if (claude) _claudeNotificationBaselineGeneration = generation; else _notificationBaselineGeneration = generation;
         var current = new AccountTelemetry(samples, evaluation.State);
         _telemetry[profile.Id] = current;
         try
@@ -404,12 +423,13 @@ public sealed class TrackerService : ITrackerService
     {
         await ChangeAsync(() =>
         {
-            if (State.Accounts.Any(a => a.Profile.Id == id && a.IsActiveInCodex))
-                throw new TrackerException("Le compte actif est suivi automatiquement. Changez de compte dans Codex avant de le retirer.");
+            var account = State.Accounts.FirstOrDefault(a => a.Profile.Id == id);
+            if (account?.IsActive == true)
+                throw new TrackerException($"Le compte actif est suivi automatiquement. Changez de compte dans {account.Profile.ProviderName} avant de le retirer.");
             _store.DeleteTelemetry(id);
             _telemetry.TryRemove(id, out _);
             Set(State with { Accounts = State.Accounts.Where(a => a.Profile.Id != id).ToArray(),
-                SelectedAccountId = State.SelectedAccountId == id ? State.Accounts.FirstOrDefault(a => a.IsActiveInCodex)?.Profile.Id : State.SelectedAccountId });
+                SelectedAccountId = State.SelectedAccountId == id ? State.ActiveAccount?.Profile.Id : State.SelectedAccountId });
         }, cancellationToken);
     }
 
@@ -504,11 +524,13 @@ public sealed class TrackerService : ITrackerService
         finally { _gate.Release(); }
         _lifetime.Cancel();
         if (_monitor is not null) await _monitor.DisposeAsync();
+        foreach (var monitor in _claudeMonitors) await monitor.DisposeAsync();
         if (_timer is not null) await _timer;
         if (_announcementTimer is not null) await _announcementTimer;
         _publicHttp?.Dispose();
         await Task.WhenAll(requests);
         _identityLifetime.Dispose();
+        _claudeIdentityLifetime.Dispose();
         _lifetime.Dispose();
         _store.Dispose();
         // Pending UI commands may still enter and observe _disposed. SemaphoreSlim owns no

@@ -1,6 +1,16 @@
 namespace CodexTracker.Core;
 
-public sealed record AccountProfile(Guid Id, string Email);
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AccountProvider>))]
+public enum AccountProvider { Codex, ClaudeCode }
+public sealed record AccountProfile(Guid Id, string Email, AccountProvider Provider = AccountProvider.Codex,
+    string? ProviderAccountId = null, string? OrganizationName = null, string? ProviderPlanType = null, int? ProviderPlanMultiplier = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ProviderName => Provider == AccountProvider.ClaudeCode ? "Claude Code" : "Codex";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string IdentityKey => Provider + "\n" + Email.Trim().ToUpperInvariant() +
+        (Provider == AccountProvider.ClaudeCode ? "\n" + ProviderAccountId : "");
+}
 public sealed record QuotaWindow(double UsedPercent, int? WindowDurationMins, DateTimeOffset? ResetsAt)
 {
     public double RemainingPercent => Math.Clamp(100 - UsedPercent, 0, 100);
@@ -12,22 +22,25 @@ public sealed record AccountSnapshot(string Email, string? PlanType, IReadOnlyLi
     int? AvailableResetCredits, IReadOnlyList<ResetCredit>? ResetCredits, DateTimeOffset FetchedAt,
     int? PlanMultiplier = null, DateTimeOffset? SubscriptionStartedAt = null, DateTimeOffset? SubscriptionEndsAt = null)
 {
-    public QuotaWindow? Weekly => Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows
+    public QuotaWindow? Weekly => Buckets.FirstOrDefault(b => b.Id is "codex" or "claude")?.Windows
         .Where(w => w.IsWeekly).OrderBy(w => w.RemainingPercent).FirstOrDefault();
-    public QuotaWindow? Short => Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows
+    public QuotaWindow? Short => Buckets.FirstOrDefault(b => b.Id is "codex" or "claude")?.Windows
         .Where(w => w.WindowDurationMins == 300).OrderBy(w => w.RemainingPercent).FirstOrDefault();
 }
 public sealed record AccountState(AccountProfile Profile, AccountSnapshot? Snapshot = null,
     bool IsActiveInCodex = false, bool IsConnected = false, bool IsRefreshing = false,
-    string? Error = null)
+    string? Error = null, bool IsActiveInClaudeCode = false)
 {
-    public bool IsStale => Error is not null || (Snapshot is not null && (!IsActiveInCodex || DateTimeOffset.UtcNow - Snapshot.FetchedAt > TimeSpan.FromMinutes(5)));
+    public bool IsActive => Profile.Provider == AccountProvider.ClaudeCode ? IsActiveInClaudeCode : IsActiveInCodex;
+    public bool IsStale => Error is not null || (Snapshot is not null && (!IsActive || DateTimeOffset.UtcNow - Snapshot.FetchedAt > TimeSpan.FromMinutes(5)));
 }
 public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? SelectedAccountId,
     bool IsBusy = false, string? StatusMessage = null, bool OnboardingComplete = false)
 {
     public GlobalResetFeedState? GlobalResetFeed { get; init; }
-    public AccountState? ActiveAccount => Accounts.FirstOrDefault(a => a.IsActiveInCodex);
+    public ManualCodexReset? ManualCodexReset { get; init; }
+    public IReadOnlyList<AccountState> ActiveAccounts => Accounts.Where(a => a.IsActive).OrderBy(a => a.Profile.Provider).ToArray();
+    public AccountState? ActiveAccount => ActiveAccounts.FirstOrDefault();
     public AccountState? SelectedAccount => ActiveAccount;
 }
 

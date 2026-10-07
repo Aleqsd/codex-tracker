@@ -99,8 +99,8 @@ internal sealed class HistoryWindow : ThemedWindow
     private async Task RemoveAsync()
     {
         var account = _service.State.Accounts.FirstOrDefault(a => a.Profile.Id == AccountId); if (account is null) return;
-        string name = PrivacyText.Account(account.Profile, _service.State, _preferences.Current);
-        if (new TrackerDialog(this, "Retirer ce compte du suivi ?", $"{name}\n\nSon historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans Codex.", "Retirer", "Annuler").ShowDialog() != true) return;
+        string name = PrivacyText.ContextualAccount(account.Profile, _service.State, _preferences.Current);
+        if (new TrackerDialog(this, "Retirer ce compte du suivi ?", $"{name}\n\nSon historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans son application.", "Retirer", "Annuler").ShowDialog() != true) return;
         try
         {
             await _service.RemoveAccountAsync(AccountId);

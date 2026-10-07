@@ -17,7 +17,7 @@ internal static class Program
     private static int _checks;
 
     [STAThread]
-    private static int Main()
+    private static int Main(string[] args)
     {
         foreach (var name in new[] { "ffxiv_dx11", "ffxiv" })
         {
@@ -55,6 +55,7 @@ internal static class Program
             HwndSourceHook? hook = null;
             try
             {
+                if (args.Contains("--providers-only")) { await ProviderChecks.Run(); return; }
                 service = (ITrackerService)Activator.CreateInstance(Assembly.GetType("CodexTracker.App.DemoTrackerService")!, true)!;
                 var preferences = Activator.CreateInstance(Assembly.GetType("CodexTracker.App.PreferencesStore")!, Instance, null, [false, null], null)!;
                 window = (MainWindow)Activator.CreateInstance(typeof(MainWindow), Instance, null, [service, true, preferences, new UpdateService()], null)!;
@@ -91,6 +92,7 @@ internal static class Program
                 await SettingsNavigationChecks.Run(window);
                 await NotificationChecks.Run(window);
                 await ReliabilityChecks.Run();
+                await ProviderChecks.Run();
                 ((System.Windows.Controls.Button)window.FindName("HideToTrayButton")).RaiseEvent(
                     new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Check(!window.ShowInTaskbar && !IsWindowVisible(handle), "Tray hiding removes the native visible window");

@@ -24,6 +24,7 @@ internal sealed class TrayPeekWindow : Window
 
     public TrayPeekWindow(Action open)
     {
+        SetResourceReference(StyleProperty, typeof(Window));
         Title = "Aperçu Codex Tracker";
         Width = 322;
         SizeToContent = SizeToContent.Height;
@@ -76,31 +77,37 @@ internal sealed class TrayPeekWindow : Window
 
     public void Update(TrackerState state, TrackerPreferences preferences)
     {
+        state = state with { ManualCodexReset = preferences.ManualCodexReset };
         var account = state.ActiveAccount;
         var snapshot = account?.Snapshot;
-        var weekly = snapshot?.Weekly;
-        var shortWindow = snapshot?.Buckets.FirstOrDefault(b => b.Id == "codex")?.Windows.FirstOrDefault(w => w.WindowDurationMins == 300);
-        _name.Text = account is null ? "En attente de Codex" : PrivacyText.Account(account.Profile, state, preferences);
+        var now = PreviewClock.UtcNow;
+        var weekly = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Weekly, now);
+        var shortWindow = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Short, now);
+        var declared = account is not null && state.ManualCodexReset?.Applies(account, ResetKind.Weekly, now) == true;
+        var nextReset = account is null ? null : QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now);
+        _name.Text = account is null ? "En attente d’un compte" : PrivacyText.ContextualAccount(account.Profile, state, preferences);
         _plan.Text = snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", null => "", var other => other };
         if (snapshot?.PlanMultiplier is int multiplier) _plan.Text += $" {multiplier}×";
-        _weekly.Text = Display.Percent(weekly?.RemainingPercent); _short.Text = Display.Percent(shortWindow?.RemainingPercent);
-        _weeklyBar.Value = weekly?.RemainingPercent ?? 0; _shortBar.Value = shortWindow?.RemainingPercent ?? 0;
-        _weeklyBar.Foreground = Display.QuotaBrush(weekly?.RemainingPercent); _shortBar.Foreground = Display.QuotaBrush(shortWindow?.RemainingPercent);
-        _status.Text = account?.IsActiveInCodex == true ? "COMPTE ACTIF DANS CODEX" : "COMPTE AFFICHÉ DANS L’ICÔNE";
-        _reset.Text = weekly?.ResetsAt is null ? "Reset hebdomadaire indisponible" : "Reset · " + Display.Countdown(weekly.ResetsAt);
-        _reset.ToolTip = Display.Exact(weekly?.ResetsAt) + " · " + Display.Zone(weekly?.ResetsAt);
+        _weekly.Text = Display.Percent(weekly); _short.Text = Display.Percent(shortWindow);
+        _weeklyBar.Value = weekly ?? 0; _shortBar.Value = shortWindow ?? 0;
+        _weeklyBar.Foreground = Display.QuotaBrush(weekly); _shortBar.Foreground = Display.QuotaBrush(shortWindow);
+        _status.Text = declared ? "RESET CODEX DÉCLARÉ" : account?.IsActive == true ? $"COMPTE ACTIF DANS {account.Profile.ProviderName.ToUpperInvariant()}" : "COMPTE AFFICHÉ DANS L’ICÔNE";
+        _reset.Text = declared ? "Prochain reset à reconfirmer" : nextReset is null ? "Reset hebdomadaire indisponible" : "Reset · " + Display.Countdown(nextReset);
+        _reset.ToolTip = declared ? $"Reset Codex déclaré le {Display.Exact(state.ManualCodexReset!.At)} · {Display.Zone(state.ManualCodexReset.At)}" : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
         _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
         _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };
         _expirations.Text = snapshot?.ResetCredits is { Count: > 0 } credits
             ? string.Join("\n", credits.OrderBy(c => c.ExpiresAt ?? DateTimeOffset.MaxValue).Select(c =>
                 c.ExpiresAt is { } expires ? $"{(expires <= DateTimeOffset.UtcNow ? "Expiration passée" : "Expire le")} {Display.Exact(expires)} · {Display.Zone(expires)}" : "Expiration non communiquée"))
             : "Dates d’expiration non communiquées";
-        if (snapshot is null) _freshness.Text = "Ouvrez votre compte dans Codex pour le détecter.";
+        var reservesVisible = account?.Profile.Provider != AccountProvider.ClaudeCode;
+        _reserve.Visibility = _expirations.Visibility = reservesVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (snapshot is null) _freshness.Text = "Ouvrez Codex ou Claude Code pour détecter votre compte.";
         else
         {
             var age = DateTimeOffset.UtcNow - snapshot.FetchedAt;
             var ageText = age.TotalMinutes < 1 ? "à l’instant" : age.TotalHours < 1 ? $"il y a {(int)age.TotalMinutes} min" : $"le {snapshot.FetchedAt.ToLocalTime():dd/MM à HH:mm}";
-            _freshness.Text = account?.IsActiveInCodex != true ? "Dernier relevé " + ageText : account.IsStale ? "Données anciennes · " + ageText : "Actualisé " + ageText;
+            _freshness.Text = account?.IsActive != true ? "Dernier relevé " + ageText : account.IsStale ? "Données anciennes · " + ageText : "Actualisé " + ageText;
         }
         _freshness.ToolTip = snapshot is null ? null : Display.Exact(snapshot.FetchedAt) + " · " + Display.Zone(snapshot.FetchedAt);
     }

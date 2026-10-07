@@ -2,8 +2,15 @@
  <Application.Resources>
   <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
   <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="TextOptions.TextFormattingMode" Value="Display"/></Style>
-  <Style TargetType="Window"><Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/></Style>
-  <Style x:Key="Muted" TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="12"/></Style>
+  <!-- Applied explicitly by derived windows: implicit Window styles do not match subclasses. -->
+  <Style TargetType="Window">
+   <Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+   <Setter Property="UseLayoutRounding" Value="True"/><Setter Property="SnapsToDevicePixels" Value="True"/>
+   <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+   <!-- Neutral antialiasing avoids RGB fringes on small text at fractional Windows scaling. -->
+   <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale"/>
+  </Style>
+  <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="12"/></Style>
   <Style x:Key="Eyebrow" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="FontSize" Value="10"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
   <Style TargetType="Button">
    <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>

@@ -7,3 +7,5 @@ Codex Tracker est distribué sous licence MIT (voir LICENSE).
 - Microsoft.Bcl.TimeProvider et System.* — .NET Foundation et contributeurs — MIT, distribuées avec le runtime autonome.
 
 Les dépendances exactes et leurs empreintes sont conservées dans les fichiers packages.lock.json. Le SDK MCP est utilisé sans modification. La licence Apache 2.0 complète est disponible dans `docs/licenses/Apache-2.0.txt` ; les distributions incluent ce texte.
+
+Les icônes d’identification des fournisseurs sont les visuels officiels des applications Codex (OpenAI) et Claude (Anthropic), copiés sans modification depuis leurs paquets Microsoft Store. Elles restent la propriété de leurs marques respectives et ne sont pas couvertes par la licence MIT du code. Elles servent uniquement à identifier les comptes suivis, sans partenariat ni approbation implicite. Voir https://openai.com/brand/ et https://claude.com/download ; provenance détaillée dans `src/CodexTracker.App/Assets/Providers/SOURCES.md`.

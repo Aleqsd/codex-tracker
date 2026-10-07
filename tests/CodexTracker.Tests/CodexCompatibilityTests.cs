@@ -204,7 +204,7 @@ public sealed class CodexCompatibilityTests
     private static TrackerServiceOptions Options(TestDirectory directory) => new()
     {
         DataDirectory = directory.File("tracker-data"), CodexExecutablePath = directory.File("absent-codex.exe"),
-        AutomaticRefresh = false, MonitorAuthChanges = false
+        DetectClaudeCode = false, AutomaticRefresh = false, MonitorAuthChanges = false
     };
 
     private static byte[] SessionWithExpiry(object? expiry)

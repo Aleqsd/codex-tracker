@@ -4,9 +4,10 @@ namespace CodexTracker.Core;
 public sealed record ExpectedReset(ResetKind Kind, DateTimeOffset At, DateTimeOffset ObservedAt, double LastRemainingPercent,
     GlobalResetAnnouncement? Announcement = null)
 {
-    public static ExpectedReset? For(AccountState account, ResetKind kind, DateTimeOffset now, GlobalResetFeedState? feed = null)
+    public static ExpectedReset? For(AccountState account, ResetKind kind, DateTimeOffset now, GlobalResetFeedState? feed = null, ManualCodexReset? manual = null)
     {
-        if (account.IsActiveInCodex || account.IsRefreshing || account.Profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(account.Profile.Email) ||
+        if (manual?.Applies(account, kind, now) == true) return null;
+        if (account.IsActive || account.IsRefreshing || account.Profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(account.Profile.Email) ||
             account.Snapshot is not { } snapshot || snapshot.FetchedAt > now ||
             !string.Equals(snapshot.Email, account.Profile.Email, StringComparison.OrdinalIgnoreCase)) return null;
         var window = kind switch { ResetKind.Weekly => snapshot.Weekly, ResetKind.Short => snapshot.Short, _ => null };
@@ -21,12 +22,12 @@ public sealed record ExpectedReset(ResetKind Kind, DateTimeOffset At, DateTimeOf
 
     public static IReadOnlyList<ReminderOccurrence> Due(TrackerState state, DateTimeOffset now) => state.Accounts
         .SelectMany(account => new[] { ResetKind.Weekly, ResetKind.Short }
-            .Select(kind => For(account, kind, now, state.GlobalResetFeed)).OfType<ExpectedReset>()
+            .Select(kind => For(account, kind, now, state.GlobalResetFeed, state.ManualCodexReset)).OfType<ExpectedReset>()
             // Catch up after sleep, without announcing every old reset on first installation.
             .Where(reset => now - reset.At < TimeSpan.FromDays(1))
             .Select(reset => new ReminderOccurrence(
                 reset.Announcement is { } a ? $"global/{a.Id}/{account.Profile.Id}/{reset.Kind}" : $"expected/{CalendarExport.Identity(account.Profile.Id, reset.Kind.ToString(), "quota", reset.At)}",
                 account.Profile.Id, account.Profile.Email, reset.Kind, null, reset.At, reset.ObservedAt, 0, ReminderChannel.Windows,
-                reset.Announcement?.SourceUrl)))
+                reset.Announcement?.SourceUrl, account.Profile.Provider)))
         .DistinctBy(r => r.Key).OrderBy(r => r.At).ToArray();
 }

@@ -1,8 +1,8 @@
 <h1 align="center">Codex Tracker</h1>
-<p align="center">Vos quotas Codex, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.7/CodexTracker-0.9.7-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
-<p align="center">Windows 11 · x64 · Gratuit · Données locales — nécessite Codex installé</p>
-<p align="center"><sub>0.9.7 · version de stabilisation avant la 1.0</sub></p>
+<p align="center">Vos quotas Codex et Claude Code, vos resets et vos rappels — dans la barre des tâches Windows.</p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.8/CodexTracker-0.9.8-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center">Windows 11 · x64 · Gratuit · Données locales — avec Codex ou Claude Code installé</p>
+<p align="center"><sub>0.9.8 · comptes Claude et reset Codex déclaré</sub></p>
 
 ![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
 <p align="center"><sub>Démonstration avec des comptes fictifs. <a href="docs/resets-week.png">Aperçu statique</a></sub></p>
@@ -22,9 +22,13 @@ Le bouton **flèche vers le coin**, à côté de **—**, masque le tracker dans
 - **🔔 Rappels** — notifications Windows avant un reset ou l’expiration d’une réserve, aux délais de votre choix.
 - **🎨 À votre goût** — thème clair/sombre, noms et avatars personnalisés. Import des échéances dans Google Agenda.
 
+**Claude est aussi détecté automatiquement.** L’application Claude fournit ses derniers quotas locaux sans réglage. Les comptes personnels et d’entreprise restent distincts, même avec la même adresse. Pour le terminal, un réglage est proposé dans **Réglages → Général → Claude Code**. [Sources et limites](docs/CLAUDE-CODE.md).
+
+**Un reset général Codex a eu lieu ?** Cliquez sur **Reset Codex…**, saisissez sa date et son heure : les comptes sans relevé plus récent affichent **100 % · déclaré**. Les relevés restent conservés ; Claude Code n’est pas concerné.
+
 ## Bon à savoir
 
-**Seul le compte actif dans Codex est actualisé**, toutes les deux minutes par défaut. Les autres conservent leur dernier relevé daté. Une date ou une valeur absente reste inconnue.
+**Seul le compte actif de chaque outil est actualisé**. Codex est interrogé toutes les deux minutes par défaut. Les autres conservent leur dernier relevé daté. Une date ou une valeur absente reste inconnue.
 
 **Un autre compte a probablement récupéré son quota ?** Une notification Windows et un encart le signalent après son échéance. **≈100 % — estimé** reste à confirmer en ouvrant ce compte dans Codex ; le dernier quota mesuré est conservé au survol.
 
@@ -61,4 +65,4 @@ Les aperçus utilisent exclusivement des données fictives. Voir la [validation]
 
 ---
 
-Projet indépendant, non affilié à OpenAI. Licence [MIT](LICENSE).
+Projet indépendant, non affilié à OpenAI ou Anthropic. Licence [MIT](LICENSE).

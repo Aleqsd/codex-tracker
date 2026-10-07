@@ -25,14 +25,14 @@ public static class CalendarExport
         {
             if (account.Snapshot is not { } snapshot) continue;
             var description = $"Date prévue selon le relevé du {snapshot.FetchedAt:dd/MM/yyyy HH:mm:ss zzz}. " +
-                "Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans Codex.";
+                $"Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans {account.Profile.ProviderName}.";
             void Add(string kind, string id, string title, DateTimeOffset? date)
             {
                 if (date is not { } at || at <= now) return;
                 result.Add(new(Identity(account.Profile.Id, kind, id, at) + "@codex-tracker.local", $"{name(account.Profile)} · {title}", description, at));
             }
-            Add("quota", "weekly", "Reset Codex · semaine", snapshot.Weekly?.ResetsAt);
-            Add("quota", "short", "Reset Codex · 5 heures", snapshot.Short?.ResetsAt);
+            Add("quota", "weekly", $"Reset {account.Profile.ProviderName} · semaine", QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now));
+            Add("quota", "short", $"Reset {account.Profile.ProviderName} · 5 heures", QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now));
             if (snapshot.AvailableResetCredits > 0)
                 foreach (var credit in snapshot.ResetCredits ?? []) Add("credit", credit.Id, "Expiration d’un reset en réserve", credit.ExpiresAt);
         }

@@ -1,11 +1,7 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Text;
-using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using Color = System.Drawing.Color;
-using Pen = System.Drawing.Pen;
 
 namespace CodexTracker.App;
 
@@ -106,21 +102,22 @@ internal sealed class TrayController : IDisposable
     private void Update()
     {
         if (_disposed) return;
-        var state = _service.State;
+        var state = _service.State with { ManualCodexReset = _preferences.Current.ManualCodexReset };
         var account = state.ActiveAccount;
-        double? remaining = account?.Snapshot?.Weekly?.RemainingPercent;
+        double? remaining = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Weekly, PreviewClock.UtcNow);
         string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
         var dark = _window.Theme.IsDark;
         var color = remaining is null ? Color.FromArgb(140, 140, 140) : remaining > 20 ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(40, 40, 40)) : remaining >= 10 ? (dark ? Color.FromArgb(199, 170, 117) : Color.FromArgb(147, 103, 30)) : (dark ? Color.FromArgb(207, 142, 142) : Color.FromArgb(178, 68, 68));
-        string key = number + color.ToArgb() + dark;
+        int iconSize = WindowsLifecycle.TrayIconPixelSize();
+        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}";
         if (_iconKey != key)
         {
-            var old = _icon; _icon = RenderIcon(number, color, dark); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
+            var old = _icon; _icon = TrayIconRenderer.Render(number, color, dark, iconSize); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
         }
-        var text = account is null ? "Codex Tracker · en attente d’un compte Codex" : $"{PrivacyText.Account(account.Profile, state, _preferences.Current)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(!account.IsActiveInCodex ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(account.Snapshot?.Weekly?.ResetsAt)}";
+        var text = account is null ? "Codex Tracker · en attente d’un compte" : $"{account.Profile.ProviderName} · {PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(state.ManualCodexReset?.Applies(account, ResetKind.Weekly, PreviewClock.UtcNow) == true ? " · déclaré" : "")}{(!account.IsActive ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, PreviewClock.UtcNow))}";
         _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
         _peek.Update(state, _preferences.Current);
-        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActiveInCodex + ":" + a.Profile.Email));
+        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.Profile.Email));
         if (menuKey == _menuKey || _tray.ContextMenuStrip?.Visible == true) return;
         _menuKey = menuKey;
         var background = dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
@@ -228,41 +225,7 @@ internal sealed class TrayController : IDisposable
         return _desktop.Send(message.Title, message.Body, deferWhenBusy: true);
     }
     internal static Icon CreateIcon(string number, Color color)
-        => RenderIcon(number, color, true);
-
-    private static Icon RenderIcon(string number, Color color, bool dark)
-    {
-        using var bitmap = new Bitmap(64, 64);
-        using var graphics = Graphics.FromImage(bitmap);
-        graphics.SmoothingMode = SmoothingMode.AntiAlias; graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        graphics.Clear(Color.Transparent);
-        // Transparent like the Windows system icons; reserve the full width for the number.
-        var known = int.TryParse(number, out var remaining);
-        using var track = new Pen(dark ? Color.FromArgb(95, 95, 95) : Color.FromArgb(155, 155, 155), 4f);
-        if (known) graphics.DrawLine(track, 6, 58, 58, 58);
-        if (known && remaining > 0)
-        {
-            using var progress = new Pen(color, 4f);
-            graphics.DrawLine(progress, 6, 58, 6 + 52 * Math.Clamp(remaining, 0, 100) / 100f, 58);
-        }
-        using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
-        format.Alignment = StringAlignment.Center; format.LineAlignment = StringAlignment.Center;
-        format.FormatFlags |= StringFormatFlags.NoWrap;
-        string label = known ? number : "—";
-        float fontSize = label.Length == 3 ? 32 : 44;
-        while (fontSize > 20)
-        {
-            using var candidate = new Font("Segoe UI Semibold", fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
-            if (graphics.MeasureString(label, candidate, int.MaxValue, format).Width <= 58) break;
-            fontSize--;
-        }
-        using var font = new Font("Segoe UI Semibold", fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
-        using var foreground = new SolidBrush(known ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(35, 35, 35)) : color);
-        graphics.DrawString(label, font, foreground, new RectangleF(0, -5, 64, 60), format);
-        IntPtr handle = bitmap.GetHicon();
-        try { using var unmanaged = Icon.FromHandle(handle); return (Icon)unmanaged.Clone(); }
-        finally { DestroyIcon(handle); }
-    }
+        => TrayIconRenderer.Render(number, color, true, WindowsLifecycle.TrayIconPixelSize());
     public void Dispose()
     {
         if (_disposed) return;
@@ -272,7 +235,6 @@ internal sealed class TrayController : IDisposable
         _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close();
         _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
     }
-    [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);
     private sealed class DarkMenuRenderer : Forms.ToolStripProfessionalRenderer
     {
         public DarkMenuRenderer(bool dark) : base(new DarkColors(dark)) { }

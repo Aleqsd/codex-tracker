@@ -6,7 +6,7 @@ public sealed record DesktopReminderText(string Title, string Body)
     {
         if (rows.Count == 0) throw new ArgumentException("At least one reminder is required.", nameof(rows));
         var first = rows.OrderByDescending(ReminderPlanner.IsGlobalReset).ThenByDescending(ReminderPlanner.IsExpectedReset).First();
-        if (!ReminderPlanner.IsGlobalReset(first)) return new(rows.Count == 1 ? ReminderPlanner.Title(first) : $"{rows.Count} événements Codex",
+        if (!ReminderPlanner.IsGlobalReset(first)) return new(rows.Count == 1 ? ReminderPlanner.Title(first) : $"{rows.Count} événements de quota",
             ReminderPlanner.Body(first) + (rows.Count > 1 ? $"\n{rows.Count - 1} autre(s) événement(s) dans l’onglet Resets." : ""));
         var related = rows.Where(r => ReminderPlanner.IsGlobalReset(r) && r.SourceUrl == first.SourceUrl && r.At == first.At).ToArray();
         var accounts = related.DistinctBy(r => r.AccountId).ToArray();

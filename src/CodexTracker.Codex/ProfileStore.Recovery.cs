@@ -34,7 +34,7 @@ internal sealed partial class ProfileStore
             BackupDisplayStore(source, Path.Combine(backup, "source"));
             foreach (var profile in incoming.Accounts)
             {
-                var target = accounts.FirstOrDefault(p => string.Equals(p.Email.Trim(), profile.Email.Trim(), StringComparison.OrdinalIgnoreCase));
+                var target = accounts.FirstOrDefault(p => p.IdentityKey == profile.IdentityKey);
                 if (target is null)
                 {
                     target = profile with { Id = accounts.Any(p => p.Id == profile.Id) ? Guid.NewGuid() : profile.Id };

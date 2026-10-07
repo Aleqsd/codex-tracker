@@ -29,7 +29,9 @@ internal static class ReminderSettingsView
             var content = Panel();
             var enabled = Check("Activer ces rappels", existing.Any(r => r.Enabled)); content.Children.Add(enabled);
             var accounts = Panel(); var all = Check("Tous les comptes, actuels et futurs", existing.FirstOrDefault()?.AccountIds is null); accounts.Children.Add(all);
-            var accountChecks = service.State.Accounts.Select(a => (a.Profile.Id, Box: Check(a.Profile.Email, existing.FirstOrDefault()?.AccountIds?.Contains(a.Profile.Id) == true))).ToArray();
+            var accountChecks = service.State.Accounts.Select(a => (a.Profile.Id, Box: Check(
+                a.Profile.ProviderName + " · " + PrivacyText.ContextualAccount(a.Profile, service.State, preferences.Current),
+                existing.FirstOrDefault()?.AccountIds?.Contains(a.Profile.Id) == true))).ToArray();
             foreach (var (_, box) in accountChecks) { box.IsEnabled = all.IsChecked != true; accounts.Children.Add(box); }
             content.Children.Add(new Expander { Header = "Comptes concernés", Content = accounts, Margin = new Thickness(0, 4, 0, 10) });
             var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });

@@ -44,7 +44,7 @@ internal sealed class ResetsView : UserControl
         export.Click += (_, _) => calendar((_accounts.SelectedItem as ResetAccountChoice)?.Id);
         System.Windows.Automation.AutomationProperties.SetName(_accounts, "Filtrer les resets par compte");
         _accounts.SelectionChanged += (_, _) => { if (!_syncing) Render(animate: true); }; filters.Children.Add(_accounts);
-        _refresh = new Button { Content = "Actualiser", Style = (Style)FindResource("QuietButton"), ToolTip = "Actualise le compte actif dans Codex ; les autres conservent leur dernier relevé" };
+        _refresh = new Button { Content = "Actualiser", Style = (Style)FindResource("QuietButton"), ToolTip = "Actualise les comptes actifs de Codex et Claude Code ; les autres conservent leur dernier relevé" };
         _refresh.Click += (_, _) => refresh();
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var agenda = new RadioButton { Content = "Agenda", GroupName = "ResetView", IsChecked = true, Style = (Style)FindResource("ResetKindFilter") };
@@ -74,7 +74,7 @@ internal sealed class ResetsView : UserControl
     }
     internal void Update(TrackerState state)
     {
-        _state = state; _refresh.IsEnabled = !state.IsBusy;
+        _state = state with { ManualCodexReset = _preferences.Current.ManualCodexReset }; _refresh.IsEnabled = !state.IsBusy;
         var selected = (_accounts.SelectedItem as ResetAccountChoice)?.Id;
         var choices = new[] { new ResetAccountChoice(null, "Tous les comptes") }
             .Concat(state.Accounts.Select(a => new ResetAccountChoice(a.Profile.Id, AccountName(a)))).ToArray();
@@ -85,19 +85,21 @@ internal sealed class ResetsView : UserControl
         }
         Render();
     }
-    private string AccountName(AccountState account) => PrivacyText.Account(account.Profile, _state, _preferences.Current);
+    private string AccountName(AccountState account) => account.Profile.ProviderName +
+        (!_preferences.Current.PrivacyMode && account.Profile.OrganizationName is { } organization ? " · " + organization : "") +
+        " · " + PrivacyText.Account(account.Profile, _state, _preferences.Current);
     internal void ShowWeek() => _weekChoice.IsChecked = true;
     private void Render(bool animate = false)
     {
         var accountId = (_accounts.SelectedItem as ResetAccountChoice)?.Id;
         var accounts = _state.Accounts.Where(a => accountId is null || a.Profile.Id == accountId).ToArray();
-        var entries = ResetSchedule.Entries(_state, accountId).Where(e => _kindFilter is null || e.Kind == _kindFilter).ToArray();
+        var entries = ResetSchedule.Entries(_state, accountId, PreviewClock.UtcNow).Where(e => _kindFilter is null || e.Kind == _kindFilter).ToArray();
         var now = PreviewClock.UtcNow;
         _renderedDate = DateOnly.FromDateTime(now.LocalDateTime);
         var future = entries.Where(e => e.At > now).ToArray();
         var reached = entries.Where(e => e.At <= now).OrderByDescending(e => e.At).ToArray();
         var unknown = entries.Where(e => e.At is null).ToArray();
-        _summary.Text = accounts.Length == 0 ? "Les dates apparaîtront dès qu’un compte sera détecté dans Codex." : $"{future.Length} à venir" + (unknown.Length > 0 ? " · certaines dates ne sont pas communiquées" : "");
+        _summary.Text = accounts.Length == 0 ? "Les dates apparaîtront dès qu’un compte sera détecté dans Codex ou Claude Code." : $"{future.Length} à venir" + (unknown.Length > 0 ? " · certaines dates ne sont pas communiquées" : "");
         var counts = accounts.Select(a => a.Snapshot?.AvailableResetCredits).ToArray();
         _reserves.Text = counts.Length == 0 ? "" : counts.All(n => n is null) ? "Réserves : non communiquées" : $"Réserves : {counts.Sum(n => (long)(n ?? 0))} resets au dernier relevé" + (counts.Any(n => n is null) ? $" · {counts.Count(n => n is null)} comptes sans compteur" : "");
         _reserves.ToolTip = "Les comptes inactifs ne sont pas actualisés en arrière-plan. Le compteur serveur fait foi ; les dates détaillées ne permettent pas de déduire le nombre de resets disponibles.";
@@ -105,6 +107,8 @@ internal sealed class ResetsView : UserControl
         _reserves.Visibility = _weekView ? Visibility.Collapsed : Visibility.Visible;
         _summary.ToolTip = _reserves.Text + "\n" + _reserves.ToolTip;
         _rows.Clear(); _timeline.Children.Clear(); _announcementCards.Clear();
+        if (_state.ManualCodexReset is { } manual && accounts.Any(a => manual.Applies(a, ResetKind.Weekly, now) || manual.Applies(a, ResetKind.Short, now)))
+            _timeline.Children.Add(Ui.Panel(Ui.Text($"Reset Codex déclaré le {Display.Exact(manual.At)} · {Display.Zone(manual.At)}. Les prochaines échéances seront confirmées par de nouveaux relevés.", 11, "MutedBrush")));
         AddGlobalAnnouncement(accounts, now);
         if (_kindFilter is null or ResetKind.Reserve) AddPriority(accountId, accounts, now);
         if (_weekView) AddWeek(entries, now);
@@ -124,6 +128,7 @@ internal sealed class ResetsView : UserControl
     }
     private void AddGlobalAnnouncement(AccountState[] accounts, DateTimeOffset now)
     {
+        accounts = accounts.Where(a => a.Profile.Provider == AccountProvider.Codex).ToArray();
         if (accounts.Length == 0 || _kindFilter == ResetKind.Reserve) return;
         foreach (var announcement in (_state.GlobalResetFeed?.Announcements ?? []).Where(a => a.IsCurrent(now)).OrderByDescending(a => a.ReportedAt))
         {
@@ -133,7 +138,7 @@ internal sealed class ResetsView : UserControl
                 _openAnnouncements.Contains(announcement.Id), open =>
                 {
                     if (open) _openAnnouncements.Add(announcement.Id); else _openAnnouncements.Remove(announcement.Id);
-                });
+                }, _state.ManualCodexReset);
             _announcementCards.Add(card); _timeline.Children.Add(card);
         }
     }
@@ -162,7 +167,7 @@ internal sealed class ResetsView : UserControl
         timing.Children.Add(Ui.Text($"{entry.At!.Value.ToLocalTime():dd/MM/yyyy HH:mm:ss}", 11, "MutedBrush"));
         var countdown = Ui.Text("", 11); var freshness = Ui.Text("", 11, "MutedBrush");
         countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown); identityPanel.Children.Add(freshness);
-        if (_weekView && entry.Account.IsActiveInCodex && entry.Account.Error is null && now - entry.Account.Snapshot!.FetchedAt < TimeSpan.FromMinutes(5))
+        if (_weekView && entry.Account.IsActive && entry.Account.Error is null && now - entry.Account.Snapshot!.FetchedAt < TimeSpan.FromMinutes(5))
             freshness.Visibility = Visibility.Collapsed;
         var border = new Border { Child = panel, Padding = new Thickness(12, 9, 12, 9), CornerRadius = new CornerRadius(8), Margin = new Thickness(0, 8, 0, 5) };
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
@@ -217,7 +222,7 @@ internal sealed class ResetsView : UserControl
         }
         _timeline.Children.Add(grid);
         var count = days.Sum(d => d.Entries.Count);
-        var note = Ui.Text($"{count} échéance{(count == 1 ? "" : "s")} cette semaine · {TimeZoneInfo.Local.DisplayName}. Les dates atteintes restent à vérifier dans Codex.", 11, "MutedBrush");
+        var note = Ui.Text($"{count} échéance{(count == 1 ? "" : "s")} cette semaine · {TimeZoneInfo.Local.DisplayName}. Les dates atteintes restent à vérifier dans le compte concerné.", 11, "MutedBrush");
         note.Margin = new Thickness(0, 8, 0, 4); _timeline.Children.Add(note);
     }
     private string EntryHint(ResetScheduleEntry entry) =>
@@ -278,13 +283,13 @@ internal sealed class ResetsView : UserControl
         foreach (var card in _announcementCards) card.Tick();
         foreach (var (entry, countdown, freshness) in _rows)
         {
-            var reset = ExpectedReset.For(entry.Account, entry.Kind, now, _state.GlobalResetFeed);
+            var reset = ExpectedReset.For(entry.Account, entry.Kind, now, _state.GlobalResetFeed, _state.ManualCodexReset);
             var expected = reset is not null && (reset.Announcement is not null || reset.At == entry.At);
-            countdown.Text = expected ? "≈100 % · à confirmer" : entry.At is null ? "Non communiquée par Codex" : entry.At > now ? Display.Countdown(entry.At) : entry.Kind == ResetKind.Reserve ? "Expiration passée" : "Reset à confirmer dans Codex";
+            countdown.Text = expected ? "≈100 % · à confirmer" : entry.At is null ? $"Non communiquée par {entry.Account.Profile.ProviderName}" : entry.At > now ? Display.Countdown(entry.At) : entry.Kind == ResetKind.Reserve ? "Expiration passée" : $"Reset à confirmer dans {entry.Account.Profile.ProviderName}";
             countdown.ToolTip = reset?.Announcement is { } a ? $"Reset général annoncé le {Display.Exact(a.ReportedAt)}. Ancienne échéance à reconfirmer.\n{a.SourceUrl}\nQuota actuel à vérifier dans Codex."
-                : expected ? "Quota probablement rechargé selon l’échéance du dernier relevé, si le compte n’a pas été utilisé ailleurs. Ouvrez-le dans Codex pour confirmer." : null;
+                : expected ? $"Quota probablement rechargé selon l’échéance du dernier relevé, si le compte n’a pas été utilisé ailleurs. Ouvrez-le dans {entry.Account.Profile.ProviderName} pour confirmer." : null;
             countdown.SetResourceReference(TextBlock.ForegroundProperty, expected ? "GoodBrush" : entry.At <= now || (entry.Kind == ResetKind.Reserve && entry.At - now <= TimeSpan.FromDays(1)) ? "WarningBrush" : "MutedBrush");
-            freshness.Text = entry.Account.Error is not null ? "Dernier essai en échec · relevé conservé" : entry.Account.Snapshot is { } snapshot ? $"{(entry.Account.IsActiveInCodex ? "Actif · " : "")}relevé {Display.Age(snapshot.FetchedAt)}" : "Aucun relevé";
+            freshness.Text = entry.Account.Error is not null ? "Dernier essai en échec · relevé conservé" : entry.Account.Snapshot is { } snapshot ? $"{(entry.Account.IsActive ? "Actif · " : "")}relevé {Display.Age(snapshot.FetchedAt)}" : "Aucun relevé";
             freshness.ToolTip = $"Dernier relevé : {Display.Exact(entry.Account.Snapshot?.FetchedAt)}\n{entry.Account.Error}";
         }
     }

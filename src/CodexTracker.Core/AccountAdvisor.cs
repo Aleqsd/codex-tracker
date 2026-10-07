@@ -21,12 +21,15 @@ public static class AccountAdvisor
     public static AccountAdvice Evaluate(TrackerState state, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(state);
+        state = state with { Accounts = state.Accounts.Where(a => a.Profile.Provider == AccountProvider.Codex).ToArray() };
         var activeAccounts = state.Accounts.Where(a => a.IsActiveInCodex).ToArray();
         if (activeAccounts.Length != 1 || state.Accounts.GroupBy(a => a.Profile.Id).Any(g => g.Count() > 1) ||
             state.Accounts.GroupBy(a => a.Profile.Email, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
             return Unavailable("Le compte actuellement ouvert dans Codex n’est pas identifié avec certitude.");
 
         var active = activeAccounts[0];
+        if (state.ManualCodexReset is { } reset && (reset.Applies(active, ResetKind.Weekly, now) || reset.Applies(active, ResetKind.Short, now)))
+            return Unavailable("Un reset Codex a été déclaré. Un nouveau relevé mesuré est nécessaire avant de conseiller un autre compte.");
         if (!TryObserve(active, now, MaximumActiveAge, out var current, out var unavailableReason))
             return Unavailable(unavailableReason);
 
@@ -38,7 +41,7 @@ public static class AccountAdvisor
 
         // Every eligible account meets the same qualitative condition. Recency, rather than raw
         // percentages or a subscription multiplier, chooses which historical observation to show.
-        var candidate = state.Accounts.Where(a => !a.IsActiveInCodex)
+        var candidate = state.Accounts.Where(a => !a.IsActiveInCodex && state.ManualCodexReset?.Applies(a, ResetKind.Weekly, now) != true && state.ManualCodexReset?.Applies(a, ResetKind.Short, now) != true)
             .Where(a => TryObserve(a, now, MaximumInactiveAge, out var snapshot, out _) && Comfortable(snapshot!))
             .OrderByDescending(a => a.Snapshot!.FetchedAt)
             .ThenBy(a => a.Profile.Id)

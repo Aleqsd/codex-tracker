@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <InternalsVisibleTo Include="CodexTracker.UiSmoke" />
     <Resource Include="Assets\App.ico" />
+    <Resource Include="Assets\Providers\*.png" />
     <ProjectReference Include="..\CodexTracker.Core\CodexTracker.Core.csproj" />
     <ProjectReference Include="..\CodexTracker.Codex\CodexTracker.Codex.csproj" />
   </ItemGroup>
