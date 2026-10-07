@@ -35,6 +35,7 @@ public sealed partial class UpdateService : IDisposable
             _channelRevision++;
             _checkInFlight = null;
             _cache = LoadCheckCache();
+            _latestCheck = null;
             Prepared = null;
             PreparationMessage = null;
         }

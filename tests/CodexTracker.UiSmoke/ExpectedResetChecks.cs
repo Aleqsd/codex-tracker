@@ -66,6 +66,7 @@ internal static class ExpectedResetChecks
             window.ShowResets();
             var resets = (ResetsView)((TabItem)window.FindName("ResetsTab")).Content;
             resets.Update(new([inactive], null)); resets.Tick(); window.UpdateLayout();
+            Tree(resets).OfType<Expander>().Single(e => e.Name == "ReachedResets").IsExpanded = true; window.UpdateLayout();
             Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text == "≈100 % · à confirmer"), "Reset agenda identifies estimated restoration with uncertainty");
             resets.Update(service.State);
         }

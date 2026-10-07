@@ -36,7 +36,7 @@ public partial class MainWindow : Window
         {
             if (_settings is null)
             {
-                _settings = new(this, _preferences, _updates, _demo);
+                _settings = new(this, _preferences, _updates, _demo, _automaticUpdates);
                 SettingsTab.Content = _settings;
             }
             return _settings;
@@ -57,7 +57,7 @@ public partial class MainWindow : Window
         AppVersionLabel.ToolTip = $"Version installée : {_updates.CurrentVersion}";
         _updates.PreparationChanged += UpdatePreparationChanged;
         UpdatePresentation();
-        _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync()); ResetsTab.Content = _resets;
+        _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync(), () => OpenManualCodexReset()); ResetsTab.Content = _resets;
         MainTabs.SelectionChanged += (_, e) =>
         { if (ReferenceEquals(e.OriginalSource, MainTabs) && SettingsTab.IsSelected) _ = Settings; };
         if (demo) Title = "Codex Tracker (démo)";
@@ -144,7 +144,7 @@ public partial class MainWindow : Window
     private void Recovery_Click(object sender, RoutedEventArgs e) => OpenPage("Application");
     private void ExpectedReset_Click(object sender, RoutedEventArgs e)
     {
-        if (_model.HasGlobalReset) { ShowResets(); return; }
+        if (_model.HasGlobalReset) { ShowResets(); _resets.ShowAnnouncements(); return; }
         var account = _model.Accounts.FirstOrDefault(a => a.HasResetEstimate);
         if (account is null) return;
         if (AccountsList.ItemContainerGenerator.ContainerFromItem(account) is FrameworkElement row) row.BringIntoView();

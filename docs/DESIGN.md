@@ -44,7 +44,9 @@ Les annonces publiques vérifiées réutilisent l’encart d’estimation. **Voi
 
 Les comptes inactifs dont une échéance connue vient de passer ont un encart sobre et une annotation `≈100 % — estimé`. Le bouton **Voir** fait défiler la liste jusqu’au compte concerné, y compris en petite fenêtre. Le survol donne date, dernier pourcentage mesuré et hypothèse d’absence d’utilisation ailleurs. `GoodBrush` accompagne le texte sans remplacer l’indication d’incertitude. L’aperçu `--demo --demo-resets` utilise un compte fictif dans cet état.
 
-Le choix Agenda / Semaine utilise `ResetKindFilter` dans un groupe radio distinct des types de resets. La semaine garde sept colonnes, marque aujourd’hui par un trait neutre et utilise les mêmes icônes de type. Les comptes longs sont tronqués avec un survol complet. La priorité est un encart informatif sans bordure de bouton ; seules les commandes de navigation sont cliquables. L’aperçu `-View Semaine` entre dans la matrice de démonstration.
+La page Resets affiche d’abord une liste chronologique des prochaines échéances : icône officielle du fournisseur, compte, type, délai et heure locale. Une ligne s’ouvre pour retrouver date exacte, fuseau et relevé. Les réserves Codex, dates à confirmer, dates inconnues et sources d’un reset général sont repliées par défaut ; leur état reste conservé après collecte. Le bouton **Voir** d’une annonce ouvre directement ses sources. Les filtres de compte et de type sont des listes déroulantes ; le menu **…** contient l’export Google Agenda.
+
+Le choix Liste / Semaine utilise `ResetKindFilter`. La semaine présente sept jours lisibles avec leur nombre d’échéances, puis la même liste. Un clic sur un jour filtre les lignes ; un second clic réaffiche toute la semaine. Aujourd’hui porte un trait neutre. La sélection reste conservée après collecte. Les comptes longs sont tronqués avec un survol complet. L’aperçu `-View Semaine` entre dans la matrice de démonstration.
 
 ## Tour animé du README
 

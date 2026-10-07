@@ -23,7 +23,9 @@ Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaire
 
 Une version portable ZIP est également disponible : extrayez-la dans un dossier permanent puis lancez `CodexTracker.exe`.
 
-Par défaut, le tracker recherche une nouvelle version 15 secondes après son démarrage puis toutes les six heures, et la télécharge en arrière-plan. Quand elle est vérifiée, un bandeau propose **Mettre à jour et relancer**. Si vous ne cliquez pas, la version préparée est installée au prochain démarrage du tracker, sans devoir la télécharger à nouveau. Le démarrage avec Windows reste un réglage séparé.
+Par défaut, le tracker recherche une nouvelle version 15 secondes après son démarrage puis toutes les 15 minutes après un contrôle réussi, et la télécharge en arrière-plan. Les délais imposés par GitHub sont respectés ; un échec de connexion déclenche des essais espacés. Quand elle est vérifiée, un bandeau propose **Mettre à jour et relancer**. Si vous ne cliquez pas, la version préparée est installée au prochain démarrage du tracker, sans devoir la télécharger à nouveau. Le démarrage avec Windows reste un réglage séparé.
+
+**Réglages → Application** affiche le dernier contrôle, même sans nouvelle version, et la prochaine recherche automatique. Le bouton de recherche manuelle peut redevenir disponible avant cette échéance ; il respecte un délai minimal de cinq minutes après un contrôle réussi.
 
 Dans **Réglages → Application**, vous pouvez désactiver séparément le téléchargement automatique et l’installation au démarrage, ou rechercher manuellement une version. Le téléchargement utilise le dépôt public et vérifie l’empreinte SHA-256. L’installation conserve une copie de secours jusqu’au démarrage réussi de la nouvelle version. Elle préserve vos comptes et réglages, ferme proprement les connexions MCP du tracker et ne ferme pas Codex. Après un échec, aucune boucle de réinstallation : la version précédente reste accessible et un nouvel essai nécessite un clic. Le démarrage à la demande d’un assistant MCP reporte l’installation automatique.
 
@@ -59,7 +61,7 @@ Les derniers quotas du cache local de l’application Claude sont lus automatiqu
 
 ## Déclarer un reset général Codex
 
-Si un reset général Codex a été effectué, cliquez sur **Reset Codex…** dans Comptes et indiquez sa date et son heure locale. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
+Si un reset général Codex a été effectué, cliquez sur **Reset Codex…** dans Comptes ou Resets et indiquez sa date et son heure locale. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
 
 La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). Les prochaines échéances seront connues après ce nouveau relevé. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées.
 
@@ -89,17 +91,17 @@ L’onglet **Réglages**, à côté de **Comptes** et **Resets**, contient sept 
 
 ## Onglet Resets
 
-L’onglet **Resets**, à côté de **Comptes**, rassemble les échéances de tous les comptes dans une liste chronologique. Les catégories **Hebdomadaires**, **5 heures** et **Réserves** se combinent avec le filtre par compte. Chaque ligne met le type de reset en premier, avec son icône, puis le compte concerné ; les réserves affichent aussi le titre du crédit fourni par Codex. La date, l’heure exacte avec décalage UTC et le compte à rebours sont alignés à droite. Les dates de réception et l’ancienneté du relevé restent visibles ; le survol précise le fuseau et les informations reçues.
+L’onglet **Resets** affiche d’abord les prochaines échéances, groupées par jour. Chaque ligne montre l’icône officielle Codex ou Claude, le compte, le type de reset et le délai. Cliquez sur une ligne pour retrouver l’heure exacte, le fuseau, le dernier relevé et les détails du crédit. Les filtres par compte et par type sont des listes déroulantes.
 
-Les dates sont séparées en **À venir**, **Dates atteintes · à vérifier** et **Dates non communiquées**. Une date passée ne confirme pas un nouveau quota. Si le serveur fournit moins de dates de crédits que le compteur de réserves, une ligne signale les dates manquantes. Le total des réserves reste celui des derniers relevés, sans déduire la disponibilité depuis les dates.
+Les sections **À confirmer**, **Dates inconnues**, **Réserves Codex** et les sources d’un reset général sont repliées par défaut. Une date passée ne confirme pas un nouveau quota. Si le serveur fournit moins de dates de crédits que le compteur de réserves, une ligne signale les dates manquantes. Les compteurs de réserves proviennent des derniers relevés ; les comptes Claude n’ont pas de réserves Codex. Les détails ouverts et les filtres restent conservés après actualisation.
 
-**Semaine** affiche une grille du lundi au dimanche, avec navigation et retour à **Aujourd’hui**. Les filtres restent partagés avec **Agenda** et sont conservés lors de l’actualisation. La grille utilise le fuseau Windows et uniquement les échéances observées, sans inventer de récurrence. Les dates inconnues restent sous la grille. Survolez une carte pour les informations complètes.
+**Semaine** présente sept jours avec leur nombre d’échéances, puis la même liste lisible. Cliquez sur un jour pour le filtrer, puis à nouveau pour retrouver toute la semaine. Les flèches changent de semaine ; **Cette semaine** revient à la période actuelle. Les dates utilisent le fuseau Windows et les échéances observées, sans inventer de récurrence.
 
-**Réserve prioritaire** met en évidence la première expiration future connue parmi les comptes filtrés dont le compteur serveur est positif. Son relevé reste daté : un compte inactif peut avoir changé depuis et une date non communiquée peut cacher une expiration plus proche. Le tracker ne dépense aucun crédit.
+Dans **Réserves Codex**, **À utiliser en priorité** indique la première expiration future connue parmi les comptes filtrés dont le compteur serveur est positif. Un compte inactif peut avoir changé depuis et une date manquante peut cacher une expiration plus proche. Le tracker ne dépense aucun crédit.
 
 ![Vue semaine avec données fictives](resets-week.png)
 
-**Google Agenda ↗** ouvre les options d’import pour le compte filtré, ou pour tous les comptes, en incluant tous les types de resets. **Actualiser** conserve les filtres et actualise uniquement le compte actif dans Codex.
+Le menu **… → Google Agenda ↗** ouvre les options d’import pour le compte filtré, ou pour tous les comptes, en incluant tous les types de resets. Le bouton d’actualisation conserve les filtres et actualise les comptes actifs de Codex et Claude Code.
 
 ![Onglet Resets avec un compte fictif](resets.png)
 

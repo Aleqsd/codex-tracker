@@ -50,7 +50,8 @@ internal static class GlobalResetChecks
                 Check(Tree(detail).OfType<TextBlock>().Any(t => t.Text.Contains("Hors de la portée")) &&
                     Tree(detail).OfType<TextBlock>().Any(t => t.Text.Contains("Compte actif")), "Account details explain scope exclusions and measured active quota");
                 resets.Update(demo.State); window.UpdateLayout();
-                Check(Tree(resets).OfType<Expander>().Single().IsExpanded, "Announcement details stay expanded after collection refresh");
+                Check(Tree(resets).OfType<Expander>().Single(e => e.Header?.ToString() == "Détail des comptes (5)").IsExpanded &&
+                    Tree(resets).OfType<Expander>().Single(e => e.Name == "ResetAnnouncements").IsExpanded, "Announcement details stay expanded after collection refresh");
                 if (!compact)
                 {
                     window.Height = 900; window.UpdateLayout();

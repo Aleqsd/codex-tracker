@@ -90,9 +90,11 @@ internal static class Program
                 await FeatureChecks.Run(window, service);
                 await ExpectedResetChecks.Run(window, service);
                 await GlobalResetChecks.Run(window, service);
+                await ResetsLayoutChecks.Run(window);
                 await SettingsNavigationChecks.Run(window);
                 await NotificationChecks.Run(window);
                 await ReliabilityChecks.Run();
+                await UpdateStatusChecks.Run();
                 await ProviderChecks.Run();
                 await TrayChecks.Run();
                 await TypographyChecks.Run(window);

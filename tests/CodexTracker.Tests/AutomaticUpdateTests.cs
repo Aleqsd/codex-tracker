@@ -143,7 +143,7 @@ public sealed partial class UpdateTests
     }
 
     [Fact]
-    public async Task DisabledAutomaticUpdatesMakeNoRequestsAndEnabledUpdatesWaitSixHours()
+    public async Task DisabledAutomaticUpdatesMakeNoRequestsAndEnabledUpdatesCheckEveryFifteenMinutes()
     {
         using var directory = new TestDirectory();
         var now = DateTimeOffset.Parse("2026-09-21T12:00:00Z");
@@ -162,13 +162,108 @@ public sealed partial class UpdateTests
         automatic.SetEnabled(true);
         await automatic.TickAsync();
         Assert.NotNull(service.Prepared);
-        Assert.Equal(now.AddHours(6), automatic.NextCheck);
-        now = now.AddHours(5);
+        Assert.Equal(now.AddMinutes(15), automatic.NextCheck);
+        now = now.AddMinutes(15).AddTicks(-1);
         await automatic.TickAsync();
         Assert.Equal(1, checks);
-        now = now.AddHours(1);
+        now = now.AddTicks(1);
         await automatic.TickAsync();
         Assert.Equal(2, checks);
+        Assert.Equal(now.AddMinutes(15), automatic.NextCheck);
+        Assert.NotNull(service.Prepared);
+    }
+
+    [Fact]
+    public async Task SchedulerChecksAfterStartupThenWakesAtTheFifteenMinuteDeadline()
+    {
+        var start = DateTimeOffset.UtcNow;
+        var now = start;
+        var checkedAt = new List<DateTimeOffset>();
+        var waits = new List<TimeSpan>();
+        using var client = new HttpClient(new FakeHandler(_ =>
+        {
+            checkedAt.Add(now);
+            now = now.AddMilliseconds(350); // A real check does not complete on a minute boundary.
+            return new(HttpStatusCode.OK) { Content = new StringContent("[]") };
+        }));
+        using var service = new UpdateService("0.3.0", client, clock: () => now);
+        AutomaticUpdater? scheduler = null;
+        Task Delay(TimeSpan duration, CancellationToken token)
+        {
+            waits.Add(duration);
+            if (waits.Count > 20) throw new InvalidOperationException("Scheduler missed its deadline");
+            if (checkedAt.Count == 2) scheduler!.Dispose();
+            token.ThrowIfCancellationRequested();
+            now += duration;
+            return Task.CompletedTask;
+        }
+        using var automatic = scheduler = new AutomaticUpdater(service, () => now, Delay);
+        automatic.SetEnabled(true);
+        await automatic.RunAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(TimeSpan.FromSeconds(15), waits[0]);
+        Assert.Equal(2, checkedAt.Count);
+        Assert.Equal(start.AddSeconds(15), checkedAt[0]);
+        Assert.Equal(checkedAt[0].AddMilliseconds(350).AddMinutes(15), checkedAt[1]);
+    }
+
+    [Fact]
+    public async Task AutomaticChecksRevalidateAnUnchangedReleaseListEveryFifteenMinutes()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var checks = 0;
+        using var client = new HttpClient(new FakeHandler(request =>
+        {
+            if (++checks > 1)
+            {
+                Assert.Equal("\"fixture\"", Assert.Single(request.Headers.IfNoneMatch).ToString());
+                return new(HttpStatusCode.NotModified);
+            }
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]") };
+            response.Headers.ETag = new("\"fixture\"");
+            return response;
+        }));
+        using var service = new UpdateService("0.3.0", client, clock: () => now);
+        using var automatic = new AutomaticUpdater(service, () => now);
+        automatic.SetEnabled(true);
+        await automatic.TickAsync();
+        now = now.AddMinutes(15);
+        await automatic.TickAsync();
+        Assert.Equal(2, checks);
+        Assert.Null(service.Prepared);
+        Assert.Equal(UpdateCheckSource.ValidatedCache, service.ReadLatestCheck()!.Source);
+        Assert.Equal(now, service.ReadLatestCheck()!.VerifiedAt);
+        Assert.Equal(now.AddMinutes(15), automatic.NextCheck);
+    }
+
+    [Theory]
+    [InlineData(403)]
+    [InlineData(429)]
+    public async Task AutomaticChecksRespectServerDeadlinesLongerThanFifteenMinutes(int status)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var retry = now.AddHours(1);
+        var checks = 0;
+        using var client = new HttpClient(new FakeHandler(_ =>
+        {
+            if (++checks > 1) return new(HttpStatusCode.OK) { Content = new StringContent("[]") };
+            var response = new HttpResponseMessage((HttpStatusCode)status);
+            response.Headers.RetryAfter = new(TimeSpan.FromMinutes(40));
+            response.Headers.Add("X-RateLimit-Reset", retry.ToUnixTimeSeconds().ToString());
+            return response;
+        }));
+        using var service = new UpdateService("0.3.0", client, clock: () => now);
+        using var automatic = new AutomaticUpdater(service, () => now);
+        automatic.SetEnabled(true);
+        await automatic.TickAsync();
+        var expected = DateTimeOffset.FromUnixTimeSeconds(retry.ToUnixTimeSeconds());
+        Assert.Equal(expected, automatic.NextCheck);
+        now = now.AddMinutes(15);
+        await automatic.TickAsync();
+        Assert.Equal(1, checks);
+        now = expected;
+        await automatic.TickAsync();
+        Assert.Equal(2, checks);
+        Assert.Equal(now.AddMinutes(15), automatic.NextCheck);
     }
 
     [Fact]

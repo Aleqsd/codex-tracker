@@ -61,35 +61,35 @@ internal static class FeatureChecks
             }
             window.PresentUpdate(null, false);
             mainTabs.SelectedItem = resetsTab; await Task.Delay(100);
-            Check(resets.IsVisible && Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("À venir")), "Resets tab renders a chronological schedule");
+            Check(resets.IsVisible && Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("à venir")), "Resets tab renders a chronological schedule");
             var resetFilter = Field<ComboBox>(resets, "_accounts");
             Check(Tree(resetFilter).OfType<TextBlock>().Any(t => t.Text == "Tous les comptes")
                 && !Tree(resetFilter).OfType<TextBlock>().Any(t => t.Text.Contains("ResetAccountChoice")), "Resets dropdown displays its label instead of its data type");
             resetFilter.SelectedIndex = 1; window.UpdateLayout();
-            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text == service.State.Accounts[0].Profile.ProviderName + " · " + service.State.Accounts[0].Profile.Email)
-                && !Tree(resets).OfType<TextBlock>().Any(t => t.Text == service.State.Accounts[1].Profile.ProviderName + " · " + service.State.Accounts[1].Profile.Email), "Resets account filter isolates schedule rows");
+            Check(Tree(resets).OfType<Expander>().Where(e => e.Tag is ResetScheduleEntry).All(e => ((ResetScheduleEntry)e.Tag).Account.Profile.Id == id), "Resets account filter isolates schedule rows");
             resets.Update(service.State);
             Check(resetFilter.SelectedIndex == 1, "Refresh preserves the resets account filter");
-            var kindFilters = Tree(resets).OfType<RadioButton>().Where(r => r.GroupName == "ResetKinds").ToArray();
-            var weeklyFilter = kindFilters.Single(r => r.Tag is ResetKind.Weekly);
-            weeklyFilter.IsChecked = true; window.UpdateLayout();
+            var kindFilters = Field<ComboBox>(resets, "_kinds");
+            kindFilters.SelectedIndex = 1; window.UpdateLayout();
             var timeline = Field<StackPanel>(resets, "_timeline");
             var weeklyLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(weeklyLabels.Contains("Reset hebdomadaire") && !weeklyLabels.Contains("Reset 5 heures") && !weeklyLabels.Contains("Expiration de réserve"), "Weekly filter shows only weekly resets for the selected account");
             resets.Update(service.State);
-            Check(weeklyFilter.IsChecked == true && resetFilter.SelectedIndex == 1, "Refresh preserves both account and reset type filters");
-            kindFilters.Single(r => r.Tag is ResetKind.Short).IsChecked = true; window.UpdateLayout();
+            Check(kindFilters.SelectedIndex == 1 && resetFilter.SelectedIndex == 1, "Refresh preserves both account and reset type filters");
+            kindFilters.SelectedIndex = 2; window.UpdateLayout();
             var shortLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(shortLabels.Contains("Reset 5 heures") && !shortLabels.Contains("Reset hebdomadaire"), "Five-hour filter uses an explicit reset type label");
-            kindFilters.Single(r => r.Tag is ResetKind.Reserve).IsChecked = true; window.UpdateLayout();
+            kindFilters.SelectedIndex = 3; window.UpdateLayout();
+            foreach (var section in Tree(timeline).OfType<Expander>().ToArray()) section.IsExpanded = true;
+            window.UpdateLayout();
             var reserveLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(reserveLabels.Contains("Expiration de réserve") && reserveLabels.Contains("Réserves sans date")
                 && reserveLabels.Contains(service.State.Accounts[0].Snapshot!.ResetCredits![0].Title)
                 && reserveLabels.Any(t => t.StartsWith("Reçu le ")) && reserveLabels.Any(t => t.Contains("UTC")), "Reserve filter shows source credit title, expiry, received dates, timezone and undetailed reserves");
             resets.Update(new([service.State.Accounts[0] with { Snapshot = service.State.Accounts[0].Snapshot! with { AvailableResetCredits = 0, ResetCredits = [] } }], id));
             window.UpdateLayout();
-            Check(Tree(timeline).OfType<TextBlock>().Any(t => t.Text == "Aucune réserve à afficher pour cette sélection."), "Empty reserve filter never falls back to quota resets");
-            kindFilters.Single(r => r.Tag is null).IsChecked = true;
+            Check(Tree(timeline).OfType<TextBlock>().Any(t => t.Text == "Aucune date à venir connue pour cette sélection.") && !Tree(timeline).OfType<Expander>().Any(e => e.Tag is ResetScheduleEntry), "Empty reserve filter never falls back to quota resets");
+            kindFilters.SelectedIndex = 0;
             resets.Update(service.State);
             var oldSnapshot = service.State.Accounts[0].Snapshot! with
             {
@@ -98,18 +98,20 @@ internal static class FeatureChecks
             };
             resets.Update(new([service.State.Accounts[0] with { Snapshot = oldSnapshot }], id));
             window.UpdateLayout(); resets.Tick();
+            foreach (var section in Tree(timeline).OfType<Expander>().Where(e => e.Tag is not ResetScheduleEntry).ToArray()) section.IsExpanded = true;
+            window.UpdateLayout();
             var resetLabels = Tree(resets).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(resetLabels.Contains("Reset à confirmer dans Codex") && resetLabels.Contains("Date indisponible")
-                && resetLabels.Contains("Réserves : non communiquées"), "Past reset dates and missing reserves never imply restored quotas or zero credits");
+                && resetLabels.Contains("Réserves Codex · non communiquées"), "Past reset dates and missing reserves never imply restored quotas or zero credits");
             Guid? exportedAccount = null;
             var scoped = new ResetsView(preferences, selected => exportedAccount = selected, () => { });
             scoped.Update(service.State); Field<ComboBox>(scoped, "_accounts").SelectedIndex = 1;
-            Tree(scoped.Content as DependencyObject ?? scoped).OfType<Button>().Single(b => b.Content?.ToString() == "Google Agenda ↗").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Tree(scoped.Content as DependencyObject ?? scoped).OfType<Button>().Single(b => b.ToolTip?.ToString() == "Autres actions").ContextMenu!.Items.OfType<MenuItem>().Single().RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Check(exportedAccount == id, "Calendar action receives the account selected in Resets");
             resets.Update(service.State); resets.ShowWeek(); window.UpdateLayout();
-            Check(Tree(resets).OfType<Border>().Count(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("Échéances du ")) == 7,
+            Check(Tree(resets).OfType<Button>().Count(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("Échéances du ")) == 7,
                 "Week mode renders seven calendar days with accessible date names");
-            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text == "Réserve prioritaire"),
+            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text.StartsWith("À utiliser en priorité :")),
                 "Known available credit has a priority summary outside the calendar range");
             var nextWeek = Tree(resets).OfType<Button>().Single(b => b.ToolTip?.ToString() == "Semaine suivante");
             var before = Field<DateOnly>(resets, "_week"); nextWeek.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); window.UpdateLayout();
@@ -119,8 +121,8 @@ internal static class FeatureChecks
             Check(Field<DateOnly>(resets, "_week") == before.AddDays(7) && Field<RadioButton>(resets, "_weekChoice").IsChecked == true,
                 "Refresh retains the selected week and display mode");
             resets.Update(new([service.State.Accounts[0] with { Snapshot = oldSnapshot }], id)); window.UpdateLayout();
-            Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("Dates non communiquées")), "Unknown dates remain available below the week grid");
-            Tree(resets).OfType<RadioButton>().Single(r => r.Content?.ToString() == "Agenda").IsChecked = true;
+            Check(Tree(resets).OfType<Expander>().Any(e => e.Name == "UnknownResets"), "Unknown dates remain available below the week grid");
+            Tree(resets).OfType<RadioButton>().Single(r => r.Content?.ToString() == "Liste").IsChecked = true;
             resets.Update(service.State); resetFilter.SelectedIndex = 0;
             mainTabs.SelectedIndex = 0; await Task.Delay(100);
             ((Button)window.FindName("MinimizeButton")).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));

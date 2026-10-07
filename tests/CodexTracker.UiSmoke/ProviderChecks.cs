@@ -56,7 +56,8 @@ internal static class ProviderChecks
                 new("fixture-reset", "Fictional source", "https://example.com/reset", "https://example.com/scope",
                     now.AddHours(-2), now.AddHours(-1), now, ["plus", "pro"], [ResetKind.Weekly, ResetKind.Short])], now) });
             window.UpdateLayout();
-            var announcement = Tree(resets).OfType<Expander>().Single();
+            resets.ShowAnnouncements(); window.UpdateLayout();
+            var announcement = Tree(resets).OfType<Expander>().Single(e => e.Header?.ToString() == "Détail des comptes (5)");
             Check(announcement.Header?.ToString() == "Détail des comptes (5)", "Codex public reset notices exclude Claude accounts");
             announcement.IsExpanded = true; window.UpdateLayout();
             Check(Tree(announcement).OfType<TextBlock>().Any(t => t.Text.Contains("reset manuel prioritaire")), "A manual declaration takes priority over public reset estimates");

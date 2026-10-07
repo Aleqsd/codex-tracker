@@ -185,6 +185,52 @@ public sealed partial class UpdateTests
     }
 
     [Fact]
+    public async Task CompletedChecksNotifyObserversWithoutCachePersistenceAndRetainFailedFreshness()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var verifiedAt = now;
+        var offline = false;
+        using var client = new HttpClient(new FakeHandler(_ => offline
+            ? throw new HttpRequestException("Fixture offline")
+            : new(HttpStatusCode.OK) { Content = new StringContent("[]") }));
+        using var service = new UpdateService("0.3.0", client, clock: () => now);
+        var observed = new List<UpdateCheckResult>();
+        service.CheckChanged += (_, _) => observed.Add(service.ReadLatestCheck()!);
+        Assert.Null(service.ReadLatestCheck());
+        var first = await service.CheckDetailedAsync();
+        Assert.Equal(first, Assert.Single(observed));
+        Assert.True(first.IsVerifiedNow);
+        Assert.Null(first.Release);
+        Assert.Equal(UpdateCheckSource.Cached, (await service.CheckDetailedAsync()).Source);
+        Assert.Single(observed);
+        Assert.Equal(first, service.ReadLatestCheck());
+        now = now.AddMinutes(15); offline = true;
+        var failed = await service.CheckDetailedAsync();
+        Assert.Equal(2, observed.Count);
+        Assert.Equal(failed, service.ReadLatestCheck());
+        Assert.False(failed.IsVerifiedNow);
+        Assert.Equal(verifiedAt, failed.VerifiedAt);
+        Assert.Equal(now.AddMinutes(1), failed.NextCheckAt);
+        Assert.Contains("n’a pas pu", failed.Message);
+    }
+
+    [Fact]
+    public async Task CheckObserversAreNotLostWhenWritingTheCacheIsImpossible()
+    {
+        using var directory = new TestDirectory();
+        var path = directory.File("cache.json");
+        Directory.CreateDirectory(path);
+        using var client = new HttpClient(new FakeHandler(_ => ReleasesResponse("0.4.0")));
+        using var service = new UpdateService("0.3.0", client, path);
+        var notifications = 0;
+        service.CheckChanged += (_, _) => notifications++;
+        var result = await service.CheckDetailedAsync();
+        Assert.True(result.IsVerifiedNow);
+        Assert.Equal(1, notifications);
+        Assert.Equal(result, service.ReadLatestCheck());
+    }
+
+    [Fact]
     public async Task ConcurrentChecksShareOneRequestAndOneCancelledWaitDoesNotCancelTheOthers()
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -196,6 +242,8 @@ public sealed partial class UpdateTests
             return await respond.Task.WaitAsync(token);
         }));
         using var service = new UpdateService("0.3.0", client);
+        var notifications = 0;
+        service.CheckChanged += (_, _) => Interlocked.Increment(ref notifications);
         using var cancelled = new CancellationTokenSource();
         var first = service.CheckDetailedAsync(cancelled.Token);
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -205,6 +253,7 @@ public sealed partial class UpdateTests
         respond.SetResult(ReleasesResponse("0.4.0"));
         Assert.Equal("0.4.0", (await second.WaitAsync(TimeSpan.FromSeconds(5))).Release!.Version);
         Assert.Equal(1, calls);
+        Assert.Equal(1, notifications);
     }
 
     [Fact]

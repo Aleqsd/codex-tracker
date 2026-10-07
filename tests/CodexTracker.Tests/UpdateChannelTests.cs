@@ -77,13 +77,18 @@ public sealed partial class UpdateTests
         }));
         using var service = new UpdateService("0.3.0", client);
         service.SetIncludePrereleases(true);
+        var observed = new List<UpdateCheckResult>();
+        service.CheckChanged += (_, _) => observed.Add(service.ReadLatestCheck()!);
         var pending = service.CheckDetailedAsync();
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         service.SetIncludePrereleases(false);
+        Assert.Null(service.ReadLatestCheck());
         Assert.Equal("0.4.0", (await service.CheckDetailedAsync()).Release!.Version);
         finish.SetResult();
         Assert.Equal("0.4.0", (await pending).Release!.Version);
         Assert.Equal("0.4.0", service.ReadCachedCheck()!.Release!.Version);
+        Assert.Equal("0.4.0", Assert.Single(observed).Release!.Version);
+        Assert.Equal(observed[0], service.ReadLatestCheck());
     }
 
     [Fact]
@@ -194,7 +199,7 @@ public sealed partial class UpdateTests
     }
 
     [Fact]
-    public async Task ChannelChangeResetsAutomaticScheduleWithoutWaitingSixHours()
+    public async Task ChannelChangeResetsAutomaticScheduleWithoutWaitingFifteenMinutes()
     {
         var now = DateTimeOffset.UtcNow;
         var calls = 0;
@@ -204,7 +209,7 @@ public sealed partial class UpdateTests
         using var automatic = new AutomaticUpdater(service, () => now);
         automatic.SetEnabled(true);
         await automatic.TickAsync();
-        Assert.Equal(now.AddHours(6), automatic.NextCheck);
+        Assert.Equal(now.AddMinutes(15), automatic.NextCheck);
         service.SetIncludePrereleases(true);
         await automatic.TickAsync();
         Assert.Equal(2, calls);

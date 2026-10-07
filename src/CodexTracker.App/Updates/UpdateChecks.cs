@@ -32,8 +32,10 @@ public sealed partial class UpdateService
     private string? CheckCachePath(bool previews) => _cachePath is null ? null : previews
         ? Path.Combine(Path.GetDirectoryName(_cachePath)!, Path.GetFileNameWithoutExtension(_cachePath) + "-preview.json") : _cachePath;
     private CheckCache _cache;
+    private UpdateCheckResult? _latestCheck;
     private Task<UpdateCheckResult>? _checkInFlight;
     private bool _disposed;
+    public event EventHandler? CheckChanged;
 
     private sealed record CachedPage(Uri Uri, string? ETag, Uri? NextUri, UpdateRelease? Latest);
     private sealed record CheckCache(int Schema, DateTimeOffset? VerifiedAt, DateTimeOffset? NextCheckAt,
@@ -45,6 +47,13 @@ public sealed partial class UpdateService
     {
         lock (_checkGate)
             return _cache.VerifiedAt is null && _cache.NextCheckAt is null ? null : CachedResult(_cache);
+    }
+
+    /// <summary>Reads the current channel's latest check, preserving a live result until the next attempt.</summary>
+    public UpdateCheckResult? ReadLatestCheck()
+    {
+        lock (_checkGate)
+            return _latestCheck ?? (_cache.VerifiedAt is null && _cache.NextCheckAt is null ? null : CachedResult(_cache));
     }
 
     /// <summary>Checks manually. Concurrent callers share one request; cancelling a caller only stops its wait.</summary>
@@ -70,6 +79,8 @@ public sealed partial class UpdateService
         timeout.CancelAfter(TimeSpan.FromSeconds(30));
         DateTimeOffset? retryAt = null;
         var rateLimited = false;
+        CheckCache next;
+        UpdateCheckResult result;
         try
         {
             var pages = new List<CachedPage>();
@@ -117,22 +128,19 @@ public sealed partial class UpdateService
                 uri = page.NextUri;
             }
             var now = _clock();
-            var next = new CheckCache(3, now, now.AddMinutes(5), 0, false, pages, now, previous.IncludePrereleases);
-            PublishCache(next, channelRevision);
-            lock (_checkGate)
-                return _channelRevision != channelRevision ? CachedResult(_cache)
-                    : new(BestRelease(next), usedCache ? UpdateCheckSource.ValidatedCache : UpdateCheckSource.Network,
-                        now, next.NextCheckAt, "Versions vérifiées auprès de GitHub.");
+            next = new CheckCache(3, now, now.AddMinutes(5), 0, false, pages, now, previous.IncludePrereleases);
+            result = new(BestRelease(next), usedCache ? UpdateCheckSource.ValidatedCache : UpdateCheckSource.Network,
+                now, next.NextCheckAt, "Versions vérifiées auprès de GitHub.");
         }
         catch (OperationCanceledException) when (_checksLifetime.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is HttpRequestException or IOException or InvalidDataException or JsonException or OperationCanceledException)
         {
             var failures = Math.Min(previous.Failures + 1, 10);
             var now = _clock();
-            var next = previous with { RecordedAt = now, NextCheckAt = retryAt ?? now.AddMinutes(Math.Min(60, Math.Pow(2, failures - 1))), Failures = failures, RateLimited = rateLimited };
-            PublishCache(next, channelRevision);
-            lock (_checkGate) return CachedResult(_channelRevision == channelRevision ? next : _cache);
+            next = previous with { RecordedAt = now, NextCheckAt = retryAt ?? now.AddMinutes(Math.Min(60, Math.Pow(2, failures - 1))), Failures = failures, RateLimited = rateLimited };
+            result = CachedResult(next);
         }
+        return PublishCheck(next, result, channelRevision);
     }
 
     private UpdateRelease? BestRelease(CheckCache cache) => cache.Pages.Select(p => p.Latest)
@@ -240,13 +248,25 @@ public sealed partial class UpdateService
             IsReleaseUri(release.DownloadUrl, release.Tag, name) && IsReleaseUri(release.ChecksumUrl, release.Tag, name + ".sha256");
     }
 
-    private void PublishCache(CheckCache cache, int channelRevision)
+    private UpdateCheckResult PublishCheck(CheckCache cache, UpdateCheckResult result, int channelRevision)
     {
         lock (_checkGate)
         {
-            if (_channelRevision != channelRevision) return;
+            if (_disposed || _channelRevision != channelRevision) return CachedResult(_cache);
             _cache = cache;
+            _latestCheck = result;
         }
+        SaveCheckCache(cache);
+        lock (_checkGate)
+            if (_disposed || _channelRevision != channelRevision) return CachedResult(_cache);
+        // Notify outside the cache lock and the network-error handler. Observers read the current
+        // channel, so a queued UI callback cannot restore a result from an abandoned channel.
+        CheckChanged?.Invoke(this, EventArgs.Empty);
+        lock (_checkGate) return _channelRevision == channelRevision ? result : CachedResult(_cache);
+    }
+
+    private void SaveCheckCache(CheckCache cache)
+    {
         var cachePath = CheckCachePath(cache.IncludePrereleases);
         if (cachePath is null) return;
         string? temporary = null;

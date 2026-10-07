@@ -30,6 +30,30 @@
   <Geometry x:Key="AccountsIcon">M16,7 A4,4 0 1 1 8,7 A4,4 0 1 1 16,7 M4,21 L4,19 C4,12 20,12 20,19 L20,21</Geometry>
   <Geometry x:Key="ResetClockIcon">M21,12 A9,9 0 1 1 3,12 A9,9 0 1 1 21,12 M12,6 L12,12 16,14</Geometry>
   <Geometry x:Key="ResetReserveIcon">M4,6 L20,6 20,20 4,20 Z M3,3 L21,3 21,6 3,6 Z M9,11 L15,11 M12,8 L12,14</Geometry>
+  <Style x:Key="ResetEntry" TargetType="Expander">
+   <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+    <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1"><StackPanel>
+     <ToggleButton Content="{TemplateBinding Header}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Foreground="{DynamicResource TextBrush}" Cursor="Hand">
+      <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+       <Border x:Name="Row" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="5">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/></Grid.ColumnDefinitions>
+         <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+         <TextBlock x:Name="ExpandChevron" Grid.Column="1" Text="›" FontSize="17" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+        </Grid>
+       </Border>
+       <ControlTemplate.Triggers>
+        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/></Trigger>
+        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger>
+        <Trigger Property="IsChecked" Value="True"><Setter TargetName="ExpandChevron" Property="motion:UiMotion.Angle" Value="90"/></Trigger>
+       </ControlTemplate.Triggers>
+      </ControlTemplate></ToggleButton.Template>
+     </ToggleButton>
+     <ContentPresenter x:Name="Details" ContentSource="Content" Visibility="Collapsed" motion:UiMotion.FadeOnShow="True"/>
+    </StackPanel></Border>
+    <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="Details" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
+   </ControlTemplate></Setter.Value></Setter>
+  </Style>
   <Style x:Key="ResetKindFilter" TargetType="RadioButton">
    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="12"/><Setter Property="Padding" Value="12,7"/><Setter Property="Cursor" Value="Hand"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton"><Border x:Name="Filter" Background="Transparent" BorderThickness="1" BorderBrush="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}"><ContentPresenter VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Filter" Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="FontWeight" Value="Medium"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Filter" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Filter" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>

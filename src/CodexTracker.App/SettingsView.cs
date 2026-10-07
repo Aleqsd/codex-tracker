@@ -12,11 +12,14 @@ internal sealed class SettingsView : UserControl, IDisposable
     private readonly PreferencesStore _preferences;
     private readonly ApplicationCommands _commands;
     private readonly UpdateService _updates;
+    private readonly AutomaticUpdater? _automaticUpdates;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<(CheckBox Box, Func<TrackerPreferences, bool> Read)> _toggles = new();
     private readonly ComboBox _themeSelector;
     private readonly ComboBox _refreshSelector;
     private readonly TextBlock _updateStatus;
+    private readonly TextBlock _preparationStatus;
+    private readonly TextBlock _automaticStatus;
     private readonly Button _check, _install;
     private readonly System.Windows.Threading.DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private DateTimeOffset? _nextCheckAt;
@@ -36,9 +39,9 @@ internal sealed class SettingsView : UserControl, IDisposable
     private StackPanel _page = new();
     internal string CurrentPage { get; private set; } = "Général";
 
-    public SettingsView(MainWindow owner, PreferencesStore preferences, UpdateService updates, bool demo)
+    public SettingsView(MainWindow owner, PreferencesStore preferences, UpdateService updates, bool demo, AutomaticUpdater? automaticUpdates = null)
     {
-        _owner = owner; _preferences = preferences; _updates = updates; _demo = demo;
+        _owner = owner; _preferences = preferences; _updates = updates; _demo = demo; _automaticUpdates = automaticUpdates;
         _includePrereleases = preferences.Current.IncludePrereleaseUpdates;
         _commands = new(preferences, owner.Reminders.Secrets);
         Focusable = false;
@@ -108,7 +111,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; _page.Children.Add(startup);
         Section("Mises à jour", true);
         _page.Children.Add(Ui.Text($"Version {_updates.CurrentVersion}", 12));
-        Toggle("Télécharger automatiquement les mises à jour", "Recherche au démarrage puis toutes les 6 heures sur GitHub. Le suivi continue pendant le téléchargement.",
+        Toggle("Télécharger automatiquement les mises à jour", "Recherche au démarrage puis toutes les 15 minutes sur GitHub. Le suivi continue pendant le téléchargement.",
             p => p.DownloadUpdatesAutomatically, (p, value) => p with { DownloadUpdatesAutomatically = value });
         Toggle("Installer au prochain démarrage du tracker", "Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation.",
             p => p.InstallUpdatesAtStartup, (p, value) => p with { InstallUpdatesAtStartup = value });
@@ -116,6 +119,8 @@ internal sealed class SettingsView : UserControl, IDisposable
             p => p.IncludePrereleaseUpdates, (p, value) => p with { IncludePrereleaseUpdates = value });
         var lastUpdate = demo ? null : updates.ReadLastResult();
         _updateStatus = Ui.Text(demo ? "Les mises à jour sont désactivées dans la démonstration." : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : "Vérifiez les versions publiées sur le dépôt officiel.", 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 7, 0, 12); _page.Children.Add(_updateStatus);
+        _preparationStatus = Ui.Text("", 11, "MutedBrush"); _preparationStatus.Margin = new Thickness(0, 0, 0, 12); _preparationStatus.Visibility = Visibility.Collapsed; _page.Children.Add(_preparationStatus);
+        _automaticStatus = Ui.Text("", 11, "MutedBrush"); _automaticStatus.Margin = new Thickness(0, 0, 0, 12); _automaticStatus.Visibility = demo ? Visibility.Collapsed : Visibility.Visible; _page.Children.Add(_automaticStatus);
         var actions = new WrapPanel();
         _check = new Button { Content = "Rechercher une mise à jour", IsEnabled = !demo, Margin = new Thickness(0, 0, 8, 0) }; _check.Click += async (_, _) => await CheckAsync(); actions.Children.Add(_check);
         _install = new Button { Content = "Installer et relancer", Visibility = Visibility.Collapsed, Style = (Style)FindResource("PrimaryButton") }; _install.Click += async (_, _) => await InstallAsync(); actions.Children.Add(_install); _page.Children.Add(actions);
@@ -126,14 +131,14 @@ internal sealed class SettingsView : UserControl, IDisposable
             catch (Exception error) { ShowError(error.Message); }
         };
         _page.Children.Add(releases);
-        if (!demo && updates.ReadCachedCheck() is { } cached)
+        if (!demo && updates.ReadLatestCheck() is { } cached)
         {
             ShowCheckResult(cached);
             if (lastUpdate is { Success: false }) _updateStatus.Text = Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) + "\n" + _updateStatus.Text;
         }
-        if (!demo) { updates.PreparationChanged += PreparationChanged; ShowPreparation(); }
+        if (!demo) { updates.CheckChanged += CheckChanged; updates.PreparationChanged += PreparationChanged; ShowPreparation(); }
         _updateTimer.Tick += (_, _) => SyncUpdateButton();
-        Loaded += (_, _) => { if (!_closed) { RefreshHealth(); _updateTimer.Start(); } };
+        Loaded += (_, _) => { if (!_closed) { RefreshHealth(); RefreshCheck(); _updateTimer.Start(); } };
         Unloaded += (_, _) => _updateTimer.Stop();
         Section("Diagnostic", true);
         _page.Children.Add(_health);
@@ -150,7 +155,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     {
         if (_closed) return;
         _closed = true; _updateTimer.Stop(); _lifetime.Cancel();
-        _preferences.Changed -= PreferencesChanged; _updates.PreparationChanged -= PreparationChanged;
+        _preferences.Changed -= PreferencesChanged; _updates.CheckChanged -= CheckChanged; _updates.PreparationChanged -= PreparationChanged;
         _pageScroll.Content = null; Content = null;
     }
     private void ReloadableSection(Func<FrameworkElement> create)
@@ -231,6 +236,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         _refreshSelector.SelectedValue = _preferences.Current.RefreshMinutes;
         foreach (var (box, read) in _toggles) box.IsChecked = read(_preferences.Current); _syncing = false;
         _updateStatus.Text = Display.SafeText(_updateStatus.Text, _preferences.Current.PrivacyMode);
+        SyncUpdateButton();
         RefreshHealth();
     }
     internal void RefreshHealth()
@@ -315,12 +321,26 @@ internal sealed class SettingsView : UserControl, IDisposable
         _check.IsEnabled = !_demo && !_updateBusy && !_updates.IsPreparing && !(_nextCheckAt > DateTimeOffset.UtcNow);
         _install.IsEnabled = !_demo && !_updateBusy && !_updates.IsPreparing;
         _check.ToolTip = _nextCheckAt > DateTimeOffset.UtcNow ? $"Disponible à {_nextCheckAt.Value.ToLocalTime():HH:mm:ss}." : null;
+        _automaticStatus.Text = !_preferences.Current.DownloadUpdatesAutomatically ? "Recherche automatique désactivée."
+            : _automaticUpdates is null ? "Recherche automatique indisponible dans cet exécutable."
+            : !_automaticUpdates.IsEnabled ? "Recherche automatique en pause."
+            : _automaticUpdates.IsChecking ? _updates.IsPreparing ? "Téléchargement automatique en cours…" : "Recherche automatique en cours…"
+            : _automaticUpdates.NextCheck <= DateTimeOffset.UtcNow ? "Prochaine recherche automatique imminente."
+            : $"Prochaine recherche automatique : {_automaticUpdates.NextCheck.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
+    }
+    private void CheckChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(RefreshCheck);
+    private void RefreshCheck()
+    {
+        if (_closed || _demo || _updateBusy) return;
+        if (_updates.ReadLatestCheck() is { } result) ShowCheckResult(result);
+        ShowPreparation();
     }
     private void PreparationChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(ShowPreparation);
     private void ShowPreparation()
     {
         if (_closed) return;
-        if (_updates.PreparationMessage is { } message) _updateStatus.Text = message;
+        _preparationStatus.Text = _updates.PreparationMessage ?? "";
+        _preparationStatus.Visibility = _preparationStatus.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         if (_updates.Prepared is { } ready)
         {
             _release = ready.Release;

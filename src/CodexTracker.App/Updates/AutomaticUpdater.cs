@@ -9,15 +9,19 @@ internal sealed class AutomaticUpdater : IDisposable
 {
     private readonly UpdateService _service;
     private readonly Func<DateTimeOffset> _clock;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay;
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _operation;
     private bool _enabled, _busy;
+    internal bool IsEnabled => _enabled;
+    internal bool IsChecking => _busy;
     internal DateTimeOffset NextCheck { get; private set; } = DateTimeOffset.MinValue;
 
-    internal AutomaticUpdater(UpdateService service, Func<DateTimeOffset>? clock = null)
+    internal AutomaticUpdater(UpdateService service, Func<DateTimeOffset>? clock = null, Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
         _service = service;
         _clock = clock ?? (() => DateTimeOffset.UtcNow);
+        _delay = delay ?? Task.Delay;
         service.ChannelChanged += ChannelChanged;
     }
 
@@ -39,9 +43,17 @@ internal sealed class AutomaticUpdater : IDisposable
     {
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(15), _lifetime.Token);
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
-            do { await TickAsync(); } while (await timer.WaitForNextTickAsync(_lifetime.Token));
+            await _delay(TimeSpan.FromSeconds(15), _lifetime.Token);
+            while (!_lifetime.IsCancellationRequested)
+            {
+                await TickAsync();
+                // Poll at most once a minute for channel/option changes, but wake at the due time
+                // when it is nearer. A fixed minute timer could miss it and add another minute.
+                var remaining = NextCheck - _clock();
+                var delay = _enabled && remaining > TimeSpan.Zero && remaining < TimeSpan.FromMinutes(1)
+                    ? remaining : TimeSpan.FromMinutes(1);
+                await _delay(delay, _lifetime.Token);
+            }
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
     }
@@ -56,7 +68,7 @@ internal sealed class AutomaticUpdater : IDisposable
         {
             var result = await _service.CheckDetailedAsync(operation.Token);
             operation.Token.ThrowIfCancellationRequested();
-            NextCheck = result.IsVerifiedNow ? _clock().AddHours(6) : result.NextCheckAt ?? _clock().AddMinutes(15);
+            NextCheck = result.IsVerifiedNow ? _clock().AddMinutes(15) : result.NextCheckAt ?? _clock().AddMinutes(15);
             if (NextCheck <= _clock()) NextCheck = _clock().AddMinutes(15);
             if (_enabled && result.IsVerifiedNow && result.Release is { } release)
                 await _service.PrepareAsync(release, operation.Token);

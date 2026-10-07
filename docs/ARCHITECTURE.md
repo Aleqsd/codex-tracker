@@ -45,7 +45,9 @@ Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte
 
 ## Mises à jour préparées (0.8.2)
 
-`AutomaticUpdater`, possédé par la fenêtre principale, recherche après 15 secondes puis toutes les six heures. Il respecte le cache HTTP et les limites GitHub ; un téléchargement interrompu est retenté après 15 minutes. Aucun ordonnanceur dans les fenêtres de réglages ou les ponts MCP. Le mode démo et les exécutables de développement ne démarrent pas ce moteur.
+`AutomaticUpdater`, possédé par la fenêtre principale, recherche après 15 secondes puis toutes les 15 minutes après un contrôle réussi. Il respecte le cache HTTP et les limites GitHub ; un téléchargement interrompu est retenté après 15 minutes. Aucun ordonnanceur dans les fenêtres de réglages ou les ponts MCP. Le mode démo et les exécutables de développement ne démarrent pas ce moteur.
+
+`UpdateService.CheckChanged` signale chaque contrôle réseau terminé, y compris une réponse HTTP 304 ou un échec. `ReadLatestCheck` expose le résultat du canal actuel ; les résultats d’un ancien canal sont ignorés. Les réglages affichent la date du dernier contrôle, l’état du téléchargement et la prochaine échéance de l’ordonnanceur. La limite de cinq minutes des contrôles manuels reste distincte de la recherche automatique.
 
 `UpdateService.PrepareAsync` sérialise les téléchargements, contrôle source, taille, SHA-256 et archive, puis publie atomiquement `updates/prepared-update.json`. Le chemin préparé est construit à partir d’un UUID validé. Le hash de l’exécutable est revérifié après redémarrage et avant installation. Une ancienne préparation valide reste utilisable si le téléchargement d’une version plus récente échoue.
 
