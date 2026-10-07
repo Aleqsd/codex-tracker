@@ -14,6 +14,7 @@ internal sealed class TrayController : IDisposable
     private readonly Func<Task> _exit;
     private readonly PreferencesStore _preferences;
     private readonly TrayPeekWindow _peek;
+    private readonly AppTypography.MenuFont _menuFont = new();
     private readonly DispatcherTimer _hoverDelay = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _presence = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly DispatcherTimer _notifications = new() { Interval = TimeSpan.FromMilliseconds(650) };
@@ -122,7 +123,7 @@ internal sealed class TrayController : IDisposable
         _menuKey = menuKey;
         var background = dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
         var foreground = dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(35, 35, 35);
-        var menu = new Forms.ContextMenuStrip { BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
+        var menu = new Forms.ContextMenuStrip { Font = _menuFont.Font, BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
         menu.Opening += (_, _) => HidePeek();
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
         menu.Items.Add("Ouvrir le suivi", null, (_, _) => _window.ShowPanel());
@@ -234,6 +235,7 @@ internal sealed class TrayController : IDisposable
         _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
         _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close();
         _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
+        _menuFont.Dispose();
     }
     private sealed class DarkMenuRenderer : Forms.ToolStripProfessionalRenderer
     {

@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -25,6 +28,8 @@
     <Compile Include="../../src/CodexTracker.App/WindowsNotificationDelivery.cs" Link="App/WindowsNotificationDelivery.cs" />
     <Compile Include="../../src/CodexTracker.App/WindowPlacement.cs" Link="App/WindowPlacement.cs" />
     <Compile Include="../../src/CodexTracker.App/TrayIconRenderer.cs" Link="App/TrayIconRenderer.cs" />
+    <Compile Include="../../src/CodexTracker.App/AppTypography.cs" Link="App/AppTypography.cs" />
+    <Resource Include="../../src/CodexTracker.App/Assets/Fonts/*.ttf" Link="Assets/Fonts/%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/CodexTracker.App/Updates/*.cs" Link="Updates/%(Filename)%(Extension)" />

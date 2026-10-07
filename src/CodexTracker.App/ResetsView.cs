@@ -35,7 +35,7 @@ internal sealed class ResetsView : UserControl
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
         var heading = _heading = new Grid();
-        var title = Ui.Text("Calendrier des resets", 20); title.FontWeight = FontWeights.SemiBold; heading.Children.Add(title);
+        var title = Ui.Text("Calendrier des resets", 20); title.FontWeight = FontWeights.Medium; heading.Children.Add(title);
         var export = new Button { Content = "Google Agenda ↗", Style = (Style)FindResource("QuietButton"), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 0, 0, 0), ToolTip = "Options Google Agenda pour le compte sélectionné, tous les types de resets" };
         var introduction = new StackPanel(); introduction.Children.Add(heading); _summary.Margin = new Thickness(0, 7, 0, 5); introduction.Children.Add(_summary); introduction.Children.Add(_reserves); root.Children.Add(introduction);
 
@@ -158,7 +158,7 @@ internal sealed class ResetsView : UserControl
         var identityPanel = new StackPanel { Margin = new Thickness(0, 0, 12, 0) }; panel.Children.Add(identityPanel);
         var titleRow = new StackPanel { Orientation = Orientation.Horizontal };
         var icon = KindIcon(ResetKind.Reserve, 16); icon.Margin = new Thickness(0, 0, 8, 0); titleRow.Children.Add(icon);
-        var title = Ui.Text("Réserve prioritaire", 12); title.FontWeight = FontWeights.SemiBold;
+        var title = Ui.Text("Réserve prioritaire", 12); title.FontWeight = FontWeights.Medium;
         titleRow.Children.Add(title); identityPanel.Children.Add(titleRow);
         var identity = Ui.Text(_weekView ? AccountName(entry.Account) : $"{AccountName(entry.Account)} · {entry.CreditTitle ?? "Crédit de reset"}", 12);
         identity.TextWrapping = TextWrapping.NoWrap; identity.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -178,7 +178,7 @@ internal sealed class ResetsView : UserControl
     {
         var navigation = new Grid { Margin = new Thickness(0, 4, 0, 4) };
         navigation.ColumnDefinitions.Add(new ColumnDefinition()); navigation.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var range = Ui.Text($"{_week:dd MMM} – {_week.AddDays(6):dd MMM yyyy}", 13); range.FontWeight = FontWeights.SemiBold;
+        var range = Ui.Text($"{_week:dd MMM} – {_week.AddDays(6):dd MMM yyyy}", 13); range.FontWeight = FontWeights.Medium;
         range.VerticalAlignment = VerticalAlignment.Center; navigation.Children.Add(range);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var (label, name, shift) in new[] { ("‹", "Semaine précédente", -7), ("Aujourd’hui", "Semaine actuelle", 0), ("›", "Semaine suivante", 7) })
@@ -204,7 +204,7 @@ internal sealed class ResetsView : UserControl
                 var card = new StackPanel();
                 var typeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
                 var icon = KindIcon(entry.Kind, 12); icon.Margin = new Thickness(0, 0, 4, 0); typeRow.Children.Add(icon);
-                var kind = Ui.Text(entry.Kind switch { ResetKind.Weekly => "Hebdo", ResetKind.Short => "5 h", _ => "Réserve" }, 10); kind.FontWeight = FontWeights.SemiBold; typeRow.Children.Add(kind); card.Children.Add(typeRow);
+                var kind = Ui.Text(entry.Kind switch { ResetKind.Weekly => "Hebdo", ResetKind.Short => "5 h", _ => "Réserve" }, 10); kind.FontWeight = FontWeights.Medium; typeRow.Children.Add(kind); card.Children.Add(typeRow);
                 var account = Ui.Text(AccountName(entry.Account), 11); account.TextWrapping = TextWrapping.NoWrap; account.TextTrimming = TextTrimming.CharacterEllipsis; card.Children.Add(account);
                 card.Children.Add(Ui.Text(entry.At!.Value.ToLocalTime().ToString("HH:mm:ss"), 11));
                 var countdown = Ui.Text("", 10, "MutedBrush"); countdown.Margin = new Thickness(0, 4, 0, 0);
@@ -230,12 +230,12 @@ internal sealed class ResetsView : UserControl
     private void AddGroup(string title, IReadOnlyList<ResetScheduleEntry> entries, bool showCount = true)
     {
         if (entries.Count == 0) return;
-        var heading = Ui.Text(showCount ? $"{title}  ·  {entries.Count}" : title, 12, "MutedBrush"); heading.FontWeight = FontWeights.SemiBold; heading.Margin = new Thickness(0, 13, 0, 7); _timeline.Children.Add(heading);
+        var heading = Ui.Text(showCount ? $"{title}  ·  {entries.Count}" : title, 12, "MutedBrush"); heading.FontWeight = FontWeights.Medium; heading.Margin = new Thickness(0, 13, 0, 7); _timeline.Children.Add(heading);
         foreach (var entry in entries)
         {
             var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) }); row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(177) });
             var date = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
-            var day = Ui.Text(entry.At?.ToLocalTime().ToString("dd") ?? "—", 24); day.FontWeight = FontWeights.SemiBold; date.Children.Add(day);
+            var day = Ui.Text(entry.At?.ToLocalTime().ToString("dd") ?? "—", 24); day.FontWeight = FontWeights.Medium; date.Children.Add(day);
             date.Children.Add(Ui.Text(entry.At?.ToLocalTime().ToString("MMM") ?? "", 11, "MutedBrush"));
             date.Children.Add(Ui.Text(entry.At?.ToLocalTime().ToString("yyyy") ?? "", 10, "MutedBrush"));
             var marker = new Border { Child = date, BorderThickness = new Thickness(0, 0, 1, 0), Padding = new Thickness(0, 0, 15, 0), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Stretch };
@@ -243,7 +243,7 @@ internal sealed class ResetsView : UserControl
             var identity = new StackPanel { Margin = new Thickness(0, 0, 14, 0) };
             var kind = entry.Kind switch { ResetKind.Weekly => "Reset hebdomadaire", ResetKind.Short => "Reset 5 heures", _ => "Expiration de réserve" };
             if (entry.IsUndetailedReserve) kind = "Réserves sans date";
-            var detail = Ui.Text(kind, 13); detail.FontWeight = FontWeights.SemiBold; var typeRow = new StackPanel { Orientation = Orientation.Horizontal };
+            var detail = Ui.Text(kind, 13); detail.FontWeight = FontWeights.Medium; var typeRow = new StackPanel { Orientation = Orientation.Horizontal };
             var typeIcon = KindIcon(entry.Kind, 16); typeIcon.Margin = new Thickness(0, 0, 7, 0); typeRow.Children.Add(typeIcon); typeRow.Children.Add(detail); identity.Children.Add(typeRow);
             if (!string.IsNullOrWhiteSpace(entry.CreditTitle))
             {
@@ -254,7 +254,7 @@ internal sealed class ResetsView : UserControl
             if (entry.GrantedAt is { } granted) { var receipt = Ui.Text($"Reçu le {Display.Exact(granted)}", 11, "MutedBrush"); receipt.Margin = new Thickness(0, 4, 0, 0); receipt.ToolTip = Display.Zone(granted); identity.Children.Add(receipt); }
             Grid.SetColumn(identity, 1); row.Children.Add(identity);
             var timing = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
-            var exact = Ui.Text(entry.At is null ? "Date indisponible" : entry.At.Value.ToLocalTime().ToString("HH:mm:ss"), 13); exact.FontWeight = FontWeights.SemiBold; exact.TextAlignment = TextAlignment.Right; timing.Children.Add(exact);
+            var exact = Ui.Text(entry.At is null ? "Date indisponible" : entry.At.Value.ToLocalTime().ToString("HH:mm:ss"), 13); exact.FontWeight = FontWeights.Medium; exact.TextAlignment = TextAlignment.Right; timing.Children.Add(exact);
             if (entry.At is { } at) { var clock = Ui.Text($"UTC{at.ToLocalTime():zzz}", 11, "MutedBrush"); clock.Margin = new Thickness(0, 4, 0, 0); clock.TextAlignment = TextAlignment.Right; clock.ToolTip = $"{Display.Exact(at)}\n{Display.Zone(at)}"; timing.Children.Add(clock); }
             var countdown = Ui.Text("", 11, "MutedBrush"); countdown.Margin = new Thickness(0, 4, 0, 0); countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown);
             Grid.SetColumn(timing, 2); row.Children.Add(timing);

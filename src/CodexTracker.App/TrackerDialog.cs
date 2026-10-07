@@ -22,7 +22,7 @@ internal sealed class TrackerDialog : Window
         var border = new Border { BorderThickness = new Thickness(1), Padding = new Thickness(25) };
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         var content = new StackPanel(); border.Child = content; Content = border;
-        var heading = new TextBlock { Text = title, FontSize = 23, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 17) };
+        var heading = new TextBlock { Text = title, FontSize = 23, FontWeight = FontWeights.Medium, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 17) };
         heading.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
         content.Children.Add(heading);
         _message = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, FontSize = 13, LineHeight = 21 };

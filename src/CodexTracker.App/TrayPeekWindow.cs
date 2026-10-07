@@ -8,15 +8,15 @@ namespace CodexTracker.App;
 // A non-activating window: a glance at the quota must not steal keyboard focus from Codex.
 internal sealed class TrayPeekWindow : Window
 {
-    private readonly TextBlock _name = new() { FontSize = 13, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly TextBlock _name = new() { FontSize = 13, FontWeight = FontWeights.Medium, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _plan = new() { FontSize = 10 };
-    private readonly TextBlock _weekly = new() { FontSize = 26, FontWeight = FontWeights.SemiBold };
-    private readonly TextBlock _short = new() { FontSize = 26, FontWeight = FontWeights.SemiBold };
+    private readonly TextBlock _weekly = new() { FontSize = 26, FontWeight = FontWeights.Medium };
+    private readonly TextBlock _short = new() { FontSize = 26, FontWeight = FontWeights.Medium };
     private readonly ProgressBar _weeklyBar = new() { Maximum = 100, Height = 3, Margin = new Thickness(0, 8, 0, 0) };
     private readonly ProgressBar _shortBar = new() { Maximum = 100, Height = 3, Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBlock _reset = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 15, 0, 0) };
     private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-    private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 13, 0, 0) };
+    private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.Medium, Margin = new Thickness(0, 13, 0, 0) };
     private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBlock _status = new() { FontSize = 10, Margin = new Thickness(0, 0, 0, 10) };
     private DrawingPoint _anchor;

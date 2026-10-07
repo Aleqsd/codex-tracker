@@ -165,7 +165,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     private void Page(string title, string description)
     {
         _page = new StackPanel { Margin = new Thickness(26, 24, 24, 24) };
-        var heading = Ui.Text(title, 21); heading.FontWeight = FontWeights.SemiBold; _page.Children.Add(heading);
+        var heading = Ui.Text(title, 21); heading.FontWeight = FontWeights.Medium; _page.Children.Add(heading);
         var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 7, 0, 26); _page.Children.Add(hint);
         var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
         button.Click += (_, _) => ShowPage(title); _navigation.Children.Add(button); _pages.Add(title, (_page, button));
@@ -182,14 +182,14 @@ internal sealed class SettingsView : UserControl, IDisposable
         foreach (var (name, value) in _pages)
         {
             value.Navigation.SetResourceReference(BackgroundProperty, name == title ? "ButtonBrush" : "BackgroundBrush");
-            value.Navigation.FontWeight = name == title ? FontWeights.SemiBold : FontWeights.Normal;
+            value.Navigation.FontWeight = name == title ? FontWeights.Medium : FontWeights.Normal;
             System.Windows.Automation.AutomationProperties.SetItemStatus(value.Navigation, name == title ? "Section active" : "");
         }
     }
     private void Section(string title, bool separator = false)
     {
         if (separator) { var line = new Border { Height = 1, Margin = new Thickness(0, 19, 0, 17) }; line.SetResourceReference(Border.BackgroundProperty, "LineBrush"); _page.Children.Add(line); }
-        var text = Ui.Text(title, 13); text.FontWeight = FontWeights.SemiBold; text.Margin = new Thickness(0, 0, 0, 12); _page.Children.Add(text);
+        var text = Ui.Text(title, 13); text.FontWeight = FontWeights.Medium; text.Margin = new Thickness(0, 0, 0, 12); _page.Children.Add(text);
     }
     private ComboBox Choice(string title, string icon, NumberChoice[] choices, Action<int> save)
     {

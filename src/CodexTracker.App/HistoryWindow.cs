@@ -26,21 +26,21 @@ internal sealed class HistoryWindow : ThemedWindow
         : base(owner, "Détails et historique", theme, 690, 745)
     {
         _service = service; _preferences = preferences; _theme = theme; AccountId = accountId;
-        _name = Ui.Text("", 19); _name.FontWeight = FontWeights.SemiBold; Body.Children.Add(_name);
+        _name = Ui.Text("", 19); _name.FontWeight = FontWeights.Medium; Body.Children.Add(_name);
         _subtitle = Ui.Text("", 12, "MutedBrush"); _subtitle.Margin = new Thickness(0, 5, 0, 0); Body.Children.Add(_subtitle);
         _freshness = Ui.Text("", 11, "MutedBrush"); _freshness.Margin = new Thickness(0, 6, 0, 16); Body.Children.Add(_freshness);
         var metrics = new Grid(); for (int i = 0; i < 3; i++) metrics.ColumnDefinitions.Add(new ColumnDefinition());
         AddMetric(metrics, 0, "Semaine", "WeeklyNumber"); AddMetric(metrics, 1, "5 heures", "ShortWindowRemaining"); AddMetric(metrics, 2, "Resets en réserve", "ReserveCount"); Body.Children.Add(Ui.Panel(metrics));
         _period = Ui.Text("", 11, "MutedBrush"); _period.Margin = new Thickness(0, 11, 0, 19); Body.Children.Add(_period);
         var chartHeader = new Grid { Margin = new Thickness(0, 0, 0, 11) }; chartHeader.ColumnDefinitions.Add(new ColumnDefinition()); chartHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); chartHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var chartTitle = Ui.Text("Quota restant", 13); chartTitle.FontWeight = FontWeights.SemiBold; chartTitle.VerticalAlignment = VerticalAlignment.Center; chartHeader.Children.Add(chartTitle);
+        var chartTitle = Ui.Text("Quota restant", 13); chartTitle.FontWeight = FontWeights.Medium; chartTitle.VerticalAlignment = VerticalAlignment.Center; chartHeader.Children.Add(chartTitle);
         _windowSelector = new ComboBox { Tag = FindResource("DropdownQuotaIcon"), Width = 136, Margin = new Thickness(0, 0, 8, 0), ItemsSource = new[] { new WindowChoice(UsageWindowKind.Weekly, "Semaine"), new WindowChoice(UsageWindowKind.Short, "5 heures") }, DisplayMemberPath = "Label", SelectedValuePath = "Value", SelectedIndex = 0 };
         _periodSelector = new ComboBox { Tag = FindResource("DropdownCalendarIcon"), Width = 136, ItemsSource = new[] { new PeriodChoice(24, "24 heures"), new PeriodChoice(168, "7 jours") }, DisplayMemberPath = "Label", SelectedValuePath = "Hours", SelectedIndex = 0 };
         Grid.SetColumn(_windowSelector, 1); Grid.SetColumn(_periodSelector, 2); chartHeader.Children.Add(_windowSelector); chartHeader.Children.Add(_periodSelector); Body.Children.Add(chartHeader);
         _chart = new UsageChart { Height = 167 }; Body.Children.Add(Ui.Panel(_chart, new Thickness(4, 7, 9, 0)));
         _historyHint = Ui.Text("", 10, "MutedBrush"); _historyHint.Margin = new Thickness(0, 8, 0, 16); Body.Children.Add(_historyHint);
         var forecast = new StackPanel(); var forecastLabel = Ui.Text("Estimation prudente", 11, "MutedBrush"); forecast.Children.Add(forecastLabel);
-        _forecast = Ui.Text("", 14); _forecast.FontWeight = FontWeights.SemiBold; _forecast.Margin = new Thickness(0, 6, 0, 0); forecast.Children.Add(_forecast);
+        _forecast = Ui.Text("", 14); _forecast.FontWeight = FontWeights.Medium; _forecast.Margin = new Thickness(0, 6, 0, 0); forecast.Children.Add(_forecast);
         _forecastHint = Ui.Text("", 11, "MutedBrush"); _forecastHint.Margin = new Thickness(0, 6, 0, 0); forecast.Children.Add(_forecastHint); Body.Children.Add(Ui.Panel(forecast));
         _error = Ui.Text("", 11, "DangerBrush"); _error.Margin = new Thickness(0, 10, 0, 0); Body.Children.Add(_error);
         _details = Ui.Text("", 11, "MutedBrush"); _details.LineHeight = 19; _details.Margin = new Thickness(0, 12, 0, 3);
@@ -61,7 +61,7 @@ internal sealed class HistoryWindow : ThemedWindow
     private static void AddMetric(Grid grid, int index, string title, string path)
     {
         var stack = new StackPanel(); stack.Children.Add(Ui.Text(title, 10, "MutedBrush"));
-        var value = Ui.Text("", 23); value.FontWeight = FontWeights.SemiBold; value.Margin = new Thickness(0, 5, 0, 0); value.SetBinding(TextBlock.TextProperty, new Binding(path)); stack.Children.Add(value);
+        var value = Ui.Text("", 23); value.FontWeight = FontWeights.Medium; value.Margin = new Thickness(0, 5, 0, 0); value.SetBinding(TextBlock.TextProperty, new Binding(path)); stack.Children.Add(value);
         Grid.SetColumn(stack, index); grid.Children.Add(stack);
     }
     private void Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Update);
@@ -151,7 +151,7 @@ internal sealed class UsageChart : FrameworkElement
     }
     private void DrawText(DrawingContext dc, string text, double x, double y)
     {
-        var formatted = new FormattedText(text, CultureInfo.GetCultureInfo("fr-FR"), FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10, ThemeManager.GetBrush("MutedBrush"), VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        var formatted = new FormattedText(text, CultureInfo.GetCultureInfo("fr-FR"), FlowDirection.LeftToRight, new Typeface(AppTypography.Family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), 10, ThemeManager.GetBrush("MutedBrush"), VisualTreeHelper.GetDpi(this).PixelsPerDip);
         dc.DrawText(formatted, new Point(x, y));
     }
 }

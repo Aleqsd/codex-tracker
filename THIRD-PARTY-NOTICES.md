@@ -5,6 +5,7 @@ Codex Tracker est distribué sous licence MIT (voir LICENSE).
 - Model Context Protocol C# SDK 2.2.0 — contributeurs MCP, avec Microsoft — Apache License 2.0. Sources et licence : https://github.com/modelcontextprotocol/csharp-sdk
 - Bibliothèques Microsoft .NET et Microsoft.Extensions — Microsoft et contributeurs — MIT. Sources : https://github.com/dotnet/runtime et https://github.com/dotnet/extensions
 - Microsoft.Bcl.TimeProvider et System.* — .NET Foundation et contributeurs — MIT, distribuées avec le runtime autonome.
+- Roboto 2.137 (Regular, Medium et Bold), Copyright 2011 Google Inc. — Apache License 2.0. Polices distribuées sans modification ; source : https://github.com/google/fonts/tree/724bf98e9f5cb98a1d3d5044f45a2e286b817401/apache/roboto. Licence et attribution dans `docs/licenses/Roboto-Apache-2.0.txt` et `docs/licenses/Roboto-COPYRIGHT.txt`.
 
 Les dépendances exactes et leurs empreintes sont conservées dans les fichiers packages.lock.json. Le SDK MCP est utilisé sans modification. La licence Apache 2.0 complète est disponible dans `docs/licenses/Apache-2.0.txt` ; les distributions incluent ce texte.
 

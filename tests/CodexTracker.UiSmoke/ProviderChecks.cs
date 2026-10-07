@@ -35,6 +35,7 @@ internal static class ProviderChecks
             {
                 preferences.Update(p => p with { ThemeMode = theme }); window.Width = compact ? 660 : 760; window.Height = compact ? 500 : 700;
                 await Task.Delay(50); window.UpdateLayout();
+                TypographyChecks.AssertBundled(window);
                 var card = (Border)window.FindName("ActiveAccountCard");
                 Check(Tree(card).OfType<TextBlock>().Any(t => t.Text == "Compte actif dans Claude Code · Personnel") && Tree(card).OfType<TextBlock>().Any(t => t.Text == "Compte actif dans Codex"), $"Provider panels render in {theme}, compact={compact}");
                 var list = (ItemsControl)window.FindName("AccountsList");
@@ -61,6 +62,7 @@ internal static class ProviderChecks
             Check(Tree(announcement).OfType<TextBlock>().Any(t => t.Text.Contains("reset manuel prioritaire")), "A manual declaration takes priority over public reset estimates");
             resets.Update(service.State); window.OpenPage("Comptes");
             var editor = window.OpenManualCodexReset(); await Task.Delay(30);
+            TypographyChecks.AssertBundled(editor);
             var time = Field<TextBox>(editor, "_time"); var save = Field<Button>(editor, "_save");
             time.Text = "oops"; Check(!save.IsEnabled, "Reset form rejects invalid times before saving");
             time.Text = now.AddMinutes(-30).ToLocalTime().ToString("HH:mm");

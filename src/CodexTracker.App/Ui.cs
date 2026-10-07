@@ -73,7 +73,7 @@ internal class ThemedWindow : Window
         var frame = new Border { BorderThickness = new Thickness(1) }; frame.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         var root = new Grid(); root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(46) }); root.RowDefinitions.Add(new RowDefinition());
         var header = new Grid { Margin = new Thickness(20, 0, 7, 0) };
-        Heading = Ui.Text(title, 13); Heading.FontWeight = FontWeights.SemiBold; Heading.VerticalAlignment = VerticalAlignment.Center; Heading.Margin = new Thickness(0, 0, 40, 0);
+        Heading = Ui.Text(title, 13); Heading.FontWeight = FontWeights.Medium; Heading.VerticalAlignment = VerticalAlignment.Center; Heading.Margin = new Thickness(0, 0, 40, 0);
         var close = new Button { Content = "✕", ToolTip = "Fermer", HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(12, 6, 12, 6), Style = (Style)FindResource("QuietButton") };
         WindowChrome.SetIsHitTestVisibleInChrome(close, true); close.Click += (_, _) => Close();
         header.Children.Add(Heading); header.Children.Add(close);

@@ -95,6 +95,7 @@ internal static class Program
                 await ReliabilityChecks.Run();
                 await ProviderChecks.Run();
                 await TrayChecks.Run();
+                await TypographyChecks.Run(window);
                 ((System.Windows.Controls.Button)window.FindName("HideToTrayButton")).RaiseEvent(
                     new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Check(!window.ShowInTaskbar && !IsWindowVisible(handle), "Tray hiding removes the native visible window");

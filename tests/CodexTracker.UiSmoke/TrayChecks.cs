@@ -36,6 +36,7 @@ internal static class TrayChecks
                     bounds.X >= area.Left && bounds.Y >= area.Top && bounds.Right <= area.Right && bounds.Bottom <= area.Bottom,
                     "Hover preview stays within the monitor work area");
                 Check(Tree(peek).OfType<TextBlock>().Any(t => t.Text == "alex@example.com" && t.ActualWidth > 0), "Fictional account renders in hover preview");
+                TypographyChecks.AssertBundled(peek);
                 Check(!compact || scroll.ScrollableHeight > 0, "Compact hover preview keeps the content scrollable");
                 foreach (var dpi in new[] { 96, 120, 144, 192 })
                     peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-{mode}-{(compact ? "compact" : "normal")}-{dpi}.png"), dpi);

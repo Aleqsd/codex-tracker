@@ -15,7 +15,7 @@ internal sealed class GlobalResetCard : Border
         BorderThickness = new Thickness(2, 0, 0, 0); Margin = new Thickness(0, 8, 0, 8);
         SetResourceReference(BackgroundProperty, "PanelBrush"); SetResourceReference(BorderBrushProperty, "GoodBrush");
         var panel = new StackPanel(); Child = panel;
-        var title = Ui.Text("Reset général · annoncé comme terminé", 13); title.FontWeight = FontWeights.SemiBold; panel.Children.Add(title);
+        var title = Ui.Text("Reset général · annoncé comme terminé", 13); title.FontWeight = FontWeights.Medium; panel.Children.Add(title);
         panel.Children.Add(Ui.Text($"{Display.Exact(announcement.ReportedAt)} · {Display.Zone(announcement.ReportedAt)}", 11, "MutedBrush"));
         var scope = announcement.Plans.Contains("free") ? "Tous les abonnements" : "Abonnements payants concernés";
         panel.Children.Add(Ui.Text(scope + " · " + string.Join(" + ", kinds.Select(k => k == ResetKind.Weekly ? "semaine" : "5 h")), 11, "MutedBrush"));
@@ -30,7 +30,7 @@ internal sealed class GlobalResetCard : Border
         foreach (var account in accounts)
         {
             var row = new StackPanel { Margin = new Thickness(0, 5, 0, 6) };
-            var identity = Ui.Text(name(account), 12); identity.FontWeight = FontWeights.SemiBold;
+            var identity = Ui.Text(name(account), 12); identity.FontWeight = FontWeights.Medium;
             identity.TextWrapping = TextWrapping.NoWrap; identity.TextTrimming = TextTrimming.CharacterEllipsis; identity.ToolTip = name(account);
             row.Children.Add(identity);
             foreach (var kind in kinds)

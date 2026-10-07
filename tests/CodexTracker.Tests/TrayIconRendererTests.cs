@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Runtime.ExceptionServices;
 using CodexTracker.App;
 using Xunit;
 
@@ -14,7 +15,7 @@ public sealed class TrayIconRendererTests
     [InlineData(40)]
     [InlineData(48)]
     [InlineData(64)]
-    public void EveryPercentageKeepsSizeVisibleDigitsAndAlphaThroughNativeIcon(int size)
+    public void EveryPercentageKeepsSizeVisibleDigitsAndAlphaThroughNativeIcon(int size) => OnSta(() =>
     {
         foreach (bool dark in new[] { true, false })
         foreach (string label in Enumerable.Range(0, 101).Select(n => n.ToString()).Append("--"))
@@ -33,15 +34,12 @@ public sealed class TrayIconRendererTests
                 antialiased |= alpha is > 0 and < 255;
             }
             Assert.True(visible, $"No visible digits: {label}, {size}px");
-            // After conversion to a native HICON, low-DPI digits must stay fully
-            // opaque or transparent, so their one-pixel stems retain contrast.
-            if (size <= 32) Assert.False(antialiased, $"Soft digits: {label}, {size}px");
-            else if (label != "--") Assert.True(antialiased, $"No high-DPI antialiasing: {label}, {size}px");
+            if (label != "--") Assert.True(antialiased, $"No grayscale alpha in native icon: {label}, {size}px");
         }
-    }
+    });
 
     [Fact]
-    public void TwoDigitsUseTheAvailableHeightAt125Percent()
+    public void TwoDigitsUseTheAvailableHeightAt125Percent() => OnSta(() =>
     {
         using var bitmap = TrayIconRenderer.RenderBitmap("85", Color.White, true, 20);
         var ink = (from y in Enumerable.Range(0, 16)
@@ -51,12 +49,12 @@ public sealed class TrayIconRendererTests
         Assert.True(ink.Max(p => p.Y) - ink.Min(p => p.Y) + 1 >= 12);
         Assert.InRange(ink.Min(p => p.X), 1, 3);
         Assert.InRange(ink.Max(p => p.X), 16, 18);
-    }
+    });
 
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void BarShowsZeroFullWarningAndUnknownWithoutInventingUsage(bool dark)
+    public void BarShowsZeroFullWarningAndUnknownWithoutInventingUsage(bool dark) => OnSta(() =>
     {
         var warning = Color.FromArgb(199, 170, 117);
         using var zero = TrayIconRenderer.RenderBitmap("0", warning, dark, 20);
@@ -69,5 +67,31 @@ public sealed class TrayIconRendererTests
         Assert.Equal(warning.ToArgb(), low.GetPixel(2, 18).ToArgb());
         Assert.Equal(track.ToArgb(), low.GetPixel(17, 18).ToArgb());
         for (int x = 0; x < 20; x++) Assert.Equal(0, unknown.GetPixel(x, 18).A);
+    });
+
+    [Fact]
+    public void RobotoWeightsComeFromEmbeddedResourcesInsteadOfInstalledFonts() => OnSta(() =>
+    {
+        foreach (var weight in new[] { System.Windows.FontWeights.Normal, System.Windows.FontWeights.Medium, System.Windows.FontWeights.Bold })
+        {
+            var typeface = new System.Windows.Media.Typeface(AppTypography.Family, System.Windows.FontStyles.Normal, weight, System.Windows.FontStretches.Normal);
+            Assert.True(typeface.TryGetGlyphTypeface(out var glyph), $"Embedded Roboto missing: {weight}");
+            Assert.Equal(weight.ToOpenTypeWeight(), glyph.Weight.ToOpenTypeWeight());
+            Assert.Contains("Roboto", glyph.FamilyNames.Values);
+            Assert.Contains("CodexTracker.Tests;component/Assets/Fonts/", glyph.FontUri.AbsoluteUri, StringComparison.OrdinalIgnoreCase);
+            Assert.False(typeface.IsBoldSimulated);
+        }
+        using var menuFont = new AppTypography.MenuFont();
+        Assert.Equal("Roboto", menuFont.Font.FontFamily.Name);
+    });
+
+    private static void OnSta(Action action)
+    {
+        // Initialize WPF's pack URI scheme without creating an application or a window.
+        System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(System.Windows.Application).TypeHandle);
+        Exception? error = null;
+        var thread = new Thread(() => { try { action(); } catch (Exception ex) { error = ex; } });
+        thread.SetApartmentState(ApartmentState.STA); thread.Start(); thread.Join();
+        if (error is not null) ExceptionDispatchInfo.Capture(error).Throw();
     }
 }

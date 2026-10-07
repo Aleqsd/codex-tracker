@@ -31,10 +31,10 @@ internal sealed class CalendarWindow : ThemedWindow
         _openBrowser = openBrowser ?? (uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }));
         _status = Ui.Text("", 11); _status.Margin = new Thickness(0, 12, 0, 0);
         var heading = new StackPanel { Orientation = Orientation.Horizontal }; heading.Children.Add(CalendarIcon("TextBrush", 23));
-        var title = Ui.Text("Google Agenda", 20); title.FontWeight = FontWeights.SemiBold; title.Margin = new Thickness(11, 0, 0, 0); heading.Children.Add(title); Body.Children.Add(heading);
+        var title = Ui.Text("Google Agenda", 20); title.FontWeight = FontWeights.Medium; title.Margin = new Thickness(11, 0, 0, 0); heading.Children.Add(title); Body.Children.Add(heading);
         _summary = Ui.Text("", 12, "MutedBrush"); _summary.Margin = new Thickness(0, 10, 0, 20); Body.Children.Add(_summary);
         var import = new StackPanel();
-        var importTitle = Ui.Text("Toutes vos échéances", 14); importTitle.FontWeight = FontWeights.SemiBold; import.Children.Add(importTitle);
+        var importTitle = Ui.Text("Toutes vos échéances", 14); importTitle.FontWeight = FontWeights.Medium; import.Children.Add(importTitle);
         var hint = Ui.Text("Resets et expirations, dans l’agenda de votre choix.", 12, "MutedBrush"); hint.Margin = new Thickness(0, 6, 0, 16); import.Children.Add(hint);
         var buttonContent = new StackPanel { Orientation = Orientation.Horizontal }; buttonContent.Children.Add(CalendarIcon("PrimaryButtonTextBrush", 16)); buttonContent.Children.Add(new TextBlock { Text = "Importer dans Google Agenda", Margin = new Thickness(9, 0, 10, 0) }); buttonContent.Children.Add(new TextBlock { Text = "↗" });
         _google = new Button { Content = buttonContent, Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(14, 10, 14, 10) };
@@ -43,7 +43,7 @@ internal sealed class CalendarWindow : ThemedWindow
         _google.Click += (_, _) => { try { PrepareGoogleImport(); Launch(GoogleImport, "Google Agenda est ouvert. Sélectionnez le fichier préparé puis validez l’import."); } catch (Exception) { _status.Text = "Impossible de préparer le fichier. Essayez l’export vers un autre emplacement."; } }; import.Children.Add(_google);
         var note = Ui.Text("Le fichier est préparé ici ; vous confirmez l’import dans Google Agenda.", 11, "MutedBrush"); note.Margin = new Thickness(0, 10, 0, 0); import.Children.Add(note); Body.Children.Add(Ui.Panel(import));
         var steps = new StackPanel();
-        _preparedSummary = Ui.Text("", 12); _preparedSummary.FontWeight = FontWeights.SemiBold; steps.Children.Add(_preparedSummary);
+        _preparedSummary = Ui.Text("", 12); _preparedSummary.FontWeight = FontWeights.Medium; steps.Children.Add(_preparedSummary);
         var instructions = Ui.Text("1. Dans Google, cliquez sur « Sélectionner un fichier » et collez ce chemin.\n2. Choisissez votre agenda, puis cliquez sur « Importer ».", 11, "MutedBrush"); instructions.Margin = new Thickness(0, 8, 0, 10); steps.Children.Add(instructions);
         _path = new TextBox { IsReadOnly = true, FontSize = 11, Padding = new Thickness(8), HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
         System.Windows.Automation.AutomationProperties.SetName(_path, "Chemin du fichier à importer"); steps.Children.Add(_path);
