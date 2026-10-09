@@ -17,7 +17,7 @@
   <Style x:Key="MetricValue" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="Medium"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="HorizontalAlignment" Value="Right"/><Setter Property="Margin" Value="8,0,0,0"/></Style>
  </Window.Resources>
  <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="54" ResizeBorderThickness="6" CornerRadius="10" GlassFrameThickness="0"/></shell:WindowChrome.WindowChrome>
- <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"><Grid>
+ <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"><Grid local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True">
   <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="32"/></Grid.RowDefinitions>
   <TabControl x:Name="MainTabs" Style="{StaticResource MainTabsStyle}" Padding="24,0,18,0">
    <TabItem x:Name="AccountsTab" Header="Comptes" Tag="{StaticResource AccountsIcon}" Style="{StaticResource MainTabStyle}">
@@ -25,7 +25,7 @@
     <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,12" Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolVisibility}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Changez de compte dans Codex ou Claude Code : le tracker suit automatiquement. Glissez son icône dans la barre d’état pour la garder visible." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,14,0" VerticalAlignment="Center"/><Button Grid.Column="1" Content="Compris" Click="Onboarding_Click" Padding="11,6" VerticalAlignment="Center"/></Grid></Border>
     <Border x:Name="ActiveAccountCard" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}">
      <ItemsControl ItemsSource="{Binding ActiveAccounts}" Margin="0,0,-12,0">
-      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" local:UiMotion.Rise="14" local:UiMotion.Stagger="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate><DataTemplate>
        <Border Style="{StaticResource Card}" Padding="18,15,18,16" Margin="0,0,12,0">
         <Grid>
@@ -68,17 +68,17 @@
       </DataTemplate></ItemsControl.ItemTemplate>
      </ItemsControl>
     </Border>
-    <Border x:Name="ManualResetBanner" Style="{StaticResource Callout}" Background="{DynamicResource AccentSoftBrush}" Visibility="{Binding HasManualReset, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ManualResetHint}">
+    <Border x:Name="ManualResetBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource AccentSoftBrush}" Visibility="{Binding HasManualReset, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ManualResetHint}">
      <DockPanel><Button DockPanel.Dock="Right" Content="Modifier…" Click="ManualCodexReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource AccentBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/><Viewbox DockPanel.Dock="Left" Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox><TextBlock Text="{Binding ManualResetCaption}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"/></DockPanel>
     </Border>
-    <Border x:Name="ExpectedResetsBanner" Style="{StaticResource Callout}" Background="{DynamicResource GoodSoftBrush}" Visibility="{Binding HasExpectedResets, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ExpectedResetsHint}">
+    <Border x:Name="ExpectedResetsBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource GoodSoftBrush}" Visibility="{Binding HasExpectedResets, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ExpectedResetsHint}">
      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <Viewbox Width="17" Height="17" Margin="0,1,11,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource GoodBrush}" StrokeThickness="2"/></Canvas></Viewbox>
       <StackPanel Grid.Column="1"><TextBlock Text="{Binding ExpectedResetsTitle}" FontSize="12" FontWeight="Medium" TextWrapping="Wrap"/><TextBlock Text="{Binding ExpectedResetsNames}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/><TextBlock Text="{Binding ExpectedResetsCaption}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/></StackPanel>
       <Button x:Name="ShowExpectedResetButton" Grid.Column="2" Content="Voir" Click="ExpectedReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource GoodBrush}" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="Voir le compte probablement rechargé"/>
      </Grid>
     </Border>
-    <Border Style="{StaticResource Callout}" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Visibility="{Binding HasAdvice, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding AdviceHint}">
+    <Border local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Visibility="{Binding HasAdvice, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding AdviceHint}">
      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <Viewbox Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownClockIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2"/></Canvas></Viewbox>
       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding AdviceTitle}" FontSize="12" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding AdviceAge}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel>
@@ -95,13 +95,13 @@
      </StackPanel>
     </Grid>
     <StackPanel>
-     <Border Style="{StaticResource Card}" Padding="24,32" Margin="0,14,0,0" Visibility="{Binding IsEmpty, Converter={StaticResource BoolVisibility}}"><StackPanel>
+     <Border local:UiMotion.Rise="12" local:UiMotion.FadeOnShow="True" Style="{StaticResource Card}" Padding="24,32" Margin="0,14,0,0" Visibility="{Binding IsEmpty, Converter={StaticResource BoolVisibility}}"><StackPanel>
       <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center"><Viewbox Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="{StaticResource AccountsIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox></Border>
       <TextBlock Text="Ouvrez Codex ou Claude Code pour commencer." FontSize="16" FontWeight="Medium" TextAlignment="Center" Margin="0,14,0,0"/>
       <TextBlock Text="Le compte connecté apparaîtra ici automatiquement." Foreground="{DynamicResource MutedBrush}" FontSize="12" TextAlignment="Center" Margin="0,8,0,18"/>
       <Button Content="Détecter maintenant" Click="Import_Click" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center"/>
      </StackPanel></Border>
-     <ItemsControl x:Name="AccountsList" ItemsSource="{Binding Accounts}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel>
+     <ItemsControl x:Name="AccountsList" ItemsSource="{Binding Accounts}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel local:UiMotion.Rise="10" local:UiMotion.StaggerDelay="110" local:UiMotion.Stagger="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><StackPanel>
       <Grid Tag="ProviderSectionHeader" Margin="13,18,13,8" Visibility="{Binding ShowProviderHeader, Converter={StaticResource BoolVisibility}}">
        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="84"/><ColumnDefinition Width="60"/><ColumnDefinition Width="92"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
        <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center"><Image Style="{StaticResource ProviderIconImage}" Width="20" Height="20"/><TextBlock Text="{Binding ProviderName}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/><TextBlock Text="{Binding ProviderCount}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="8,1,0,0" VerticalAlignment="Center"/></StackPanel>
@@ -141,19 +141,19 @@
    </Button>
   </StackPanel>
   <StackPanel Grid.Row="1">
-   <Border x:Name="UpdateBanner" Visibility="Collapsed" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,10,14,10">
+   <Border x:Name="UpdateBanner" local:UiMotion.Rise="10" local:UiMotion.FadeOnShow="True" Visibility="Collapsed" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,10,14,10">
     <DockPanel LastChildFill="True">
      <Button x:Name="UpdateNowButton" DockPanel.Dock="Right" Content="Mettre à jour et relancer" Click="UpdateNow_Click" Style="{StaticResource PrimaryButton}" Padding="14,8" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Installer la mise à jour téléchargée et relancer Codex Tracker"/>
      <Viewbox DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,12,0" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="{StaticResource DownloadIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox>
      <StackPanel VerticalAlignment="Center"><TextBlock x:Name="UpdateHeadline" FontSize="12" FontWeight="Medium"/><TextBlock x:Name="UpdateHint" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel>
     </DockPanel>
    </Border>
-   <Border x:Name="RecoveryBanner" Visibility="Collapsed" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,8,14,8">
+   <Border x:Name="RecoveryBanner" local:UiMotion.Rise="10" local:UiMotion.FadeOnShow="True" Visibility="Collapsed" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,8,14,8">
     <DockPanel LastChildFill="True"><Button Content="Vérifier" DockPanel.Dock="Right" Click="Recovery_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource WarningBrush}" Margin="12,0,0,0" AutomationProperties.Name="Vérifier les données et les rappels dans les réglages"/><Viewbox DockPanel.Dock="Left" Width="17" Height="17" Margin="0,0,11,0" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="{StaticResource AlertIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource WarningBrush}" StrokeThickness="2"/></Canvas></Viewbox><TextBlock Text="Des données locales ou des rappels nécessitent votre attention." TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"/></DockPanel>
    </Border>
   </StackPanel>
   <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource ChromeBrush}" Padding="20,0,16,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+   <Grid Width="7" Height="7" HorizontalAlignment="Left" VerticalAlignment="Center"><Ellipse Fill="{Binding StatusBrush}" Opacity="0" local:UiMotion.Pulse="{Binding IsBusy}"/><Ellipse Fill="{Binding StatusBrush}"/></Grid>
    <TextBlock Grid.Column="1" Text="{Binding StatusText}" ToolTip="{Binding StatusHint}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
    <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource AccentSoftBrush}" Margin="12,0,0,0" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"><TextBlock Text="Démo · comptes fictifs" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource AccentBrush}"/></Border>
    <TextBlock x:Name="AppVersionLabel" Grid.Column="3" Foreground="{DynamicResource SubtleBrush}" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Version installée de Codex Tracker"/>

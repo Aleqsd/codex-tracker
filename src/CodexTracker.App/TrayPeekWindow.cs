@@ -42,6 +42,7 @@ internal sealed class TrayPeekWindow : Window
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
         border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         var content = new StackPanel(); border.Child = content;
+        UiMotion.SetRise(content, 8); UiMotion.SetFadeOnShow(content, true);
         Content = new ScrollViewer { Content = border, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         _status.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); Muted(_plan); Muted(_reset); Muted(_freshness); Muted(_expirations);
         content.Children.Add(_status);

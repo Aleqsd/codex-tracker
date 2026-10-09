@@ -194,7 +194,11 @@ public partial class MainWindow : Window
             if (!_canClose) { UpdatePresentation(); _automaticUpdates?.SetEnabled(_preferences.Current.DownloadUpdatesAutomatically); }
         }
     }
-    private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
+    private async void Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Content: FrameworkElement icon }) UiMotion.Spin(icon);
+        await RefreshAsync();
+    }
     public async Task RefreshAsync()
     {
         if (_refreshing || _service.State.IsBusy) return;

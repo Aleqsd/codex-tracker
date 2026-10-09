@@ -38,6 +38,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     private readonly Dictionary<string, (StackPanel Content, Button Navigation)> _pages = new();
     private StackPanel _page = new();
     private StackPanel? _group;
+    private readonly SelectionPill _navigationPill;
     internal string CurrentPage { get; private set; } = "Général";
 
     public SettingsView(MainWindow owner, PreferencesStore preferences, UpdateService updates, bool demo, AutomaticUpdater? automaticUpdates = null)
@@ -47,7 +48,11 @@ internal sealed class SettingsView : UserControl, IDisposable
         _commands = new(preferences, owner.Reminders.Secrets);
         Focusable = false;
         var layout = new Grid { Margin = new Thickness(0, 4, 0, 0) }; layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(176) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
-        var navigationScroll = new ScrollViewer { Content = _navigation, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var navigationPill = new Border { CornerRadius = new CornerRadius(8) }; navigationPill.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
+        var navigationHost = new Grid(); navigationHost.Children.Add(navigationPill); navigationHost.Children.Add(_navigation);
+        _navigationPill = new SelectionPill(navigationHost, navigationPill, () => _pages.TryGetValue(CurrentPage, out var page) ? page.Navigation : null);
+        UiMotion.SetRise(_pageScroll, 8);
+        var navigationScroll = new ScrollViewer { Content = navigationHost, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         layout.Children.Add(navigationScroll);
         Grid.SetColumn(_pageScroll, 1); layout.Children.Add(_pageScroll);
         Content = layout;
@@ -181,7 +186,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     }
     private void Page(string title, string description)
     {
-        _page = new StackPanel { Margin = new Thickness(6, 10, 14, 28) }; _group = null;
+        _page = new StackPanel { Margin = new Thickness(6, 10, 14, 28) }; _group = null; UiMotion.SetStagger(_page, true);
         var heading = Ui.Text(title, 22); heading.FontWeight = FontWeights.Medium; _page.Children.Add(heading);
         var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 5, 0, 0); _page.Children.Add(hint);
         var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 2), Tag = FindResource(title switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
@@ -198,6 +203,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         RefreshHealth();
         foreach (var (name, value) in _pages)
             System.Windows.Automation.AutomationProperties.SetItemStatus(value.Navigation, name == title ? "Section active" : "");
+        _navigationPill.Move();
     }
     /// <summary>Starts a titled card; following rows and blocks are placed inside it.</summary>
     private void Section(string? title)

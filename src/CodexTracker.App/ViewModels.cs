@@ -203,6 +203,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public string ExpectedResetsNames => string.Join(" · ", Accounts.Where(a => a.HasResetEstimate).Select(a => a.Email));
     public string ExpectedResetsHint => string.Join("\n\n", Accounts.Where(a => a.HasResetEstimate).Select(a => $"{a.Email}\n{a.EstimateHint}"));
     public bool IsIdle => !_state.IsBusy;
+    public bool IsBusy => _state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
 
     public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccounts.Any(a => a.Error is not null) ? "DangerBrush"

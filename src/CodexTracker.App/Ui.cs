@@ -89,10 +89,28 @@ public sealed class QuotaRing : FrameworkElement
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty ThicknessProperty = DependencyProperty.Register(nameof(Thickness), typeof(double), typeof(QuotaRing),
         new FrameworkPropertyMetadata(6d, FrameworkPropertyMetadataOptions.AffectsRender));
+    // Presentation only: the arc sweeps in when shown, the percentage text is always the measured value.
+    private static readonly DependencyProperty SweepProperty = DependencyProperty.Register("Sweep", typeof(double), typeof(QuotaRing),
+        new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.AffectsRender));
     public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
     public Brush? RingBrush { get => (Brush?)GetValue(RingBrushProperty); set => SetValue(RingBrushProperty, value); }
     public Brush? TrackBrush { get => (Brush?)GetValue(TrackBrushProperty); set => SetValue(TrackBrushProperty, value); }
     public double Thickness { get => (double)GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
+    public QuotaRing()
+    {
+        Loaded += (_, _) => SweepIn();
+        IsVisibleChanged += (_, _) => { if (IsVisible) SweepIn(); else BeginAnimation(SweepProperty, null); };
+        Unloaded += (_, _) => BeginAnimation(SweepProperty, null);
+    }
+    private void SweepIn()
+    {
+        if (!IsLoaded || !IsVisible || !UiMotion.Allowed(this)) return;
+        BeginAnimation(SweepProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(950))
+        {
+            FillBehavior = System.Windows.Media.Animation.FillBehavior.Stop,
+            EasingFunction = new System.Windows.Media.Animation.QuinticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+        });
+    }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -100,7 +118,7 @@ public sealed class QuotaRing : FrameworkElement
         if (size <= Thickness * 2) return;
         var radius = (size - Thickness) / 2; var center = new Point(ActualWidth / 2, ActualHeight / 2);
         if (TrackBrush is { } track) dc.DrawEllipse(null, new Pen(track, Thickness), center, radius, radius);
-        var value = double.IsFinite(Value) ? Math.Clamp(Value, 0, 100) : 0;
+        var value = (double.IsFinite(Value) ? Math.Clamp(Value, 0, 100) : 0) * (double)GetValue(SweepProperty);
         if (value <= 0 || RingBrush is null) return;
         var pen = new Pen(RingBrush, Thickness) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
         if (value >= 99.95) { dc.DrawEllipse(null, pen, center, radius, radius); return; }
@@ -144,6 +162,7 @@ internal class ThemedWindow : Window
         header.Children.Add(Heading); header.Children.Add(close);
         var top = new Border { Child = header, BorderThickness = new Thickness(0, 0, 0, 1) }; top.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); root.Children.Add(top);
         ContentScroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetRow(ContentScroll, 1); root.Children.Add(ContentScroll);
+        UiMotion.SetRise(root, 10); UiMotion.SetFadeOnShow(root, true);
         frame.Child = root; Content = frame;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); }; theme.Changed += ThemeChanged;
         Loaded += (_, _) => Ui.EnsureWindowVisible(this);

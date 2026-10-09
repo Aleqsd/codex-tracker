@@ -25,6 +25,7 @@ internal sealed class TrackerDialog : Window
         var border = new Border { BorderThickness = new Thickness(1), Padding = new Thickness(28, 26, 28, 24) };
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         var content = new StackPanel(); border.Child = content; Content = border;
+        UiMotion.SetRise(content, 10); UiMotion.SetFadeOnShow(content, true);
         var heading = new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeights.Medium, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 14) };
         heading.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
         content.Children.Add(heading);

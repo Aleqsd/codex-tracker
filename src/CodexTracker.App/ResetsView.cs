@@ -28,6 +28,7 @@ internal sealed class ResetsView : UserControl
     private DateOnly? _day;
     private DateOnly _renderedDate;
     private readonly RadioButton _agendaChoice, _weekChoice;
+    private readonly SelectionPill? _viewPill;
 
     internal ResetsView(PreferencesStore preferences, Action<Guid?> calendar, Action refresh, Action? declareReset = null)
     {
@@ -49,7 +50,7 @@ internal sealed class ResetsView : UserControl
             declare.Click += (_, _) => declareReset(); actions.Children.Add(declare);
         }
         _refresh = Ui.IconButton("DropdownRefreshIcon", "Actualiser les comptes actifs de Codex et Claude Code", "Actualiser les comptes actifs");
-        _refresh.Click += (_, _) => refresh(); actions.Children.Add(_refresh);
+        _refresh.Click += (_, _) => { UiMotion.Spin((FrameworkElement)_refresh.Content); refresh(); }; actions.Children.Add(_refresh);
         var more = Ui.IconButton("MoreIcon", "Autres actions", "Autres actions des resets", 18, 3);
         more.Margin = new Thickness(2, 0, 0, 0);
         var export = new MenuItem { Header = "Google Agenda ↗" };
@@ -72,15 +73,19 @@ internal sealed class ResetsView : UserControl
         var views = new StackPanel { Orientation = Orientation.Horizontal };
         _agendaChoice = new RadioButton { Content = "Liste", GroupName = "ResetView", IsChecked = true, Style = (Style)FindResource("ResetKindFilter") };
         _weekChoice = new RadioButton { Content = "Semaine", GroupName = "ResetView", Style = (Style)FindResource("ResetKindFilter") };
-        _agendaChoice.Checked += (_, _) => { _weekView = false; Render(animate: true); };
-        _weekChoice.Checked += (_, _) => { _weekView = true; Render(animate: true); };
+        _agendaChoice.Checked += (_, _) => { _weekView = false; _viewPill?.Move(); Render(animate: true); };
+        _weekChoice.Checked += (_, _) => { _weekView = true; _viewPill?.Move(); Render(animate: true); };
         System.Windows.Automation.AutomationProperties.SetName(_agendaChoice, "Vue liste des resets");
         System.Windows.Automation.AutomationProperties.SetName(_weekChoice, "Vue semaine des resets");
         views.Children.Add(_agendaChoice); views.Children.Add(_weekChoice);
-        var track = new Border { Child = views, Style = (Style)FindResource("SegmentTrack"), VerticalAlignment = VerticalAlignment.Center };
+        var pill = new Border { CornerRadius = new CornerRadius(7) }; pill.SetResourceReference(Border.BackgroundProperty, "SegmentBrush");
+        var segment = new Grid(); segment.Children.Add(pill); segment.Children.Add(views);
+        _viewPill = new SelectionPill(segment, pill, () => _weekChoice.IsChecked == true ? _weekChoice : _agendaChoice);
+        var track = new Border { Child = segment, Style = (Style)FindResource("SegmentTrack"), VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(track, 2); filters.Children.Add(track);
         Grid.SetRow(filters, 1); root.Children.Add(filters);
         _timeline.Margin = new Thickness(0, 0, 6, 20);
+        UiMotion.SetRise(_timeline, 10); UiMotion.SetStagger(_timeline, true);
         var scroll = new ScrollViewer { Content = _timeline, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 2); root.Children.Add(scroll); Content = root;
     }

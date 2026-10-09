@@ -54,6 +54,8 @@ public partial class App : System.Windows.Application
         }
         try
         {
+            // Every demo capture shows final states: no half-filled gauge or fading panel.
+            if (new[] { "--screenshot", "--peek-screenshot", "--details-screenshot", "--settings-screenshot" }.Any(e.Args.Contains)) UiMotion.Suppressed = true;
             if (e.Args.Contains("--preview"))
             {
                 if (!IsDemo) throw new ArgumentException("Les aperçus nécessitent --demo.");
