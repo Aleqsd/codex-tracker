@@ -14,7 +14,7 @@ internal static class ReminderSettingsView
 
     internal static FrameworkElement Rules(PreferencesStore preferences, ITrackerService service, ApplicationCommands commands)
     {
-        var root = Panel(); root.Children.Add(Hint("Le tracker doit rester ouvert et le PC éveillé. Chaque canal est indépendant ; un rappel passé ne confirme pas un reset dans Codex."));
+        var root = Panel(); root.Margin = new Thickness(0); root.Children.Add(Hint("Le tracker doit rester ouvert et le PC éveillé. Chaque canal est indépendant ; un rappel passé ne confirme pas un reset dans Codex."));
         foreach (var kind in Enum.GetValues<ResetKind>())
         {
             var baseline = preferences.Current.ReminderRules!.Where(r => r.Kind == kind).ToArray();
@@ -70,14 +70,14 @@ internal static class ReminderSettingsView
             all.Click += (_, _) => { foreach (var (_, box) in accountChecks) box.IsEnabled = all.IsChecked != true; };
             content.Children.Add(save); content.Children.Add(status);
             root.Children.Add(new Expander { Header = ReminderPlanner.Label(kind), Content = content, Margin = new Thickness(0, 8, 0, 0) });
-            summary.Margin = new Thickness(18, 6, 0, 14); root.Children.Add(summary);
+            summary.Margin = new Thickness(20, 0, 0, 10); root.Children.Add(summary);
         }
         return root;
     }
 
     internal static FrameworkElement Channels(PreferencesStore preferences, ReminderRuntime runtime, bool demo, ApplicationCommands commands)
     {
-        var root = Panel(); root.Children.Add(Hint("Facultatif : utilisez vos propres comptes. Les envois partent directement de ce PC ; les frais sont facturés par votre prestataire."));
+        var root = Panel(); root.Margin = new Thickness(0); root.Children.Add(Hint("Facultatif : utilisez vos propres comptes. Les envois partent directement de ce PC ; les frais sont facturés par votre prestataire."));
         root.Children.Add(WindowsTest(runtime, demo));
         NotificationSecrets secrets;
         try { secrets = runtime.Secrets.Read(); }
@@ -227,7 +227,7 @@ internal static class ReminderSettingsView
     }
     internal static FrameworkElement History(ReminderRuntime runtime)
     {
-        var root = Panel(); var rows = Panel();
+        var root = Panel(); root.Margin = new Thickness(0); var rows = Panel();
         void Render()
         {
             rows.Children.Clear();

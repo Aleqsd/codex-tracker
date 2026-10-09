@@ -33,7 +33,7 @@ internal sealed class ResetsView : UserControl
     {
         _preferences = preferences;
         _accounts = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Id", Tag = FindResource("AccountsIcon"), Margin = new Thickness(0, 0, 8, 0) };
-        var root = new Grid { Margin = new Thickness(0, 18, 0, 0) };
+        var root = new Grid { Margin = new Thickness(0, 6, 0, 0) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
@@ -41,48 +41,46 @@ internal sealed class ResetsView : UserControl
         heading.ColumnDefinitions.Add(new ColumnDefinition()); heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var introduction = new StackPanel();
         var title = Ui.Text("Prochains resets", 22); title.FontWeight = FontWeights.Medium; introduction.Children.Add(title);
-        _summary.Margin = new Thickness(0, 6, 0, 0); introduction.Children.Add(_summary); heading.Children.Add(introduction);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
+        _summary.Margin = new Thickness(0, 5, 0, 0); introduction.Children.Add(_summary); heading.Children.Add(introduction);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         if (declareReset is not null)
         {
-            var declare = new Button { Content = "Reset Codex…", Style = (Style)FindResource("QuietButton"), Margin = new Thickness(0, 0, 5, 0), ToolTip = "Déclarer ou modifier l’heure d’un reset général Codex" };
+            var declare = new Button { Content = "Reset Codex…", Style = (Style)FindResource("QuietButton"), Padding = new Thickness(11, 7, 11, 7), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Déclarer ou modifier l’heure d’un reset général Codex" };
             declare.Click += (_, _) => declareReset(); actions.Children.Add(declare);
         }
-        var path = new System.Windows.Shapes.Path { Data = (Geometry)FindResource("DropdownRefreshIcon"), StrokeThickness = 1.5, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round };
-        path.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "TextBrush");
-        var canvas = new Canvas { Width = 24, Height = 24 }; canvas.Children.Add(path);
-        _refresh = new Button { Content = new Viewbox { Width = 16, Height = 16, Child = canvas }, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(10), ToolTip = "Actualiser les comptes actifs de Codex et Claude Code" };
-        System.Windows.Automation.AutomationProperties.SetName(_refresh, "Actualiser les comptes actifs");
+        _refresh = Ui.IconButton("DropdownRefreshIcon", "Actualiser les comptes actifs de Codex et Claude Code", "Actualiser les comptes actifs");
         _refresh.Click += (_, _) => refresh(); actions.Children.Add(_refresh);
-        var more = new Button { Content = "…", Style = (Style)FindResource("QuietButton"), FontSize = 18,
-            Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Autres actions" };
-        System.Windows.Automation.AutomationProperties.SetName(more, "Autres actions des resets");
+        var more = Ui.IconButton("MoreIcon", "Autres actions", "Autres actions des resets", 18, 3);
+        more.Margin = new Thickness(2, 0, 0, 0);
         var export = new MenuItem { Header = "Google Agenda ↗" };
         export.Click += (_, _) => calendar((_accounts.SelectedItem as ResetAccountChoice)?.Id);
         more.ContextMenu = new ContextMenu { Items = { export } };
         more.Click += (_, _) => { more.ContextMenu.PlacementTarget = more; more.ContextMenu.IsOpen = true; };
         actions.Children.Add(more); Grid.SetColumn(actions, 1); heading.Children.Add(actions); root.Children.Add(heading);
 
-        var filters = new Grid { Margin = new Thickness(0, 20, 0, 18) };
+        var filters = new Grid { Margin = new Thickness(0, 18, 0, 6) };
         filters.ColumnDefinitions.Add(new ColumnDefinition());
         filters.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
         filters.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         System.Windows.Automation.AutomationProperties.SetName(_accounts, "Filtrer les resets par compte");
         _accounts.SelectionChanged += (_, _) => { if (!_syncing) Render(animate: true); }; filters.Children.Add(_accounts);
-        _kinds = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Kind", Tag = FindResource("DropdownClockIcon"), Margin = new Thickness(0, 0, 12, 0),
+        _kinds = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Kind", Tag = FindResource("DropdownClockIcon"), Margin = new Thickness(0, 0, 10, 0),
             ItemsSource = new ResetTypeChoice[] { new(null, "Tous les types"), new(ResetKind.Weekly, "Hebdomadaires"), new(ResetKind.Short, "5 heures"), new(ResetKind.Reserve, "Réserves") }, SelectedIndex = 0 };
         System.Windows.Automation.AutomationProperties.SetName(_kinds, "Filtrer les resets par type");
         _kinds.SelectionChanged += (_, _) => { _kindFilter = (_kinds.SelectedItem as ResetTypeChoice)?.Kind; Render(animate: true); };
         Grid.SetColumn(_kinds, 1); filters.Children.Add(_kinds);
-        var views = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        _agendaChoice = new RadioButton { Content = "Liste", GroupName = "ResetView", IsChecked = true, Style = (Style)FindResource("ResetKindFilter"), Padding = new Thickness(10, 8, 10, 8) };
-        _weekChoice = new RadioButton { Content = "Semaine", GroupName = "ResetView", Style = (Style)FindResource("ResetKindFilter"), Padding = new Thickness(10, 8, 10, 8) };
+        var views = new StackPanel { Orientation = Orientation.Horizontal };
+        _agendaChoice = new RadioButton { Content = "Liste", GroupName = "ResetView", IsChecked = true, Style = (Style)FindResource("ResetKindFilter") };
+        _weekChoice = new RadioButton { Content = "Semaine", GroupName = "ResetView", Style = (Style)FindResource("ResetKindFilter") };
         _agendaChoice.Checked += (_, _) => { _weekView = false; Render(animate: true); };
         _weekChoice.Checked += (_, _) => { _weekView = true; Render(animate: true); };
         System.Windows.Automation.AutomationProperties.SetName(_agendaChoice, "Vue liste des resets");
         System.Windows.Automation.AutomationProperties.SetName(_weekChoice, "Vue semaine des resets");
-        views.Children.Add(_agendaChoice); views.Children.Add(_weekChoice); Grid.SetColumn(views, 2); filters.Children.Add(views);
+        views.Children.Add(_agendaChoice); views.Children.Add(_weekChoice);
+        var track = new Border { Child = views, Style = (Style)FindResource("SegmentTrack"), VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(track, 2); filters.Children.Add(track);
         Grid.SetRow(filters, 1); root.Children.Add(filters);
+        _timeline.Margin = new Thickness(0, 0, 6, 20);
         var scroll = new ScrollViewer { Content = _timeline, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 2); root.Children.Add(scroll); Content = root;
     }
@@ -133,10 +131,11 @@ internal sealed class ResetsView : UserControl
         _rows.Clear(); _timeline.Children.Clear(); _announcementCards.Clear();
         if (_state.ManualCodexReset is { } manual && accounts.Any(a => manual.Applies(a, ResetKind.Weekly, now) || manual.Applies(a, ResetKind.Short, now)))
         {
-            var notice = Ui.Text($"Reset Codex déclaré · {manual.At.ToLocalTime():dd/MM à HH:mm}", 11, "MutedBrush");
-            notice.Margin = new Thickness(0, 0, 0, 12);
-            notice.ToolTip = $"{Display.Exact(manual.At)} · {Display.Zone(manual.At)}\nLes prochaines échéances seront confirmées par de nouveaux relevés.";
-            _timeline.Children.Add(notice);
+            var notice = Ui.Text($"Reset Codex déclaré · {manual.At.ToLocalTime():dd/MM à HH:mm}", 12, "AccentBrush");
+            var chip = new Border { Child = notice, CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 7, 12, 7), Margin = new Thickness(0, 10, 0, 2), HorizontalAlignment = HorizontalAlignment.Left,
+                ToolTip = $"{Display.Exact(manual.At)} · {Display.Zone(manual.At)}\nLes prochaines échéances seront confirmées par de nouveaux relevés." };
+            chip.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
+            _timeline.Children.Add(chip);
         }
         AddGlobalAnnouncements(accounts, now);
         if (_weekView) AddWeek(schedule, now);
@@ -156,11 +155,17 @@ internal sealed class ResetsView : UserControl
     }
     private static TextBlock Empty(string text)
     {
-        var block = Ui.Text(text, 13, "MutedBrush"); block.Margin = new Thickness(0, 14, 0, 18); return block;
+        var block = Ui.Text(text, 13, "MutedBrush"); block.Margin = new Thickness(2, 16, 0, 18); return block;
+    }
+    /// <summary>A card holding schedule rows; rows add their own separators.</summary>
+    private static StackPanel Group(Panel target)
+    {
+        var rows = new StackPanel(); target.Children.Add(Ui.Panel(rows, new Thickness(4))); return rows;
     }
     private Expander Disclosure(string name, string title, StackPanel content, bool open, Action<bool> changed)
     {
-        var section = new Expander { Name = name, Header = title, Content = content, IsExpanded = open, Margin = new Thickness(0, 18, 0, 4), FontSize = 12 };
+        var header = Ui.Text(title, 12); header.FontWeight = FontWeights.Medium;
+        var section = new Expander { Name = name, Header = header, Content = content, IsExpanded = open, Margin = new Thickness(0, 18, 0, 2), FontSize = 12 };
         section.Expanded += (_, e) => { if (ReferenceEquals(e.OriginalSource, section)) changed(true); };
         section.Collapsed += (_, e) => { if (ReferenceEquals(e.OriginalSource, section)) changed(false); };
         return section;
@@ -169,7 +174,8 @@ internal sealed class ResetsView : UserControl
     {
         if (entries.Length == 0) return;
         var content = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-        foreach (var entry in entries) AddEntry(content, entry);
+        var rows = Group(content);
+        foreach (var entry in entries) AddEntry(rows, entry);
         _timeline.Children.Add(Disclosure(name, title, content, open, changed));
     }
     private void AddGlobalAnnouncements(AccountState[] accounts, DateTimeOffset now)
@@ -200,11 +206,11 @@ internal sealed class ResetsView : UserControl
         var priority = ResetCalendar.PriorityReserve(_state, now, (_accounts.SelectedItem as ResetAccountChoice)?.Id);
         if (priority is not null)
         {
-            var note = Ui.Text("À utiliser en priorité : " + AccountLabel(priority.Account) + " · " + Display.Countdown(priority.At), 11, "MutedBrush");
-            note.Margin = new Thickness(0, 4, 0, 6); note.ToolTip = EntryHint(priority); content.Children.Add(note);
+            var note = Ui.Text("À utiliser en priorité : " + AccountLabel(priority.Account) + " · " + Display.Countdown(priority.At), 12, "MutedBrush");
+            note.Margin = new Thickness(2, 2, 0, 10); note.ToolTip = EntryHint(priority); content.Children.Add(note);
         }
-        foreach (var entry in entries) AddEntry(content, entry);
-        if (entries.Length == 0) content.Children.Add(Empty("Aucune réserve à afficher pour cette sélection."));
+        if (entries.Length > 0) { var rows = Group(content); foreach (var entry in entries) AddEntry(rows, entry); }
+        else content.Children.Add(Empty("Aucune réserve à afficher pour cette sélection."));
         var section = Disclosure("ReserveResets", title, content, _showReserves, open => _showReserves = open);
         section.ToolTip = "Compteurs serveur au dernier relevé. Les dates d’expiration ne permettent pas de déduire le nombre de resets disponibles.";
         _timeline.Children.Add(section);
@@ -218,40 +224,47 @@ internal sealed class ResetsView : UserControl
     {
         foreach (var day in entries.GroupBy(e => DateOnly.FromDateTime(e.At!.Value.LocalDateTime)))
         {
-            var label = Ui.Text(DateLabel(day.Key, now), 12, "MutedBrush"); label.FontWeight = FontWeights.Medium; label.Margin = new Thickness(0, 12, 0, 3); target.Children.Add(label);
-            foreach (var entry in day) AddEntry(target, entry);
+            var label = Ui.Text(DateLabel(day.Key, now), 12, "MutedBrush"); label.FontWeight = FontWeights.Medium; label.Margin = new Thickness(2, 16, 0, 8); target.Children.Add(label);
+            var rows = Group(target);
+            foreach (var entry in day) AddEntry(rows, entry);
         }
     }
     private void AddWeek(ResetScheduleEntry[] entries, DateTimeOffset now)
     {
-        var navigation = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+        var navigation = new Grid { Margin = new Thickness(2, 10, 0, 10) };
         navigation.ColumnDefinitions.Add(new ColumnDefinition()); navigation.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var range = Ui.Text($"{_week:dd MMM} – {_week.AddDays(6):dd MMM yyyy}", 13); range.FontWeight = FontWeights.Medium; range.VerticalAlignment = VerticalAlignment.Center; navigation.Children.Add(range);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
-        foreach (var (label, name, shift) in new[] { ("‹", "Semaine précédente", -7), ("Cette semaine", "Semaine actuelle", 0), ("›", "Semaine suivante", 7) })
+        foreach (var (icon, name, shift) in new[] { ("ChevronLeftIcon", "Semaine précédente", -7), ("", "Semaine actuelle", 0), ("ChevronRightIcon", "Semaine suivante", 7) })
         {
-            var button = new Button { Content = label, ToolTip = name, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(9, 5, 9, 5) };
-            System.Windows.Automation.AutomationProperties.SetName(button, name);
+            Button button;
+            if (icon.Length == 0)
+            {
+                button = new Button { Content = "Cette semaine", ToolTip = name, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(10, 6, 10, 6) };
+                System.Windows.Automation.AutomationProperties.SetName(button, name);
+            }
+            else { button = Ui.IconButton(icon, name, name); button.Width = button.Height = 30; }
             button.Click += (_, _) => { _week = shift == 0 ? ResetCalendar.Monday(DateOnly.FromDateTime(PreviewClock.UtcNow.LocalDateTime)) : _week.AddDays(shift); _day = null; Render(animate: true); };
             buttons.Children.Add(button);
         }
         Grid.SetColumn(buttons, 1); navigation.Children.Add(buttons); _timeline.Children.Add(navigation);
         var days = ResetCalendar.Week(entries, _week, TimeZoneInfo.Local);
-        var strip = new System.Windows.Controls.Primitives.UniformGrid { Columns = 7, Margin = new Thickness(0, 0, 0, 12) };
+        var strip = new System.Windows.Controls.Primitives.UniformGrid { Columns = 7 };
+        var today = DateOnly.FromDateTime(now.LocalDateTime);
         foreach (var day in days)
         {
+            var dayBrush = day.Date == today ? "AccentBrush" : "TextBrush";
             var content = new StackPanel();
-            var name = Ui.Text(day.Date.ToString("ddd"), 11, "MutedBrush"); name.TextAlignment = TextAlignment.Center; content.Children.Add(name);
-            var date = Ui.Text(day.Date.ToString("dd"), 20); date.FontWeight = FontWeights.Medium; date.TextAlignment = TextAlignment.Center; date.Margin = new Thickness(0, 4, 0, 4); content.Children.Add(date);
-            var count = Ui.Text(day.Entries.Count == 0 ? "—" : day.Entries.Count + (day.Entries.Count == 1 ? " reset" : " resets"), 10, "MutedBrush"); count.TextAlignment = TextAlignment.Center; content.Children.Add(count);
-            var select = new Button { Content = content, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(3, 8, 3, 8) };
-            select.SetResourceReference(BackgroundProperty, _day == day.Date ? "PanelBrush" : "BackgroundBrush");
+            var name = Ui.Text(day.Date.ToString("ddd"), 11, day.Date == today ? "AccentBrush" : "MutedBrush"); name.TextAlignment = TextAlignment.Center; content.Children.Add(name);
+            var date = Ui.Text(day.Date.ToString("dd"), 19, dayBrush); date.FontWeight = day.Date == today ? FontWeights.Bold : FontWeights.Medium; date.TextAlignment = TextAlignment.Center; date.Margin = new Thickness(0, 3, 0, 4); content.Children.Add(date);
+            var count = Ui.Text(day.Entries.Count == 0 ? "—" : day.Entries.Count + (day.Entries.Count == 1 ? " reset" : " resets"), 10, day.Entries.Count == 0 ? "SubtleBrush" : "MutedBrush"); count.TextAlignment = TextAlignment.Center; content.Children.Add(count);
+            var select = new Button { Content = content, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(2, 9, 2, 9), Margin = new Thickness(2, 0, 2, 0), FontWeight = FontWeights.Normal };
+            if (_day == day.Date) { select.SetResourceReference(BackgroundProperty, "AccentSoftBrush"); select.SetResourceReference(BorderBrushProperty, "AccentBrush"); }
             select.Click += (_, _) => { _day = _day == day.Date ? null : day.Date; Render(animate: true); };
             System.Windows.Automation.AutomationProperties.SetName(select, $"Échéances du {day.Date:dd/MM/yyyy}, {day.Entries.Count} resets");
-            var marker = new Border { Child = select, BorderThickness = new Thickness(0, 0, 0, day.Date == DateOnly.FromDateTime(now.LocalDateTime) ? 2 : 0) };
-            marker.SetResourceReference(Border.BorderBrushProperty, "TextBrush"); strip.Children.Add(marker);
+            strip.Children.Add(select);
         }
-        _timeline.Children.Add(strip);
+        _timeline.Children.Add(Ui.Panel(strip, new Thickness(5)));
         var visible = days.Where(d => _day is null || d.Date == _day).SelectMany(d => d.Entries).ToArray();
         _summary.Text = $"{visible.Length} échéance{(visible.Length == 1 ? "" : "s")} " + (_day is null ? "cette semaine" : "ce jour");
         AddDays(_timeline, visible, now);
@@ -261,23 +274,24 @@ internal sealed class ResetsView : UserControl
         $"{KindLabel(entry)}\n{AccountName(entry.Account)}\n{entry.CreditTitle}\n{Display.Exact(entry.At)}\n{(entry.At is { } at ? Display.Zone(at) : "Date non communiquée")}\nRelevé : {Display.Exact(entry.Account.Snapshot?.FetchedAt)}\n{entry.Account.Error}";
     private void AddEntry(StackPanel target, ResetScheduleEntry entry)
     {
-        var header = new Grid { Margin = new Thickness(0, 13, 7, 13) };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(38) }); header.ColumnDefinitions.Add(new ColumnDefinition()); header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+        var header = new Grid { Margin = new Thickness(0, 10, 6, 10) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) }); header.ColumnDefinitions.Add(new ColumnDefinition()); header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
         var icon = new Image { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, ToolTip = entry.Account.Profile.ProviderName };
         icon.SetResourceReference(Image.SourceProperty, entry.Account.Profile.Provider == AccountProvider.ClaudeCode ? "ClaudeProviderIcon" : "CodexProviderIcon"); header.Children.Add(icon);
         var identity = new StackPanel { Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
         var account = Ui.Text(AccountLabel(entry.Account), 13); account.FontWeight = FontWeights.Medium; account.TextWrapping = TextWrapping.NoWrap; account.TextTrimming = TextTrimming.CharacterEllipsis; account.ToolTip = AccountName(entry.Account); identity.Children.Add(account);
-        var kind = Ui.Text(KindLabel(entry), 11, "MutedBrush"); kind.Margin = new Thickness(0, 4, 0, 0); identity.Children.Add(kind); Grid.SetColumn(identity, 1); header.Children.Add(identity);
+        var kind = Ui.Text(KindLabel(entry), 11, "MutedBrush"); kind.Margin = new Thickness(0, 3, 0, 0); identity.Children.Add(kind); Grid.SetColumn(identity, 1); header.Children.Add(identity);
         var timing = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         var countdown = Ui.Text("", 13); countdown.FontWeight = FontWeights.Medium; countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown);
-        var exact = Ui.Text(entry.At?.ToLocalTime().ToString("HH:mm") ?? "Date indisponible", 11, "MutedBrush"); exact.TextAlignment = TextAlignment.Right; exact.Margin = new Thickness(0, 4, 0, 0); timing.Children.Add(exact); Grid.SetColumn(timing, 2); header.Children.Add(timing);
-        var details = new StackPanel { Margin = new Thickness(38, 0, 20, 12) };
+        var exact = Ui.Text(entry.At?.ToLocalTime().ToString("HH:mm") ?? "Date indisponible", 11, "MutedBrush"); exact.TextAlignment = TextAlignment.Right; exact.Margin = new Thickness(0, 3, 0, 0); timing.Children.Add(exact); Grid.SetColumn(timing, 2); header.Children.Add(timing);
+        var details = new StackPanel { Margin = new Thickness(48, 0, 20, 12) };
         if (!string.IsNullOrWhiteSpace(entry.CreditTitle)) details.Children.Add(Ui.Text(entry.CreditTitle, 12));
         details.Children.Add(Ui.Text(entry.At is { } at ? $"{Display.Exact(at)} · {Display.Zone(at)}" : "Date non communiquée par " + entry.Account.Profile.ProviderName, 11, "MutedBrush"));
         if (entry.GrantedAt is { } granted) details.Children.Add(Ui.Text($"Reçu le {Display.Exact(granted)} · {Display.Zone(granted)}", 11, "MutedBrush"));
         var freshness = Ui.Text("", 11, "MutedBrush"); freshness.Margin = new Thickness(0, 7, 0, 0); details.Children.Add(freshness);
         var key = EntryKey(entry);
         var row = new Expander { Header = header, Content = details, Style = (Style)FindResource("ResetEntry"), Tag = entry, IsExpanded = _openEntries.Contains(key), ToolTip = EntryHint(entry) };
+        if (target.Children.Count == 0) row.BorderThickness = new Thickness(0);
         row.Expanded += (_, _) => _openEntries.Add(key); row.Collapsed += (_, _) => _openEntries.Remove(key);
         System.Windows.Automation.AutomationProperties.SetName(row, KindLabel(entry) + " · " + AccountName(entry.Account) + " · détails");
         target.Children.Add(row); _rows.Add((entry, countdown, freshness));

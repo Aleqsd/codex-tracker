@@ -46,20 +46,25 @@ internal sealed class ThemeManager : IDisposable
     {
         _disposed = true; _preferences.Changed -= PreferencesChanged; SystemEvents.UserPreferenceChanged -= SystemChanged;
     }
+    // One indigo accent for quotas, selection and primary actions; green, amber and red stay reserved for states.
     private static readonly Dictionary<string, string> DarkPalette = new()
     {
-        ["BackgroundBrush"] = "#181818", ["ChromeBrush"] = "#1C1C1C", ["PanelBrush"] = "#222222", ["LineBrush"] = "#393939",
-        ["TextBrush"] = "#ECECE8", ["MutedBrush"] = "#A5A5A5", ["SubtleBrush"] = "#858585", ["AccentBrush"] = "#DEDEDB",
-        ["ButtonBrush"] = "#292929", ["ButtonHoverBrush"] = "#343434", ["PrimaryButtonBrush"] = "#E8E8E4", ["PrimaryButtonHoverBrush"] = "#D2D2CE", ["PrimaryButtonTextBrush"] = "#222222",
-        ["TrackBrush"] = "#3B3B3B", ["SelectedBrush"] = "#343434", ["FocusBrush"] = "#909090", ["ScrollBrush"] = "#515151", ["AvatarBrush"] = "#383838",
-        ["GoodBrush"] = "#B0C6B6", ["WarningBrush"] = "#D4B47A", ["DangerBrush"] = "#D49B9B", ["ErrorBackgroundBrush"] = "#342B2B", ["ChartBrush"] = "#DDDDDA", ["ChartFillBrush"] = "#202020"
+        ["BackgroundBrush"] = "#101114", ["ChromeBrush"] = "#0D0E10", ["PanelBrush"] = "#17181C", ["RaisedBrush"] = "#1F2126", ["LineBrush"] = "#272930",
+        ["TextBrush"] = "#ECEDF0", ["MutedBrush"] = "#989BA4", ["SubtleBrush"] = "#6F727B", ["AccentBrush"] = "#8E96FF", ["AccentSoftBrush"] = "#1F2244",
+        ["ButtonBrush"] = "#1C1E23", ["ButtonHoverBrush"] = "#262830", ["SegmentBrush"] = "#2D3038",
+        ["PrimaryButtonBrush"] = "#5C64F0", ["PrimaryButtonHoverBrush"] = "#6D75F5", ["PrimaryButtonTextBrush"] = "#FFFFFF",
+        ["TrackBrush"] = "#2A2C33", ["SelectedBrush"] = "#24262C", ["FocusBrush"] = "#8E96FF", ["ScrollBrush"] = "#383B43", ["AvatarBrush"] = "#2A2C33",
+        ["GoodBrush"] = "#5FCF9C", ["GoodSoftBrush"] = "#13261D", ["WarningBrush"] = "#E8B65F", ["WarningSoftBrush"] = "#2A2214", ["DangerBrush"] = "#F27B7B",
+        ["ErrorBackgroundBrush"] = "#2B191B", ["ChartBrush"] = "#8E96FF", ["ChartFillBrush"] = "#1C1F3A"
     };
     private static readonly Dictionary<string, string> LightPalette = new()
     {
-        ["BackgroundBrush"] = "#FAFAF8", ["ChromeBrush"] = "#F3F3F0", ["PanelBrush"] = "#FFFFFF", ["LineBrush"] = "#DEDEDA",
-        ["TextBrush"] = "#252524", ["MutedBrush"] = "#6A6A66", ["SubtleBrush"] = "#7C7C77", ["AccentBrush"] = "#434340",
-        ["ButtonBrush"] = "#F2F2EE", ["ButtonHoverBrush"] = "#E6E6E0", ["PrimaryButtonBrush"] = "#292927", ["PrimaryButtonHoverBrush"] = "#454542", ["PrimaryButtonTextBrush"] = "#FAFAF7",
-        ["TrackBrush"] = "#E1E1DB", ["SelectedBrush"] = "#EEEEEA", ["FocusBrush"] = "#757570", ["ScrollBrush"] = "#C9C9C2", ["AvatarBrush"] = "#E8E8E2",
-        ["GoodBrush"] = "#4F6C57", ["WarningBrush"] = "#86652B", ["DangerBrush"] = "#A14F4F", ["ErrorBackgroundBrush"] = "#F6EDEB", ["ChartBrush"] = "#454540", ["ChartFillBrush"] = "#F6F6F2"
+        ["BackgroundBrush"] = "#F4F5F7", ["ChromeBrush"] = "#ECEEF1", ["PanelBrush"] = "#FFFFFF", ["RaisedBrush"] = "#ECEEF2", ["LineBrush"] = "#E1E3E8",
+        ["TextBrush"] = "#16171A", ["MutedBrush"] = "#5D616A", ["SubtleBrush"] = "#868A93", ["AccentBrush"] = "#4F57E3", ["AccentSoftBrush"] = "#ECEDFC",
+        ["ButtonBrush"] = "#FFFFFF", ["ButtonHoverBrush"] = "#EFF0F4", ["SegmentBrush"] = "#FFFFFF",
+        ["PrimaryButtonBrush"] = "#4F57E3", ["PrimaryButtonHoverBrush"] = "#434BD3", ["PrimaryButtonTextBrush"] = "#FFFFFF",
+        ["TrackBrush"] = "#E4E6EB", ["SelectedBrush"] = "#EEF0F4", ["FocusBrush"] = "#4F57E3", ["ScrollBrush"] = "#C6C9D0", ["AvatarBrush"] = "#E4E6EB",
+        ["GoodBrush"] = "#1C8456", ["GoodSoftBrush"] = "#E5F4EC", ["WarningBrush"] = "#A4660C", ["WarningSoftBrush"] = "#FBF0DF", ["DangerBrush"] = "#C94545",
+        ["ErrorBackgroundBrush"] = "#FBEAEA", ["ChartBrush"] = "#4F57E3", ["ChartFillBrush"] = "#E9EBFC"
     };
 }

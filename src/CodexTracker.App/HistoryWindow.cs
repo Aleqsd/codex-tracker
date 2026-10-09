@@ -45,13 +45,13 @@ internal sealed class HistoryWindow : ThemedWindow
         _error = Ui.Text("", 11, "DangerBrush"); _error.Margin = new Thickness(0, 10, 0, 0); Body.Children.Add(_error);
         _details = Ui.Text("", 11, "MutedBrush"); _details.LineHeight = 19; _details.Margin = new Thickness(0, 12, 0, 3);
         var personal = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        var customize = new Button { Content = "Nom et avatar…", Style = (Style)FindResource("QuietButton"), Margin = new Thickness(-10, 0, 10, 0) };
+        var customize = new Button { Content = "Nom et avatar…", Style = (Style)FindResource("QuietButton"), Margin = new Thickness(-13, 0, 4, 0) };
         customize.Click += (_, _) => new AccountAppearanceWindow(this, preferences, AccountId, theme, _model?.IdentityHint).ShowDialog(); personal.Children.Add(customize);
         var calendar = new Button { Content = "Exporter les échéances…", Style = (Style)FindResource("QuietButton") };
         calendar.Click += (_, _) => new CalendarWindow(this, service, preferences, theme, AccountId).ShowDialog(); personal.Children.Add(calendar); Body.Children.Add(personal);
         var expander = new Expander { Header = "Dates exactes et détails", Content = _details, Margin = new Thickness(0, 15, 0, 0) }; expander.SetResourceReference(ForegroundProperty, "TextBrush"); Body.Children.Add(expander);
         var actions = new Grid { Margin = new Thickness(0, 17, 0, 0) }; actions.ColumnDefinitions.Add(new ColumnDefinition()); actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        _remove = new Button { Content = "Retirer du suivi", Style = (Style)FindResource("QuietButton") }; _remove.Click += async (_, _) => await RemoveAsync(); Grid.SetColumn(_remove, 1); actions.Children.Add(_remove); Body.Children.Add(actions);
+        _remove = new Button { Content = "Retirer du suivi", Style = (Style)FindResource("QuietButton") }; _remove.SetResourceReference(ForegroundProperty, "DangerBrush"); _remove.Click += async (_, _) => await RemoveAsync(); Grid.SetColumn(_remove, 1); actions.Children.Add(_remove); Body.Children.Add(actions);
         _periodSelector.SelectionChanged += (_, _) => DrawChart(); _windowSelector.SelectionChanged += (_, _) => DrawChart();
         service.Changed += Changed; preferences.Changed += Changed; theme.Changed += Changed;
         _clock.Tick += (_, _) => UpdateClock();
@@ -60,8 +60,8 @@ internal sealed class HistoryWindow : ThemedWindow
     }
     private static void AddMetric(Grid grid, int index, string title, string path)
     {
-        var stack = new StackPanel(); stack.Children.Add(Ui.Text(title, 10, "MutedBrush"));
-        var value = Ui.Text("", 23); value.FontWeight = FontWeights.Medium; value.Margin = new Thickness(0, 5, 0, 0); value.SetBinding(TextBlock.TextProperty, new Binding(path)); stack.Children.Add(value);
+        var stack = new StackPanel(); stack.Children.Add(Ui.Text(title, 11, "MutedBrush"));
+        var value = Ui.Text("", 24); value.FontWeight = FontWeights.Medium; value.Margin = new Thickness(0, 4, 0, 0); value.SetBinding(TextBlock.TextProperty, new Binding(path)); stack.Children.Add(value);
         Grid.SetColumn(stack, index); grid.Children.Add(stack);
     }
     private void Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Update);
@@ -127,13 +127,17 @@ internal sealed class UsageChart : FrameworkElement
         base.OnRender(dc); if (ActualWidth < 60 || ActualHeight < 60) return;
         double left = 36, top = 12, width = ActualWidth - 51, height = ActualHeight - 42;
         var now = DateTimeOffset.UtcNow; var start = now.AddHours(-Hours);
-        var grid = new Pen(ThemeManager.GetBrush("LineBrush"), 0.7); var stroke = new Pen(ThemeManager.GetBrush("ChartBrush"), 1.8);
+        var grid = new Pen(ThemeManager.GetBrush("LineBrush"), 0.8);
+        var chart = ThemeManager.GetBrush("ChartBrush");
+        var stroke = new Pen(chart, 2) { LineJoin = PenLineJoin.Round, StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
         foreach (int tick in new[] { 0, 50, 100 })
         {
             double y = top + height * (1 - tick / 100.0); dc.DrawLine(grid, new Point(left, y), new Point(left + width, y)); DrawText(dc, tick == 100 ? "100%" : tick.ToString(), 3, y - 6);
         }
         DrawText(dc, Hours > 24 ? start.ToLocalTime().ToString("dd/MM") : start.ToLocalTime().ToString("HH:mm"), left, top + height + 9);
         DrawText(dc, "Maintenant", left + width - 53, top + height + 9);
+        // Separate runs keep interruptions and resets visible; each run gets a soft area below its line.
+        var runs = new List<List<Point>>();
         UsageSample? previous = null; Point? lastPoint = null; int known = 0;
         foreach (var sample in Samples.Where(s => s.Timestamp >= start && s.Timestamp <= now).OrderBy(s => s.Timestamp))
         {
@@ -142,12 +146,29 @@ internal sealed class UsageChart : FrameworkElement
             var point = new Point(left + (sample.Timestamp - start).TotalSeconds / (now - start).TotalSeconds * width, top + height * (1 - Math.Clamp(remaining.Value, 0, 100) / 100));
             bool join = previous is not null && lastPoint is not null && sample.Timestamp - previous.Timestamp <= TimeSpan.FromMinutes(5)
                 && (Window == UsageWindowKind.Weekly ? sample.WeeklyResetsAt == previous.WeeklyResetsAt && remaining <= previous.WeeklyRemaining : sample.ShortResetsAt == previous.ShortResetsAt && remaining <= previous.ShortRemaining);
-            if (join) dc.DrawLine(stroke, lastPoint!.Value, point);
-            else dc.DrawEllipse(ThemeManager.GetBrush("ChartBrush"), null, point, 1.7, 1.7);
+            if (join) runs[^1].Add(point); else runs.Add([point]);
             lastPoint = point; previous = sample; known++;
         }
+        var fill = ThemeManager.GetBrush("ChartFillBrush"); double baseline = top + height;
+        foreach (var run in runs.Where(r => r.Count > 1))
+        {
+            var area = new StreamGeometry();
+            using (var context = area.Open())
+            {
+                context.BeginFigure(new Point(run[0].X, baseline), true, true);
+                context.PolyLineTo([.. run, new Point(run[^1].X, baseline)], false, false);
+            }
+            area.Freeze(); dc.DrawGeometry(fill, null, area);
+            var line = new StreamGeometry();
+            using (var context = line.Open()) { context.BeginFigure(run[0], false, false); context.PolyLineTo(run.Skip(1).ToArray(), true, true); }
+            line.Freeze(); dc.DrawGeometry(null, stroke, line);
+        }
+        foreach (var run in runs.Where(r => r.Count == 1)) dc.DrawEllipse(chart, null, run[0], 1.9, 1.9);
         if (known == 0) DrawText(dc, "Les premiers relevés apparaîtront ici.", Math.Max(left, left + width / 2 - 93), top + height / 2 - 6);
-        else if (lastPoint is Point last) dc.DrawEllipse(ThemeManager.GetBrush("ChartBrush"), null, last, 2.7, 2.7);
+        else if (lastPoint is Point last)
+        {
+            dc.DrawEllipse(ThemeManager.GetBrush("PanelBrush"), new Pen(chart, 2), last, 4, 4);
+        }
     }
     private void DrawText(DrawingContext dc, string text, double x, double y)
     {

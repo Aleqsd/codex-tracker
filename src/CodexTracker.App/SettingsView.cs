@@ -33,10 +33,11 @@ internal sealed class SettingsView : UserControl, IDisposable
     private string[] _healthMessages = [];
     private bool _recoveryRequired;
     private readonly bool _demo;
-    private readonly StackPanel _navigation = new() { Margin = new Thickness(12, 18, 12, 0) };
+    private readonly StackPanel _navigation = new() { Margin = new Thickness(0, 10, 18, 0) };
     private readonly ScrollViewer _pageScroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     private readonly Dictionary<string, (StackPanel Content, Button Navigation)> _pages = new();
     private StackPanel _page = new();
+    private StackPanel? _group;
     internal string CurrentPage { get; private set; } = "Général";
 
     public SettingsView(MainWindow owner, PreferencesStore preferences, UpdateService updates, bool demo, AutomaticUpdater? automaticUpdates = null)
@@ -45,48 +46,49 @@ internal sealed class SettingsView : UserControl, IDisposable
         _includePrereleases = preferences.Current.IncludePrereleaseUpdates;
         _commands = new(preferences, owner.Reminders.Secrets);
         Focusable = false;
-        var layout = new Grid { Margin = new Thickness(0, 10, 0, 0) }; layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
+        var layout = new Grid { Margin = new Thickness(0, 4, 0, 0) }; layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(176) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
         var navigationScroll = new ScrollViewer { Content = _navigation, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        var sidebar = new Border { Child = navigationScroll, BorderThickness = new Thickness(0, 0, 1, 0) };
-        sidebar.SetResourceReference(Border.BorderBrushProperty, "LineBrush"); layout.Children.Add(sidebar);
+        layout.Children.Add(navigationScroll);
         Grid.SetColumn(_pageScroll, 1); layout.Children.Add(_pageScroll);
         Content = layout;
         System.Windows.Input.KeyboardNavigation.SetTabNavigation(_navigation, System.Windows.Input.KeyboardNavigationMode.Continue);
         Page("Général", "Adaptez le suivi à votre façon de travailler.");
         Section("Apparence");
-        var themeRow = new Grid(); themeRow.ColumnDefinitions.Add(new ColumnDefinition()); themeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
-        var label = Ui.Text("Thème"); label.VerticalAlignment = VerticalAlignment.Center; themeRow.Children.Add(label);
         _themeSelector = new ComboBox { Tag = FindResource("DropdownThemeIcon"), ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, "Comme Windows"), new ThemeChoice(AppThemeMode.Light, "Clair"), new ThemeChoice(AppThemeMode.Dark, "Sombre") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
-        Grid.SetColumn(_themeSelector, 1); themeRow.Children.Add(_themeSelector); _page.Children.Add(themeRow);
+        Row(Labelled("Thème", _themeSelector));
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
         Toggle("Aperçu au survol de l’icône", "Le quota et le prochain reset, sans ouvrir le panneau.", p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
-        Section("Actualisation", true);
+        Section("Actualisation");
         _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
         Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
-        Section("Claude Code", true);
-        _page.Children.Add(Ui.Text("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session.", 11, "MutedBrush"));
-        var copyClaude = new Button { Content = "Copier le réglage Claude Code", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 9, 0, 0), IsEnabled = !demo };
+        Section("Claude Code");
+        var claude = Block();
+        claude.Children.Add(Ui.Text("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session.", 12, "MutedBrush"));
+        var copyClaude = new Button { Content = "Copier le réglage Claude Code", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 12), IsEnabled = !demo };
         copyClaude.Click += (_, _) =>
         {
             try { System.Windows.Clipboard.SetText(Codex.ClaudeCodeObservations.Configuration(Environment.ProcessPath!)); copyClaude.Content = "Réglage copié"; }
             catch (Exception) { ShowError("Le presse-papiers est indisponible. Réessayez."); }
         };
-        _page.Children.Add(copyClaude);
-        _page.Children.Add(Ui.Text("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées.", 11, "MutedBrush"));
+        claude.Children.Add(copyClaude);
+        claude.Children.Add(Ui.Text("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées.", 11, "MutedBrush"));
         Page("Rappels", "Choisissez les échéances, les comptes et les canaux utiles.");
+        Section("Échéances");
         ReloadableSection(() => ReminderSettingsView.Rules(preferences, owner.TrackerService, _commands));
         Section("Quotas");
-        _page.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 11, "MutedBrush"));
-        var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 13, 0, 2) };
+        var quotas = Block();
+        quotas.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 12, "MutedBrush"));
+        var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
         thresholds.Children.Add(PreferenceCheck("20 %", p => p.Alert20, (p, v) => p with { Alert20 = v }));
         thresholds.Children.Add(PreferenceCheck("10 %", p => p.Alert10, (p, v) => p with { Alert10 = v }));
-        thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); _page.Children.Add(thresholds);
-        _page.Children.Add(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
+        thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); quotas.Children.Add(thresholds);
+        Row(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
         Toggle("Prévenir après un reset", "Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille.", p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
-        Section("Annonces de resets généraux", true);
+        Section("Annonces de resets généraux");
         Toggle("Vérifier les annonces publiques", "Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables.", p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
-        _page.Children.Add(Ui.Text("Les comptes inactifs concernés affichent ≈100 % pendant 24 h maximum (5 h pour le quota court). Le dernier relevé reste conservé. Les notifications suivent le réglage « Prévenir après un reset ».", 11, "MutedBrush"));
-        _announcementsStatus.Margin = new Thickness(0, 8, 0, 0); _page.Children.Add(_announcementsStatus);
+        var announcements = Block();
+        announcements.Children.Add(Ui.Text("Les comptes inactifs concernés affichent ≈100 % pendant 24 h maximum (5 h pour le quota court). Le dernier relevé reste conservé. Les notifications suivent le réglage « Prévenir après un reset ».", 11, "MutedBrush"));
+        _announcementsStatus.Margin = new Thickness(0, 8, 0, 0); announcements.Children.Add(_announcementsStatus);
         _checkAnnouncements.Click += async (_, _) =>
         {
             _checkAnnouncements.IsEnabled = false;
@@ -94,23 +96,29 @@ internal sealed class SettingsView : UserControl, IDisposable
             catch (OperationCanceledException) { }
             finally { if (!_closed) RefreshHealth(); }
         };
-        _page.Children.Add(_checkAnnouncements);
+        _checkAnnouncements.Margin = new Thickness(0, 12, 0, 0); announcements.Children.Add(_checkAnnouncements);
         Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
+        Section(null);
         ReloadableSection(() => ReminderSettingsView.Channels(preferences, owner.Reminders, demo, _commands));
         Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
-        _page.Children.Add(ReminderSettingsView.History(owner.Reminders));
+        Section(null);
+        Row(ReminderSettingsView.History(owner.Reminders));
         Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
+        Section(null);
+        var agenda = Block();
         var calendar = new Button { Content = "Ouvrir les options Google Agenda…", HorizontalAlignment = HorizontalAlignment.Left };
-        calendar.Click += (_, _) => owner.OpenCalendar(); _page.Children.Add(calendar);
-        var calendarHint = Ui.Text("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 7, 0, 0); _page.Children.Add(calendarHint);
+        calendar.Click += (_, _) => owner.OpenCalendar(); agenda.Children.Add(calendar);
+        var calendarHint = Ui.Text("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 9, 0, 0); agenda.Children.Add(calendarHint);
         Page("Assistants", "Pilotez le tracker depuis votre assistant de code.");
-        _page.Children.Add(Mcp.AssistantSettingsView.Create(owner, preferences, demo));
+        Section(null);
+        Row(Mcp.AssistantSettingsView.Create(owner, preferences, demo));
         Page("Application", "Démarrage, mises à jour et version installée.");
         Section("Démarrage");
-        var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Margin = new Thickness(0, 3, 0, 4) };
-        startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; _page.Children.Add(startup);
-        Section("Mises à jour", true);
-        _page.Children.Add(Ui.Text($"Version {_updates.CurrentVersion}", 12));
+        var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Style = (Style)FindResource("Switch") };
+        startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; Row(startup);
+        Section("Mises à jour");
+        var version = Ui.Text(_updates.CurrentVersion, 13); version.FontWeight = FontWeights.Medium;
+        Row(Labelled("Version installée", version));
         Toggle("Télécharger automatiquement les mises à jour", "Recherche au démarrage puis toutes les 15 minutes sur GitHub. Le suivi continue pendant le téléchargement.",
             p => p.DownloadUpdatesAutomatically, (p, value) => p with { DownloadUpdatesAutomatically = value });
         Toggle("Installer au prochain démarrage du tracker", "Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation.",
@@ -118,19 +126,20 @@ internal sealed class SettingsView : UserControl, IDisposable
         Toggle("Recevoir aussi les préversions", "Désactivé : versions stables uniquement. Activez pour essayer les versions bêta avant leur validation complète.",
             p => p.IncludePrereleaseUpdates, (p, value) => p with { IncludePrereleaseUpdates = value });
         var lastUpdate = demo ? null : updates.ReadLastResult();
-        _updateStatus = Ui.Text(demo ? "Les mises à jour sont désactivées dans la démonstration." : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : "Vérifiez les versions publiées sur le dépôt officiel.", 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 7, 0, 12); _page.Children.Add(_updateStatus);
-        _preparationStatus = Ui.Text("", 11, "MutedBrush"); _preparationStatus.Margin = new Thickness(0, 0, 0, 12); _preparationStatus.Visibility = Visibility.Collapsed; _page.Children.Add(_preparationStatus);
-        _automaticStatus = Ui.Text("", 11, "MutedBrush"); _automaticStatus.Margin = new Thickness(0, 0, 0, 12); _automaticStatus.Visibility = demo ? Visibility.Collapsed : Visibility.Visible; _page.Children.Add(_automaticStatus);
-        var actions = new WrapPanel();
+        var status = Block();
+        _updateStatus = Ui.Text(demo ? "Les mises à jour sont désactivées dans la démonstration." : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : "Vérifiez les versions publiées sur le dépôt officiel.", 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 0, 0, 10); status.Children.Add(_updateStatus);
+        _preparationStatus = Ui.Text("", 11, "MutedBrush"); _preparationStatus.Margin = new Thickness(0, 0, 0, 10); _preparationStatus.Visibility = Visibility.Collapsed; status.Children.Add(_preparationStatus);
+        _automaticStatus = Ui.Text("", 11, "MutedBrush"); _automaticStatus.Margin = new Thickness(0, 0, 0, 10); _automaticStatus.Visibility = demo ? Visibility.Collapsed : Visibility.Visible; status.Children.Add(_automaticStatus);
+        var actions = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) };
         _check = new Button { Content = "Rechercher une mise à jour", IsEnabled = !demo, Margin = new Thickness(0, 0, 8, 0) }; _check.Click += async (_, _) => await CheckAsync(); actions.Children.Add(_check);
-        _install = new Button { Content = "Installer et relancer", Visibility = Visibility.Collapsed, Style = (Style)FindResource("PrimaryButton") }; _install.Click += async (_, _) => await InstallAsync(); actions.Children.Add(_install); _page.Children.Add(actions);
-        var releases = new Button { Content = "Voir les versions sur GitHub ↗", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0, 8, 0, 1), FontSize = 11 };
+        _install = new Button { Content = "Installer et relancer", Visibility = Visibility.Collapsed, Style = (Style)FindResource("PrimaryButton") }; _install.Click += async (_, _) => await InstallAsync(); actions.Children.Add(_install); status.Children.Add(actions);
+        var releases = new Button { Content = "Voir les versions sur GitHub ↗", Style = (Style)FindResource("LinkButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };
         releases.Click += (_, _) =>
         {
             try { Process.Start(new ProcessStartInfo(UpdateService.ReleasesPage.AbsoluteUri) { UseShellExecute = true }); }
             catch (Exception error) { ShowError(error.Message); }
         };
-        _page.Children.Add(releases);
+        status.Children.Add(releases);
         if (!demo && updates.ReadLatestCheck() is { } cached)
         {
             ShowCheckResult(cached);
@@ -140,12 +149,15 @@ internal sealed class SettingsView : UserControl, IDisposable
         _updateTimer.Tick += (_, _) => SyncUpdateButton();
         Loaded += (_, _) => { if (!_closed) { RefreshHealth(); RefreshCheck(); _updateTimer.Start(); } };
         Unloaded += (_, _) => _updateTimer.Stop();
-        Section("Diagnostic", true);
-        _page.Children.Add(_health);
+        Section("Diagnostic");
+        var support = Block();
+        support.Children.Add(_health);
         var diagnostic = new Button { Content = "Préparer un diagnostic…", HorizontalAlignment = HorizontalAlignment.Left };
-        diagnostic.Click += (_, _) => ShowDiagnostic(); _page.Children.Add(diagnostic);
-        _page.Children.Add(Ui.Text("Aperçu avant copie. Aucun compte, quota, chemin personnel ni identifiant secret.", 11, "MutedBrush"));
-        var quit = new Button { Content = "Quitter Codex Tracker", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-10, 19, 0, 0) };
+        diagnostic.Click += (_, _) => ShowDiagnostic(); support.Children.Add(diagnostic);
+        var privacy = Ui.Text("Aperçu avant copie. Aucun compte, quota, chemin personnel ni identifiant secret.", 11, "MutedBrush"); privacy.Margin = new Thickness(0, 9, 0, 0); support.Children.Add(privacy);
+        _group = null;
+        var quit = new Button { Content = "Quitter Codex Tracker", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-2, 16, 0, 0) };
+        quit.SetResourceReference(ForegroundProperty, "DangerBrush");
         quit.Click += async (_, _) => await ((App)System.Windows.Application.Current).ExitAsync(); _page.Children.Add(quit);
         preferences.Changed += PreferencesChanged;
         Sync();
@@ -161,18 +173,18 @@ internal sealed class SettingsView : UserControl, IDisposable
     private void ReloadableSection(Func<FrameworkElement> create)
     {
         var host = new ContentControl { Content = create(), HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        var reload = new Button { Content = "Recharger la section", Style = (Style)FindResource("QuietButton"),
-            HorizontalAlignment = HorizontalAlignment.Left, FontSize = 11, Padding = new Thickness(0, 4, 0, 4),
+        var reload = new Button { Content = "Recharger la section", Style = (Style)FindResource("LinkButton"),
+            HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0, 2, 0, 6),
             ToolTip = "Relire la configuration actuelle. Les modifications non enregistrées de cette section seront abandonnées." };
         reload.Click += (_, _) => { host.Content = create(); _pageScroll.ScrollToTop(); };
-        _page.Children.Add(reload); _page.Children.Add(host);
+        var block = Block(); block.Children.Add(reload); block.Children.Add(host);
     }
     private void Page(string title, string description)
     {
-        _page = new StackPanel { Margin = new Thickness(26, 24, 24, 24) };
-        var heading = Ui.Text(title, 21); heading.FontWeight = FontWeights.Medium; _page.Children.Add(heading);
-        var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 7, 0, 26); _page.Children.Add(hint);
-        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 4), Tag = FindResource(title switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
+        _page = new StackPanel { Margin = new Thickness(6, 10, 14, 28) }; _group = null;
+        var heading = Ui.Text(title, 22); heading.FontWeight = FontWeights.Medium; _page.Children.Add(heading);
+        var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 5, 0, 0); _page.Children.Add(hint);
+        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 2), Tag = FindResource(title switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
         button.Click += (_, _) => ShowPage(title); _navigation.Children.Add(button); _pages.Add(title, (_page, button));
     }
     internal void ShowPage(string title)
@@ -185,24 +197,37 @@ internal sealed class SettingsView : UserControl, IDisposable
         }
         RefreshHealth();
         foreach (var (name, value) in _pages)
-        {
-            value.Navigation.SetResourceReference(BackgroundProperty, name == title ? "ButtonBrush" : "BackgroundBrush");
-            value.Navigation.FontWeight = name == title ? FontWeights.Medium : FontWeights.Normal;
             System.Windows.Automation.AutomationProperties.SetItemStatus(value.Navigation, name == title ? "Section active" : "");
-        }
     }
-    private void Section(string title, bool separator = false)
+    /// <summary>Starts a titled card; following rows and blocks are placed inside it.</summary>
+    private void Section(string? title)
     {
-        if (separator) { var line = new Border { Height = 1, Margin = new Thickness(0, 19, 0, 17) }; line.SetResourceReference(Border.BackgroundProperty, "LineBrush"); _page.Children.Add(line); }
-        var text = Ui.Text(title, 13); text.FontWeight = FontWeights.Medium; text.Margin = new Thickness(0, 0, 0, 12); _page.Children.Add(text);
+        if (title is not null)
+        {
+            var text = Ui.Text(title, 12, "MutedBrush"); text.FontWeight = FontWeights.Medium; text.Margin = new Thickness(2, 24, 0, 9); _page.Children.Add(text);
+        }
+        _group = new StackPanel();
+        var card = Ui.Panel(_group, new Thickness(18, 2, 18, 2)); card.Margin = new Thickness(0, title is null ? 22 : 0, 0, 0); _page.Children.Add(card);
+    }
+    private void Row(FrameworkElement row)
+    {
+        var target = _group ?? _page;
+        if (_group is { Children.Count: > 0 }) target.Children.Add(Ui.Divider(new Thickness(0)));
+        row.Margin = new Thickness(0, 14, 0, 14); target.Children.Add(row);
+    }
+    private StackPanel Block() { var block = new StackPanel(); Row(block); return block; }
+    private static Grid Labelled(string title, FrameworkElement control)
+    {
+        var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var label = Ui.Text(title, 13); label.VerticalAlignment = VerticalAlignment.Center; label.Margin = new Thickness(0, 0, 16, 0); row.Children.Add(label);
+        if (control is ComboBox) control.Width = 190;
+        control.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(control, 1); row.Children.Add(control); return row;
     }
     private ComboBox Choice(string title, string icon, NumberChoice[] choices, Action<int> save)
     {
-        var row = new Grid { Margin = new Thickness(0, 10, 0, 0) }; row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
-        var label = Ui.Text(title); label.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(label);
         var combo = new ComboBox { Tag = FindResource(icon), ItemsSource = choices, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         combo.SelectionChanged += (_, _) => { if (!_syncing && combo.SelectedValue is int value) save(value); };
-        Grid.SetColumn(combo, 1); row.Children.Add(combo); _page.Children.Add(row); return combo;
+        Row(Labelled(title, combo)); return combo;
     }
     private CheckBox PreferenceCheck(string title, Func<TrackerPreferences, bool> read, Func<TrackerPreferences, bool, TrackerPreferences> set)
     {
@@ -211,8 +236,10 @@ internal sealed class SettingsView : UserControl, IDisposable
     }
     private void Toggle(string title, string? description, Func<TrackerPreferences, bool> read, Func<TrackerPreferences, bool, TrackerPreferences> set)
     {
-        var check = PreferenceCheck(title, read, set); check.Margin = new Thickness(0, 15, 0, 0); _page.Children.Add(check);
-        if (description is not null) { var hint = Ui.Text(description, 11, "MutedBrush"); hint.Margin = new Thickness(28, 5, 0, 0); _page.Children.Add(hint); }
+        var check = PreferenceCheck(title, read, set); check.Style = (Style)FindResource("Switch"); check.Margin = new Thickness(0);
+        var row = new StackPanel(); row.Children.Add(check);
+        if (description is not null) { var hint = Ui.Text(description, 11, "MutedBrush"); hint.Margin = new Thickness(0, 4, 64, 0); row.Children.Add(hint); }
+        Row(row);
     }
     private void Save(Func<TrackerPreferences, TrackerPreferences> update)
     {

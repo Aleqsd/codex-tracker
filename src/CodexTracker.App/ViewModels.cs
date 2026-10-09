@@ -13,6 +13,8 @@ internal static class Display
     public static Brush Muted => ThemeManager.GetBrush("MutedBrush");
     public static Brush Brush(string color) { var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!; brush.Freeze(); return brush; }
     public static Brush QuotaBrush(double? value) => value is null ? Muted : value < 10 ? Red : value <= 20 ? Orange : ThemeManager.GetBrush("TextBrush");
+    // Gauges carry the accent; text keeps the neutral colour until a threshold is reached.
+    public static Brush QuotaBarBrush(double? value) => value is null ? ThemeManager.GetBrush("SubtleBrush") : value < 10 ? Red : value <= 20 ? Orange : ThemeManager.GetBrush("AccentBrush");
     public static string Percent(double? value) => value is null ? "—" : $"{Math.Floor(value.Value):0}%";
     public static string Exact(DateTimeOffset? date) => date?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.GetCultureInfo("fr-FR")) ?? "Indisponible";
     public static string Zone(DateTimeOffset? date)
@@ -76,10 +78,11 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ProviderName => _account.Profile.ProviderName;
     public bool IsClaude => _account.Profile.Provider == AccountProvider.ClaudeCode;
     public bool ShowProviderHeader { get; private set; }
+    public bool IsLastInSection { get; private set; }
     public string ProviderCount { get; private set; } = "";
-    internal void SetProviderHeader(bool show, int count)
+    internal void SetProviderHeader(bool show, int count, bool last)
     {
-        ShowProviderHeader = show; ProviderCount = count == 1 ? "1 compte" : $"{count} comptes"; Tick();
+        ShowProviderHeader = show; IsLastInSection = last; ProviderCount = count == 1 ? "1 compte" : $"{count} comptes"; Tick();
     }
     public bool HasReserves => _account.Profile.Provider == AccountProvider.Codex;
     public bool IsActive => _account.IsActive;
@@ -109,9 +112,13 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string WeeklyNumber => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow));
     public double WeeklyPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow) ?? 0;
     public Brush WeeklyBrush => HasManualWeeklyReset ? Display.Green : Display.QuotaBrush(_account.Snapshot?.Weekly?.RemainingPercent);
-    public Brush CardBorder => ThemeManager.GetBrush(IsSelected ? "FocusBrush" : "LineBrush");
-    public Brush RowBackground => ThemeManager.GetBrush(IsSelected ? "PanelBrush" : "BackgroundBrush");
+    public Brush WeeklyBarBrush => HasManualWeeklyReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Weekly?.RemainingPercent);
+    public double WeeklyDisplayPercent => HasManualWeeklyReset || HasWeeklyEstimate ? 100 : WeeklyPercent;
+    public Brush WeeklyDisplayBarBrush => HasManualWeeklyReset || HasWeeklyEstimate ? Display.Green : WeeklyBarBrush;
+    public string WeeklyRingCaption => HasManualWeeklyReset ? "déclaré" : "semaine";
     public string ShortWindowRemaining => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
+    public double ShortPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow) ?? 0;
+    public Brush ShortBarBrush => HasManualShortReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Short?.RemainingPercent);
     public string ShortSummary => $"5 h : {ShortWindowRemaining}" + (HasManualShortReset ? " · déclaré" : "");
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
@@ -198,7 +205,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsIdle => !_state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
 
-    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccounts.Any(a => a.Error is not null) ? "DangerBrush" : "MutedBrush");
+    public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccounts.Any(a => a.Error is not null) ? "DangerBrush"
+        : _state.ActiveAccount?.Snapshot is not null ? "GoodBrush" : "MutedBrush");
     public string StatusText
     {
         get
@@ -243,8 +251,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
         var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences); }).ToArray();
         foreach (var group in next.GroupBy(a => a.ProviderName))
         {
-            var first = true; var count = group.Count();
-            foreach (var account in group) { account.SetProviderHeader(first, count); first = false; }
+            var count = group.Count(); var index = 0;
+            foreach (var account in group) { account.SetProviderHeader(index == 0, count, index == count - 1); index++; }
         }
         if (!Accounts.Select(a => a.Id).SequenceEqual(next.Select(a => a.Id))) { Accounts.Clear(); foreach (var vm in next) Accounts.Add(vm); }
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));

@@ -121,8 +121,8 @@ internal sealed class TrayController : IDisposable
         var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.Profile.Email));
         if (menuKey == _menuKey || _tray.ContextMenuStrip?.Visible == true) return;
         _menuKey = menuKey;
-        var background = dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
-        var foreground = dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(35, 35, 35);
+        var background = dark ? Color.FromArgb(23, 24, 28) : Color.FromArgb(255, 255, 255);
+        var foreground = dark ? Color.FromArgb(236, 237, 240) : Color.FromArgb(22, 23, 26);
         var menu = new Forms.ContextMenuStrip { Font = _menuFont.Font, BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
         menu.Opening += (_, _) => HidePeek();
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
@@ -243,10 +243,10 @@ internal sealed class TrayController : IDisposable
     }
     private sealed class DarkColors(bool dark) : Forms.ProfessionalColorTable
     {
-        public override Color MenuItemSelected => dark ? Color.FromArgb(58, 58, 58) : Color.FromArgb(231, 231, 229);
-        public override Color MenuItemBorder => dark ? Color.FromArgb(85, 85, 85) : Color.FromArgb(204, 204, 200);
-        public override Color ToolStripDropDownBackground => dark ? Color.FromArgb(36, 36, 36) : Color.FromArgb(249, 249, 248);
-        public override Color MenuBorder => dark ? Color.FromArgb(65, 65, 65) : Color.FromArgb(215, 215, 212);
+        public override Color MenuItemSelected => dark ? Color.FromArgb(38, 40, 48) : Color.FromArgb(236, 238, 242);
+        public override Color MenuItemBorder => dark ? Color.FromArgb(38, 40, 48) : Color.FromArgb(236, 238, 242);
+        public override Color ToolStripDropDownBackground => dark ? Color.FromArgb(23, 24, 28) : Color.FromArgb(255, 255, 255);
+        public override Color MenuBorder => dark ? Color.FromArgb(39, 41, 48) : Color.FromArgb(225, 227, 232);
         public override Color ImageMarginGradientBegin => ToolStripDropDownBackground;
         public override Color ImageMarginGradientMiddle => ToolStripDropDownBackground;
         public override Color ImageMarginGradientEnd => ToolStripDropDownBackground;

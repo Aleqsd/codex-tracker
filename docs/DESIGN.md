@@ -2,22 +2,25 @@
 
 ## Principes
 
-Interface française, sobre, neutre et compacte. Afficher l’information essentielle ; placer les détails dans le survol, une section repliable ou une vue dédiée. Les compteurs de réserves sont du texte, pas de faux boutons.
+Interface française, compacte et calme : fonds neutres légèrement froids, surfaces en cartes arrondies et un seul accent indigo. Afficher l’information essentielle ; placer les détails dans le survol, une section repliable ou une vue dédiée. Les compteurs de réserves sont du texte, pas de faux boutons.
 
-`ThemeManager` est la source des couleurs. Utiliser les ressources dynamiques `BackgroundBrush`, `PanelBrush`, `TextBrush`, `MutedBrush`, `LineBrush`, `ButtonBrush`. Les fonds sombres sont proches de #181818, le texte de #ECECE8 ; le thème clair part de #FAFAF8. Garder les valeurs exactes dans la palette existante. Orange et rouge signalent un état, jamais une décoration.
+`ThemeManager` est la source des couleurs. Utiliser les ressources dynamiques (`BackgroundBrush`, `PanelBrush`, `RaisedBrush`, `TextBrush`, `MutedBrush`, `SubtleBrush`, `LineBrush`, `ButtonBrush`, `SegmentBrush`…). Fond sombre #101114, cartes #17181C, texte #ECEDF0 ; thème clair #F4F5F7, cartes #FFFFFF, texte #16171A. L’accent (`AccentBrush`, `AccentSoftBrush`, `PrimaryButtonBrush`) porte les jauges de quota, la sélection, le focus clavier et l’action principale ; aucune autre couleur décorative. Vert, orange et rouge (et leurs variantes `…SoftBrush` pour les encarts) signalent un état, jamais une décoration. Garder les valeurs exactes dans la palette existante.
 
 ## Composants
 
 - Titres 21–23 px, sections 13 px en Medium, texte 12–13 px, légendes 11 px. Roboto Regular (400) pour le texte courant, Medium (500) pour les titres intermédiaires et Bold (700) pour les emphases fortes. Les trois fichiers statiques sont embarqués, avec leur provenance dans `Assets/Fonts/SOURCES.md` et leur licence dans `docs/licenses` ; aucune installation de police.
 - Toutes les fenêtres, y compris l’aperçu de la barre d’état et les dialogues, appliquent explicitement le style `Window` d’App.xaml : ressource partagée `AppFontFamily` (Roboto), métriques Ideal, lissage Auto et hinting Fixed. Le positionnement naturel des glyphes évite les contours en crans du mode Display/Grayscale aux petites tailles. Les fonds opaques autorisent ClearType ; WPF respecte les réglages du système et gère les éléments qui introduisent de la transparence. L’alignement de la mise en page sur les pixels reste actif ; aucun réglage global de Windows n’est modifié. Le menu natif de l’icône utilise Roboto Regular chargée en mémoire, uniquement dans le processus du tracker.
-- Espacement : 7–8 px entre éléments liés, 16–24 px entre groupes. Réutiliser les marges de la vue concernée.
-- Boutons standards, `PrimaryButton` pour l’action principale, `QuietButton` pour une action secondaire.
+- Espacement : 7–8 px entre éléments liés, 16–24 px entre groupes. Réutiliser les marges de la vue concernée. Cartes (`Card`, `Ui.Panel`) : rayon 12 px, bordure `LineBrush` ; boutons et champs : rayon 8 px.
+- Navigation principale : contrôle segmenté centré dans la barre de titre (Comptes, Resets, Réglages). Les bandeaux de mise à jour et de récupération s’affichent au-dessus du pied de fenêtre.
+- Comptes actifs : une tuile par outil avec anneau `QuotaRing` (quota hebdomadaire), puis 5 h, reset et réserves en lignes libellé/valeur. Liste des comptes : une carte par fournisseur, barre de quota courte sous le pourcentage, trait d’accent sur le compte actif.
+- Boutons standards, `PrimaryButton` pour l’action principale, `QuietButton` pour une action secondaire, `LinkButton` pour un lien, `IconButton`/`Ui.IconButton` pour une icône seule. Le focus clavier est un anneau d’accent (`FocusRing`), invisible au clic souris.
+- Préférences marche/arrêt : `CheckBox` au style `Switch` (libellé à gauche, interrupteur à droite). Les choix multiples restent des cases à cocher.
 - Dropdowns : style existant avec icône, libellé et chevron ; ne pas utiliser l’objet de données comme texte.
 - Icônes vectorielles provenant des ressources existantes, avec de la marge autour du tracé.
 - Le pourcentage dans l’icône de notification utilise Roboto Medium embarquée avec le rendu WPF Display et un lissage en niveaux de gris, directement à la taille physique de la barre des tâches (`SM_CXSMICON` au DPI de `Shell_TrayWnd`). La taille de police est choisie d’après l’encre visible ; les chiffres sont centrés sur des pixels entiers, puis leurs pixels et leur transparence sont copiés sans redimensionnement dans l’icône native. La barre de quota garde une ligne nette, et la clé du cache inclut la taille. Windows détermine la taille de l’emplacement.
 - Initiales sur fond coloré en l’absence de photo ; fond neutre du thème derrière une image transparente.
-- Réglages dans le troisième onglet de la fenêtre, à côté de Comptes et Resets. Sections à gauche, formulaire à droite. Défilement indépendant des deux colonnes et labels lisibles en petite fenêtre. Conserver la section et les saisies lorsque l’utilisateur passe à un autre onglet.
-- Pied de fenêtre : état de collecte à gauche, version réellement exécutée à droite en texte discret. Réserver sa largeur pour qu’elle reste lisible en fenêtre compacte ; ne pas afficher la version distante à cet endroit.
+- Réglages dans le troisième onglet de la fenêtre, à côté de Comptes et Resets. Sections à gauche (pastille d’accent sur la section active), formulaire à droite en cartes titrées dont les lignes sont séparées par un filet. Défilement indépendant des deux colonnes et labels lisibles en petite fenêtre. Conserver la section et les saisies lorsque l’utilisateur passe à un autre onglet.
+- Pied de fenêtre : point d’état (vert après un relevé, orange pendant la collecte, rouge en échec) et état de collecte à gauche, version réellement exécutée à droite en texte discret ; une pastille « Démo » signale les données fictives. Réserver sa largeur pour qu’elle reste lisible en fenêtre compacte ; ne pas afficher la version distante à cet endroit.
 - Confirmation MCP : action, destinataire, effet et expiration ; jamais afficher de clé.
 
 ## Animations
@@ -54,7 +57,7 @@ Après les aperçus normaux à 96 DPI, `python scripts/tour.py` (Pillow) assembl
 
 ## Plusieurs outils et reset déclaré
 
-Les comptes actifs de Codex et Claude Code partagent le composant existant, avec les icônes officielles des applications. La liste forme deux sections avec icône, nom, nombre de comptes et séparateur léger ; l’actif vient en premier dans chaque section. Les identités personnelle et d’entreprise Claude portent leur nom d’organisation. Le tableau de bord défile entièrement en fenêtre compacte. Les réserves ne sont pas proposées pour Claude Code. `--demo-claude` produit exclusivement des comptes fictifs, dont une même adresse chez les deux fournisseurs et deux organisations Claude sur cette adresse.
+Les comptes actifs de Codex et Claude Code partagent le composant existant, avec les icônes officielles des applications. La liste forme deux cartes avec icône, nom et nombre de comptes en en-tête ; l’actif vient en premier dans chaque section. Les identités personnelle et d’entreprise Claude portent leur nom d’organisation. Le tableau de bord défile entièrement en fenêtre compacte. Les réserves ne sont pas proposées pour Claude Code. `--demo-claude` produit exclusivement des comptes fictifs, dont une même adresse chez les deux fournisseurs et deux organisations Claude sur cette adresse.
 
 Les icônes officielles sont conservées telles quelles sous `Assets/Providers`, avec leur provenance dans `SOURCES.md`. Le thème choisit la variante Codex claire/sombre fournie par OpenAI. L’icône Claude garde ses couleurs officielles ; aucune couleur de marque n’est ajoutée à la palette de l’application. Les transitions de navigation, les survols et le focus clavier existants sont conservés.
 

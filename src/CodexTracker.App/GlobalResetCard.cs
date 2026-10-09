@@ -11,12 +11,15 @@ internal sealed class GlobalResetCard : Border
         Func<AccountState, string> name, string? error, bool expanded, Action<bool> expansion, ManualCodexReset? manualReset = null)
     {
         _announcement = announcement; _kinds = kinds;
-        Name = "GlobalResetNotice"; Padding = new Thickness(12, 10, 12, 10);
-        BorderThickness = new Thickness(2, 0, 0, 0); Margin = new Thickness(0, 8, 0, 8);
-        SetResourceReference(BackgroundProperty, "PanelBrush"); SetResourceReference(BorderBrushProperty, "GoodBrush");
+        Name = "GlobalResetNotice"; Padding = new Thickness(16, 13, 16, 12);
+        CornerRadius = new CornerRadius(12); Margin = new Thickness(0, 8, 0, 8);
+        SetResourceReference(BackgroundProperty, "GoodSoftBrush");
         var panel = new StackPanel(); Child = panel;
-        var title = Ui.Text("Reset général · annoncé comme terminé", 13); title.FontWeight = FontWeights.Medium; panel.Children.Add(title);
-        panel.Children.Add(Ui.Text($"{Display.Exact(announcement.ReportedAt)} · {Display.Zone(announcement.ReportedAt)}", 11, "MutedBrush"));
+        var heading = new StackPanel { Orientation = Orientation.Horizontal };
+        heading.Children.Add(Ui.Icon("DropdownRefreshIcon", 16, "GoodBrush", 2));
+        var title = Ui.Text("Reset général · annoncé comme terminé", 13); title.FontWeight = FontWeights.Medium; title.Margin = new Thickness(9, 0, 0, 0); heading.Children.Add(title);
+        panel.Children.Add(heading);
+        var reported = Ui.Text($"{Display.Exact(announcement.ReportedAt)} · {Display.Zone(announcement.ReportedAt)}", 11, "MutedBrush"); reported.Margin = new Thickness(0, 6, 0, 0); panel.Children.Add(reported);
         var scope = announcement.Plans.Contains("free") ? "Tous les abonnements" : "Abonnements payants concernés";
         panel.Children.Add(Ui.Text(scope + " · " + string.Join(" + ", kinds.Select(k => k == ResetKind.Weekly ? "semaine" : "5 h")), 11, "MutedBrush"));
         bool Declared(AccountState account, ResetKind kind) => manualReset?.Applies(account, kind, PreviewClock.UtcNow) == true;
@@ -53,7 +56,7 @@ internal sealed class GlobalResetCard : Border
         var links = new WrapPanel();
         foreach (var (label, url) in new[] { ("Voir la confirmation ↗", announcement.SourceUrl), ("Voir la portée ↗", announcement.AnnouncementUrl) }.DistinctBy(x => x.Item2))
         {
-            var button = new Button { Content = label, ToolTip = url, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(0, 6, 14, 0), FontSize = 11 };
+            var button = new Button { Content = label, ToolTip = url, Style = (Style)FindResource("LinkButton"), Padding = new Thickness(0, 6, 16, 2), FontSize = 12 };
             button.Click += (_, _) =>
             {
                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }

@@ -33,7 +33,7 @@ Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Pyth
 - Aucun SMS, appel ou email réel dans les tests. Utiliser le moteur existant et ses limites, jamais un envoi HTTP parallèle.
 - MCP désactivé par défaut. Clés en écriture seule, DPAPI utilisateur, aucune clé dans les erreurs. Demandes externes validées localement et idempotentes.
 - Les fichiers de préférences ont un seul propriétaire : le processus WPF. Passer par les commandes communes et vérifier la révision pour les modifications MCP.
-- Conserver le style neutre Codex et les ressources dynamiques. Pas de nouvelle palette ni de framework UI sans besoin établi.
+- Conserver la charte de docs/DESIGN.md (neutres froids, accent indigo unique) et les ressources dynamiques. Pas de nouvelle couleur ni de framework UI sans besoin établi.
 - Préférer une modification ciblée ; ne pas entreprendre une migration MVVM générale pour ajouter un contrôle.
 
 ## Vérification proportionnée

@@ -8,17 +8,19 @@ namespace CodexTracker.App;
 // A non-activating window: a glance at the quota must not steal keyboard focus from Codex.
 internal sealed class TrayPeekWindow : Window
 {
-    private readonly TextBlock _name = new() { FontSize = 13, FontWeight = FontWeights.Medium, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly TextBlock _plan = new() { FontSize = 10 };
-    private readonly TextBlock _weekly = new() { FontSize = 26, FontWeight = FontWeights.Medium };
-    private readonly TextBlock _short = new() { FontSize = 26, FontWeight = FontWeights.Medium };
-    private readonly ProgressBar _weeklyBar = new() { Maximum = 100, Height = 3, Margin = new Thickness(0, 8, 0, 0) };
-    private readonly ProgressBar _shortBar = new() { Maximum = 100, Height = 3, Margin = new Thickness(0, 8, 0, 0) };
-    private readonly TextBlock _reset = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 15, 0, 0) };
-    private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-    private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.Medium, Margin = new Thickness(0, 13, 0, 0) };
-    private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-    private readonly TextBlock _status = new() { FontSize = 10, Margin = new Thickness(0, 0, 0, 10) };
+    private readonly TextBlock _name = new() { FontSize = 14, FontWeight = FontWeights.Medium, TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly TextBlock _plan = new() { FontSize = 11, FontWeight = FontWeights.Medium };
+    private readonly Border _planChip = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(8, 2, 8, 3), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _weekly = new() { FontSize = 19, FontWeight = FontWeights.Medium, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly TextBlock _short = new() { FontSize = 19, FontWeight = FontWeights.Medium, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly QuotaRing _weeklyRing = new() { Width = 84, Height = 84, Thickness = 6 };
+    private readonly QuotaRing _shortRing = new() { Width = 84, Height = 84, Thickness = 6 };
+    private readonly TextBlock _reset = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
+    private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.Medium };
+    private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
+    private readonly StackPanel _reserves = new() { Margin = new Thickness(0, 0, 0, 12) };
+    private readonly TextBlock _status = new() { FontSize = 11, FontWeight = FontWeights.Medium, Margin = new Thickness(0, 0, 0, 8) };
     private DrawingPoint _anchor;
     private bool _positionQueued, _positioning, _closed;
 
@@ -36,27 +38,27 @@ internal sealed class TrayPeekWindow : Window
         Topmost = true;
         SetResourceReference(BackgroundProperty, "PanelBrush");
         SetResourceReference(ForegroundProperty, "TextBrush");
-        var border = new Border { Padding = new Thickness(19), BorderThickness = new Thickness(1) };
+        var border = new Border { Padding = new Thickness(20, 18, 20, 20), BorderThickness = new Thickness(1) };
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
         border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         var content = new StackPanel(); border.Child = content;
         Content = new ScrollViewer { Content = border, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        Muted(_status); Muted(_plan); Muted(_reset); Muted(_freshness);
+        _status.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); Muted(_plan); Muted(_reset); Muted(_freshness); Muted(_expirations);
         content.Children.Add(_status);
         var heading = new Grid(); heading.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) }); heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        _name.Margin = new Thickness(0, 0, 8, 0); _plan.VerticalAlignment = VerticalAlignment.Center;
-        heading.Children.Add(_name); Grid.SetColumn(_plan, 1); heading.Children.Add(_plan); content.Children.Add(heading);
-        var quotas = new Grid { Margin = new Thickness(0, 18, 0, 0) };
+        _name.Margin = new Thickness(0, 0, 8, 0); _name.VerticalAlignment = VerticalAlignment.Center;
+        _planChip.Child = _plan; _planChip.SetResourceReference(Border.BackgroundProperty, "RaisedBrush");
+        heading.Children.Add(_name); Grid.SetColumn(_planChip, 1); heading.Children.Add(_planChip); content.Children.Add(heading);
+        var quotas = new Grid { Margin = new Thickness(0, 18, 0, 18) };
         quotas.ColumnDefinitions.Add(new()); quotas.ColumnDefinitions.Add(new());
-        var weekly = Metric("Semaine", _weekly, _weeklyBar); weekly.Margin = new Thickness(0, 0, 15, 0);
-        var shortWindow = Metric("5 heures", _short, _shortBar); shortWindow.Margin = new Thickness(15, 0, 0, 0);
+        var weekly = Metric("Semaine", _weekly, _weeklyRing);
+        var shortWindow = Metric("5 heures", _short, _shortRing);
         quotas.Children.Add(weekly); Grid.SetColumn(shortWindow, 1); quotas.Children.Add(shortWindow); content.Children.Add(quotas);
-        content.Children.Add(_reserve); content.Children.Add(_expirations);
-        Muted(_expirations);
+        _reserves.Children.Add(_reserve); _reserves.Children.Add(_expirations); content.Children.Add(_reserves);
         ToolTipService.SetInitialShowDelay(_reserve, 150);
         ToolTipService.SetShowDuration(_reserve, 60000);
         content.Children.Add(_reset); content.Children.Add(_freshness);
-        var button = new Button { Content = "Ouvrir le suivi", Margin = new Thickness(0, 17, 0, 0), Padding = new Thickness(10, 7, 10, 7), HorizontalAlignment = HorizontalAlignment.Stretch };
+        var button = new Button { Content = "Ouvrir le suivi", Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 18, 0, 0), Padding = new Thickness(10, 8, 10, 8), HorizontalAlignment = HorizontalAlignment.Stretch };
         button.Click += (_, _) => { Hide(); open(); }; content.Children.Add(button);
         SourceInitialized += (_, _) =>
         {
@@ -68,11 +70,13 @@ internal sealed class TrayPeekWindow : Window
         Closed += (_, _) => _closed = true;
     }
 
-    private static StackPanel Metric(string name, TextBlock number, ProgressBar bar)
+    private static StackPanel Metric(string name, TextBlock number, QuotaRing ring)
     {
-        var panel = new StackPanel();
-        var label = new TextBlock { Text = name, FontSize = 11, Margin = new Thickness(0, 0, 3, 3) }; Muted(label);
-        panel.Children.Add(label); panel.Children.Add(number); panel.Children.Add(bar); return panel;
+        ring.SetResourceReference(QuotaRing.TrackBrushProperty, "TrackBrush");
+        var gauge = new Grid { Width = ring.Width, Height = ring.Height, HorizontalAlignment = HorizontalAlignment.Center };
+        number.VerticalAlignment = VerticalAlignment.Center; gauge.Children.Add(ring); gauge.Children.Add(number);
+        var label = new TextBlock { Text = name, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) }; Muted(label);
+        var panel = new StackPanel(); panel.Children.Add(gauge); panel.Children.Add(label); return panel;
     }
     private static void Muted(TextBlock value) => value.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
 
@@ -90,9 +94,11 @@ internal sealed class TrayPeekWindow : Window
         _plan.Text = snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", null => "", var other => other };
         if (snapshot?.PlanMultiplier is int multiplier) _plan.Text += $" {multiplier}×";
         _weekly.Text = Display.Percent(weekly); _short.Text = Display.Percent(shortWindow);
-        _weeklyBar.Value = weekly ?? 0; _shortBar.Value = shortWindow ?? 0;
-        _weeklyBar.Foreground = Display.QuotaBrush(weekly); _shortBar.Foreground = Display.QuotaBrush(shortWindow);
-        _status.Text = declared ? "RESET CODEX DÉCLARÉ" : account?.IsActive == true ? $"COMPTE ACTIF DANS {account.Profile.ProviderName.ToUpperInvariant()}" : "COMPTE AFFICHÉ DANS L’ICÔNE";
+        _weeklyRing.Value = weekly ?? 0; _shortRing.Value = shortWindow ?? 0;
+        _weekly.Foreground = Display.QuotaBrush(weekly); _short.Foreground = Display.QuotaBrush(shortWindow);
+        _weeklyRing.RingBrush = declared ? Display.Green : Display.QuotaBarBrush(weekly); _shortRing.RingBrush = Display.QuotaBarBrush(shortWindow);
+        _planChip.Visibility = string.IsNullOrEmpty(_plan.Text) ? Visibility.Collapsed : Visibility.Visible;
+        _status.Text = declared ? "Reset Codex déclaré" : account?.IsActive == true ? $"Compte actif dans {account.Profile.ProviderName}" : "Compte affiché dans l’icône";
         _reset.Text = declared ? "Prochain reset à reconfirmer" : nextReset is null ? "Reset hebdomadaire indisponible" : "Reset · " + Display.Countdown(nextReset);
         _reset.ToolTip = declared ? $"Reset Codex déclaré le {Display.Exact(state.ManualCodexReset!.At)} · {Display.Zone(state.ManualCodexReset.At)}" : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
         _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
@@ -102,7 +108,7 @@ internal sealed class TrayPeekWindow : Window
                 c.ExpiresAt is { } expires ? $"{(expires <= DateTimeOffset.UtcNow ? "Expiration passée" : "Expire le")} {Display.Exact(expires)} · {Display.Zone(expires)}" : "Expiration non communiquée"))
             : "Dates d’expiration non communiquées";
         var reservesVisible = account?.Profile.Provider != AccountProvider.ClaudeCode;
-        _reserve.Visibility = _expirations.Visibility = reservesVisible ? Visibility.Visible : Visibility.Collapsed;
+        _reserves.Visibility = reservesVisible ? Visibility.Visible : Visibility.Collapsed;
         if (snapshot is null) _freshness.Text = "Ouvrez Codex ou Claude Code pour détecter votre compte.";
         else
         {
