@@ -18,10 +18,24 @@ public sealed record DeliveryResult(DeliveryStatus Status, string Detail, string
 public static class ReminderPlanner
 {
     public static readonly int[] AllowedMinutes = [30, 60, 360, 720, 1440, 4320, 10080];
+    /// <summary>A reserve reset is lost once expired: several reminders, whatever the account's quota.</summary>
+    public static readonly int[] ReserveLeadMinutes = [4320, 1440, 360, 60];
     public static ReminderRule[] Defaults(bool expiry = true, int legacyHours = 24) =>
     [new(ResetKind.Weekly, true, [1440, 60], [ReminderChannel.Windows]),
      new(ResetKind.Short, false, [60], [ReminderChannel.Windows]),
-     new(ResetKind.Reserve, expiry, [legacyHours * 60, 60], [ReminderChannel.Windows])];
+     new(ResetKind.Reserve, expiry, [.. ReserveLeadMinutes.Union([legacyHours * 60])], [ReminderChannel.Windows])];
+
+    /// <summary>Untouched former reserve defaults (24 h and 1 h, Windows, every account) gain the 3-day and 6-hour reminders.</summary>
+    public static ReminderRule[] UpgradeReserveDefaults(IEnumerable<ReminderRule> rules)
+    {
+        var normalized = Normalize(rules);
+        var reserve = normalized.Where(r => r.Kind == ResetKind.Reserve).ToArray();
+        var formerDefaults = reserve.Length == 2 && reserve.Select(r => r.LeadMinutes[0]).Order().SequenceEqual([60, 1440]) &&
+            reserve.All(r => r.AccountIds is null && r.Channels.SequenceEqual([ReminderChannel.Windows]) && r.Enabled == reserve[0].Enabled);
+        return formerDefaults
+            ? [.. normalized.Where(r => r.Kind != ResetKind.Reserve), .. ReserveLeadMinutes.Select(m => reserve[0] with { LeadMinutes = [m] })]
+            : normalized;
+    }
 
     public static ReminderRule[] Normalize(IEnumerable<ReminderRule> rules) => rules.Where(r => r is not null && Enum.IsDefined(r.Kind))
         .SelectMany(r => (r.LeadMinutes ?? []).Where(m => AllowedMinutes.Contains(m) && (r.Kind != ResetKind.Short || m < 300)).Distinct().Select(m => r with { LeadMinutes = [m] }))
@@ -53,7 +67,8 @@ public static class ReminderPlanner
     public static string Label(ResetKind kind) => kind switch { ResetKind.Weekly => Loc.T("Reset hebdomadaire"), ResetKind.Short => Loc.T("Reset 5 heures"), _ => Loc.T("Expiration de réserve") };
     public static bool IsGlobalReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("global/", StringComparison.Ordinal);
     public static bool IsExpectedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && (r.Key.StartsWith("expected/", StringComparison.Ordinal) || IsGlobalReset(r));
-    public static string Title(ReminderOccurrence r) => IsGlobalReset(r) ? Loc.T("Reset général annoncé comme terminé") : IsExpectedReset(r) ? Loc.T("Compte probablement rechargé") : Label(r.Kind);
+    public static string Title(ReminderOccurrence r) => IsGlobalReset(r) ? Loc.T("Reset général annoncé comme terminé") : IsExpectedReset(r) ? Loc.T("Compte probablement rechargé")
+        : r.Kind == ResetKind.Reserve ? Loc.T("Un reset en réserve va expirer") : Label(r.Kind);
     public static string Body(ReminderOccurrence r) => IsGlobalReset(r)
         ? r.Kind == ResetKind.Weekly
             ? Loc.F("{0} · Semaine probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
@@ -62,6 +77,8 @@ public static class ReminderPlanner
         ? r.Kind == ResetKind.Weekly
             ? Loc.F("{0} · Semaine probablement à 100 %.\nReset prévu le {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3}.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
             : Loc.F("{0} · 5 heures probablement à 100 %.\nReset prévu le {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3}.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
+        : r.Kind == ResetKind.Reserve
+        ? Loc.F("{0} · expire le {1:dd/MM/yyyy HH:mm zzz}.\nUtilisez-le dans {2} avant cette date pour ne pas le perdre.\nRelevé : {3:dd/MM/yyyy HH:mm zzz}.", r.AccountName, r.At.ToLocalTime(), r.ProviderName, r.ObservedAt.ToLocalTime())
         : Loc.F("{0} · {1}\nÉchéance : {2:dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {3:dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans {4}.", r.AccountName, Label(r.Kind), r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName);
     public static TimeZoneInfo Zone(PhonePolicy policy) => TimeZoneInfo.FindSystemTimeZoneById(policy.TimeZoneId);
     public static bool IsQuiet(DateTimeOffset now, PhonePolicy policy)

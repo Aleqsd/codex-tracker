@@ -31,6 +31,8 @@ internal static class EnglishCore
         ("Reset hebdomadaire", "Weekly reset"),
         ("Reset 5 heures", "5-hour reset"),
         ("Expiration de réserve", "Credit expiry"),
+        ("Un reset en réserve va expirer", "A reserve reset is about to expire"),
+        ("{0} · expire le {1:dd/MM/yyyy HH:mm zzz}.\nUtilisez-le dans {2} avant cette date pour ne pas le perdre.\nRelevé : {3:dd/MM/yyyy HH:mm zzz}.", "{0} · expires on {1:dd/MM/yyyy HH:mm zzz}.\nUse it in {2} before then so it is not lost.\nReading: {3:dd/MM/yyyy HH:mm zzz}."),
         ("Reset général annoncé comme terminé", "Global reset announced as complete"),
         ("Compte probablement rechargé", "Account probably refilled"),
         ("{0} · Semaine probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", "{0} · Weekly quota probably at 100%.\nPublicly confirmed on {1:dd/MM/yyyy HH:mm:ss zzz}.\nLast reading: {2:dd/MM/yyyy HH:mm:ss zzz}. Confirm in {3}; source in Resets."),

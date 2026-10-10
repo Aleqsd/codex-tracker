@@ -372,4 +372,50 @@ public sealed class ReminderTests
         }
         public void Dispose() { _http.Dispose(); _directory.Dispose(); }
     }
+
+    [Fact]
+    public void ReserveExpiryRemindsSeveralTimesOnAnyAccountWhateverItsQuota()
+    {
+        var reserve = ReminderPlanner.Normalize(ReminderPlanner.Defaults()).Where(r => r.Kind == ResetKind.Reserve).ToArray();
+        Assert.Equal([60, 360, 1440, 4320], reserve.Select(r => r.LeadMinutes[0]).Order());
+        Assert.All(reserve, r => { Assert.True(r.Enabled); Assert.Null(r.AccountIds); });
+        // An inactive account with a full quota still gets every crossed reminder; the dispatcher sends the nearest one.
+        var full = State(Now.AddHours(5));
+        full = full with { Accounts = [full.Accounts[0] with { IsActiveInCodex = false, Snapshot = full.Accounts[0].Snapshot! with
+            { Buckets = [new("codex", null, [new(0, 10080, Now.AddDays(3)), new(0, 300, Now.AddHours(4))])] } }] };
+        var due = ReminderPlanner.Due(full, reserve, Now).Where(r => r.Kind == ResetKind.Reserve).ToArray();
+        Assert.Equal([360, 1440, 4320], due.Select(r => r.LeadMinutes).Order());
+        Assert.Equal("Un reset en réserve va expirer", ReminderPlanner.Title(due[0]));
+        Assert.Contains("pour ne pas le perdre", ReminderPlanner.Body(due[0]));
+    }
+
+    [Fact]
+    public void FormerReserveDefaultsAreUpgradedButCustomisedOnesAreKept()
+    {
+        ReminderRule[] former = [new(ResetKind.Weekly, true, [1440], [ReminderChannel.Windows]), new(ResetKind.Reserve, false, [1440], [ReminderChannel.Windows]), new(ResetKind.Reserve, false, [60], [ReminderChannel.Windows])];
+        var upgraded = ReminderPlanner.UpgradeReserveDefaults(former).Where(r => r.Kind == ResetKind.Reserve).ToArray();
+        Assert.Equal([60, 360, 1440, 4320], upgraded.Select(r => r.LeadMinutes[0]).Order());
+        Assert.All(upgraded, r => Assert.False(r.Enabled));
+        Assert.Single(ReminderPlanner.UpgradeReserveDefaults(former), r => r.Kind == ResetKind.Weekly);
+        foreach (var custom in new ReminderRule[][] {
+            [new(ResetKind.Reserve, true, [1440], [ReminderChannel.Windows])],
+            [new(ResetKind.Reserve, true, [1440, 60], [ReminderChannel.Windows, ReminderChannel.Sms])],
+            [new(ResetKind.Reserve, true, [1440, 60], [ReminderChannel.Windows], [AccountId])] })
+            Assert.Equal(ReminderPlanner.Normalize(custom), ReminderPlanner.UpgradeReserveDefaults(custom), new RuleComparer());
+
+        using var directory = new TestDirectory();
+        File.WriteAllText(directory.File("preferences.json"), "{\"reminderRules\":[{\"kind\":\"Reserve\",\"enabled\":true,\"leadMinutes\":[1440],\"channels\":[\"Windows\"]},{\"kind\":\"Reserve\",\"enabled\":true,\"leadMinutes\":[60],\"channels\":[\"Windows\"]}]}");
+        var store = new PreferencesStore(dataDirectory: directory.Root);
+        Assert.Equal(4, store.Current.ReminderRules!.Count(r => r.Kind == ResetKind.Reserve));
+        // Once upgraded, a deliberate return to 24 h and 1 h stays as chosen.
+        store.Update(p => p with { ReminderRules = [new(ResetKind.Reserve, true, [1440], [ReminderChannel.Windows]), new(ResetKind.Reserve, true, [60], [ReminderChannel.Windows])] });
+        Assert.Equal(2, new PreferencesStore(dataDirectory: directory.Root).Current.ReminderRules!.Count(r => r.Kind == ResetKind.Reserve));
+    }
+
+    private sealed class RuleComparer : IEqualityComparer<ReminderRule>
+    {
+        public bool Equals(ReminderRule? x, ReminderRule? y) => x!.Kind == y!.Kind && x.Enabled == y.Enabled && x.LeadMinutes.SequenceEqual(y.LeadMinutes) &&
+            x.Channels.SequenceEqual(y.Channels) && (x.AccountIds ?? []).SequenceEqual(y.AccountIds ?? []);
+        public int GetHashCode(ReminderRule rule) => HashCode.Combine(rule.Kind, rule.LeadMinutes[0]);
+    }
 }
