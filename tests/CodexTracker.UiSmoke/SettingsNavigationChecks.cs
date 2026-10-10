@@ -29,6 +29,11 @@ internal static class SettingsNavigationChecks
             var settings = window.Settings;
             Check(tabs.Items.Cast<TabItem>().Select(item => item.Header?.ToString()).SequenceEqual(["Comptes", "Resets", "Réglages"]),
                 "Main navigation orders Accounts, Resets and Settings consistently");
+            // The tabs live in the caption area: WindowChrome only forwards clicks to elements opted in.
+            Check(tabs.Items.Cast<TabItem>().All(item =>
+                window.InputHitTest(item.TranslatePoint(new Point(item.ActualWidth / 2, item.ActualHeight / 2), window)) is IInputElement hit
+                && System.Windows.Shell.WindowChrome.GetIsHitTestVisibleInChrome(hit)),
+                "Main tabs in the title bar receive mouse clicks");
             Check(ReferenceEquals(settingsTab.Content, settings) && settingsTab.IsSelected && settings.IsVisible && window.OwnedWindows.Count == 0,
                 "Settings use a real embedded control without opening a second window");
             settingsTab.Focus();
