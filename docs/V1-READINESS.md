@@ -1,8 +1,17 @@
 # Préparer la version 1.0
 
-La **0.9.2** est la version de stabilisation courante. Le problème de comptes absents est expliqué et corrigé : la redirection MSIX créait deux stockages selon le mode de lancement. La signature de distribution, les essais physiques restants et la validation du binaire final restent nécessaires avant une 1.0 signée.
+La **0.9.18** est la version courante. La 1.0 sera **non signée** et distribuée par les Releases GitHub : la signature de code et WinGet ont été abandonnés le 10 octobre 2026. Il n’y a plus de CI distante ; la validation passe par `scripts/release.ps1` et par la mise à jour réelle du poste avec `scripts/update-this-pc.ps1`. Restent les essais physiques ci-dessous, le cycle de l’installateur en profil jetable et la validation du binaire final.
 
-## État au 23 septembre 2026
+## État au 10 octobre 2026
+
+- [x] Pipeline local vert sur la 0.9.18 (`d79ae19`) : 551 tests métier, suite WPF (322 contrôles), ZIP, Setup et SHA-256, protocole MCP stdio (14 contrôles) et collecteurs Claude Code (21 contrôles) sur l’exécutable publié, délai de démarrage MCP. Release publiée puis installée sur le poste par le moteur de mise à jour : quatre comptes conservés, `DisplayVersion` Windows identique à la version de l’EXE.
+- [x] Depuis la 0.9.13 : refonte de l’interface, animations, anglais, alertes d’épuisement, notifications actionnables, date du reset hebdomadaire Claude (relevé du terminal ou remise à zéro observée), Codex Pro sans quota de 5 heures, aperçu de l’icône à deux comptes. Couverts par les tests métier et la suite WPF.
+- [x] Aucun avis de vulnérabilité NuGet pour les dépendances directes et transitives (`dotnet list package --vulnerable --include-transitive`, 10 octobre 2026). Cela ne remplace pas un audit du code.
+- [ ] Cycle de l’installateur (`test-installer.ps1`) et mise à niveau publique (`test-published-update.ps1`, bouton et démarrage) dans un profil jetable : à relancer dans Windows Sandbox. Les preuves en profil vierge précèdent la 0.9.13 et le passage de la vérification des mises à jour à 15 minutes ; la désinstallation retire désormais l’enregistrement des notifications et n’a jamais été testée.
+- [ ] Réception réelle des notifications actionnables (Ouvrir, Rappeler plus tard) et effet de « Ne pas déranger ».
+- [ ] Passage manuel complet de l’interface en anglais.
+
+## Historique au 23 septembre 2026
 
 - [x] Stockage unifié, récupération des anciens comptes et vérification réelle après lancement normal puis depuis Codex. Les données d’origine restent sauvegardées. Voir [STORAGE-RECOVERY.md](STORAGE-RECOVERY.md).
 - [x] **396 tests métier**, suite WPF, protocole MCP publié et cycle de l’installateur réussis en [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35825263224).
@@ -12,17 +21,16 @@ La **0.9.2** est la version de stabilisation courante. Le problème de comptes a
 - [x] Candidature SignPath envoyée le 23 septembre 2026 ; réception confirmée par le formulaire, sans inscription aux communications commerciales.
 - [x] Première soumission WinGet mise à niveau vers la 0.9.2 corrigée : Setup public retéléchargé, empreinte identique et manifeste validé localement. Les contrôles Microsoft, dont installation et analyse du Setup, ont réussi. La [PR Microsoft](https://github.com/microsoft/winget-pkgs/pull/438574) attend toujours la revue manuelle ; le paquet n’est pas annoncé disponible dans le catalogue.
 - [x] Préparation WinGet couverte par 14 contrôles isolés et [CI Windows complète](https://github.com/Aleqsd/codex-tracker/actions/runs/35832082507) verte sur `109410f`. Aucun avis de vulnérabilité NuGet remonté pour les dépendances directes et transitives lors du contrôle du 23 septembre ; cela ne remplace pas un audit du code.
-- [ ] Choisir une voie de signature admissible puis vérifier sa première signature réelle. La candidature Foundation n’a pas obtenu d’accès ; ce point n’est plus simplement en attente de réponse. Voir [les alternatives et leurs contraintes](SIGNATURE.md).
+- Signature : abandonnée le 10 octobre 2026. La candidature Foundation n’avait pas obtenu d’accès ; l’intégration SignPath et ses scripts ont été retirés.
+- WinGet : abandonné le 10 octobre 2026 ; la PR Microsoft ci-dessus n’est plus suivie.
 - [ ] Essais matériels et bêta ci-dessous, puis fabrication et validation de l’exécutable final 1.0.
-
-Le parcours de signature est manuel et sa répétition ne contacte pas SignPath. Son admission et ses délais dépendent de la fondation ; une préparation ou un test simulé ne suffit pas à cocher la signature.
 
 ## Fonctions implémentées et couvertes
 
 - [x] Canal stable par défaut ; les préversions demandent un choix explicite. Changer de canal écarte le paquet et le cache de l’autre canal. Vérifié par tests HTTP, persistance et contrôles WPF.
 - [x] Fichiers endommagés : sauvegarde valide récupérée, avertissement visible, aucune réactivation silencieuse des rappels ou du MCP. Un journal d’envoi illisible suspend les rappels sans effacer les reçus. Vérifié avec fichiers fictifs et vraies vues WPF.
 - [x] Réglages intégrés au troisième onglet : navigation entre sept sections, conservation des saisies, avertissements de récupération et diagnostic sans comptes ni secrets. Couvert par les contrôles WPF ; les essais physiques restent distincts.
-- [x] Échec de démarrage MCP après 20 secondes : code de sortie non nul et explication sur stderr, sans texte parasite sur stdout. Régression reproduite sur la 0.9.2, corrigée et validée sur le candidat autonome et en [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35840768129). Prêt pour la prochaine version, pas encore inclus dans une Release.
+- [x] Échec de démarrage MCP après 20 secondes : code de sortie non nul et explication sur stderr, sans texte parasite sur stdout. Régression reproduite sur la 0.9.2, corrigée et validée sur le candidat autonome et en [CI Windows](https://github.com/Aleqsd/codex-tracker/actions/runs/35840768129). Livré depuis la 0.9.3 et contrôlé par `scripts/release.ps1` à chaque version.
 
 ## Vérifications déjà obtenues
 
@@ -35,7 +43,7 @@ Le parcours de signature est manuel et sa répétition ne contacte pas SignPath.
 
 Les preuves et limites sont consignées dans [VALIDATION.md](VALIDATION.md). Chaque case cochée vaut uniquement pour le scénario et la version indiqués. La suite WPF passe en CI pour la 0.9.1. Deux passages locaux avaient échoué sur le sélecteur de fuseau horaire avant correction du harnais de test ; la suite complète passe désormais aussi localement avec cette correction, sans modification du contrôle de production.
 
-Le [test entre Releases publiques](PUBLISHED-UPDATE-TEST.md) dispose d’un workflow Windows dédié, lancé à la demande. Les chemins du bouton et du prochain démarrage utilisent chacun un profil éphémère distinct ; aucun compte personnel n’est nécessaire. La recette accepte désormais les versions numériques publiques et le canal choisi explicitement ; chaque paire nécessite une exécution et son propre rapport.
+Le [test entre Releases publiques](PUBLISHED-UPDATE-TEST.md) se lance dans un profil Windows jetable (Windows Sandbox ou VM) ; son ancien workflow GitHub a été retiré avec la CI. Les chemins du bouton et du prochain démarrage utilisent chacun un profil éphémère distinct ; aucun compte personnel n’est nécessaire. La recette accepte désormais les versions numériques publiques et le canal choisi explicitement ; chaque paire nécessite une exécution et son propre rapport.
 
 ## Nouveau PC Windows 11 — 28 septembre 2026
 
@@ -60,8 +68,7 @@ Pour chaque essai, conserver la version exacte, la date, Windows et sa configura
 
 ## Validation du candidat 1.0
 
-- [ ] Finaliser la voie de signature retenue et contrôler le résultat sur les fichiers du candidat. La [préparation de la signature](SIGNATURE.md) décrit l’intégration existante et les alternatives. Aucune signature n’est revendiquée tant que les fichiers ne sont pas réellement signés.
-- [ ] Exécuter la CI Windows et le test MCP sur le binaire autonome exact destiné à la 1.0 ; résoudre ou expliquer toute différence avec les essais locaux.
+- [ ] Passer à 1.0.0 avec `scripts/bump.ps1`, puis exécuter `scripts/release.ps1 -Publish -UpdateThisPc` sur le commit exact destiné à la 1.0 ; résoudre ou expliquer toute différence avec les essais précédents.
 - [ ] Vérifier le Setup, le ZIP et leurs SHA-256, les notes courtes et la mise à niveau depuis la version publique retenue, en conservant les données existantes. Les preuves des 0.9.0 et 0.9.1 restent un historique, pas la validation du candidat.
 - [ ] Consigner les résultats des essais physiques et bêta ci-dessus, ainsi que les limites des intégrations facultatives, avant de décider la sortie stable.
 
