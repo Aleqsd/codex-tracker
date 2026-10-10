@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using CodexTracker.Core;
 
 namespace CodexTracker.Codex;
 
@@ -50,8 +51,8 @@ public static class CodexLocator
             }
         }
         if (lastError is null or 2 or 3)
-            throw new TrackerException("Le service Codex est introuvable. Installez ou mettez à jour Codex, puis relancez le tracker.", CodexFailureCode.CodexNotFound);
-        throw new TrackerException($"Windows ne peut pas démarrer le service Codex (erreur {lastError}). Ouvrez ou mettez à jour Codex, puis actualisez les quotas. Dernier relevé conservé.", CodexFailureCode.CodexLaunchFailed);
+            throw new TrackerException(Loc.T("Le service Codex est introuvable. Installez ou mettez à jour Codex, puis relancez le tracker."), CodexFailureCode.CodexNotFound);
+        throw new TrackerException(Loc.F("Windows ne peut pas démarrer le service Codex (erreur {0}). Ouvrez ou mettez à jour Codex, puis actualisez les quotas. Dernier relevé conservé.", lastError), CodexFailureCode.CodexLaunchFailed);
     }
 
     private static IReadOnlyList<string> FindUnder(string directory)

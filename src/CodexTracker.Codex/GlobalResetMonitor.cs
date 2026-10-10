@@ -79,8 +79,8 @@ public sealed class GlobalResetMonitor(IGlobalResetReader reader, Func<bool> ena
                     var rejected = ex is InvalidDataException or JsonException || ex is HttpRequestException { StatusCode: HttpStatusCode.NotFound or HttpStatusCode.Gone or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden };
                     var limited = ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests };
                     _state = _state with { Announcements = rejected ? [] : _state.Announcements, IsChecking = false,
-                        Error = rejected ? "Source non vérifiable · estimations retirées." : limited ? "Source temporairement limitée · nouvel essai dans 30 min."
-                            : _state.CheckedAt is null ? "Vérification impossible pour le moment." : "Sources indisponibles · dernier contrôle réussi conservé.",
+                        Error = rejected ? Loc.T("Source non vérifiable · estimations retirées.") : limited ? Loc.T("Source temporairement limitée · nouvel essai dans 30 min.")
+                            : _state.CheckedAt is null ? Loc.T("Vérification impossible pour le moment.") : Loc.T("Sources indisponibles · dernier contrôle réussi conservé."),
                         NextCheckAt = now.AddMinutes(30), ManualRetryAt = now.AddMinutes(limited ? 30 : 1) };
                 }
             }

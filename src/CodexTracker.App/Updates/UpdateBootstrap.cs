@@ -4,10 +4,12 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CodexTracker.Core;
 
 namespace CodexTracker.App.Updates;
 
-internal sealed record UpdateManifest(string Target, string StagedExecutable, string OldHash, string NewHash, int ParentId, long ParentStartedUtcTicks, bool RelaunchInBackground = true);
+internal sealed record UpdateManifest(string Target, string StagedExecutable, string OldHash, string NewHash, int ParentId, long ParentStartedUtcTicks, bool RelaunchInBackground = true,
+    bool English = false);
 
 public static class UpdateBootstrap
 {
@@ -17,18 +19,20 @@ public static class UpdateBootstrap
         if (index < 0) return false;
         try
         {
-            if (index + 1 >= args.Length) throw new InvalidDataException("Mise à jour incomplète.");
+            if (index + 1 >= args.Length) throw new InvalidDataException(Loc.T("Mise à jour incomplète."));
             var manifestPath = ValidateStageFile(args[index + 1], "update.json");
             var stage = Path.GetDirectoryName(manifestPath)!;
-            if (new FileInfo(manifestPath).Length > 8192) throw new InvalidDataException("Le manifeste de mise à jour est invalide.");
+            if (new FileInfo(manifestPath).Length > 8192) throw new InvalidDataException(Loc.T("Le manifeste de mise à jour est invalide."));
             var manifest = JsonSerializer.Deserialize<UpdateManifest>(await File.ReadAllTextAsync(manifestPath)) ?? throw new InvalidDataException();
+            // The helper runs before preferences are read: the manifest carries the language of the app being updated.
+            if (manifest.English) { Loc.Register(EnglishApp.All); Loc.Use(AppLanguage.English); }
             if (!string.Equals(Path.GetFullPath(manifest.StagedExecutable), Path.Combine(stage, "payload", "CodexTracker.exe"), StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Fichier de mise à jour invalide.");
+                throw new InvalidDataException(Loc.T("Fichier de mise à jour invalide."));
             using var parent = Process.GetProcessById(manifest.ParentId);
             if (parent.StartTime.ToUniversalTime().Ticks != manifest.ParentStartedUtcTicks ||
                 !string.Equals(Path.GetFullPath(parent.MainModule?.FileName ?? ""), Path.GetFullPath(manifest.Target), StringComparison.OrdinalIgnoreCase) ||
                 !string.Equals(Path.GetFileName(manifest.Target), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Le processus à mettre à jour n’a pas pu être vérifié.");
+                throw new InvalidDataException(Loc.T("Le processus à mettre à jour n’a pas pu être vérifié."));
             UpdatePackage.RejectReparsePoints(manifest.Target);
             await File.WriteAllTextAsync(Path.Combine(stage, "helper.ready"), "ready");
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -43,11 +47,11 @@ public static class UpdateBootstrap
                 (target, verifyHealth, token) => LaunchAsync(target, verifyHealth ? health : null, manifest.RelaunchInBackground, token));
             UpdateRegistration.Refresh(manifest.Target);
             await File.WriteAllTextAsync(Path.Combine(stage, "complete"), "complete");
-            await WriteResultAsync("La mise à jour a été installée.", true);
+            await WriteResultAsync(Loc.T("La mise à jour a été installée."), true);
         }
         catch (Exception error)
         {
-            await WriteResultAsync(error is OperationCanceledException ? "La mise à jour a été annulée car Codex Tracker n’a pas quitté à temps." : error.Message);
+            await WriteResultAsync(error is OperationCanceledException ? Loc.T("La mise à jour a été annulée car Codex Tracker n’a pas quitté à temps.") : error.Message);
         }
         return true;
     }
@@ -75,7 +79,7 @@ public static class UpdateBootstrap
         if (!string.Equals(Path.GetFileName(full), expectedName, StringComparison.Ordinal) ||
             !Guid.TryParseExact(Path.GetFileName(directory), "N", out _) ||
             !string.Equals(Path.GetDirectoryName(directory), root, StringComparison.OrdinalIgnoreCase))
-            throw new IOException("Le dossier de préparation de la mise à jour est invalide.");
+            throw new IOException(Loc.T("Le dossier de préparation de la mise à jour est invalide."));
         UpdatePackage.RejectReparsePoints(full);
         return full;
     }
@@ -100,7 +104,7 @@ public static class UpdateBootstrap
         using var exit = Process.Start(new ProcessStartInfo(target, "--exit") { UseShellExecute = false, CreateNoWindow = true });
         using var closeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try { await process.WaitForExitAsync(closeTimeout.Token); }
-        catch (OperationCanceledException) { throw new IOException("La nouvelle application reste ouverte. Quittez Codex Tracker avant de restaurer la copie de secours."); }
+        catch (OperationCanceledException) { throw new IOException(Loc.T("La nouvelle application reste ouverte. Quittez Codex Tracker avant de restaurer la copie de secours.")); }
         return false;
     }
 

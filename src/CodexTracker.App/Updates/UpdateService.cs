@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CodexTracker.Core;
 
 namespace CodexTracker.App.Updates;
 
@@ -69,7 +70,9 @@ public sealed partial class UpdateService : IDisposable
         try
         {
             var path = Path.Combine(UpdatesRoot, "last-result.json");
-            return File.Exists(path) ? JsonSerializer.Deserialize<UpdateOutcome>(File.ReadAllText(path)) : null;
+            var outcome = File.Exists(path) ? JsonSerializer.Deserialize<UpdateOutcome>(File.ReadAllText(path)) : null;
+            // An older helper, or a failure before the manifest was read, records French text.
+            return outcome?.Message is { } message ? outcome with { Message = Loc.T(message) } : outcome;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException) { return null; }
     }
@@ -122,7 +125,7 @@ public sealed partial class UpdateService : IDisposable
         if (processId != Environment.ProcessId) throw new InvalidOperationException("Le processus de mise à jour ne correspond pas à cette application.");
         await PrepareAsync(release, cancellationToken);
         if (!await LaunchPreparedAsync(false, false, cancellationToken))
-            throw new IOException("La mise à jour n’est plus prête. Recherchez-la à nouveau.");
+            throw new IOException(Loc.T("La mise à jour n’est plus prête. Recherchez-la à nouveau."));
     }
 
     public static bool CanSelfUpdate => Environment.ProcessPath is { } path &&
@@ -132,11 +135,11 @@ public sealed partial class UpdateService : IDisposable
     public async Task<bool> LaunchPreparedAsync(bool automatic, bool background, CancellationToken cancellationToken = default)
     {
         var channelRevision = _channelRevision;
-        var target = Environment.ProcessPath ?? throw new IOException("L’application en cours est introuvable.");
+        var target = Environment.ProcessPath ?? throw new IOException(Loc.T("L’application en cours est introuvable."));
         if (!string.Equals(Path.GetFileName(target), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase))
-            throw new IOException("Utilisez la version installée ou portable pour effectuer la mise à jour.");
+            throw new IOException(Loc.T("Utilisez la version installée ou portable pour effectuer la mise à jour."));
         if (File.Exists(Path.Combine(Path.GetDirectoryName(target)!, "CodexTracker.dll")))
-            throw new IOException("La mise à jour automatique nécessite la version autonome installée ou portable.");
+            throw new IOException(Loc.T("La mise à jour automatique nécessite la version autonome installée ou portable."));
         UpdatePackage.RejectReparsePoints(target);
         UpdatePackage.RejectReparsePoints(UpdatesRoot);
         var prepared = await ClaimPreparedAsync(automatic, cancellationToken);
@@ -151,12 +154,12 @@ public sealed partial class UpdateService : IDisposable
             Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
             File.Copy(PreparedExecutable(prepared), executable, false);
             if (!string.Equals(await UpdatePackage.HashAsync(executable, cancellationToken), prepared.ExecutableHash, StringComparison.OrdinalIgnoreCase))
-                throw new IOException("Le fichier téléchargé a changé depuis la préparation.");
+                throw new IOException(Loc.T("Le fichier téléchargé a changé depuis la préparation."));
             var helper = Path.Combine(stage, "CodexTracker.UpdateHelper.exe");
             File.Copy(target, helper, false);
             using var current = Process.GetCurrentProcess();
             var manifest = new UpdateManifest(target, executable, await UpdatePackage.HashAsync(target, cancellationToken),
-                prepared.ExecutableHash, Environment.ProcessId, current.StartTime.ToUniversalTime().Ticks, background);
+                prepared.ExecutableHash, Environment.ProcessId, current.StartTime.ToUniversalTime().Ticks, background, Loc.IsEnglish);
             var manifestPath = Path.Combine(stage, "update.json");
             await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest), cancellationToken);
             var info = new ProcessStartInfo(helper) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = stage };
@@ -165,7 +168,7 @@ public sealed partial class UpdateService : IDisposable
             lock (_checkGate)
             {
                 EnsureChannel(channelRevision);
-                child = Process.Start(info) ?? throw new IOException("Le programme de mise à jour n’a pas démarré.");
+                child = Process.Start(info) ?? throw new IOException(Loc.T("Le programme de mise à jour n’a pas démarré."));
             }
             using var childLifetime = child;
             helperStarted = true;
@@ -196,7 +199,7 @@ public sealed partial class UpdateService : IDisposable
             while (!ready())
             {
                 ensureCurrentChannel();
-                if (exited()) throw new IOException("Le programme de mise à jour n’a pas pu préparer l’installation.");
+                if (exited()) throw new IOException(Loc.T("Le programme de mise à jour n’a pas pu préparer l’installation."));
                 await Task.Delay(100, wait.Token);
             }
             // Readiness is not permission to install after the user changes release channels.
@@ -212,7 +215,7 @@ public sealed partial class UpdateService : IDisposable
         var name = $"CodexTracker-{release.Version}-win-x64.zip";
         if (version?.Text != release.Version || version.CompareTo(SemanticVersion.Parse(CurrentVersion)) <= 0 ||
             release.Size is <= 0 or > UpdatePackage.MaximumArchiveBytes || !IsReleaseUri(release.DownloadUrl, release.Tag, name) ||
-            !IsReleaseUri(release.ChecksumUrl, release.Tag, name + ".sha256")) throw new InvalidDataException("La source de mise à jour n’est pas autorisée.");
+            !IsReleaseUri(release.ChecksumUrl, release.Tag, name + ".sha256")) throw new InvalidDataException(Loc.T("La source de mise à jour n’est pas autorisée."));
         UpdatePackage.RejectReparsePoints(stage);
         Directory.CreateDirectory(stage);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -223,11 +226,11 @@ public sealed partial class UpdateService : IDisposable
         using (var response = await GetAsync(release.DownloadUrl, true, timeout.Token))
         {
             if (response.Content.Headers.ContentLength is { } length && length != release.Size)
-                throw new InvalidDataException("La taille de la mise à jour ne correspond pas à la publication.");
+                throw new InvalidDataException(Loc.T("La taille de la mise à jour ne correspond pas à la publication."));
             await using var source = await response.Content.ReadAsStreamAsync(timeout.Token);
             await using var output = new FileStream(archive, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             await CopyBoundedAsync(source, output, release.Size, timeout.Token);
-            if (output.Length != release.Size) throw new InvalidDataException("Le téléchargement de la mise à jour est incomplet.");
+            if (output.Length != release.Size) throw new InvalidDataException(Loc.T("Le téléchargement de la mise à jour est incomplet."));
         }
         await UpdatePackage.VerifyAsync(archive, checksum, name, timeout.Token);
         return await UpdatePackage.ExtractExecutableAsync(archive, Path.Combine(stage, "payload"), timeout.Token);
@@ -247,16 +250,16 @@ public sealed partial class UpdateService : IDisposable
                 response.Dispose();
                 if (!asset || next is null || !next.IsAbsoluteUri || next.Scheme != "https" || next.UserInfo.Length != 0 || !next.IsDefaultPort ||
                     !(next.Host.Equals("release-assets.githubusercontent.com", StringComparison.OrdinalIgnoreCase) || next.Host.Equals("objects.githubusercontent.com", StringComparison.OrdinalIgnoreCase)))
-                    throw new IOException("GitHub a renvoyé une redirection de téléchargement non autorisée.");
+                    throw new IOException(Loc.T("GitHub a renvoyé une redirection de téléchargement non autorisée."));
                 uri = next; continue;
             }
             if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
-            { response.Dispose(); throw new IOException("GitHub limite temporairement les vérifications. Réessayez plus tard."); }
+            { response.Dispose(); throw new IOException(Loc.T("GitHub limite temporairement les vérifications. Réessayez plus tard.")); }
             if (!response.IsSuccessStatusCode)
-            { response.Dispose(); throw new IOException("La mise à jour est indisponible sur GitHub. Réessayez plus tard."); }
+            { response.Dispose(); throw new IOException(Loc.T("La mise à jour est indisponible sur GitHub. Réessayez plus tard.")); }
             return response;
         }
-        throw new IOException("Le téléchargement comporte trop de redirections.");
+        throw new IOException(Loc.T("Le téléchargement comporte trop de redirections."));
     }
 
     private static bool IsReleaseUri(Uri uri, string tag, string asset) => uri.Scheme == "https" && uri.IsDefaultPort && uri.UserInfo.Length == 0 &&
@@ -265,7 +268,7 @@ public sealed partial class UpdateService : IDisposable
 
     private static async Task<byte[]> ReadBoundedAsync(HttpResponseMessage response, long maximum, CancellationToken token)
     {
-        if (response.Content.Headers.ContentLength > maximum) throw new InvalidDataException("La réponse de mise à jour est trop volumineuse.");
+        if (response.Content.Headers.ContentLength > maximum) throw new InvalidDataException(Loc.T("La réponse de mise à jour est trop volumineuse."));
         await using var source = await response.Content.ReadAsStreamAsync(token);
         using var memory = new MemoryStream();
         await CopyBoundedAsync(source, memory, maximum, token);
@@ -280,7 +283,7 @@ public sealed partial class UpdateService : IDisposable
             var count = await source.ReadAsync(buffer, token);
             if (count == 0) break;
             total = checked(total + count);
-            if (total > maximum) throw new InvalidDataException("La mise à jour dépasse la taille autorisée.");
+            if (total > maximum) throw new InvalidDataException(Loc.T("La mise à jour dépasse la taille autorisée."));
             await destination.WriteAsync(buffer.AsMemory(0, count), token);
         }
     }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using CodexTracker.Core;
 
 namespace CodexTracker.Codex;
 
@@ -12,8 +13,8 @@ internal sealed record AuthDocument(string Email, string AccountId, string Acces
     {
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("tokens", out var tokens) || tokens.ValueKind != JsonValueKind.Object)
-            throw new TrackerException("Cette session ne contient pas de connexion ChatGPT gérée par Codex. Connectez-vous dans Codex avec votre compte ChatGPT.", CodexFailureCode.UnsupportedSession);
-        var access = Read(tokens, "access_token") ?? throw new TrackerException("La session Codex est incomplète. Ouvrez ce compte dans Codex pour l'actualiser.", CodexFailureCode.UnsupportedSession);
+            throw new TrackerException(Loc.T("Cette session ne contient pas de connexion ChatGPT gérée par Codex. Connectez-vous dans Codex avec votre compte ChatGPT."), CodexFailureCode.UnsupportedSession);
+        var access = Read(tokens, "access_token") ?? throw new TrackerException(Loc.T("La session Codex est incomplète. Ouvrez ce compte dans Codex pour l'actualiser."), CodexFailureCode.UnsupportedSession);
         var id = Read(tokens, "id_token");
         using var claims = ParseClaims(id ?? access);
         using var accessClaims = ParseClaims(access);
@@ -23,7 +24,7 @@ internal sealed record AuthDocument(string Email, string AccountId, string Acces
         var plan = Nested(claims.RootElement, "https://api.openai.com/auth", "chatgpt_plan_type")
             ?? Nested(accessClaims.RootElement, "https://api.openai.com/auth", "chatgpt_plan_type");
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(accountId))
-            throw new TrackerException("L'identité de cette session est indisponible. Ouvrez ce compte dans Codex pour l'actualiser.", CodexFailureCode.UnsupportedSession);
+            throw new TrackerException(Loc.T("L'identité de cette session est indisponible. Ouvrez ce compte dans Codex pour l'actualiser."), CodexFailureCode.UnsupportedSession);
         // These fields describe the active subscription period, never token issuance or token expiry.
         var startedAt = id is null ? null : ReadSubscriptionTimestamp(claims.RootElement, "chatgpt_subscription_active_start");
         var endsAt = id is null ? null : ReadSubscriptionTimestamp(claims.RootElement, "chatgpt_subscription_active_until");
@@ -57,18 +58,18 @@ internal sealed record AuthDocument(string Email, string AccountId, string Acces
     private static JsonDocument ParseClaims(string token)
     {
         var pieces = token.Split('.');
-        if (pieces.Length != 3) throw new TrackerException("Le format de la session Codex n'est pas pris en charge.", CodexFailureCode.UnsupportedSession);
+        if (pieces.Length != 3) throw new TrackerException(Loc.T("Le format de la session Codex n'est pas pris en charge."), CodexFailureCode.UnsupportedSession);
         var value = pieces[1].Replace('-', '+').Replace('_', '/');
         value = value.PadRight(value.Length + (4 - value.Length % 4) % 4, '=');
         try
         {
             var document = JsonDocument.Parse(Convert.FromBase64String(value));
             if (document.RootElement.ValueKind != JsonValueKind.Object)
-            { document.Dispose(); throw new TrackerException("Le format de la session Codex n'est pas pris en charge.", CodexFailureCode.UnsupportedSession); }
+            { document.Dispose(); throw new TrackerException(Loc.T("Le format de la session Codex n'est pas pris en charge."), CodexFailureCode.UnsupportedSession); }
             return document;
         }
         catch (Exception ex) when (ex is FormatException or JsonException)
-        { throw new TrackerException("Le format de la session Codex n'est pas pris en charge.", CodexFailureCode.UnsupportedSession); }
+        { throw new TrackerException(Loc.T("Le format de la session Codex n'est pas pris en charge."), CodexFailureCode.UnsupportedSession); }
     }
 
     internal static string? Read(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object &&

@@ -38,10 +38,10 @@ public static class UsageAnalytics
 
     public static UsageForecast Estimate(IReadOnlyList<UsageSample> history, DateTimeOffset now)
     {
-        if (history.Count == 0) return Unavailable("L'estimation apparaîtra après au moins 15 minutes de suivi continu.");
+        if (history.Count == 0) return Unavailable(Loc.T("L'estimation apparaîtra après au moins 15 minutes de suivi continu."));
         var ordered = history.Where(IsValid).OrderBy(p => p.Timestamp).ToArray();
         if (ordered.Length == 0 || now - ordered[^1].Timestamp > MaximumObservationGap || ordered[^1].Timestamp > now + TimeSpan.FromMinutes(1))
-            return Unavailable("Le dernier relevé est trop ancien pour estimer la consommation actuelle.");
+            return Unavailable(Loc.T("Le dernier relevé est trop ancien pour estimer la consommation actuelle."));
         var weekly = EstimateWindow(ordered, now, UsageWindowKind.Weekly);
         var shortWindow = EstimateWindow(ordered, now, UsageWindowKind.Short);
         var valid = new[] { weekly, shortWindow }.Where(f => f.EstimatedExhaustionAt is not null)
@@ -55,9 +55,10 @@ public static class UsageAnalytics
         var latest = history[^1];
         var remaining = Remaining(latest, window);
         var reset = Reset(latest, window);
-        var label = window == UsageWindowKind.Weekly ? "hebdomadaire" : "de 5 heures";
-        if (remaining is null || reset is null) return Unavailable($"Les informations du quota {label} sont insuffisantes.", window);
-        if (reset <= now) return Unavailable("En attente d'un relevé confirmant la nouvelle période de quota.", window);
+        var weekly = window == UsageWindowKind.Weekly;
+        if (remaining is null || reset is null) return Unavailable(weekly ? Loc.T("Les informations du quota hebdomadaire sont insuffisantes.")
+            : Loc.T("Les informations du quota de 5 heures sont insuffisantes."), window);
+        if (reset <= now) return Unavailable(Loc.T("En attente d'un relevé confirmant la nouvelle période de quota."), window);
         var segment = new List<UsageSample> { latest };
         for (var i = history.Length - 2; i >= 0; i--)
         {
@@ -70,11 +71,11 @@ public static class UsageAnalytics
         }
         segment.Reverse();
         if (segment.Count < 3 || latest.Timestamp - segment[0].Timestamp < TimeSpan.FromMinutes(15))
-            return Unavailable("Il faut au moins 15 minutes de suivi continu dans la même période de quota.", window);
+            return Unavailable(Loc.T("Il faut au moins 15 minutes de suivi continu dans la même période de quota."), window);
         var first = segment[0];
         var elapsedHours = (latest.Timestamp - first.Timestamp).TotalHours;
         var consumed = Remaining(first, window)!.Value - remaining.Value;
-        if (consumed <= 0.1 || elapsedHours <= 0) return Unavailable("Aucune consommation régulière mesurable sur cette période.", window);
+        if (consumed <= 0.1 || elapsedHours <= 0) return Unavailable(Loc.T("Aucune consommation régulière mesurable sur cette période."), window);
 
         // Fit the observed trend, and decline to extrapolate a substantially irregular workload.
         var xs = segment.Select(p => (p.Timestamp - first.Timestamp).TotalHours).ToArray();
@@ -87,13 +88,15 @@ public static class UsageAnalytics
         var varianceY = ys.Sum(y => Math.Pow(y - meanY, 2));
         var rSquared = varianceY > 0 ? covariance * covariance / (varianceX * varianceY) : 0;
         if (!double.IsFinite(slope) || slope >= 0 || rSquared < 0.5)
-            return Unavailable("Le rythme de consommation est trop irrégulier pour une estimation fiable.", window);
+            return Unavailable(Loc.T("Le rythme de consommation est trop irrégulier pour une estimation fiable."), window);
         var hours = remaining.Value / -slope;
         if (!double.IsFinite(hours) || hours > (reset.Value - latest.Timestamp).TotalHours)
-            return new(null, null, $"Au rythme observé, le reset du quota {label} devrait précéder son épuisement.", window, LastsUntilReset: true);
+            return new(null, null, weekly ? Loc.T("Au rythme observé, le reset du quota hebdomadaire devrait précéder son épuisement.")
+                : Loc.T("Au rythme observé, le reset du quota de 5 heures devrait précéder son épuisement."), window, LastsUntilReset: true);
         var exhaustion = latest.Timestamp + TimeSpan.FromHours(hours);
         var timeLeft = exhaustion > now ? exhaustion - now : TimeSpan.Zero;
-        return new(timeLeft, exhaustion, $"Estimation du quota {label}, si le rythme observé reste comparable.", window);
+        return new(timeLeft, exhaustion, weekly ? Loc.T("Estimation du quota hebdomadaire, si le rythme observé reste comparable.")
+            : Loc.T("Estimation du quota de 5 heures, si le rythme observé reste comparable."), window);
     }
 
     public static bool IsValid(UsageSample sample) => sample.AccountId != Guid.Empty &&

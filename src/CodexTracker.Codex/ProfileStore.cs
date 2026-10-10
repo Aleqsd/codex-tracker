@@ -27,7 +27,7 @@ internal sealed partial class ProfileStore(string root) : IDisposable
     {
         SecureDirectory(_root);
         try { _lease = new FileStream(Path.Combine(_root, ".lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-        catch (IOException) { throw new TrackerException("Codex Tracker est déjà ouvert. Fermez l'autre instance avant de continuer."); }
+        catch (IOException) { throw new TrackerException(Loc.T("Codex Tracker est déjà ouvert. Fermez l'autre instance avant de continuer.")); }
         SecureDirectory(Runtime);
         SecureDirectory(Usage);
         foreach (var directory in Directory.EnumerateDirectories(Runtime))
@@ -43,10 +43,10 @@ internal sealed partial class ProfileStore(string root) : IDisposable
         var loaded = RecoverableJsonFile.Read(path, ParseSettings);
         if (loaded.Value is { } settings)
         {
-            if (loaded.RecoveryRequired) Warn("Les comptes ont été récupérés depuis la dernière sauvegarde locale valide. Le fichier d’origine est conservé.");
+            if (loaded.RecoveryRequired) Warn(Loc.T("Les comptes ont été récupérés depuis la dernière sauvegarde locale valide. Le fichier d’origine est conservé."));
             return settings;
         }
-        if (loaded.RecoveryRequired) throw new TrackerException("La liste des comptes et sa sauvegarde sont illisibles. Vos fichiers sont conservés ; aucune réinitialisation automatique n’a été effectuée. Restaurez une sauvegarde locale valide avant de relancer le tracker.");
+        if (loaded.RecoveryRequired) throw new TrackerException(Loc.T("La liste des comptes et sa sauvegarde sont illisibles. Vos fichiers sont conservés ; aucune réinitialisation automatique n’a été effectuée. Restaurez une sauvegarde locale valide avant de relancer le tracker."));
         var seed = Path.Combine(_root, "initial-accounts.json");
         var emails = File.Exists(seed) ? JsonSerializer.Deserialize<string[]>(File.ReadAllText(seed), Json) ?? [] : [];
         return new(emails.Where(email => !string.IsNullOrWhiteSpace(email) && IsEmail(email)).Distinct(StringComparer.OrdinalIgnoreCase)
@@ -58,8 +58,8 @@ internal sealed partial class ProfileStore(string root) : IDisposable
         var path = Path.Combine(_root, "snapshots.json");
         var loaded = RecoverableJsonFile.Read(path, ParseSnapshots);
         if (loaded.RecoveryRequired) Warn(loaded.UsedBackup
-            ? "Les derniers relevés ont été récupérés depuis la sauvegarde locale. Leurs dates d’observation restent inchangées."
-            : "Les relevés locaux sont illisibles. Ils restent conservés ; seul le compte ouvert dans Codex peut être actualisé.");
+            ? Loc.T("Les derniers relevés ont été récupérés depuis la sauvegarde locale. Leurs dates d’observation restent inchangées.")
+            : Loc.T("Les relevés locaux sont illisibles. Ils restent conservés ; seul le compte ouvert dans Codex peut être actualisé."));
         return loaded.Value ?? [];
     }
 
@@ -135,7 +135,7 @@ internal sealed partial class ProfileStore(string root) : IDisposable
     internal static void SecureDirectory(string path)
     {
         var directory = Directory.CreateDirectory(path);
-        var sid = WindowsIdentity.GetCurrent().User ?? throw new TrackerException("L'identité Windows est indisponible.");
+        var sid = WindowsIdentity.GetCurrent().User ?? throw new TrackerException(Loc.T("L'identité Windows est indisponible."));
         var security = new DirectorySecurity();
         security.SetAccessRuleProtection(true, false);
         security.SetOwner(sid);

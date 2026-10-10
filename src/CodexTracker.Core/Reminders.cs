@@ -50,15 +50,19 @@ public static class ReminderPlanner
         return result.DistinctBy(r => r.Key).OrderBy(r => r.At).ThenBy(r => r.LeadMinutes).ToArray();
     }
     public static string EventKey(ReminderOccurrence r) => $"{r.AccountId}/{r.Kind}/{r.CreditId}/{r.At.UtcTicks}/{r.Channel}";
-    public static string Label(ResetKind kind) => kind switch { ResetKind.Weekly => "Reset hebdomadaire", ResetKind.Short => "Reset 5 heures", _ => "Expiration de réserve" };
+    public static string Label(ResetKind kind) => kind switch { ResetKind.Weekly => Loc.T("Reset hebdomadaire"), ResetKind.Short => Loc.T("Reset 5 heures"), _ => Loc.T("Expiration de réserve") };
     public static bool IsGlobalReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("global/", StringComparison.Ordinal);
     public static bool IsExpectedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && (r.Key.StartsWith("expected/", StringComparison.Ordinal) || IsGlobalReset(r));
-    public static string Title(ReminderOccurrence r) => IsGlobalReset(r) ? "Reset général annoncé comme terminé" : IsExpectedReset(r) ? "Compte probablement rechargé" : Label(r.Kind);
+    public static string Title(ReminderOccurrence r) => IsGlobalReset(r) ? Loc.T("Reset général annoncé comme terminé") : IsExpectedReset(r) ? Loc.T("Compte probablement rechargé") : Label(r.Kind);
     public static string Body(ReminderOccurrence r) => IsGlobalReset(r)
-        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nConfirmation publique du {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {r.ProviderName} ; source dans Resets."
+        ? r.Kind == ResetKind.Weekly
+            ? Loc.F("{0} · Semaine probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
+            : Loc.F("{0} · 5 heures probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
         : IsExpectedReset(r)
-        ? $"{r.AccountName} · {(r.Kind == ResetKind.Weekly ? "Semaine" : "5 heures")} probablement à 100 %.\nReset prévu le {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {r.ProviderName}."
-        : $"{r.AccountName} · {Label(r.Kind)}\nÉchéance : {r.At.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {r.ObservedAt.ToLocalTime():dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans {r.ProviderName}.";
+        ? r.Kind == ResetKind.Weekly
+            ? Loc.F("{0} · Semaine probablement à 100 %.\nReset prévu le {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3}.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
+            : Loc.F("{0} · 5 heures probablement à 100 %.\nReset prévu le {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3}.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
+        : Loc.F("{0} · {1}\nÉchéance : {2:dd/MM/yyyy HH:mm:ss zzz}\nRelevé : {3:dd/MM/yyyy HH:mm:ss zzz}\nÀ confirmer dans {4}.", r.AccountName, Label(r.Kind), r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName);
     public static TimeZoneInfo Zone(PhonePolicy policy) => TimeZoneInfo.FindSystemTimeZoneById(policy.TimeZoneId);
     public static bool IsQuiet(DateTimeOffset now, PhonePolicy policy)
     {

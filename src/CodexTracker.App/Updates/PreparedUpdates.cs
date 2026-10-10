@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CodexTracker.Core;
 
 namespace CodexTracker.App.Updates;
 
@@ -55,15 +56,15 @@ public sealed partial class UpdateService
                 if (channelRevision != _channelRevision) return null;
                 Prepared = pending;
                 PreparationMessage = pending.AutomaticAttempted
-                    ? $"Version {pending.Release.Version} prête. L’installation automatique a déjà été tentée ; vous pouvez réessayer."
-                    : $"Version {pending.Release.Version} téléchargée et vérifiée.";
+                    ? Loc.F("Version {0} prête. L’installation automatique a déjà été tentée ; vous pouvez réessayer.", pending.Release.Version)
+                    : Loc.F("Version {0} téléchargée et vérifiée.", pending.Release.Version);
             }
             return pending;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException)
         {
             if (channelRevision == _channelRevision)
-                PreparationMessage = "La mise à jour préparée est absente ou invalide. Relancez sa recherche pour la télécharger à nouveau.";
+                PreparationMessage = Loc.T("La mise à jour préparée est absente ou invalide. Relancez sa recherche pour la télécharger à nouveau.");
             return null;
         }
         finally { PreparationChanged?.Invoke(this, EventArgs.Empty); }
@@ -74,20 +75,20 @@ public sealed partial class UpdateService
     public async Task<PreparedUpdate> PrepareAsync(UpdateRelease release, CancellationToken token = default)
     {
         if (!IsCachedReleaseValid(release) || !IsReleaseAllowed(release, IncludePrereleases) || SemanticVersion.Parse(release.Version)!.CompareTo(SemanticVersion.Parse(CurrentVersion)) <= 0)
-            throw new InvalidDataException("La source de mise à jour n’est pas autorisée.");
+            throw new InvalidDataException(Loc.T("La source de mise à jour n’est pas autorisée."));
         await _preparationGate.WaitAsync(token);
         var channelRevision = _channelRevision;
         var previews = IncludePrereleases;
         string? stage = null;
         try
         {
-            if (!IsReleaseAllowed(release, previews)) throw new OperationCanceledException("Le canal de mise à jour a changé.");
+            if (!IsReleaseAllowed(release, previews)) throw new OperationCanceledException(Loc.T("Le canal de mise à jour a changé."));
             var previous = await LoadPreparedCoreAsync(token);
             EnsureChannel(channelRevision);
             if (previous is not null && SemanticVersion.Parse(previous.Release.Version)!.CompareTo(SemanticVersion.Parse(release.Version)) >= 0)
                 return previous;
             IsPreparing = true;
-            PreparationMessage = $"Téléchargement de la version {release.Version}…";
+            PreparationMessage = Loc.F("Téléchargement de la version {0}…", release.Version);
             PreparationChanged?.Invoke(this, EventArgs.Empty);
             UpdatePackage.RejectReparsePoints(PreparationRoot);
             var id = Guid.NewGuid().ToString("N");
@@ -102,7 +103,7 @@ public sealed partial class UpdateService
             {
                 EnsureChannel(channelRevision);
                 Prepared = prepared;
-                PreparationMessage = $"Version {release.Version} téléchargée et vérifiée.";
+                PreparationMessage = Loc.F("Version {0} téléchargée et vérifiée.", release.Version);
             }
             try { File.Delete(Path.Combine(stage, "abandoned")); }
             catch (IOException) { }
@@ -114,7 +115,7 @@ public sealed partial class UpdateService
         {
             if (stage is not null) MarkAbandoned(stage);
             if (channelRevision == _channelRevision)
-                PreparationMessage = "Téléchargement interrompu. Le suivi continue ; une nouvelle tentative sera effectuée plus tard.";
+                PreparationMessage = Loc.T("Téléchargement interrompu. Le suivi continue ; une nouvelle tentative sera effectuée plus tard.");
             throw;
         }
         finally { IsPreparing = false; _preparationGate.Release(); PreparationChanged?.Invoke(this, EventArgs.Empty); }
@@ -145,7 +146,7 @@ public sealed partial class UpdateService
 
     private void EnsureChannel(int revision)
     {
-        if (revision != _channelRevision) throw new OperationCanceledException("Le canal de mise à jour a changé.");
+        if (revision != _channelRevision) throw new OperationCanceledException(Loc.T("Le canal de mise à jour a changé."));
     }
 
     private async Task SavePreparedAsync(PreparedUpdate pending, bool previews, CancellationToken token)

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
+using CodexTracker.Core;
 
 namespace CodexTracker.Codex;
 
@@ -41,7 +42,7 @@ public static class DesktopEnvironment
     public static int StartUnvirtualized(string executable, IEnumerable<string> arguments)
     {
         GetWindowThreadProcessId(GetShellWindow(), out var shellId);
-        if (shellId == 0) throw new InvalidOperationException("Le bureau Windows n’est pas disponible. Lancez le tracker depuis le menu Démarrer.");
+        if (shellId == 0) throw new InvalidOperationException(Loc.T("Le bureau Windows n’est pas disponible. Lancez le tracker depuis le menu Démarrer."));
         using var shell = OpenProcess(0x0080, false, shellId); // PROCESS_CREATE_PROCESS only.
         if (shell.IsInvalid) throw new Win32Exception();
         nint bytes = 0;

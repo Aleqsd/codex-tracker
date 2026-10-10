@@ -24,17 +24,17 @@ public static class CalendarExport
         foreach (var account in state.Accounts)
         {
             if (account.Snapshot is not { } snapshot) continue;
-            var description = $"Date prévue selon le relevé du {snapshot.FetchedAt:dd/MM/yyyy HH:mm:ss zzz}. " +
-                $"Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans {account.Profile.ProviderName}.";
+            var description = Loc.F("Date prévue selon le relevé du {0:dd/MM/yyyy HH:mm:ss zzz}. Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans {1}.",
+                snapshot.FetchedAt, account.Profile.ProviderName);
             void Add(string kind, string id, string title, DateTimeOffset? date)
             {
                 if (date is not { } at || at <= now) return;
                 result.Add(new(Identity(account.Profile.Id, kind, id, at) + "@codex-tracker.local", $"{name(account.Profile)} · {title}", description, at));
             }
-            Add("quota", "weekly", $"Reset {account.Profile.ProviderName} · semaine", QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now));
-            Add("quota", "short", $"Reset {account.Profile.ProviderName} · 5 heures", QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now));
+            Add("quota", "weekly", Loc.F("Reset {0} · semaine", account.Profile.ProviderName), QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now));
+            Add("quota", "short", Loc.F("Reset {0} · 5 heures", account.Profile.ProviderName), QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now));
             if (snapshot.AvailableResetCredits > 0)
-                foreach (var credit in snapshot.ResetCredits ?? []) Add("credit", credit.Id, "Expiration d’un reset en réserve", credit.ExpiresAt);
+                foreach (var credit in snapshot.ResetCredits ?? []) Add("credit", credit.Id, Loc.T("Expiration d’un reset en réserve"), credit.ExpiresAt);
         }
         return result.DistinctBy(e => e.Uid).OrderBy(e => e.StartsAt).ToArray();
     }

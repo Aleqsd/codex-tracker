@@ -25,18 +25,18 @@ public static class AccountAdvisor
         var activeAccounts = state.Accounts.Where(a => a.IsActiveInCodex).ToArray();
         if (activeAccounts.Length != 1 || state.Accounts.GroupBy(a => a.Profile.Id).Any(g => g.Count() > 1) ||
             state.Accounts.GroupBy(a => a.Profile.Email, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
-            return Unavailable("Le compte actuellement ouvert dans Codex n’est pas identifié avec certitude.");
+            return Unavailable(Loc.T("Le compte actuellement ouvert dans Codex n’est pas identifié avec certitude."));
 
         var active = activeAccounts[0];
         if (state.ManualCodexReset is { } reset && (reset.Applies(active, ResetKind.Weekly, now) || reset.Applies(active, ResetKind.Short, now)))
-            return Unavailable("Un reset Codex a été déclaré. Un nouveau relevé mesuré est nécessaire avant de conseiller un autre compte.");
+            return Unavailable(Loc.T("Un reset Codex a été déclaré. Un nouveau relevé mesuré est nécessaire avant de conseiller un autre compte."));
         if (!TryObserve(active, now, MaximumActiveAge, out var current, out var unavailableReason))
             return Unavailable(unavailableReason);
 
         if (Comfortable(current!))
             return new(active.Profile.Id, AccountAdviceKind.CurrentComfortable, AccountAdviceConfidence.RecentObservation,
-                "Compte actuel confortable",
-                $"Les quotas de 5 heures et de la semaine dépassent 20 % dans le relevé du {Stamp(current!.FetchedAt)}.",
+                Loc.T("Compte actuel confortable"),
+                Loc.F("Les quotas de 5 heures et de la semaine dépassent 20 % dans le relevé du {0}.", Stamp(current!.FetchedAt)),
                 current.FetchedAt, NextReset(current));
 
         // Every eligible account meets the same qualitative condition. Recency, rather than raw
@@ -48,13 +48,13 @@ public static class AccountAdvisor
             .FirstOrDefault();
 
         if (candidate is null)
-            return Unavailable("Un quota du compte actuel est à 20 % ou moins. Aucun autre relevé assez récent, complet et sans reset atteint ne permet de suggérer un compte à vérifier.",
+            return Unavailable(Loc.T("Un quota du compte actuel est à 20 % ou moins. Aucun autre relevé assez récent, complet et sans reset atteint ne permet de suggérer un compte à vérifier."),
                 current!.FetchedAt, NextReset(current));
 
         var previous = candidate.Snapshot!;
         return new(candidate.Profile.Id, AccountAdviceKind.VerifyInCodex, AccountAdviceConfidence.HistoricalObservation,
-            "À vérifier dans Codex",
-            $"Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {Stamp(previous.FetchedAt)}, ce compte avait plus de 20 % sur les deux fenêtres. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.",
+            Loc.T("À vérifier dans Codex"),
+            Loc.F("Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {0}, ce compte avait plus de 20 % sur les deux fenêtres. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.", Stamp(previous.FetchedAt)),
             previous.FetchedAt, NextReset(previous));
     }
 
@@ -62,35 +62,35 @@ public static class AccountAdvisor
         out AccountSnapshot? snapshot, out string reason)
     {
         snapshot = account.Snapshot;
-        reason = "Un relevé complet et récent du compte actuel est nécessaire avant de proposer un autre compte.";
+        reason = Loc.T("Un relevé complet et récent du compte actuel est nécessaire avant de proposer un autre compte.");
         if (account.Profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(account.Profile.Email) ||
             !account.IsConnected || account.Error is not null)
         {
-            reason = "La session ou le dernier relevé du compte actuel doit être vérifié dans Codex.";
+            reason = Loc.T("La session ou le dernier relevé du compte actuel doit être vérifié dans Codex.");
             return false;
         }
         if (account.IsRefreshing)
         {
-            reason = "La lecture du compte actuel est en cours. Le conseil attend son résultat.";
+            reason = Loc.T("La lecture du compte actuel est en cours. Le conseil attend son résultat.");
             return false;
         }
         if (snapshot is null || !string.Equals(snapshot.Email, account.Profile.Email, StringComparison.OrdinalIgnoreCase))
             return false;
         if (snapshot.FetchedAt > now || now - snapshot.FetchedAt > maximumAge)
         {
-            reason = "Le dernier relevé du compte actuel est trop ancien ou sa date est incohérente. Actualisez les quotas avant de choisir.";
+            reason = Loc.T("Le dernier relevé du compte actuel est trop ancien ou sa date est incohérente. Actualisez les quotas avant de choisir.");
             return false;
         }
         var weekly = snapshot.Weekly;
         var shortWindow = snapshot.Short;
         if (!KnownWindow(weekly) || !KnownWindow(shortWindow))
         {
-            reason = "Les deux quotas, de 5 heures et de la semaine, et leurs dates de reset doivent être connus pour donner un conseil.";
+            reason = Loc.T("Les deux quotas, de 5 heures et de la semaine, et leurs dates de reset doivent être connus pour donner un conseil.");
             return false;
         }
         if (weekly!.ResetsAt <= now || shortWindow!.ResetsAt <= now)
         {
-            reason = "Une date de reset est atteinte. Un nouveau relevé doit confirmer les quotas ; aucun rechargement n’est supposé.";
+            reason = Loc.T("Une date de reset est atteinte. Un nouveau relevé doit confirmer les quotas ; aucun rechargement n’est supposé.");
             return false;
         }
         return true;
@@ -110,5 +110,5 @@ public static class AccountAdvisor
 
     private static AccountAdvice Unavailable(string reason, DateTimeOffset? observedAt = null, DateTimeOffset? nextResetAt = null) =>
         new(null, AccountAdviceKind.InsufficientData, AccountAdviceConfidence.InsufficientData,
-            "Conseil indisponible", reason, observedAt, nextResetAt);
+            Loc.T("Conseil indisponible"), reason, observedAt, nextResetAt);
 }

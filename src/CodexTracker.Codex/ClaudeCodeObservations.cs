@@ -72,7 +72,7 @@ public sealed class ClaudeCodeObservations(string dataDirectory, ClaudeCodeLocat
             if (Read<Observation>(pathForAccount)?.Snapshot.FetchedAt > now) return null;
             Write(pathForAccount, new Observation(identity.AccountId, snapshot));
             Write(SignalPath, new { observedAt = now, account = Key(identity.AccountId) });
-            return $"Claude Code · 5 h : {Percent(snapshot.Short)} · semaine : {Percent(snapshot.Weekly)}";
+            return Loc.F("Claude Code · 5 h : {0} · semaine : {1}", Percent(snapshot.Short), Percent(snapshot.Weekly));
         }
         finally { if (acquired) mutex.ReleaseMutex(); }
     }
@@ -80,14 +80,14 @@ public sealed class ClaudeCodeObservations(string dataDirectory, ClaudeCodeLocat
     internal AccountSnapshot Read(ClaudeCodeIdentity identity)
     {
         if (identity.ExpiresAt <= DateTimeOffset.UtcNow)
-            throw new TrackerException("La session Claude Code a expiré. Ouvrez Claude Code pour renouveler votre connexion ; le dernier relevé est conservé.");
+            throw new TrackerException(Loc.T("La session Claude Code a expiré. Ouvrez Claude Code pour renouveler votre connexion ; le dernier relevé est conservé."));
         var observation = Read<Observation>(AccountPath(identity.AccountId));
         var snapshot = observation?.Snapshot;
         if (observation?.AccountId != identity.AccountId || snapshot is null || !SameEmail(snapshot.Email, identity.Email) ||
             snapshot.FetchedAt > DateTimeOffset.UtcNow.AddMinutes(1) || snapshot.Buckets is not { Count: 1 } ||
             snapshot.Buckets[0] is not { Id: "claude", Windows: not null } bucket || bucket.Windows.Count is < 1 or > 2 ||
             bucket.Windows.Any(w => w is null || !double.IsFinite(w.UsedPercent) || w.UsedPercent is < 0 or > 100 || w.WindowDurationMins is not (300 or 10080)))
-            throw new TrackerException("Quotas Claude Code en attente. Activez les relevés dans Réglages → Général, puis utilisez Claude Code.");
+            throw new TrackerException(Loc.T("Quotas Claude Code en attente. Activez les relevés dans Réglages → Général, puis utilisez Claude Code."));
         return snapshot;
     }
 
@@ -110,7 +110,7 @@ public sealed class ClaudeCodeObservations(string dataDirectory, ClaudeCodeLocat
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or TrackerException or OperationCanceledException) { }
     }
 
-    private static string Percent(QuotaWindow? window) => window is null ? "—" : $"{Math.Floor(window.RemainingPercent):0}% restant";
+    private static string Percent(QuotaWindow? window) => window is null ? "—" : Loc.F("{0:0}% restant", Math.Floor(window.RemainingPercent));
     private static bool SameEmail(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     private static T? Read<T>(string path)
     {

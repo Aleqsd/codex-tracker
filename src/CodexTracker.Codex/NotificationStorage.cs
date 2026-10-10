@@ -87,7 +87,7 @@ public sealed class ReminderJournal
             throw new InvalidDataException("Journal illisible.");
         if (Entries.Any(e => e.Status == DeliveryStatus.Submitting))
         {
-            Entries = Entries.Select(e => e.Status == DeliveryStatus.Submitting ? e with { Status = DeliveryStatus.Unknown, Detail = "Envoi interrompu : résultat inconnu, aucune réémission automatique." } : e).ToList();
+            Entries = Entries.Select(e => e.Status == DeliveryStatus.Submitting ? e with { Status = DeliveryStatus.Unknown, Detail = Loc.T("Envoi interrompu : résultat inconnu, aucune réémission automatique.") } : e).ToList();
             Save();
         }
     }

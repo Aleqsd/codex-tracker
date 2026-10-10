@@ -74,8 +74,8 @@ public sealed partial class TrackerService
             catch (Exception ex) when (IsRecoverable(ex))
             {
                 warning = ex is TrackerException ? ex.Message : ex is FileNotFoundException or DirectoryNotFoundException
-                    ? "Aucune session locale Claude Code détectée. Ouvrez Claude Code et connectez-vous."
-                    : "La session locale Claude Code est illisible. Derniers comptes et relevés conservés ; vérifiez votre connexion dans Claude Code.";
+                    ? Loc.T("Aucune session locale Claude Code détectée. Ouvrez Claude Code et connectez-vous.")
+                    : Loc.T("La session locale Claude Code est illisible. Derniers comptes et relevés conservés ; vérifiez votre connexion dans Claude Code.");
             }
             var key = identity is null ? null : identity.Email.ToUpperInvariant() + "\n" + identity.AccountId;
             if (key == _claudeKey) return;
@@ -102,7 +102,7 @@ public sealed partial class TrackerService
             }
             Set(State with { Accounts = accounts.ToArray(), IsBusy = accounts.Any(a => a.IsRefreshing),
                 SelectedAccountId = accounts.Where(a => a.IsActive).OrderBy(a => a.Profile.Provider).FirstOrDefault()?.Profile.Id,
-                StatusMessage = identity is not null ? "Compte Claude Code détecté · lecture des relevés locaux…"
+                StatusMessage = identity is not null ? Loc.T("Compte Claude Code détecté · lecture des relevés locaux…")
                     : accounts.Any(a => a.IsActiveInCodex) ? State.StatusMessage : warning });
             Save();
         }
@@ -142,22 +142,22 @@ public sealed partial class TrackerService
             {
                 if (generation != _claudeGeneration) return;
                 Update(profile.Id, a => a with { IsRefreshing = true });
-                Set(State with { IsBusy = true, StatusMessage = "Lecture des relevés Claude Code…" });
+                Set(State with { IsBusy = true, StatusMessage = Loc.T("Lecture des relevés Claude Code…") });
             }
             finally { _gate.Release(); }
             var candidate = await _claudeReader.ReadAsync(profile, accountId, request.Token);
             if (!SameEmail(candidate.Email, profile.Email) || !candidate.Buckets.Any(b => b.Id == "claude"))
-                throw new TrackerException("Claude Code a retourné un autre compte ou un relevé invalide. Les données ont été ignorées.");
+                throw new TrackerException(Loc.T("Claude Code a retourné un autre compte ou un relevé invalide. Les données ont été ignorées."));
             snapshot = candidate;
         }
         catch (OperationCanceledException)
         {
             if (_lifetime.IsCancellationRequested || identityToken.IsCancellationRequested) return;
-            error = "Le relevé Claude Code met trop de temps à répondre. Dernier relevé conservé.";
+            error = Loc.T("Le relevé Claude Code met trop de temps à répondre. Dernier relevé conservé.");
         }
         catch (Exception ex) when (IsRecoverable(ex))
         {
-            error = ex is TrackerException ? ex.Message : "Le relevé Claude Code est indisponible. Les dernières données sont conservées.";
+            error = ex is TrackerException ? ex.Message : Loc.T("Le relevé Claude Code est indisponible. Les dernières données sont conservées.");
         }
         finally
         {
@@ -173,10 +173,10 @@ public sealed partial class TrackerService
                         {
                             var previous = State.Accounts.FirstOrDefault(a => a.Profile.Id == profile.Id)?.Snapshot;
                             if (snapshot is not null && previous is not null && snapshot.FetchedAt < previous.FetchedAt)
-                            { snapshot = null; error = "Un relevé Claude Code plus ancien a été ignoré. Les dernières données sont conservées."; }
+                            { snapshot = null; error = Loc.T("Un relevé Claude Code plus ancien a été ignoré. Les dernières données sont conservées."); }
                             if (snapshot is not null) notifications = RecordObservation(profile, snapshot, generation, claude: true);
                             Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsConnected = snapshot is not null || a.IsConnected, IsRefreshing = false, Error = error });
-                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? "À jour · comptes Codex et Claude Code suivis automatiquement" });
+                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? Loc.T("À jour · comptes Codex et Claude Code suivis automatiquement") });
                             Save();
                         }
                     }

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+using CodexTracker.Core;
 
 namespace CodexTracker.Codex;
 
@@ -46,7 +47,7 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             start.FileName = executable;
-            return Process.Start(start) ?? throw new TrackerException("Impossible de démarrer le service Codex.", CodexFailureCode.ServiceUnavailable);
+            return Process.Start(start) ?? throw new TrackerException(Loc.T("Impossible de démarrer le service Codex."), CodexFailureCode.ServiceUnavailable);
         });
         AppServerClient client;
         try { client = new AppServerClient(process, rereadDesktopTokens); }
@@ -80,7 +81,7 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             var supplied = JsonSerializer.SerializeToElement(parameters);
             if (AuthDocument.Read(supplied, "type") != "chatgptAuthTokens")
-                throw new TrackerException("Codex Tracker accepte uniquement la session déjà ouverte dans Codex.");
+                throw new TrackerException(Loc.T("Codex Tracker accepte uniquement la session déjà ouverte dans Codex."));
             parameters = new
             {
                 type = "chatgptAuthTokens", accessToken = AuthDocument.Read(supplied, "accessToken"),
@@ -89,7 +90,7 @@ internal sealed class AppServerClient : IAsyncDisposable
             };
         }
         else if (method is not "initialize" and not "account/rateLimits/read")
-            throw new TrackerException("Cette opération ne fait pas partie du suivi en lecture seule.");
+            throw new TrackerException(Loc.T("Cette opération ne fait pas partie du suivi en lecture seule."));
         var id = Interlocked.Increment(ref _id);
         var completion = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = completion;
@@ -114,7 +115,7 @@ internal sealed class AppServerClient : IAsyncDisposable
         {
             while (await _process.StandardOutput.ReadLineAsync(_lifetime.Token) is { } line)
             {
-                if (line.Length > 4_000_000) throw new TrackerException("La réponse Codex dépasse la taille autorisée.");
+                if (line.Length > 4_000_000) throw new TrackerException(Loc.T("La réponse Codex dépasse la taille autorisée."));
                 using var json = JsonDocument.Parse(line);
                 var root = json.RootElement;
                 if (root.TryGetProperty("method", out var method))
@@ -131,20 +132,20 @@ internal sealed class AppServerClient : IAsyncDisposable
                         completion.TrySetException(RpcFailure(code));
                     }
                     else if (root.TryGetProperty("result", out var result)) completion.TrySetResult(result.Clone());
-                    else completion.TrySetException(new TrackerException("Réponse Codex incompatible. Mettez à jour Codex et le tracker.", CodexFailureCode.ProtocolUnsupported));
+                    else completion.TrySetException(new TrackerException(Loc.T("Réponse Codex incompatible. Mettez à jour Codex et le tracker."), CodexFailureCode.ProtocolUnsupported));
                 }
             }
         }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or JsonException or TrackerException or InvalidOperationException) { }
         finally
         {
-            foreach (var completion in _pending.Values) completion.TrySetException(new TrackerException("Le service Codex s'est arrêté. Actualisez pour réessayer.", CodexFailureCode.ServiceUnavailable));
+            foreach (var completion in _pending.Values) completion.TrySetException(new TrackerException(Loc.T("Le service Codex s'est arrêté. Actualisez pour réessayer."), CodexFailureCode.ServiceUnavailable));
         }
     }
 
     internal static TrackerException RpcFailure(int code) => code is -32601 or -32602
-        ? new TrackerException("Cette version de Codex ne prend pas en charge la lecture des quotas. Mettez à jour Codex et le tracker.", CodexFailureCode.ProtocolUnsupported)
-        : new TrackerException($"Codex n'a pas pu répondre (RPC {code}). Actualisez ou vérifiez ce compte dans Codex.", CodexFailureCode.ServiceUnavailable);
+        ? new TrackerException(Loc.T("Cette version de Codex ne prend pas en charge la lecture des quotas. Mettez à jour Codex et le tracker."), CodexFailureCode.ProtocolUnsupported)
+        : new TrackerException(Loc.F("Codex n'a pas pu répondre (RPC {0}). Actualisez ou vérifiez ce compte dans Codex.", code), CodexFailureCode.ServiceUnavailable);
 
     private async Task HandleServerRequestAsync(JsonElement id, string method)
     {
@@ -198,6 +199,6 @@ internal sealed class AppServerClient : IAsyncDisposable
         _process.Dispose();
         _lifetime.Dispose();
         _write.Dispose();
-        if (!IsStopped) throw new TrackerException("Le service Codex n'a pas quitté à temps. Redémarrez le tracker avant une nouvelle connexion.");
+        if (!IsStopped) throw new TrackerException(Loc.T("Le service Codex n'a pas quitté à temps. Redémarrez le tracker avant une nouvelle connexion."));
     }
 }

@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CodexTracker.Core;
 
 namespace CodexTracker.App.Updates;
 
@@ -88,7 +89,7 @@ public sealed partial class UpdateService
             var usedCache = false;
             while (uri is not null)
             {
-                if (pages.Count >= 5) throw new InvalidDataException("La liste des versions est trop longue pour être vérifiée entièrement.");
+                if (pages.Count >= 5) throw new InvalidDataException(Loc.T("La liste des versions est trop longue pour être vérifiée entièrement."));
                 var cached = previous.Pages.FirstOrDefault(p => p.Uri == uri);
                 using var request = new HttpRequestMessage(HttpMethod.Get, uri);
                 request.Headers.UserAgent.ParseAdd("CodexTracker/" + CurrentVersion);
@@ -100,12 +101,12 @@ public sealed partial class UpdateService
                 {
                     rateLimited = true;
                     retryAt = RetryAt(response, _clock(), previous.Failures);
-                    throw new IOException("GitHub limite temporairement les vérifications.");
+                    throw new IOException(Loc.T("GitHub limite temporairement les vérifications."));
                 }
                 CachedPage page;
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
-                    if (cached?.ETag is null) throw new InvalidDataException("GitHub a renvoyé un cache qui n’est pas disponible.");
+                    if (cached?.ETag is null) throw new InvalidDataException(Loc.T("GitHub a renvoyé un cache qui n’est pas disponible."));
                     // A 304 reuses the body, not headers explicitly replaced by this response.
                     var tag = response.Headers.ETag?.ToString();
                     page = cached with
@@ -117,9 +118,9 @@ public sealed partial class UpdateService
                 }
                 else
                 {
-                    if (!response.IsSuccessStatusCode) throw new IOException("La vérification sur GitHub est momentanément indisponible.");
+                    if (!response.IsSuccessStatusCode) throw new IOException(Loc.T("La vérification sur GitHub est momentanément indisponible."));
                     using var document = JsonDocument.Parse(await ReadBoundedAsync(response, 4 * 1024 * 1024, timeout.Token).ConfigureAwait(false));
-                    if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("La réponse de GitHub est invalide.");
+                    if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException(Loc.T("La réponse de GitHub est invalide."));
                     var tag = response.Headers.ETag?.ToString();
                     if (tag?.Length > 1024) tag = null;
                     page = new(uri, tag, ReadNextPage(response, pages.Count + 2), SelectRelease(document.RootElement, "0.0.0-0", previous.IncludePrereleases));
@@ -130,7 +131,7 @@ public sealed partial class UpdateService
             var now = _clock();
             next = new CheckCache(3, now, now.AddMinutes(5), 0, false, pages, now, previous.IncludePrereleases);
             result = new(BestRelease(next), usedCache ? UpdateCheckSource.ValidatedCache : UpdateCheckSource.Network,
-                now, next.NextCheckAt, "Versions vérifiées auprès de GitHub.");
+                now, next.NextCheckAt, Loc.T("Versions vérifiées auprès de GitHub."));
         }
         catch (OperationCanceledException) when (_checksLifetime.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is HttpRequestException or IOException or InvalidDataException or JsonException or OperationCanceledException)
@@ -149,9 +150,9 @@ public sealed partial class UpdateService
 
     private UpdateCheckResult CachedResult(CheckCache cache)
     {
-        var message = cache.Failures == 0 ? "Dernier résultat conservé en cache."
-            : cache.RateLimited ? "GitHub limite temporairement les vérifications."
-            : "GitHub n’a pas pu être vérifié. Le dernier résultat reste disponible.";
+        var message = cache.Failures == 0 ? Loc.T("Dernier résultat conservé en cache.")
+            : cache.RateLimited ? Loc.T("GitHub limite temporairement les vérifications.")
+            : Loc.T("GitHub n’a pas pu être vérifié. Le dernier résultat reste disponible.");
         return new(BestRelease(cache), cache.VerifiedAt is null ? UpdateCheckSource.Unavailable : UpdateCheckSource.Cached,
             cache.VerifiedAt, cache.NextCheckAt, message);
     }
@@ -183,7 +184,7 @@ public sealed partial class UpdateService
             var fields = part.Trim().Split(';', StringSplitOptions.TrimEntries);
             if (!fields.Skip(1).Any(field => field == "rel=\"next\"")) continue;
             if (!Uri.TryCreate(fields[0].Trim('<', '>'), UriKind.Absolute, out var uri) || !IsApiPage(uri, nextPage))
-                throw new InvalidDataException("La page suivante des versions GitHub n’est pas autorisée.");
+                throw new InvalidDataException(Loc.T("La page suivante des versions GitHub n’est pas autorisée."));
             return uri;
         }
         return null;

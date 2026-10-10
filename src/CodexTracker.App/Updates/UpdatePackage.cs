@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using CodexTracker.Core;
 
 namespace CodexTracker.App.Updates;
 
@@ -24,9 +25,9 @@ internal static class UpdatePackage
     {
         var match = Regex.Match(checksum.Trim(), @"\A([0-9a-fA-F]{64})[ \t]+\*?([^\r\n]+)\z");
         if (!match.Success || !string.Equals(match.Groups[2].Value, assetName, StringComparison.Ordinal))
-            throw new InvalidDataException("Le fichier de vérification de la mise à jour est invalide.");
+            throw new InvalidDataException(Loc.T("Le fichier de vérification de la mise à jour est invalide."));
         if (!string.Equals(await HashAsync(archive, token), match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("La vérification SHA-256 a échoué. La mise à jour n’a pas été installée.");
+            throw new InvalidDataException(Loc.T("La vérification SHA-256 a échoué. La mise à jour n’a pas été installée."));
     }
 
     internal static async Task<string> ExtractExecutableAsync(string archive, string destination, CancellationToken token = default)
@@ -35,7 +36,7 @@ internal static class UpdatePackage
         Directory.CreateDirectory(destination);
         var root = Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         using var zip = ZipFile.OpenRead(archive);
-        if (zip.Entries.Count > 1024) throw new InvalidDataException("L’archive contient trop de fichiers.");
+        if (zip.Entries.Count > 1024) throw new InvalidDataException(Loc.T("L’archive contient trop de fichiers."));
         long expanded = 0;
         ZipArchiveEntry? executable = null;
         var names = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -47,26 +48,26 @@ internal static class UpdatePackage
                 name.Split('/').Any(p => p == ".." || p == "." || p.TrimEnd(' ', '.') != p) ||
                 !names.Add(name) || ((entry.ExternalAttributes >> 16) & 0xF000) == 0xA000 ||
                 (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("L’archive de mise à jour contient un chemin non autorisé.");
+                throw new InvalidDataException(Loc.T("L’archive de mise à jour contient un chemin non autorisé."));
             var full = Path.GetFullPath(Path.Combine(destination, name));
             if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Un fichier de mise à jour sortirait du dossier temporaire.");
+                throw new InvalidDataException(Loc.T("Un fichier de mise à jour sortirait du dossier temporaire."));
             expanded = checked(expanded + entry.Length);
-            if (expanded > MaximumExpandedBytes) throw new InvalidDataException("L’archive de mise à jour est trop volumineuse.");
+            if (expanded > MaximumExpandedBytes) throw new InvalidDataException(Loc.T("L’archive de mise à jour est trop volumineuse."));
             if (string.Equals(name, "CodexTracker.exe", StringComparison.Ordinal)) executable = entry;
         }
         if (executable is null || executable.Length is < 2 or > MaximumArchiveBytes)
-            throw new InvalidDataException("L’archive ne contient pas l’application Windows attendue.");
+            throw new InvalidDataException(Loc.T("L’archive ne contient pas l’application Windows attendue."));
         var output = Path.Combine(destination, "CodexTracker.exe");
         await using (var source = executable.Open())
         await using (var target = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None))
         {
             await UpdateService.CopyBoundedAsync(source, target, executable.Length, token);
-            if (target.Length != executable.Length) throw new InvalidDataException("Le téléchargement est incomplet.");
+            if (target.Length != executable.Length) throw new InvalidDataException(Loc.T("Le téléchargement est incomplet."));
         }
         using (var image = File.OpenRead(output))
             if (image.ReadByte() != 'M' || image.ReadByte() != 'Z')
-                throw new InvalidDataException("Le fichier téléchargé n’est pas une application Windows.");
+                throw new InvalidDataException(Loc.T("Le fichier téléchargé n’est pas une application Windows."));
         return output;
     }
 
@@ -76,7 +77,7 @@ internal static class UpdatePackage
         while (!string.IsNullOrEmpty(current))
         {
             if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new IOException("Un lien de dossier empêche la mise à jour automatique. Utilisez l’installateur.");
+                throw new IOException(Loc.T("Un lien de dossier empêche la mise à jour automatique. Utilisez l’installateur."));
             current = Path.GetDirectoryName(current);
         }
     }
@@ -89,10 +90,10 @@ internal static class UpdateInstaller
     {
         target = Path.GetFullPath(target); staged = Path.GetFullPath(staged);
         if (!string.Equals(Path.GetFileName(target), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(target, staged, StringComparison.OrdinalIgnoreCase)) throw new IOException("Chemin d’installation invalide.");
+            string.Equals(target, staged, StringComparison.OrdinalIgnoreCase)) throw new IOException(Loc.T("Chemin d’installation invalide."));
         UpdatePackage.RejectReparsePoints(target);
         if (!string.Equals(await UpdatePackage.HashAsync(target, token), expectedOldHash, StringComparison.OrdinalIgnoreCase))
-            throw new IOException("L’application a changé depuis la préparation. Réessayez la mise à jour.");
+            throw new IOException(Loc.T("L’application a changé depuis la préparation. Réessayez la mise à jour."));
         var suffix = Guid.NewGuid().ToString("N");
         var temporary = Path.Combine(Path.GetDirectoryName(target)!, ".CodexTracker-update-" + suffix + ".tmp");
         var backup = Path.Combine(Path.GetDirectoryName(target)!, ".CodexTracker-previous-" + suffix + ".exe");
@@ -101,14 +102,14 @@ internal static class UpdateInstaller
         {
             UpdatePackage.RejectReparsePoints(staged);
             if (!string.Equals(await UpdatePackage.HashAsync(staged, token), expectedNewHash, StringComparison.OrdinalIgnoreCase))
-                throw new IOException("Le fichier téléchargé a changé depuis la préparation.");
+                throw new IOException(Loc.T("Le fichier téléchargé a changé depuis la préparation."));
             File.Copy(staged, temporary, false);
             token.ThrowIfCancellationRequested();
             await WaitUntilReleasedAsync(target, TimeSpan.FromSeconds(10), token);
             File.Replace(temporary, target, backup, true);
             replaced = true;
             // Once replacement has begun, complete the transaction even if a UI token was cancelled.
-            if (!await launch(target, true, CancellationToken.None)) throw new IOException("La nouvelle version n’a pas démarré correctement.");
+            if (!await launch(target, true, CancellationToken.None)) throw new IOException(Loc.T("La nouvelle version n’a pas démarré correctement."));
             // A cleanup failure must not roll back an already healthy, running version.
             try { File.Delete(backup); }
             catch (IOException) { }
@@ -123,16 +124,16 @@ internal static class UpdateInstaller
             catch (Exception rollbackError)
             {
                 var message = File.Exists(backup)
-                    ? $"La restauration a échoué. La copie de secours est conservée ici : {backup}"
-                    : $"La restauration automatique a échoué. Vérifiez l’application ici : {target}";
+                    ? Loc.F("La restauration a échoué. La copie de secours est conservée ici : {0}", backup)
+                    : Loc.F("La restauration automatique a échoué. Vérifiez l’application ici : {0}", target);
                 throw new IOException(message,
                     new AggregateException(updateError, rollbackError));
             }
             // File.Replace consumed the backup: from here the restored file is the target itself.
             var relaunched = await TryLaunchAsync(target, launch);
             throw new IOException(relaunched
-                ? "La mise à jour a échoué ; la version précédente a été restaurée et relancée."
-                : $"La version précédente a été restaurée. Ouvrez-la manuellement ici : {target}", updateError);
+                ? Loc.T("La mise à jour a échoué ; la version précédente a été restaurée et relancée.")
+                : Loc.F("La version précédente a été restaurée. Ouvrez-la manuellement ici : {0}", target), updateError);
         }
         catch (Exception updateError) when (!replaced)
         {
@@ -145,8 +146,8 @@ internal static class UpdateInstaller
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
             throw new IOException(relaunched
-                ? "La mise à jour n’a pas pu être installée ; la version précédente a été relancée."
-                : $"La mise à jour n’a pas pu être installée. Ouvrez Codex Tracker manuellement ici : {target}", updateError);
+                ? Loc.T("La mise à jour n’a pas pu être installée ; la version précédente a été relancée.")
+                : Loc.F("La mise à jour n’a pas pu être installée. Ouvrez Codex Tracker manuellement ici : {0}", target), updateError);
         }
         finally
         {
@@ -170,7 +171,7 @@ internal static class UpdateInstaller
             token.ThrowIfCancellationRequested();
             try { using var probe = new FileStream(target, FileMode.Open, FileAccess.ReadWrite, FileShare.None); return; }
             catch (IOException) when (deadline.Elapsed < timeout) { await Task.Delay(100, token); }
-            catch (IOException) { throw new IOException("L’application reste verrouillée, éventuellement par un client MCP. Reconnectez ce client puis réessayez ; aucun fichier n’a été remplacé."); }
+            catch (IOException) { throw new IOException(Loc.T("L’application reste verrouillée, éventuellement par un client MCP. Reconnectez ce client puis réessayez ; aucun fichier n’a été remplacé.")); }
         }
     }
 }

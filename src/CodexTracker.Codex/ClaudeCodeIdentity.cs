@@ -28,11 +28,11 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
     internal static async Task<ClaudeCodeIdentity> ReadAsync(ClaudeCodeLocation location, CancellationToken token)
     {
         if (location.ConfigPath is null || location.CredentialsPath is null)
-            throw new TrackerException("Le dossier CLAUDE_CONFIG_DIR est invalide. Corrigez cette variable puis relancez le tracker.");
+            throw new TrackerException(Loc.T("Le dossier CLAUDE_CONFIG_DIR est invalide. Corrigez cette variable puis relancez le tracker."));
         using var config = await ReadDocumentAsync(location.ConfigPath, token);
         if (config.RootElement.ValueKind != JsonValueKind.Object) throw new JsonException();
         if (!config.RootElement.TryGetProperty("oauthAccount", out var account) || account.ValueKind != JsonValueKind.Object)
-            throw new TrackerException("Aucune identité Claude locale détectée. Ouvrez l’onglet Code de l’application Claude ou connectez-vous dans le terminal.");
+            throw new TrackerException(Loc.T("Aucune identité Claude locale détectée. Ouvrez l’onglet Code de l’application Claude ou connectez-vous dans le terminal."));
         // Desktop supplies its session directly to the embedded CLI. Its selected identity and
         // native usage cache remain usable even when the standalone credential file has no login.
         using var credentials = File.Exists(location.CredentialsPath) ? await ReadDocumentAsync(location.CredentialsPath, token) : null;
@@ -42,10 +42,10 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
         var email = Text(account, "emailAddress");
         var uuid = Text(account, "accountUuid");
         if (email is null || !ProfileStore.IsEmail(email) || !Guid.TryParse(uuid, out var accountId) || accountId == Guid.Empty)
-            throw new TrackerException("L’identité locale Claude Code est incomplète. Ouvrez Claude Code et vérifiez votre connexion.");
+            throw new TrackerException(Loc.T("L’identité locale Claude Code est incomplète. Ouvrez Claude Code et vérifiez votre connexion."));
         var organization = Text(account, "organizationUuid");
         if (organization is not null && !Guid.TryParse(organization, out _))
-            throw new TrackerException("L’identité locale Claude Code est incomplète. Ouvrez Claude Code et vérifiez votre connexion.");
+            throw new TrackerException(Loc.T("L’identité locale Claude Code est incomplète. Ouvrez Claude Code et vérifiez votre connexion."));
         DateTimeOffset? expires = null;
         if (oauth.ValueKind == JsonValueKind.Object && oauth.TryGetProperty("expiresAt", out var expiry) && expiry.ValueKind != JsonValueKind.Null)
         {
@@ -60,7 +60,7 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
         plan ??= Text(account, "organizationType") switch { "claude_team" => "team", "claude_enterprise" => "enterprise", "claude_max" => "max", "claude_pro" => "pro", _ => null };
         var name = Text(account, "organizationName");
         if (name is { Length: > 200 } || name?.Any(char.IsControl) == true) throw new JsonException();
-        name = string.IsNullOrWhiteSpace(name) ? plan is "pro" or "max" ? "Personnel" : plan is "team" ? "Équipe" : plan is "enterprise" ? "Entreprise" : null : name.Trim();
+        name = string.IsNullOrWhiteSpace(name) ? plan is "pro" or "max" ? Loc.T("Personnel") : plan is "team" ? Loc.T("Équipe") : plan is "enterprise" ? Loc.T("Entreprise") : null : name.Trim();
         return new(email.Trim(), accountId.ToString("D") + "/" + organization?.ToLowerInvariant(),
             plan, expires, multiplier, name, oauth.ValueKind == JsonValueKind.Object && Text(oauth, "accessToken") is { Length: > 0 });
     }

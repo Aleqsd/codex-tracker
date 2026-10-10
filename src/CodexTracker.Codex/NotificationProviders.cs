@@ -28,21 +28,21 @@ public sealed class NotificationProviders(HttpClient http)
     }
     public async Task<DeliveryResult> SendAsync(ReminderOccurrence occurrence, NotificationSecrets secrets, CancellationToken token)
     {
-        if (!Configured(occurrence.Channel, secrets)) return new(DeliveryStatus.Failed, "Canal désactivé ou configuration incomplète.");
+        if (!Configured(occurrence.Channel, secrets)) return new(DeliveryStatus.Failed, Loc.T("Canal désactivé ou configuration incomplète."));
         using var request = occurrence.Channel == ReminderChannel.Email ? Email(occurrence, secrets.SendGrid) : Telephone(occurrence, secrets.Twilio);
         try
         {
             using var response = await http.SendAsync(request, token);
             // Never log provider response bodies: they can echo addresses or credentials.
-            if (!response.IsSuccessStatusCode) return new((int)response.StatusCode >= 500 ? DeliveryStatus.Unknown : DeliveryStatus.Failed, $"Prestataire : HTTP {(int)response.StatusCode}. Aucune réémission automatique.");
-            if (occurrence.Channel == ReminderChannel.Email) return new(DeliveryStatus.Accepted, "Accepté par SendGrid ; réception non confirmée.");
+            if (!response.IsSuccessStatusCode) return new((int)response.StatusCode >= 500 ? DeliveryStatus.Unknown : DeliveryStatus.Failed, Loc.F("Prestataire : HTTP {0}. Aucune réémission automatique.", (int)response.StatusCode));
+            if (occurrence.Channel == ReminderChannel.Email) return new(DeliveryStatus.Accepted, Loc.T("Accepté par SendGrid ; réception non confirmée."));
             using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
             var sid = json.RootElement.GetProperty("sid").GetString();
-            if (sid is null || !Sid(sid, occurrence.Channel == ReminderChannel.Call ? "CA" : "SM")) return new(DeliveryStatus.Unknown, "Réponse du prestataire non reconnue.");
-            return new(DeliveryStatus.Accepted, "Accepté par Twilio ; suivi en cours.", sid);
+            if (sid is null || !Sid(sid, occurrence.Channel == ReminderChannel.Call ? "CA" : "SM")) return new(DeliveryStatus.Unknown, Loc.T("Réponse du prestataire non reconnue."));
+            return new(DeliveryStatus.Accepted, Loc.T("Accepté par Twilio ; suivi en cours."), sid);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or InvalidOperationException or KeyNotFoundException)
-        { return new(DeliveryStatus.Unknown, "Résultat inconnu après interruption réseau ; aucune réémission automatique."); }
+        { return new(DeliveryStatus.Unknown, Loc.T("Résultat inconnu après interruption réseau ; aucune réémission automatique.")); }
     }
     private static HttpRequestMessage Email(ReminderOccurrence r, SendGridSettings settings)
     {
@@ -60,19 +60,20 @@ public sealed class NotificationProviders(HttpClient http)
         var fields = new Dictionary<string, string> { ["To"] = settings.To, ["From"] = call ? settings.CallFrom : settings.SmsFrom };
         if (call)
         {
-            var culture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+            // Loc.F formats with the interface culture, so the spoken dates match the voice language.
             var name = r.AccountName.Length > 60 ? r.AccountName[..60] : r.AccountName;
-            var text = $"Codex Tracker. {name}. {ReminderPlanner.Label(r.Kind)} prévu le {r.At.ToLocalTime().ToString("dd MMMM à HH:mm", culture)}. Relevé du {r.ObservedAt.ToLocalTime().ToString("dd MMMM à HH:mm", culture)}. Vérifiez votre compte dans Codex.";
-            fields["Twiml"] = new XElement("Response", new XElement("Say", new XAttribute("language", "fr-FR"), text)).ToString(SaveOptions.DisableFormatting);
+            var text = Loc.F("Codex Tracker. {0}. {1} prévu le {2:dd MMMM à HH:mm}. Relevé du {3:dd MMMM à HH:mm}. Vérifiez votre compte dans Codex.",
+                name, ReminderPlanner.Label(r.Kind), r.At.ToLocalTime(), r.ObservedAt.ToLocalTime());
+            fields["Twiml"] = new XElement("Response", new XElement("Say", new XAttribute("language", Loc.Culture.Name), text)).ToString(SaveOptions.DisableFormatting);
             fields["TimeLimit"] = "60"; fields["Timeout"] = "20";
         }
         else
         {
             // Fixed ASCII text keeps every message within one GSM-7 segment, even for long account names.
-            var kind = r.Kind switch { ResetKind.Weekly => "Reset semaine", ResetKind.Short => "Reset 5h", _ => "Expiration reserve" };
+            var kind = r.Kind switch { ResetKind.Weekly => Loc.T("Reset semaine"), ResetKind.Short => Loc.T("Reset 5h"), _ => Loc.T("Expiration reserve") };
             var name = Regex.Replace(r.AccountName, "[^a-zA-Z0-9@._-]", "");
             if (name.Length > 20) name = name[..20];
-            fields["Body"] = $"Codex {name}: {kind} le {r.At.ToLocalTime():dd/MM HH:mm zzz}. Releve {r.ObservedAt.ToLocalTime():dd/MM HH:mm zzz}. Verifiez dans Codex.";
+            fields["Body"] = Loc.F("Codex {0}: {1} le {2:dd/MM HH:mm zzz}. Releve {3:dd/MM HH:mm zzz}. Verifiez dans Codex.", name, kind, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime());
         }
         request.Content = new FormUrlEncodedContent(fields); return request;
     }
@@ -89,9 +90,9 @@ public sealed class NotificationProviders(HttpClient http)
             using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
             var status = json.RootElement.GetProperty("status").GetString();
             return status switch {
-                "delivered" => new(DeliveryStatus.Delivered, "SMS livré selon Twilio.", sid),
-                "completed" => new(DeliveryStatus.Completed, "Appel terminé ; écoute non confirmée.", sid),
-                "failed" or "undelivered" or "busy" or "no-answer" or "canceled" => new(DeliveryStatus.Failed, "Twilio : " + status, sid),
+                "delivered" => new(DeliveryStatus.Delivered, Loc.T("SMS livré selon Twilio."), sid),
+                "completed" => new(DeliveryStatus.Completed, Loc.T("Appel terminé ; écoute non confirmée."), sid),
+                "failed" or "undelivered" or "busy" or "no-answer" or "canceled" => new(DeliveryStatus.Failed, Loc.F("Twilio : {0}", status), sid),
                 _ => null
             };
         }

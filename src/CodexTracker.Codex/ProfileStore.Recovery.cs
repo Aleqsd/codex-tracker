@@ -13,7 +13,7 @@ internal sealed partial class ProfileStore
         var ledgerPath = Path.Combine(_root, "storage-migrations.json");
         var ledger = RecoverableJsonFile.Read(ledgerPath, ParseLedger);
         if (ledger.RecoveryRequired)
-            throw new TrackerException("Le journal de récupération est illisible. Vos comptes sont conservés ; aucune nouvelle fusion automatique n’a été tentée.");
+            throw new TrackerException(Loc.T("Le journal de récupération est illisible. Vos comptes sont conservés ; aucune nouvelle fusion automatique n’a été tentée."));
         var completed = ledger.Value ?? [];
         foreach (var source in sources.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -62,7 +62,7 @@ internal sealed partial class ProfileStore
                 OnboardingComplete = current.OnboardingComplete || incoming.OnboardingComplete });
             completed.Add(source);
             RecoverableJsonFile.Write(ledgerPath, JsonSerializer.SerializeToUtf8Bytes(completed, Json), ParseLedger);
-            Warn("Les comptes et relevés d’un ancien stockage Windows ont été réunis. Une copie des données d’origine est conservée localement.");
+            Warn(Loc.T("Les comptes et relevés d’un ancien stockage Windows ont été réunis. Une copie des données d’origine est conservée localement."));
         }
     }
 

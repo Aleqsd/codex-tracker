@@ -58,7 +58,7 @@ public sealed partial class TrackerService : ITrackerService
     private CodexCompatibilityDiagnostic _compatibility;
     public event EventHandler? Changed;
     public event EventHandler<QuotaNotification>? Notification;
-    private TrackerState _state = new([], null, StatusMessage: "Détection du compte Codex…");
+    private TrackerState _state = new([], null, StatusMessage: Loc.T("Détection du compte Codex…"));
     public TrackerState State => _state with { GlobalResetFeed = _globalResets?.State, ManualCodexReset = _options.ManualCodexResetProvider?.Invoke() };
     public CodexCompatibilityDiagnostic GetCompatibilityDiagnostic() => _compatibility;
     public IReadOnlyList<string> RecoveryWarnings => _store.RecoveryWarnings;
@@ -159,7 +159,7 @@ public sealed partial class TrackerService : ITrackerService
             RestartObservation();
             RestartClaudeObservation();
             Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
-                StatusMessage = "Suivi en pause pendant la veille" });
+                StatusMessage = Loc.T("Suivi en pause pendant la veille") });
         }
         finally { _gate.Release(); }
     }
@@ -179,7 +179,7 @@ public sealed partial class TrackerService : ITrackerService
             var claude = State.Accounts.FirstOrDefault(a => a.IsActiveInClaudeCode);
             if (claude is not null) _claudeActiveObservation = new(claude.Profile.Id, DateTimeOffset.UtcNow);
             Set(State with { IsBusy = false, Accounts = State.Accounts.Select(a => a with { IsRefreshing = false }).ToArray(),
-                StatusMessage = "Sortie de veille · vérification du compte Codex…" });
+                StatusMessage = Loc.T("Sortie de veille · vérification du compte Codex…") });
         }
         finally { _gate.Release(); }
         await RefreshAsync(cancellationToken);
@@ -204,10 +204,10 @@ public sealed partial class TrackerService : ITrackerService
         var state = State.Accounts.FirstOrDefault(a => a.Profile.Id == accountId);
         var observation = state?.Profile.Provider == AccountProvider.ClaudeCode ? _claudeActiveObservation : _activeObservation;
         if (state is not { IsActive: true } || observation is null || observation.AccountId != accountId)
-            return new(null, null, $"Ouvrez ce compte dans {state?.Profile.ProviderName ?? "Codex"} pour estimer sa consommation actuelle.");
-        if (state.Error is not null) return new(null, null, "L'estimation est suspendue jusqu'au prochain relevé disponible.");
+            return new(null, null, Loc.F("Ouvrez ce compte dans {0} pour estimer sa consommation actuelle.", state?.Profile.ProviderName ?? "Codex"));
+        if (state.Error is not null) return new(null, null, Loc.T("L'estimation est suspendue jusqu'au prochain relevé disponible."));
         if (State.ManualCodexReset is { } reset && (reset.Applies(state, ResetKind.Weekly, DateTimeOffset.UtcNow) || reset.Applies(state, ResetKind.Short, DateTimeOffset.UtcNow)))
-            return new(null, null, "Un reset Codex a été déclaré. L’estimation reprendra après un nouveau relevé mesuré.");
+            return new(null, null, Loc.T("Un reset Codex a été déclaré. L’estimation reprendra après un nouveau relevé mesuré."));
         var now = DateTimeOffset.UtcNow;
         var since = observation.StartedAt > now.AddHours(-1) ? observation.StartedAt : now.AddHours(-1);
         var samples = GetHistory(accountId).Where(s => s.Timestamp >= since).ToArray();
@@ -227,7 +227,7 @@ public sealed partial class TrackerService : ITrackerService
             try
             {
                 if (_authPath is null) throw new TrackerException(
-                    "Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker.", CodexFailureCode.InvalidHome);
+                    Loc.T("Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker."), CodexFailureCode.InvalidHome);
                 identity = await CurrentAccountUsageReader.ReadIdentityAsync(_authPath, cancellationToken);
                 var expired = identity.AccessTokenExpiresAt is { } expires && expires <= DateTimeOffset.UtcNow;
                 _compatibility = _compatibility with
@@ -278,7 +278,7 @@ public sealed partial class TrackerService : ITrackerService
             }
             Set(State with { Accounts = accounts.ToArray(), SelectedAccountId = selected ?? accounts.FirstOrDefault(a => a.IsActive)?.Profile.Id,
                 IsBusy = accounts.Any(a => a.IsRefreshing),
-                StatusMessage = identity is null && accounts.Any(a => a.IsActiveInClaudeCode) ? State.StatusMessage : identity is null ? warning : "Compte Codex détecté · lecture des quotas…" });
+                StatusMessage = identity is null && accounts.Any(a => a.IsActiveInClaudeCode) ? State.StatusMessage : identity is null ? warning : Loc.T("Compte Codex détecté · lecture des quotas…") });
             Save();
         }
         finally { _gate.Release(); }
@@ -320,17 +320,17 @@ public sealed partial class TrackerService : ITrackerService
             {
                 if (generation != _generation) return;
                 Update(profile.Id, a => a with { IsRefreshing = true });
-                Set(State with { IsBusy = true, StatusMessage = "Actualisation du compte ouvert dans Codex…" });
+                Set(State with { IsBusy = true, StatusMessage = Loc.T("Actualisation du compte ouvert dans Codex…") });
             }
             finally { _gate.Release(); }
             var candidate = await _reader.ReadAsync(profile, accountId, request.Token);
-            if (!SameEmail(candidate.Email, profile.Email)) throw new TrackerException("Codex a retourné un autre compte. Le relevé a été ignoré.", CodexFailureCode.AccountChanged);
+            if (!SameEmail(candidate.Email, profile.Email)) throw new TrackerException(Loc.T("Codex a retourné un autre compte. Le relevé a été ignoré."), CodexFailureCode.AccountChanged);
             snapshot = candidate;
         }
         catch (OperationCanceledException)
         {
             if (_lifetime.IsCancellationRequested || identityToken.IsCancellationRequested) return;
-            error = "Codex met trop de temps à répondre. Dernier relevé conservé.";
+            error = Loc.T("Codex met trop de temps à répondre. Dernier relevé conservé.");
             failure = CodexFailureCode.RequestTimedOut;
         }
         catch (Exception ex) when (IsRecoverable(ex)) { error = SafeMessage(ex); failure = ClassifyFailure(ex); }
@@ -351,7 +351,7 @@ public sealed partial class TrackerService : ITrackerService
                             if (snapshot is not null && previousSnapshot is not null && snapshot.FetchedAt < previousSnapshot.FetchedAt)
                             {
                                 snapshot = null;
-                                error = "Un relevé plus ancien a été ignoré. Les dernières données sont conservées.";
+                                error = Loc.T("Un relevé plus ancien a été ignoré. Les dernières données sont conservées.");
                                 failure = CodexFailureCode.Unknown;
                             }
                             if (snapshot is not null) notifications = RecordObservation(profile, snapshot, generation);
@@ -369,7 +369,7 @@ public sealed partial class TrackerService : ITrackerService
                                 CheckedAt = DateTimeOffset.UtcNow
                             };
                             Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsRefreshing = false, Error = error });
-                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? "À jour · changements de compte détectés automatiquement" });
+                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? Loc.T("À jour · changements de compte détectés automatiquement") });
                             Save();
                         }
                     }
@@ -427,7 +427,7 @@ public sealed partial class TrackerService : ITrackerService
         {
             var account = State.Accounts.FirstOrDefault(a => a.Profile.Id == id);
             if (account?.IsActive == true)
-                throw new TrackerException($"Le compte actif est suivi automatiquement. Changez de compte dans {account.Profile.ProviderName} avant de le retirer.");
+                throw new TrackerException(Loc.F("Le compte actif est suivi automatiquement. Changez de compte dans {0} avant de le retirer.", account.Profile.ProviderName));
             _store.DeleteTelemetry(id);
             _telemetry.TryRemove(id, out _);
             Set(State with { Accounts = State.Accounts.Where(a => a.Profile.Id != id).ToArray(),
@@ -485,11 +485,11 @@ public sealed partial class TrackerService : ITrackerService
     private void RequireInitialized()
     {
         if (_disposed) throw new OperationCanceledException("Codex Tracker se ferme.");
-        if (!_initialized) throw new TrackerException("Le tracker n'est pas encore prêt.");
+        if (!_initialized) throw new TrackerException(Loc.T("Le tracker n'est pas encore prêt."));
     }
     private static bool SameEmail(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     private static bool IsRecoverable(Exception ex) => ex is TrackerException or IOException or UnauthorizedAccessException or JsonException or System.ComponentModel.Win32Exception;
-    private static string SafeMessage(Exception ex) => ex is TrackerException ? ex.Message : "Les données ne sont pas disponibles. Dernier relevé conservé ; réessayez depuis Codex.";
+    private static string SafeMessage(Exception ex) => ex is TrackerException ? ex.Message : Loc.T("Les données ne sont pas disponibles. Dernier relevé conservé ; réessayez depuis Codex.");
     private static CodexFailureCode ClassifyFailure(Exception ex, bool readingSession = false) => ex switch
     {
         TrackerException tracker => tracker.Code,
@@ -507,10 +507,10 @@ public sealed partial class TrackerService : ITrackerService
     };
     private static string SessionWarning(CodexFailureCode failure) => failure switch
     {
-        CodexFailureCode.SessionMissing => "Aucune session locale détectée. Ouvrez Codex et connectez-vous avec votre compte ChatGPT.",
-        CodexFailureCode.SessionUnreadable => "La session Codex est momentanément illisible. Fermez puis rouvrez Codex et actualisez le tracker.",
-        CodexFailureCode.InvalidHome => "Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker.",
-        _ => "Le format de la session n'est pas pris en charge. Mettez à jour Codex et connectez-vous avec votre compte ChatGPT ; une clé API seule ne permet pas de suivre ces quotas."
+        CodexFailureCode.SessionMissing => Loc.T("Aucune session locale détectée. Ouvrez Codex et connectez-vous avec votre compte ChatGPT."),
+        CodexFailureCode.SessionUnreadable => Loc.T("La session Codex est momentanément illisible. Fermez puis rouvrez Codex et actualisez le tracker."),
+        CodexFailureCode.InvalidHome => Loc.T("Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker."),
+        _ => Loc.T("Le format de la session n'est pas pris en charge. Mettez à jour Codex et connectez-vous avec votre compte ChatGPT ; une clé API seule ne permet pas de suivre ces quotas.")
     };
 
     public async ValueTask DisposeAsync()
