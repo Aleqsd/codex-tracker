@@ -29,6 +29,7 @@
     <Compile Include="../../src/CodexTracker.App/WindowPlacement.cs" Link="App/WindowPlacement.cs" />
     <Compile Include="../../src/CodexTracker.App/TrayIconRenderer.cs" Link="App/TrayIconRenderer.cs" />
     <Compile Include="../../src/CodexTracker.App/AppTypography.cs" Link="App/AppTypography.cs" />
+    <Compile Include="../../src/CodexTracker.App/Localization/EnglishApp*.cs" Link="App/Localization/%(Filename)%(Extension)" />
     <Resource Include="../../src/CodexTracker.App/Assets/Fonts/*.ttf" Link="Assets/Fonts/%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>

@@ -6,6 +6,7 @@ namespace CodexTracker.App;
 
 internal sealed record ThemeChoice(ThemeMode Value, string Label) { public override string ToString() => Label; }
 internal sealed record NumberChoice(int Value, string Label) { public override string ToString() => Label; }
+internal sealed record LanguageChoice(AppLanguage Value, string Label) { public override string ToString() => Label; }
 internal sealed class SettingsView : UserControl, IDisposable
 {
     private readonly MainWindow _owner;
@@ -17,6 +18,9 @@ internal sealed class SettingsView : UserControl, IDisposable
     private readonly List<(CheckBox Box, Func<TrackerPreferences, bool> Read)> _toggles = new();
     private readonly ComboBox _themeSelector;
     private readonly ComboBox _refreshSelector;
+    private readonly ComboBox _languageSelector;
+    private readonly TextBlock _languageHint;
+    private readonly Button _restart;
     private readonly TextBlock _updateStatus;
     private readonly TextBlock _preparationStatus;
     private readonly TextBlock _automaticStatus;
@@ -62,6 +66,24 @@ internal sealed class SettingsView : UserControl, IDisposable
         _themeSelector = new ComboBox { Tag = FindResource("DropdownThemeIcon"), ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, "Comme Windows"), new ThemeChoice(AppThemeMode.Light, "Clair"), new ThemeChoice(AppThemeMode.Dark, "Sombre") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         Row(Labelled("Thème", _themeSelector));
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
+        _languageSelector = new ComboBox { Tag = FindResource("SettingsGeneralIcon"), ItemsSource = new[] { new LanguageChoice(AppLanguage.System, Loc.T("Comme Windows")), new LanguageChoice(AppLanguage.French, "Français"), new LanguageChoice(AppLanguage.English, "English") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
+        var language = new StackPanel(); language.Children.Add(Labelled(Loc.T("Langue"), _languageSelector));
+        _languageHint = Ui.Text(Loc.T("Appliquée au prochain démarrage du tracker."), 11, "MutedBrush"); _languageHint.Margin = new Thickness(0, 6, 0, 0); _languageHint.Visibility = Visibility.Collapsed; language.Children.Add(_languageHint);
+        _restart = new Button { Content = Loc.T("Redémarrer maintenant"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 0), Visibility = Visibility.Collapsed, IsEnabled = !demo };
+        _restart.Click += async (_, _) =>
+        {
+            try { Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--relaunch-after {Environment.ProcessId}") { UseShellExecute = false }); }
+            catch (Exception error) { ShowError(error.Message); return; }
+            await ((App)System.Windows.Application.Current).ExitAsync();
+        };
+        language.Children.Add(_restart); Row(language);
+        _languageSelector.SelectionChanged += (_, _) =>
+        {
+            if (_syncing || _languageSelector.SelectedValue is not AppLanguage chosen) return;
+            Save(p => p with { Language = chosen });
+            var pending = Loc.Resolve(chosen) == AppLanguage.English != Loc.IsEnglish;
+            _languageHint.Visibility = _restart.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
+        };
         Toggle("Aperçu au survol de l’icône", "Le quota et le prochain reset, sans ouvrir le panneau.", p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
         Section("Actualisation");
         _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
@@ -268,6 +290,7 @@ internal sealed class SettingsView : UserControl, IDisposable
             _ = ReloadPreparedAsync();
         }
         _syncing = true; _themeSelector.SelectedValue = _preferences.Current.ThemeMode;
+        _languageSelector.SelectedValue = _preferences.Current.Language;
         _refreshSelector.SelectedValue = _preferences.Current.RefreshMinutes;
         foreach (var (box, read) in _toggles) box.IsChecked = read(_preferences.Current); _syncing = false;
         _updateStatus.Text = Display.SafeText(_updateStatus.Text, _preferences.Current.PrivacyMode);

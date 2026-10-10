@@ -62,9 +62,16 @@ public partial class App : System.Windows.Application
                 UiMotion.Suppressed = true;
                 PreviewClock.Fixed = DateTimeOffset.Parse("2026-09-21T12:00:00Z");
                 RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
-                System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
             }
             var preferences = new PreferencesStore(persistent: !IsDemo);
+            // The language is applied before any window exists; changing it takes effect at the next start.
+            int languageArgument = Array.IndexOf(e.Args, "--language");
+            var language = languageArgument >= 0 && languageArgument + 1 < e.Args.Length
+                ? e.Args[languageArgument + 1] == "en" ? AppLanguage.English : AppLanguage.French
+                : e.Args.Contains("--preview") ? AppLanguage.French : preferences.Current.Language;
+            Loc.Register(EnglishApp.All); Loc.Use(language);
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture = Loc.Culture;
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = Loc.Culture;
             if (IsDemo && demoInstance >= 0) preferences.Update(p => p with { McpEnabled = true });
             var updates = new UpdateService();
             updates.SetIncludePrereleases(preferences.Current.IncludePrereleaseUpdates);

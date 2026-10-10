@@ -18,6 +18,7 @@ internal sealed record TrackerPreferences
     public bool RecoveryPending { get; init; }
     [JsonIgnore] public bool PrivacyMode => false; // Legacy preference is ignored.
     public ThemeMode ThemeMode { get; init; } = ThemeMode.System;
+    public AppLanguage Language { get; init; } = AppLanguage.System;
     public SortMode SortMode { get; init; } = SortMode.Active;
     public bool Alert20 { get; init; } = true;
     public bool Alert10 { get; init; } = true;
@@ -93,6 +94,7 @@ internal sealed class PreferencesStore
         if (value.ManualCodexReset is { } reset && reset.At > reset.DeclaredAt) throw new JsonException("Déclaration de reset invalide.");
         if (!Enum.IsDefined(value.ThemeMode)) value = value with { ThemeMode = ThemeMode.System };
         if (!Enum.IsDefined(value.SortMode)) value = value with { SortMode = SortMode.Active };
+        if (!Enum.IsDefined(value.Language)) value = value with { Language = AppLanguage.System };
         return Normalize(value);
     }
 
