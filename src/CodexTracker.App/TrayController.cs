@@ -119,6 +119,15 @@ internal sealed class TrayController : IDisposable
         }
         string text;
         if (account is null) text = Loc.T("Codex Tracker · en attente d’un compte");
+        else if (state.ActiveAccounts.Count > 1)
+            // Codex and Claude Code both in use: one short line each, within the 127-character limit.
+            text = string.Join("\n", state.ActiveAccounts.Select(active =>
+            {
+                var left = QuotaPresentation.Remaining(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+                var line = active.Profile.ProviderName + " · " + (left is null ? Loc.T("indisponible") : Loc.F("{0}% restant", (int)Math.Floor(Math.Clamp(left.Value, 0, 100))));
+                var reset = QuotaPresentation.ResetsAt(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+                return reset is null ? line : reset <= PreviewClock.UtcNow ? Loc.F("{0} · reset attendu", line) : Loc.F("{0} · reset dans {1}", line, Display.Remaining(reset));
+            }));
         else
         {
             var weekly = remaining is null ? Loc.T("indisponible") : Loc.F("{0}% restant", number);

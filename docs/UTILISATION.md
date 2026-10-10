@@ -2,7 +2,7 @@
 
 Vos quotas Codex, directement dans la barre des tâches Windows.
 
-L’icône affiche le **pourcentage hebdomadaire restant avec une fine jauge horizontale, sur fond transparent**. Survolez-la pour un aperçu ; cliquez pour retrouver vos comptes dans un panneau compact. Les dates précises, réserves, périodes d’abonnement et graphiques restent accessibles dans les détails.
+L’icône affiche le **pourcentage hebdomadaire restant avec une fine jauge horizontale, sur fond transparent**. Survolez-la pour un aperçu, avec une section par compte actif quand Codex et Claude Code sont utilisés ensemble ; cliquez pour retrouver vos comptes dans un panneau compact. Les comptes Codex Pro n’affichent que la semaine, sans quota de 5 heures. Les dates précises, réserves, périodes d’abonnement et graphiques restent accessibles dans les détails.
 
 ![Tableau de bord avec comptes fictifs](dashboard.png)
 

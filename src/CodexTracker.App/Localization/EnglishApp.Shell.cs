@@ -7,6 +7,8 @@ internal static partial class EnglishApp
         ("Codex Tracker · en attente d’un compte", "Codex Tracker · waiting for an account"),
         ("indisponible", "unavailable"),
         ("{0}% restant", "{0}% left"),
+        ("{0} · reset attendu", "{0} · reset due"),
+        ("{0} · reset dans {1}", "{0} · resets in {1}"),
         ("{0} · déclaré", "{0} · declared"),
         ("{0} · dernier relevé", "{0} · last reading"),
         ("{0} · données anciennes", "{0} · stale data"),

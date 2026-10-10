@@ -150,6 +150,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ShortWindowRemaining => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
     public double ShortPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow) ?? 0;
     public Brush ShortBarBrush => HasManualShortReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Short?.RemainingPercent);
+    public bool HasShortWindow => _account.HasShortWindow;
     public string ShortSummary => HasManualShortReset ? Loc.F("5 h : {0} · déclaré", ShortWindowRemaining) : Loc.F("5 h : {0}", ShortWindowRemaining);
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);

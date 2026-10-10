@@ -42,9 +42,25 @@ internal static class TrayChecks
                     peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-{mode}-{(compact ? "compact" : "normal")}-{dpi}.png"), dpi);
                 peek.Hide();
             }
-            preferences.Update(p => p with { ThemeMode = ThemeMode.Dark }); await Task.Delay(30);
             scroll.MaxHeight = double.PositiveInfinity;
+            await using (var both = new DemoTrackerService(false, showClaudeCode: true))
+            {
+                await both.InitializeAsync();
+                foreach (var mode in new[] { ThemeMode.Dark, ThemeMode.Light })
+                {
+                    preferences.Update(p => p with { ThemeMode = mode }); await Task.Delay(30);
+                    peek.Update(both.State, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);
+                    var shown = Tree(peek).OfType<TextBlock>().Where(t => t.IsVisible).Select(t => t.Text).ToArray();
+                    Check(shown.Contains("Compte actif dans Codex") && shown.Contains("Compte actif dans Claude Code"), "Hover preview shows the active Codex and Claude Code accounts together");
+                    Check(shown.Count(t => t == "5 heures") == 1, "Codex Pro hides its 5-hour quota while Claude Code keeps it");
+                    Check(WindowsLifecycle.Bounds(new WindowInteropHelper(peek).Handle) is { } bounds && bounds.Bottom <= area.Bottom && bounds.Y >= area.Top, "Two-account hover preview stays within the work area");
+                    peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-both-{mode}-96.png"), 96);
+                    peek.Hide();
+                }
+            }
+            preferences.Update(p => p with { ThemeMode = ThemeMode.Dark }); await Task.Delay(30);
             peek.Update(service.State, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);
+            Check(!Tree(peek).OfType<TextBlock>().Any(t => t.IsVisible && t.Text == "Compte actif dans Claude Code"), "Hover preview drops the second section when one account remains");
             peek.Activate();
             var button = Tree(peek).OfType<Button>().Single();
             scroll.Focus(); scroll.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));

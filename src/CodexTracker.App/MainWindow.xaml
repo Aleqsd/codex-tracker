@@ -47,7 +47,7 @@
           <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
            <TextBlock Text="{Binding Email}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis" ToolTip="{Binding Email}"/>
            <TextBlock Text="{Binding PlanBadge}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
-           <Grid Margin="0,12,0,0" ToolTip="{Binding ShortSummary}">
+           <Grid Margin="0,12,0,0" ToolTip="{Binding ShortSummary}" Visibility="{Binding HasShortWindow, Converter={StaticResource BoolVisibility}}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Text="{local:T '5 heures'}" Style="{StaticResource MetricLabel}"/>
             <ProgressBar Grid.Column="1" Height="4" Margin="10,0,0,0" MinWidth="24" Value="{Binding ShortPercent, Mode=OneWay}" Foreground="{Binding ShortBarBrush}" VerticalAlignment="Center"/>

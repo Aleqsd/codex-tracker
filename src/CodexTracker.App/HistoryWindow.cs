@@ -13,6 +13,7 @@ internal sealed class HistoryWindow : ThemedWindow
     private readonly TextBlock _name, _subtitle, _freshness, _period, _forecast, _forecastHint, _historyHint, _error;
     private readonly UsageChart _chart;
     private readonly ComboBox _periodSelector, _windowSelector;
+    private readonly StackPanel _shortMetric, _reserveMetric;
     private readonly Button _remove;
     private readonly TextBlock _details;
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -29,7 +30,7 @@ internal sealed class HistoryWindow : ThemedWindow
         _subtitle = Ui.Text("", 12, "MutedBrush"); _subtitle.Margin = new Thickness(0, 5, 0, 0); Body.Children.Add(_subtitle);
         _freshness = Ui.Text("", 11, "MutedBrush"); _freshness.Margin = new Thickness(0, 6, 0, 16); Body.Children.Add(_freshness);
         var metrics = new Grid(); for (int i = 0; i < 3; i++) metrics.ColumnDefinitions.Add(new ColumnDefinition());
-        AddMetric(metrics, 0, Loc.T("Semaine"), "WeeklyNumber"); AddMetric(metrics, 1, Loc.T("5 heures"), "ShortWindowRemaining"); AddMetric(metrics, 2, Loc.T("Resets en réserve"), "ReserveCount"); Body.Children.Add(Ui.Panel(metrics));
+        AddMetric(metrics, 0, Loc.T("Semaine"), "WeeklyNumber"); _shortMetric = AddMetric(metrics, 1, Loc.T("5 heures"), "ShortWindowRemaining"); _reserveMetric = AddMetric(metrics, 2, Loc.T("Resets en réserve"), "ReserveCount"); Body.Children.Add(Ui.Panel(metrics));
         _period = Ui.Text("", 11, "MutedBrush"); _period.Margin = new Thickness(0, 11, 0, 19); Body.Children.Add(_period);
         var chartHeader = new Grid { Margin = new Thickness(0, 0, 0, 11) }; chartHeader.ColumnDefinitions.Add(new ColumnDefinition()); chartHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); chartHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var chartTitle = Ui.Text(Loc.T("Quota restant"), 13); chartTitle.FontWeight = FontWeights.Medium; chartTitle.VerticalAlignment = VerticalAlignment.Center; chartHeader.Children.Add(chartTitle);
@@ -57,11 +58,11 @@ internal sealed class HistoryWindow : ThemedWindow
         Closed += (_, _) => { _closed = true; _clock.Stop(); service.Changed -= Changed; preferences.Changed -= Changed; theme.Changed -= Changed; };
         Update(); _clock.Start();
     }
-    private static void AddMetric(Grid grid, int index, string title, string path)
+    private static StackPanel AddMetric(Grid grid, int index, string title, string path)
     {
         var stack = new StackPanel(); stack.Children.Add(Ui.Text(title, 11, "MutedBrush"));
         var value = Ui.Text("", 24); value.FontWeight = FontWeights.Medium; value.Margin = new Thickness(0, 4, 0, 0); value.SetBinding(TextBlock.TextProperty, new Binding(path)); stack.Children.Add(value);
-        Grid.SetColumn(stack, index); grid.Children.Add(stack);
+        Grid.SetColumn(stack, index); grid.Children.Add(stack); return stack;
     }
     private void Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(Update);
     private void Update()
@@ -70,6 +71,10 @@ internal sealed class HistoryWindow : ThemedWindow
         var account = _service.State.Accounts.FirstOrDefault(a => a.Profile.Id == AccountId);
         if (account is null) { Close(); return; }
         var vm = new AccountViewModel(account, _service.State, _preferences); _model = vm; DataContext = vm;
+        // Codex Pro has only a weekly quota: its 5-hour metric and chart are not offered.
+        _shortMetric.Visibility = _windowSelector.Visibility = vm.HasShortWindow ? Visibility.Visible : Visibility.Collapsed;
+        Grid.SetColumn(_reserveMetric, vm.HasShortWindow ? 2 : 1);
+        if (!vm.HasShortWindow) _windowSelector.SelectedIndex = 0;
         _name.Text = vm.Email; _subtitle.Text = vm.PlanBadge; _freshness.Text = vm.Freshness;
         _period.Text = Loc.F("Période d’abonnement : {0}", vm.SubscriptionSummary); _period.ToolTip = vm.SubscriptionDetails;
         _details.Text = vm.AllDetails; _remove.IsEnabled = vm.CanRemove;

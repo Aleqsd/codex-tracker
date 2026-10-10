@@ -35,6 +35,9 @@ public sealed record AccountState(AccountProfile Profile, AccountSnapshot? Snaps
 {
     public bool IsActive => Profile.Provider == AccountProvider.ClaudeCode ? IsActiveInClaudeCode : IsActiveInCodex;
     public bool IsStale => Error is not null || (Snapshot is not null && (!IsActive || DateTimeOffset.UtcNow - Snapshot.FetchedAt > TimeSpan.FromMinutes(5)));
+    /// <summary>Codex Pro only has a weekly quota: no 5-hour window is presented for it.</summary>
+    public bool HasShortWindow => !(Profile.Provider == AccountProvider.Codex &&
+        (Snapshot?.PlanType ?? Profile.ProviderPlanType)?.ToLowerInvariant() is "pro" or "prolite");
 }
 public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? SelectedAccountId,
     bool IsBusy = false, string? StatusMessage = null, bool OnboardingComplete = false)
