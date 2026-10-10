@@ -109,6 +109,9 @@ internal sealed class CalendarWindow : ThemedWindow
     internal void ExportToFile(string path)
     {
         var entries = Entries(); if (entries.Count == 0) throw new InvalidOperationException("Aucune échéance à exporter.");
+        // The events' links must open this tracker; demos and test hosts never touch the registry.
+        if (Application.Current is App { IsDemo: false })
+            try { AccountLink.EnsureRegistered(Environment.ProcessPath!); } catch (Exception) { /* The file stays usable without the link. */ }
         File.WriteAllText(path, CalendarExport.Serialize(entries, DateTimeOffset.UtcNow), new UTF8Encoding(false));
         _preparedEntries = entries; _preparedFile = Path.GetFullPath(path); _path.Text = _preparedFile; _preparedSummary.Text = Loc.F("Fichier prêt · {0} échéances · {1:HH:mm:ss}", entries.Count, DateTime.Now);
         _ready.Visibility = Visibility.Visible; _google.IsEnabled = true; _status.Text = Loc.T("Fichier prêt à importer. Aucun ajout dans Google Agenda n’est confirmé par le tracker.");

@@ -94,6 +94,11 @@ Name: "{autoprograms}\Codex Tracker"; Filename: "{app}\CodexTracker.exe"
 [Registry]
 #ifndef TestBuild
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "CodexTracker"; ValueData: """{app}\CodexTracker.exe"" --background"; Tasks: startup; Flags: uninsdeletevalue
+; codextracker://account/{id} links in exported calendar events open the account in the tracker.
+Root: HKCU; Subkey: "Software\Classes\codextracker"; ValueType: string; ValueName: ""; ValueData: "URL:Codex Tracker"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\codextracker"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\codextracker\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\CodexTracker.exe"",0"
+Root: HKCU; Subkey: "Software\Classes\codextracker\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\CodexTracker.exe"" ""%1"""
 #endif
 
 [Run]

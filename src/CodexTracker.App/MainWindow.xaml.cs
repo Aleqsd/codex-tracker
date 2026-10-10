@@ -120,6 +120,12 @@ public partial class MainWindow : Window
     }
     internal void ShowResetWeek() { ShowResets(); _resets.ShowWeek(); }
     internal void ShowResets() { ShowPanel(); ResetsTab.IsSelected = true; }
+    /// <summary>From a calendar link: the account's details, or the account list when it is no longer tracked.</summary>
+    internal void OpenAccount(Guid id)
+    {
+        OpenPage("Comptes");
+        if (_service.State.Accounts.Any(a => a.Profile.Id == id)) OpenHistory(id);
+    }
     internal void OpenPage(string page)
     {
         if (page == "Resets") { ShowResets(); return; }

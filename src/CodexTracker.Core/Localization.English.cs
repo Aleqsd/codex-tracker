@@ -32,6 +32,7 @@ internal static class EnglishCore
         ("Reset 5 heures", "5-hour reset"),
         ("Expiration de réserve", "Credit expiry"),
         ("Un reset en réserve va expirer", "A reserve reset is about to expire"),
+        ("Ouvrir le compte dans Codex Tracker : {0}", "Open the account in Codex Tracker: {0}"),
         ("{0} · expire le {1:dd/MM/yyyy HH:mm zzz}.\nUtilisez-le dans {2} avant cette date pour ne pas le perdre.\nRelevé : {3:dd/MM/yyyy HH:mm zzz}.", "{0} · expires on {1:dd/MM/yyyy HH:mm zzz}.\nUse it in {2} before then so it is not lost.\nReading: {3:dd/MM/yyyy HH:mm zzz}."),
         ("Reset général annoncé comme terminé", "Global reset announced as complete"),
         ("Compte probablement rechargé", "Account probably refilled"),

@@ -4,7 +4,8 @@ using System.Text;
 
 namespace CodexTracker.Core;
 
-public sealed record CalendarEntry(string Uid, string Title, string Description, DateTimeOffset StartsAt);
+/// <param name="Link">Opens the account in Codex Tracker (codextracker://account/{id}).</param>
+public sealed record CalendarEntry(string Uid, string Title, string Description, DateTimeOffset StartsAt, string? Link = null);
 
 public static class CalendarExport
 {
@@ -15,6 +16,8 @@ public static class CalendarExport
         "&stz=Etc%2FUTC&etz=Etc%2FUTC&text=" + Uri.EscapeDataString(entry.Title) +
         "&details=" + Uri.EscapeDataString(entry.Description));
 
+    public static string AccountLink(Guid accountId) => $"codextracker://account/{accountId:D}";
+
     public static string Identity(Guid accountId, string kind, string id, DateTimeOffset at) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{accountId:N}|{kind}|{id}|{at.ToUnixTimeSeconds()}"))).ToLowerInvariant();
 
@@ -24,12 +27,13 @@ public static class CalendarExport
         foreach (var account in state.Accounts)
         {
             if (account.Snapshot is not { } snapshot) continue;
+            var link = AccountLink(account.Profile.Id);
             var description = Loc.F("Date prévue selon le relevé du {0:dd/MM/yyyy HH:mm:ss zzz}. Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans {1}.",
-                snapshot.FetchedAt, account.Profile.ProviderName);
+                snapshot.FetchedAt, account.Profile.ProviderName) + "\n" + Loc.F("Ouvrir le compte dans Codex Tracker : {0}", link);
             void Add(string kind, string id, string title, DateTimeOffset? date)
             {
                 if (date is not { } at || at <= now) return;
-                result.Add(new(Identity(account.Profile.Id, kind, id, at) + "@codex-tracker.local", $"{name(account.Profile)} · {title}", description, at));
+                result.Add(new(Identity(account.Profile.Id, kind, id, at) + "@codex-tracker.local", $"{name(account.Profile)} · {title}", description, at, link));
             }
             Add("quota", "weekly", Loc.F("Reset {0} · semaine", account.Profile.ProviderName), QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now));
             Add("quota", "short", Loc.F("Reset {0} · 5 heures", account.Profile.ProviderName), QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now));
@@ -46,7 +50,9 @@ public static class CalendarExport
         {
             lines.AddRange(["BEGIN:VEVENT", "UID:" + Escape(entry.Uid), "DTSTAMP:" + Utc(now),
                 "DTSTART:" + Utc(entry.StartsAt), "DTEND:" + Utc(entry.StartsAt.AddMinutes(5)),
-                "SUMMARY:" + Escape(entry.Title), "DESCRIPTION:" + Escape(entry.Description), "TRANSP:TRANSPARENT", "END:VEVENT"]);
+                "SUMMARY:" + Escape(entry.Title), "DESCRIPTION:" + Escape(entry.Description)]);
+            if (entry.Link is { } link) lines.Add("URL:" + link);
+            lines.AddRange(["TRANSP:TRANSPARENT", "END:VEVENT"]);
         }
         lines.Add("END:VCALENDAR");
         return string.Join("\r\n", lines.Select(Fold)) + "\r\n";

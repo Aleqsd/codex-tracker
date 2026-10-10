@@ -17,6 +17,7 @@ public partial class App : System.Windows.Application
     private HwndSource? _messageSource;
     private static readonly uint ExitMessage = RegisterWindowMessage("CodexTracker.RequestExit.v1");
     private static readonly uint ShowMessage = RegisterWindowMessage("CodexTracker.RequestShow.v1");
+    private static readonly uint OpenAccountMessage = RegisterWindowMessage("CodexTracker.OpenAccount.v1");
     private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
     private readonly DispatcherTimer _environmentTimer = new(DispatcherPriority.Loaded) { Interval = TimeSpan.FromMilliseconds(200) };
     private bool _taskbarCreated, _suspended;
@@ -48,7 +49,8 @@ public partial class App : System.Windows.Application
                 AllowSetForegroundWindow(processId);
                 // The running WPF dispatcher must call Window.Show. Showing only the HWND
                 // leaves a never-shown background window without its visual tree (black).
-                PostMessage(handle, ShowMessage, IntPtr.Zero, IntPtr.Zero);
+                if (AccountLink.Parse(e.Args) is { } link) { var (first, second) = AccountLink.Pack(link); PostMessage(handle, OpenAccountMessage, first, second); }
+                else PostMessage(handle, ShowMessage, IntPtr.Zero, IntPtr.Zero);
             }
             Shutdown(); return;
         }
@@ -129,6 +131,7 @@ public partial class App : System.Windows.Application
             if (!e.Args.Contains("--background")) window.Show();
             await window.InitializeAsync();
             if (_exiting) return;
+            if (AccountLink.Parse(e.Args) is { } account) window.OpenAccount(account);
             if (!IsDemo || demoInstance >= 0)
             {
                 try
@@ -218,6 +221,12 @@ public partial class App : System.Windows.Application
             {
                 if (!_exiting && MainWindow is MainWindow window) window.ShowPanel();
             });
+        }
+        if ((uint)message == OpenAccountMessage)
+        {
+            handled = true;
+            var account = AccountLink.Unpack(wParam, lParam);
+            Dispatcher.InvokeAsync(() => { if (!_exiting && MainWindow is MainWindow window) window.OpenAccount(account); });
         }
         if ((uint)message == ExitMessage)
         {
