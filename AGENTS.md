@@ -20,10 +20,11 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/dev.ps1 -Action Preview -Matrix
 ./scripts/publish.ps1 -Version 0.9.2
 ./scripts/build-installer.ps1 -Version 0.9.2
+./scripts/bump.ps1 -Version 0.9.19
 ./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
 ```
 
-Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Python`. Les artefacts restent sous `artifacts/`, ignoré par Git. Pas de CI distante : compilation, tests, paquets et Releases se font en local avec `scripts/release.ps1`. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
+Les scripts trouvent un SDK .NET 10 dans le PATH ou dans `%LOCALAPPDATA%\Microsoft\dotnet` (dotnet-install) ; `-Dotnet` en impose un autre, dev accepte aussi `-Python`. `bump.ps1` change la version, les liens du README et les `packages.lock.json` (qui notent la version des projets) : committer les trois ensemble. Les artefacts restent sous `artifacts/`, ignoré par Git. Pas de CI distante : compilation, tests, paquets et Releases se font en local avec `scripts/release.ps1`. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
 
 ## Invariants
 
@@ -45,4 +46,4 @@ Modifier une règle métier : tests de ses limites et erreurs. Modifier une comm
 
 ## Présentation publique
 
-README bref, orienté installation et usage ; détails dans docs/UTILISATION.md. Tour GIF rapide, exclusivement fictif. Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts de validation et sert au manifeste WinGet.
+README bref, orienté installation et usage ; détails dans docs/UTILISATION.md. Tour GIF rapide, exclusivement fictif. Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.

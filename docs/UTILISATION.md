@@ -17,8 +17,6 @@ L’assistant suit le thème clair ou sombre de Windows, avec un accueil personn
 3. Utilisez normalement Codex : le tracker détecte son compte ouvert. Chaque autre compte est ajouté automatiquement lorsque vous l’ouvrez dans Codex.
 4. Dans les paramètres Windows de la barre des tâches, rendez l’icône Codex Tracker visible dans la barre d’état.
 
-La distribution **WinGet** est préparée sous l’identifiant `Aleqsd.CodexTracker`. La disponibilité dépend de la validation Microsoft ; voir le [guide WinGet](WINGET.md).
-
 Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaires. Le runtime .NET est inclus. Le démarrage avec Windows est facultatif, depuis les réglages du tracker.
 
 Une version portable ZIP est également disponible : extrayez-la dans un dossier permanent puis lancez `CodexTracker.exe`.
@@ -199,7 +197,7 @@ dotnet run --project src/CodexTracker.App -- --demo
 ./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
 ```
 
-Les scripts de publication et de création de l’installateur utilisent par défaut la version de `Directory.Build.props` ; `-Version` permet de la préciser explicitement. Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. Il n’y a pas de CI distante. `scripts/release.ps1` enchaîne en local la compilation, les tests métier et WPF, le ZIP autonome, l’installateur, leurs SHA-256 et les tests stdio de l’exécutable publié. Avec `-Publish`, il exige un arbre propre poussé sur `main`, crée la Release GitHub (notes : puces de nouveautés ; liens et checksum ZIP ajoutés) ; `-UpdateThisPc` installe ensuite cette Release sur le poste par le moteur de mise à jour et vérifie la conservation des comptes. Il refuse de démarrer pendant Final Fantasy XIV. Le cycle complet de l’installateur exige un profil Windows jetable (voir [PUBLISHED-UPDATE-TEST.md](PUBLISHED-UPDATE-TEST.md)).
+Les scripts de publication et de création de l’installateur utilisent par défaut la version de `Directory.Build.props` ; `-Version` permet de la préciser explicitement. Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. `scripts/bump.ps1 -Version x.y.z` prépare une version (propriétés, liens du README et `packages.lock.json`). Il n’y a pas de CI distante. `scripts/release.ps1` enchaîne en local la compilation, les tests métier et WPF, le ZIP autonome, l’installateur, leurs SHA-256 et les tests stdio de l’exécutable publié. Avec `-Publish`, il exige un arbre propre poussé sur `main`, crée la Release GitHub (notes : puces de nouveautés ; liens et checksum ZIP ajoutés) ; `-UpdateThisPc` installe ensuite cette Release sur le poste par le moteur de mise à jour et vérifie la conservation des comptes. Il refuse de démarrer pendant Final Fantasy XIV. Le cycle complet de l’installateur exige un profil Windows jetable (voir [PUBLISHED-UPDATE-TEST.md](PUBLISHED-UPDATE-TEST.md)).
 
 La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocole en lecture seule) et `App` (WPF et zone de notification). Les tests utilisent des sessions fictives et ne modifient jamais votre connexion Codex. Ils couvrent les réponses de quotas, valeurs absentes, dates et changements d’heure, changements de fichiers, isolation des comptes et réponses réseau tardives. Les contrôles réels et leurs limites sont détaillés dans [VALIDATION.md](VALIDATION.md).
 

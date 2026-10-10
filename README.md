@@ -70,10 +70,9 @@ Non. Seuls les SMS, appels et emails, facultatifs, passent par vos propres compt
 
 - **Sans installation** : le ZIP portable est dans les [versions publiées](https://github.com/Aleqsd/codex-tracker/releases). Son petit fichier `.sha256` sert aux mises à jour automatiques.
 - **Assistants de code** : un [serveur MCP local](docs/MCP.md), désactivé par défaut, permet à votre assistant de consulter vos quotas.
-- **WinGet** : [publication soumise à Microsoft](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
 - [Guide d’utilisation complet](docs/UTILISATION.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues). **Réglages → Application → Préparer un diagnostic** produit un résumé sans compte ni secret à joindre à votre signalement.
 
-[Code signing policy](docs/CODE-SIGNING-POLICY.md) : les exécutables actuels ne sont pas encore signés. Windows peut donc afficher un avertissement SmartScreen au premier lancement.
+Les exécutables ne sont pas signés : Windows peut afficher un avertissement SmartScreen au premier lancement.
 
 <details>
 <summary>Développer ou contribuer</summary>

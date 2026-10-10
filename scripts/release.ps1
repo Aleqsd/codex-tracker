@@ -13,7 +13,7 @@ The installer lifecycle needs a disposable Windows profile and is not run on thi
 param(
     [ValidatePattern('^\d+\.\d+\.\d+([-.][a-zA-Z0-9.-]+)?$')]
     [string]$Version,
-    [string]$Dotnet = 'dotnet',
+    [string]$Dotnet,
     [string]$Python = 'python',
     [switch]$InstallCompiler,
     [switch]$Publish,
@@ -33,6 +33,7 @@ $declaredVersion = [string]$buildProperties.Project.PropertyGroup.Version
 if (-not $Version) { $Version = $declaredVersion }
 if ($Version -ne $declaredVersion) { throw "Directory.Build.props déclare $declaredVersion, pas $Version." }
 if ($UpdateThisPc -and -not $Publish) { throw '-UpdateThisPc installe la Release publiée : ajouter -Publish.' }
+if (-not $Dotnet) { $Dotnet = & (Join-Path $PSScriptRoot 'find-dotnet.ps1') }
 # Framework-dependent test hosts need the SDK's runtime when it is not installed system-wide.
 $env:DOTNET_ROOT = Split-Path -Parent (Get-Command $Dotnet).Source
 if ($TestScreen) { $env:CODEX_TRACKER_TEST_SCREEN = $TestScreen }
@@ -78,9 +79,11 @@ try {
         }
     }
     Invoke-Step 'Restauration' { & $Dotnet restore CodexTracker.slnx }
+    # Lock files record project versions: a release must ship the ones it was restored with.
+    if ($Publish -and (Get-Git @('status', '--porcelain', '--', '*packages.lock.json'))) {
+        throw 'packages.lock.json obsolètes : lancer scripts/bump.ps1 ou committer la restauration.'
+    }
     Invoke-Step 'Compilation' { & $Dotnet build CodexTracker.slnx -c Release --no-restore }
-    Invoke-Step 'Gardes de signature' { & ./scripts/test-release-signing.ps1 }
-    Invoke-Step 'Manifeste WinGet' { & ./scripts/test-winget.ps1 }
     Invoke-Step 'Tests métier' { & $Dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj -c Release --no-build }
     Invoke-Step 'Suite WPF (données fictives)' { & $Dotnet run --project tests/CodexTracker.UiSmoke/CodexTracker.UiSmoke.csproj -c Release --no-build }
     Invoke-Step 'ZIP portable' { & ./scripts/publish.ps1 -Version $Version -Dotnet $Dotnet }

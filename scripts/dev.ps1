@@ -1,6 +1,6 @@
 param(
     [ValidateSet('Check','Demo','Preview')][string]$Action = 'Check',
-    [string]$Dotnet = 'dotnet',
+    [string]$Dotnet,
     [string]$Python = 'python',
     [ValidateSet('Comptes','Resets','Semaine','Général','Rappels','Canaux','Historique','Calendrier','Assistants','Application')][string]$View = 'Comptes',
     [ValidateSet('light','dark')][string]$Theme = 'dark',
@@ -18,6 +18,7 @@ if (Get-Process -Name ffxiv_dx11,ffxiv -ErrorAction SilentlyContinue) {
     throw 'Final Fantasy XIV est en cours : tests UI et aperçus reportés pour préserver le plein écran. La compilation et les tests métier peuvent être lancés séparément ; relancer les vues après la session de jeu.'
 }
 $root = Split-Path -Parent $PSScriptRoot
+if (-not $Dotnet) { $Dotnet = & (Join-Path $PSScriptRoot 'find-dotnet.ps1') }
 if ($TestScreen) { $env:CODEX_TRACKER_TEST_SCREEN = $TestScreen }
 Push-Location $root
 try {
