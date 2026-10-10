@@ -39,6 +39,55 @@ public sealed class WeeklyResetInferenceTests
     }
 
     [Fact]
+    public void AnExactClaudeCodeDatePinsTheProjectionUnlessNewerEvidenceDisagrees()
+    {
+        var exact = Start.AddHours(7);
+        Assert.Null(WeeklyResetInference.Anchor(null, null));
+        Assert.Equal(new WeeklyResetInference.Bracket(exact, exact), WeeklyResetInference.Anchor(null, exact));
+        var drop = new WeeklyResetInference.Bracket(Start.AddDays(14), Start.AddDays(14).AddHours(9));
+        Assert.Same(drop, WeeklyResetInference.Anchor(drop, null));
+        // Two weeks later the observed drop still contains the exact moment: the precise date wins.
+        Assert.Equal(new WeeklyResetInference.Bracket(exact.AddDays(14), exact.AddDays(14)), WeeklyResetInference.Anchor(drop, exact));
+        // Claude moved its schedule: the newer drop no longer matches and wins.
+        var moved = new WeeklyResetInference.Bracket(Start.AddDays(14).AddHours(10), Start.AddDays(14).AddHours(12));
+        Assert.Same(moved, WeeklyResetInference.Anchor(moved, exact));
+        // An exact date newer than the drop is the most recent evidence.
+        Assert.Equal(new WeeklyResetInference.Bracket(exact.AddDays(21), exact.AddDays(21)), WeeklyResetInference.Anchor(drop, exact.AddDays(21)));
+        var next = WeeklyResetInference.Next(WeeklyResetInference.Anchor(null, exact), exact.AddMinutes(1))!;
+        Assert.Equal(exact.AddDays(7), next.After); Assert.Equal(exact.AddDays(7), next.By);
+    }
+
+    [Fact]
+    public void OnlyPastDatesGivenByClaudeCodeAnchorTheWeek()
+    {
+        var id = Guid.NewGuid(); var now = Start.AddDays(2);
+        UsageSample Sample(DateTimeOffset at, DateTimeOffset? reset, bool estimated = false) => new(id, at, 50, reset, WeeklyResetEstimated: estimated);
+        var samples = new[] { Sample(Start, Start.AddDays(1)), Sample(Start.AddHours(1), Start.AddDays(1).AddHours(1), estimated: true),
+            Sample(Start.AddHours(2), Start.AddDays(8)), Sample(Start.AddHours(3), null) };
+        Assert.Equal(Start.AddDays(1), ClaudeCodeUsageReader.LastExactWeeklyReset(samples, null, now));
+        var terminal = Snapshot(Start.AddHours(4), (40, 10080, Start.AddDays(1).AddHours(2)));
+        Assert.Equal(Start.AddDays(1).AddHours(2), ClaudeCodeUsageReader.LastExactWeeklyReset(samples, terminal, now));
+        var estimated = Snapshot(Start.AddHours(4), new QuotaWindow(40, 10080, Start.AddDays(1).AddHours(3), Start.AddDays(1).AddHours(2)));
+        Assert.Equal(Start.AddDays(1), ClaudeCodeUsageReader.LastExactWeeklyReset(samples, estimated, now));
+        Assert.Null(ClaudeCodeUsageReader.LastExactWeeklyReset(samples, null, Start.AddHours(12)));
+        Assert.Null(ClaudeCodeUsageReader.LastExactWeeklyReset([], null, now));
+    }
+
+    [Fact]
+    public void HistoryRemembersWhetherTheWeeklyDateWasProjected()
+    {
+        var id = Guid.NewGuid();
+        var measured = UsageAnalytics.FromSnapshot(id, Snapshot(Start, (20, 10080, Start.AddDays(3))));
+        Assert.False(measured.WeeklyResetEstimated);
+        var projected = UsageAnalytics.FromSnapshot(id, Snapshot(Start.AddMinutes(1), new QuotaWindow(20, 10080, Start.AddDays(3), Start.AddDays(3).AddMinutes(-5))));
+        Assert.True(projected.WeeklyResetEstimated);
+        // Same two-minute bucket and date, different origin: both points are kept.
+        Assert.Equal(2, UsageAnalytics.Append(UsageAnalytics.Append([], measured), projected).Count);
+        var older = System.Text.Json.JsonSerializer.Deserialize<UsageSample>("{\"AccountId\":\"" + id + "\",\"Timestamp\":\"2026-10-01T08:00:00+00:00\",\"WeeklyRemaining\":50,\"WeeklyResetsAt\":\"2026-10-04T08:00:00+00:00\"}")!;
+        Assert.False(older.WeeklyResetEstimated);
+    }
+
+    [Fact]
     public void ATerminalDateForTheRunningPeriodSurvivesANewerDesktopReading()
     {
         var terminal = Snapshot(Start, (40, 300, Start.AddHours(2)), (30, 10080, Start.AddDays(3)));

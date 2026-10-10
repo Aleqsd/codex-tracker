@@ -3,8 +3,9 @@ namespace CodexTracker.Core;
 public enum UsageWindowKind { Weekly, Short }
 public enum NotificationKind { Threshold, Reset, Forecast }
 
+/// <param name="WeeklyResetEstimated">The weekly date was projected by the tracker, not provided by the tool.</param>
 public sealed record UsageSample(Guid AccountId, DateTimeOffset Timestamp, double? WeeklyRemaining,
-    DateTimeOffset? WeeklyResetsAt, double? ShortRemaining = null, DateTimeOffset? ShortResetsAt = null);
+    DateTimeOffset? WeeklyResetsAt, double? ShortRemaining = null, DateTimeOffset? ShortResetsAt = null, bool WeeklyResetEstimated = false);
 public sealed record UsageForecast(TimeSpan? TimeToExhaustion, DateTimeOffset? EstimatedExhaustionAt,
     string Explanation, UsageWindowKind? Window = null, bool LastsUntilReset = false);
 public sealed record QuotaNotification(Guid AccountId, string Email, NotificationKind Kind, int? Threshold,
@@ -19,7 +20,7 @@ public static class UsageAnalytics
 
     public static UsageSample FromSnapshot(Guid accountId, AccountSnapshot snapshot) => new(accountId,
         snapshot.FetchedAt, snapshot.Weekly?.RemainingPercent, snapshot.Weekly?.ResetsAt,
-        snapshot.Short?.RemainingPercent, snapshot.Short?.ResetsAt);
+        snapshot.Short?.RemainingPercent, snapshot.Short?.ResetsAt, snapshot.Weekly?.IsResetEstimated == true);
 
     /// <summary>Keeps one latest point per two-minute bucket, preserving an observed reset boundary.</summary>
     public static IReadOnlyList<UsageSample> Append(IReadOnlyList<UsageSample> history, UsageSample sample)
@@ -29,7 +30,8 @@ public static class UsageAnalytics
         var retained = history.Where(p => p.AccountId == sample.AccountId && IsValid(p) &&
             p.Timestamp >= sample.Timestamp - Retention && p.Timestamp < sample.Timestamp).ToList();
         if (retained.Count > 0 && retained[^1].Timestamp.UtcTicks / SampleCadence.Ticks == sample.Timestamp.UtcTicks / SampleCadence.Ticks &&
-            retained[^1].WeeklyResetsAt == sample.WeeklyResetsAt && retained[^1].ShortResetsAt == sample.ShortResetsAt)
+            retained[^1].WeeklyResetsAt == sample.WeeklyResetsAt && retained[^1].ShortResetsAt == sample.ShortResetsAt &&
+            retained[^1].WeeklyResetEstimated == sample.WeeklyResetEstimated)
             retained[^1] = sample;
         else retained.Add(sample);
         if (retained.Count > MaximumSamplesPerAccount) retained.RemoveRange(0, retained.Count - MaximumSamplesPerAccount);

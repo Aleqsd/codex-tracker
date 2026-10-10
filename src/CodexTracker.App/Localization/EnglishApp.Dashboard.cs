@@ -4,6 +4,10 @@ internal static partial class EnglishApp
 {
     internal static readonly (string French, string English)[] Dashboard =
     [
+        ("Reset hebdomadaire estimé le {0}.\nProjeté depuis la dernière date fournie par Claude Code : Claude renouvelle la semaine au même moment chaque semaine.\nUne nouvelle date de Claude Code remplace cette estimation.",
+         "Weekly reset estimated on {0}.\nProjected from the last date provided by Claude Code: Claude renews the week at the same moment every week.\nA new date from Claude Code replaces this estimate."),
+        ("L’application Claude ne communique pas la date du reset.\nPour l’obtenir automatiquement :\n1. Installez Claude Code, puis connectez-vous avec ce compte Claude (/login).\n2. Réglages → Général → « Copier le réglage Claude Code », puis collez-le dans ~/.claude/settings.json.\n3. Envoyez un message dans une nouvelle session Claude Code.\nLa date relevée est ensuite reprojetée chaque semaine. Sans Claude Code, elle sera estimée après la prochaine remise à zéro observée.",
+         "The Claude app does not share the reset date.\nTo get it automatically:\n1. Install Claude Code, then sign in with this Claude account (/login).\n2. Settings → General → “Copy Claude Code setting”, then paste it into ~/.claude/settings.json.\n3. Send a message in a new Claude Code session.\nThe recorded date is then projected week after week. Without Claude Code, it is estimated after the next observed reset."),
         ("Actualiser maintenant", "Refresh now"),
         ("Actualiser les quotas maintenant", "Refresh quotas now"),
         ("Reset hebdomadaire estimé entre le {0} et le {1}.\nDéduit de la dernière remise à zéro de la semaine observée : Claude la renouvelle au même moment chaque semaine.\nUne date fournie par Claude Code remplace cette estimation.", "Weekly reset estimated between {0} and {1}.\nInferred from the last observed weekly reset: Claude renews the week at the same time every week.\nA date provided by Claude Code replaces this estimate."),

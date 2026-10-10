@@ -19,10 +19,12 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
         latest = KeepTerminalResets(latest, terminal);
         if (latest.Weekly is { ResetsAt: null })
         {
-            var observed = (history?.Invoke(profile.Id) ?? []).Where(s => s.WeeklyRemaining is not null)
+            var samples = history?.Invoke(profile.Id) ?? [];
+            var observed = samples.Where(s => s.WeeklyRemaining is not null)
                 .Select(s => (s.Timestamp, 100 - s.WeeklyRemaining!.Value))
                 .Concat(await ClaudeDesktopUsageReader.ReadWeeklyAsync(desktopPaths, identity, cancellationToken));
-            latest = WithWeeklyReset(latest, WeeklyResetInference.Next(WeeklyResetInference.LatestReset(observed), latest.FetchedAt));
+            var anchor = WeeklyResetInference.Anchor(WeeklyResetInference.LatestReset(observed), LastExactWeeklyReset(samples, terminal, latest.FetchedAt));
+            latest = WithWeeklyReset(latest, WeeklyResetInference.Next(anchor, latest.FetchedAt));
         }
         return latest;
     }
@@ -42,6 +44,12 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
             }).ToArray()
         };
     }
+
+    /// <summary>A past weekly date given by Claude Code is an exact reset moment; it keeps anchoring the following weeks.</summary>
+    internal static DateTimeOffset? LastExactWeeklyReset(IEnumerable<UsageSample> samples, AccountSnapshot? terminal, DateTimeOffset at) =>
+        samples.Where(s => !s.WeeklyResetEstimated).Select(s => s.WeeklyResetsAt)
+            .Append(terminal?.Weekly is { IsResetEstimated: false } known ? known.ResetsAt : null)
+            .Where(reset => reset <= at).Max();
 
     internal static AccountSnapshot WithWeeklyReset(AccountSnapshot snapshot, WeeklyResetInference.Bracket? next) => next is null ? snapshot : snapshot with
     {

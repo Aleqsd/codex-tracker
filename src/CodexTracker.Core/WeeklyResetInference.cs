@@ -2,8 +2,8 @@ namespace CodexTracker.Core;
 
 /// <summary>
 /// Claude restarts its weekly quota at the same moment every week, but its Desktop cache gives no date.
-/// A clear drop of weekly usage between two readings brackets one reset; later resets follow every seven days.
-/// The projection keeps that uncertainty and is replaced by any reset date actually provided by Claude.
+/// A clear drop of weekly usage between two readings brackets one reset; a date once given by Claude Code pins it exactly.
+/// Later resets follow every seven days. The projection is replaced by any reset date actually provided by Claude.
 /// </summary>
 public static class WeeklyResetInference
 {
@@ -27,6 +27,19 @@ public static class WeeklyResetInference
             previous = reading;
         }
         return latest;
+    }
+
+    /// <summary>
+    /// Past reset moment to project from. An exact date from Claude Code wins when the observed drop agrees with it
+    /// (whole weeks apart); otherwise the most recent evidence wins, in case Claude moved its schedule.
+    /// </summary>
+    public static Bracket? Anchor(Bracket? observed, DateTimeOffset? exact)
+    {
+        if (exact is not { } at) return observed;
+        var known = new Bracket(at, at);
+        if (observed is null || observed.By <= at) return known;
+        var projected = at + Period * Math.Floor((observed.By - at).Ticks / (double)Period.Ticks);
+        return projected >= observed.After ? new(projected, projected) : observed;
     }
 
     /// <summary>The next weekly reset after <paramref name="now"/>, as the same bracket moved by whole weeks.</summary>
