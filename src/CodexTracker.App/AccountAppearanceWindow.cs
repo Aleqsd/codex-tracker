@@ -17,27 +17,27 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
     internal Guid AccountId => _id;
 
     public AccountAppearanceWindow(Window owner, PreferencesStore preferences, Guid id, ThemeManager theme, string? identity = null)
-        : base(owner, "Personnaliser le compte", theme, 450, 440)
+        : base(owner, Loc.T("Personnaliser le compte"), theme, 450, 440)
     {
-        _preferences = preferences; _id = id; _identity = identity ?? "Compte";
+        _preferences = preferences; _id = id; _identity = identity ?? Loc.T("Compte");
         var appearance = preferences.Current.Appearances.GetValueOrDefault(id) ?? new();
         _image = AvatarStore.Load(preferences.DataDirectory, appearance.AvatarFile);
         _preview = new Border { Width = 64, Height = 64, CornerRadius = new CornerRadius(32), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
-        var avatarButton = new Button { Content = _preview, Style = (Style)FindResource("AvatarButton"), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Changer la photo", Margin = new Thickness(-4, -4, 0, 8), Padding = new Thickness(3) };
+        var avatarButton = new Button { Content = _preview, Style = (Style)FindResource("AvatarButton"), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = Loc.T("Changer la photo"), Margin = new Thickness(-4, -4, 0, 8), Padding = new Thickness(3) };
         _preview.Margin = new Thickness(0);
-        System.Windows.Automation.AutomationProperties.SetName(avatarButton, "Changer la photo du compte");
+        System.Windows.Automation.AutomationProperties.SetName(avatarButton, Loc.T("Changer la photo du compte"));
         avatarButton.Click += (_, _) => ChooseImage(); _form.Children.Add(avatarButton);
         var actions = new WrapPanel();
-        var choose = new Button { Content = "Choisir une photo…", Margin = new Thickness(0, 0, 8, 0) };
+        var choose = new Button { Content = Loc.T("Choisir une photo…"), Margin = new Thickness(0, 0, 8, 0) };
         choose.Click += (_, _) => ChooseImage(); actions.Children.Add(choose);
-        var remove = new Button { Content = "Utiliser les initiales", Style = (Style)FindResource("QuietButton") };
+        var remove = new Button { Content = Loc.T("Utiliser les initiales"), Style = (Style)FindResource("QuietButton") };
         remove.Click += (_, _) => { _image = null; _imageChanged = true; UpdatePreview(); }; actions.Children.Add(remove); _form.Children.Add(actions);
-        var hint = Ui.Text("Image locale, recadrée au centre. PNG ou JPEG, 8 Mo maximum.", 11, "MutedBrush"); hint.Margin = new Thickness(0, 8, 0, 20); _form.Children.Add(hint);
-        _form.Children.Add(Ui.Text("Nom affiché", 12));
+        var hint = Ui.Text(Loc.T("Image locale, recadrée au centre. PNG ou JPEG, 8 Mo maximum."), 11, "MutedBrush"); hint.Margin = new Thickness(0, 8, 0, 20); _form.Children.Add(hint);
+        _form.Children.Add(Ui.Text(Loc.T("Nom affiché"), 12));
         _name = new TextBox { Text = appearance.Name ?? "", MaxLength = 48, Margin = new Thickness(0, 8, 0, 6), Padding = new Thickness(9) };
         _name.SetResourceReference(BackgroundProperty, "PanelBrush"); _name.SetResourceReference(ForegroundProperty, "TextBrush"); _name.SetResourceReference(BorderBrushProperty, "LineBrush");
-        _form.Children.Add(_name); _form.Children.Add(Ui.Text("Laissez vide pour afficher l’adresse. L’identité de connexion reste inchangée.", 11, "MutedBrush")); Body.Children.Add(_form);
-        _save = new Button { Content = "Enregistrer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0) };
+        _form.Children.Add(_name); _form.Children.Add(Ui.Text(Loc.T("Laissez vide pour afficher l’adresse. L’identité de connexion reste inchangée."), 11, "MutedBrush")); Body.Children.Add(_form);
+        _save = new Button { Content = Loc.T("Enregistrer"), Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0) };
         _save.Click += (_, _) => Save(); Body.Children.Add(_save);
         _name.TextChanged += (_, _) => UpdatePreview(); UpdatePreview();
     }
@@ -56,10 +56,10 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
     }
     private void ChooseImage()
     {
-        var dialog = new OpenFileDialog { Filter = "Images|*.png;*.jpg;*.jpeg", Title = "Photo du compte" };
+        var dialog = new OpenFileDialog { Filter = "Images|*.png;*.jpg;*.jpeg", Title = Loc.T("Photo du compte") };
         if (dialog.ShowDialog(this) != true) return;
         try { _image = AvatarStore.ReadImage(dialog.FileName); _imageChanged = true; UpdatePreview(); }
-        catch (Exception) { Error("Impossible de lire cette image. Choisissez un PNG ou JPEG local de moins de 8 Mo."); }
+        catch (Exception) { Error(Loc.T("Impossible de lire cette image. Choisissez un PNG ou JPEG local de moins de 8 Mo.")); }
     }
     private void Save()
     {
@@ -72,7 +72,7 @@ internal sealed class AccountAppearanceWindow : ThemedWindow
             if (_imageChanged && old.AvatarFile != file) AvatarStore.Remove(_preferences.DataDirectory, old.AvatarFile);
             Close();
         }
-        catch (Exception) { if (created is not null) AvatarStore.Remove(_preferences.DataDirectory, created); Error("La personnalisation n’a pas pu être enregistrée."); }
+        catch (Exception) { if (created is not null) AvatarStore.Remove(_preferences.DataDirectory, created); Error(Loc.T("La personnalisation n’a pas pu être enregistrée.")); }
     }
-    private void Error(string text) => new TrackerDialog(this, "Personnalisation", text, "Fermer", null).ShowDialog();
+    private void Error(string text) => new TrackerDialog(this, Loc.T("Personnalisation"), text, Loc.T("Fermer"), null).ShowDialog();
 }

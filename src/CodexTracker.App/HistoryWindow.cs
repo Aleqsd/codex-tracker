@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Threading;
 
@@ -23,35 +22,35 @@ internal sealed class HistoryWindow : ThemedWindow
     public Guid AccountId { get; }
 
     public HistoryWindow(Window owner, ITrackerService service, PreferencesStore preferences, Guid accountId, ThemeManager theme)
-        : base(owner, "Détails et historique", theme, 690, 745)
+        : base(owner, Loc.T("Détails et historique"), theme, 690, 745)
     {
         _service = service; _preferences = preferences; _theme = theme; AccountId = accountId;
         _name = Ui.Text("", 19); _name.FontWeight = FontWeights.Medium; Body.Children.Add(_name);
         _subtitle = Ui.Text("", 12, "MutedBrush"); _subtitle.Margin = new Thickness(0, 5, 0, 0); Body.Children.Add(_subtitle);
         _freshness = Ui.Text("", 11, "MutedBrush"); _freshness.Margin = new Thickness(0, 6, 0, 16); Body.Children.Add(_freshness);
         var metrics = new Grid(); for (int i = 0; i < 3; i++) metrics.ColumnDefinitions.Add(new ColumnDefinition());
-        AddMetric(metrics, 0, "Semaine", "WeeklyNumber"); AddMetric(metrics, 1, "5 heures", "ShortWindowRemaining"); AddMetric(metrics, 2, "Resets en réserve", "ReserveCount"); Body.Children.Add(Ui.Panel(metrics));
+        AddMetric(metrics, 0, Loc.T("Semaine"), "WeeklyNumber"); AddMetric(metrics, 1, Loc.T("5 heures"), "ShortWindowRemaining"); AddMetric(metrics, 2, Loc.T("Resets en réserve"), "ReserveCount"); Body.Children.Add(Ui.Panel(metrics));
         _period = Ui.Text("", 11, "MutedBrush"); _period.Margin = new Thickness(0, 11, 0, 19); Body.Children.Add(_period);
         var chartHeader = new Grid { Margin = new Thickness(0, 0, 0, 11) }; chartHeader.ColumnDefinitions.Add(new ColumnDefinition()); chartHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); chartHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var chartTitle = Ui.Text("Quota restant", 13); chartTitle.FontWeight = FontWeights.Medium; chartTitle.VerticalAlignment = VerticalAlignment.Center; chartHeader.Children.Add(chartTitle);
-        _windowSelector = new ComboBox { Tag = FindResource("DropdownQuotaIcon"), Width = 136, Margin = new Thickness(0, 0, 8, 0), ItemsSource = new[] { new WindowChoice(UsageWindowKind.Weekly, "Semaine"), new WindowChoice(UsageWindowKind.Short, "5 heures") }, DisplayMemberPath = "Label", SelectedValuePath = "Value", SelectedIndex = 0 };
-        _periodSelector = new ComboBox { Tag = FindResource("DropdownCalendarIcon"), Width = 136, ItemsSource = new[] { new PeriodChoice(24, "24 heures"), new PeriodChoice(168, "7 jours") }, DisplayMemberPath = "Label", SelectedValuePath = "Hours", SelectedIndex = 0 };
+        var chartTitle = Ui.Text(Loc.T("Quota restant"), 13); chartTitle.FontWeight = FontWeights.Medium; chartTitle.VerticalAlignment = VerticalAlignment.Center; chartHeader.Children.Add(chartTitle);
+        _windowSelector = new ComboBox { Tag = FindResource("DropdownQuotaIcon"), Width = 136, Margin = new Thickness(0, 0, 8, 0), ItemsSource = new[] { new WindowChoice(UsageWindowKind.Weekly, Loc.T("Semaine")), new WindowChoice(UsageWindowKind.Short, Loc.T("5 heures")) }, DisplayMemberPath = "Label", SelectedValuePath = "Value", SelectedIndex = 0 };
+        _periodSelector = new ComboBox { Tag = FindResource("DropdownCalendarIcon"), Width = 136, ItemsSource = new[] { new PeriodChoice(24, Loc.T("24 heures")), new PeriodChoice(168, Loc.T("7 jours")) }, DisplayMemberPath = "Label", SelectedValuePath = "Hours", SelectedIndex = 0 };
         Grid.SetColumn(_windowSelector, 1); Grid.SetColumn(_periodSelector, 2); chartHeader.Children.Add(_windowSelector); chartHeader.Children.Add(_periodSelector); Body.Children.Add(chartHeader);
         _chart = new UsageChart { Height = 167 }; Body.Children.Add(Ui.Panel(_chart, new Thickness(4, 7, 9, 0)));
         _historyHint = Ui.Text("", 10, "MutedBrush"); _historyHint.Margin = new Thickness(0, 8, 0, 16); Body.Children.Add(_historyHint);
-        var forecast = new StackPanel(); var forecastLabel = Ui.Text("Estimation prudente", 11, "MutedBrush"); forecast.Children.Add(forecastLabel);
+        var forecast = new StackPanel(); var forecastLabel = Ui.Text(Loc.T("Estimation prudente"), 11, "MutedBrush"); forecast.Children.Add(forecastLabel);
         _forecast = Ui.Text("", 14); _forecast.FontWeight = FontWeights.Medium; _forecast.Margin = new Thickness(0, 6, 0, 0); forecast.Children.Add(_forecast);
         _forecastHint = Ui.Text("", 11, "MutedBrush"); _forecastHint.Margin = new Thickness(0, 6, 0, 0); forecast.Children.Add(_forecastHint); Body.Children.Add(Ui.Panel(forecast));
         _error = Ui.Text("", 11, "DangerBrush"); _error.Margin = new Thickness(0, 10, 0, 0); Body.Children.Add(_error);
         _details = Ui.Text("", 11, "MutedBrush"); _details.LineHeight = 19; _details.Margin = new Thickness(0, 12, 0, 3);
         var personal = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        var customize = new Button { Content = "Nom et avatar…", Style = (Style)FindResource("QuietButton"), Margin = new Thickness(-13, 0, 4, 0) };
+        var customize = new Button { Content = Loc.T("Nom et avatar…"), Style = (Style)FindResource("QuietButton"), Margin = new Thickness(-13, 0, 4, 0) };
         customize.Click += (_, _) => new AccountAppearanceWindow(this, preferences, AccountId, theme, _model?.IdentityHint).ShowDialog(); personal.Children.Add(customize);
-        var calendar = new Button { Content = "Exporter les échéances…", Style = (Style)FindResource("QuietButton") };
+        var calendar = new Button { Content = Loc.T("Exporter les échéances…"), Style = (Style)FindResource("QuietButton") };
         calendar.Click += (_, _) => new CalendarWindow(this, service, preferences, theme, AccountId).ShowDialog(); personal.Children.Add(calendar); Body.Children.Add(personal);
-        var expander = new Expander { Header = "Dates exactes et détails", Content = _details, Margin = new Thickness(0, 15, 0, 0) }; expander.SetResourceReference(ForegroundProperty, "TextBrush"); Body.Children.Add(expander);
+        var expander = new Expander { Header = Loc.T("Dates exactes et détails"), Content = _details, Margin = new Thickness(0, 15, 0, 0) }; expander.SetResourceReference(ForegroundProperty, "TextBrush"); Body.Children.Add(expander);
         var actions = new Grid { Margin = new Thickness(0, 17, 0, 0) }; actions.ColumnDefinitions.Add(new ColumnDefinition()); actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        _remove = new Button { Content = "Retirer du suivi", Style = (Style)FindResource("QuietButton") }; _remove.SetResourceReference(ForegroundProperty, "DangerBrush"); _remove.Click += async (_, _) => await RemoveAsync(); Grid.SetColumn(_remove, 1); actions.Children.Add(_remove); Body.Children.Add(actions);
+        _remove = new Button { Content = Loc.T("Retirer du suivi"), Style = (Style)FindResource("QuietButton") }; _remove.SetResourceReference(ForegroundProperty, "DangerBrush"); _remove.Click += async (_, _) => await RemoveAsync(); Grid.SetColumn(_remove, 1); actions.Children.Add(_remove); Body.Children.Add(actions);
         _periodSelector.SelectionChanged += (_, _) => DrawChart(); _windowSelector.SelectionChanged += (_, _) => DrawChart();
         service.Changed += Changed; preferences.Changed += Changed; theme.Changed += Changed;
         _clock.Tick += (_, _) => UpdateClock();
@@ -72,11 +71,11 @@ internal sealed class HistoryWindow : ThemedWindow
         if (account is null) { Close(); return; }
         var vm = new AccountViewModel(account, _service.State, _preferences); _model = vm; DataContext = vm;
         _name.Text = vm.Email; _subtitle.Text = vm.PlanBadge; _freshness.Text = vm.Freshness;
-        _period.Text = $"Période d’abonnement : {vm.SubscriptionSummary}"; _period.ToolTip = vm.SubscriptionDetails;
+        _period.Text = Loc.F("Période d’abonnement : {0}", vm.SubscriptionSummary); _period.ToolTip = vm.SubscriptionDetails;
         _details.Text = vm.AllDetails; _remove.IsEnabled = vm.CanRemove;
         _error.Text = vm.Error; _error.Visibility = vm.HasError ? Visibility.Visible : Visibility.Collapsed;
         var forecast = _service.GetForecast(AccountId); _currentForecast = forecast;
-        _forecast.ToolTip = forecast.EstimatedExhaustionAt is DateTimeOffset time ? $"Épuisement estimé : {Display.Exact(time)}\n{Display.Zone(time)}" : null;
+        _forecast.ToolTip = forecast.EstimatedExhaustionAt is DateTimeOffset time ? Loc.F("Épuisement estimé : {0}", Display.Exact(time)) + "\n" + Display.Zone(time) : null;
         _forecastHint.Text = Display.SafeText(forecast.Explanation, _preferences.Current.PrivacyMode); UpdateClock(); DrawChart();
     }
     private void UpdateClock()
@@ -84,9 +83,15 @@ internal sealed class HistoryWindow : ThemedWindow
         if (_closed || _model is null) return;
         _model.Tick(); _freshness.Text = _model.Freshness; _details.Text = _model.AllDetails;
         _forecast.Text = _currentForecast?.EstimatedExhaustionAt is DateTimeOffset at
-            ? at <= DateTimeOffset.UtcNow ? "Échéance estimée atteinte · à réévaluer"
-                : $"{(_currentForecast.Window == UsageWindowKind.Short ? "Fenêtre 5 h" : "Quota hebdomadaire")} · {Display.Countdown(at).ToLowerInvariant()}"
-            : "Pas d’estimation fiable pour le moment";
+            ? at <= DateTimeOffset.UtcNow ? Loc.T("Échéance estimée atteinte · à réévaluer")
+                : (_currentForecast.Window == UsageWindowKind.Short ? Loc.T("Fenêtre 5 h") : Loc.T("Quota hebdomadaire")) + " · " + Countdown(at)
+            : Loc.T("Pas d’estimation fiable pour le moment");
+    }
+    /// <summary>Lower-case countdown placed after a label, in either language.</summary>
+    private static string Countdown(DateTimeOffset at)
+    {
+        var left = at - PreviewClock.UtcNow;
+        return left <= TimeSpan.Zero ? Loc.T("reset attendu") : Loc.F("dans {0}", GlobalResetCard.Remaining(left));
     }
     private void DrawChart()
     {
@@ -94,13 +99,13 @@ internal sealed class HistoryWindow : ThemedWindow
         var samples = _service.GetHistory(AccountId); var cutoff = DateTimeOffset.UtcNow.AddHours(-hours);
         _chart.Samples = samples; _chart.Hours = hours; _chart.Window = window; _chart.InvalidateVisual();
         int count = samples.Count(s => s.Timestamp >= cutoff && (window == UsageWindowKind.Weekly ? s.WeeklyRemaining : s.ShortRemaining) is not null);
-        _historyHint.Text = count == 0 ? "Aucun relevé sur cette période. L’historique se construit quand le compte est actif." : $"{count} relevés · les interruptions et les resets restent visibles dans la courbe.";
+        _historyHint.Text = count == 0 ? Loc.T("Aucun relevé sur cette période. L’historique se construit quand le compte est actif.") : Loc.F("{0} relevés · les interruptions et les resets restent visibles dans la courbe.", count);
     }
     private async Task RemoveAsync()
     {
         var account = _service.State.Accounts.FirstOrDefault(a => a.Profile.Id == AccountId); if (account is null) return;
         string name = PrivacyText.ContextualAccount(account.Profile, _service.State, _preferences.Current);
-        if (new TrackerDialog(this, "Retirer ce compte du suivi ?", $"{name}\n\nSon historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans son application.", "Retirer", "Annuler").ShowDialog() != true) return;
+        if (new TrackerDialog(this, Loc.T("Retirer ce compte du suivi ?"), name + "\n\n" + Loc.T("Son historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans son application."), Loc.T("Retirer"), Loc.T("Annuler")).ShowDialog() != true) return;
         try
         {
             await _service.RemoveAccountAsync(AccountId);
@@ -114,7 +119,7 @@ internal sealed class HistoryWindow : ThemedWindow
         }
         catch (Exception error) { if (!_closed) ShowError(error.Message); }
     }
-    private void ShowError(string message) => new TrackerDialog(this, "Action indisponible", Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();
+    private void ShowError(string message) => new TrackerDialog(this, Loc.T("Action indisponible"), Display.SafeText(message, _preferences.Current.PrivacyMode), Loc.T("Fermer"), null).ShowDialog();
 }
 
 internal sealed class UsageChart : FrameworkElement
@@ -135,7 +140,7 @@ internal sealed class UsageChart : FrameworkElement
             double y = top + height * (1 - tick / 100.0); dc.DrawLine(grid, new Point(left, y), new Point(left + width, y)); DrawText(dc, tick == 100 ? "100%" : tick.ToString(), 3, y - 6);
         }
         DrawText(dc, Hours > 24 ? start.ToLocalTime().ToString("dd/MM") : start.ToLocalTime().ToString("HH:mm"), left, top + height + 9);
-        DrawText(dc, "Maintenant", left + width - 53, top + height + 9);
+        DrawText(dc, Loc.T("Maintenant"), left + width - 3, top + height + 9, align: 1);
         // Separate runs keep interruptions and resets visible; each run gets a soft area below its line.
         var runs = new List<List<Point>>();
         UsageSample? previous = null; Point? lastPoint = null; int known = 0;
@@ -164,15 +169,16 @@ internal sealed class UsageChart : FrameworkElement
             line.Freeze(); dc.DrawGeometry(null, stroke, line);
         }
         foreach (var run in runs.Where(r => r.Count == 1)) dc.DrawEllipse(chart, null, run[0], 1.9, 1.9);
-        if (known == 0) DrawText(dc, "Les premiers relevés apparaîtront ici.", Math.Max(left, left + width / 2 - 93), top + height / 2 - 6);
+        if (known == 0) DrawText(dc, Loc.T("Les premiers relevés apparaîtront ici."), left + width / 2, top + height / 2 - 6, align: 0.5, minimum: left);
         else if (lastPoint is Point last)
         {
             dc.DrawEllipse(ThemeManager.GetBrush("PanelBrush"), new Pen(chart, 2), last, 4, 4);
         }
     }
-    private void DrawText(DrawingContext dc, string text, double x, double y)
+    /// <summary>Draws a label anchored at <paramref name="x"/>: 0 = left edge, 0.5 = centre, 1 = right edge, so translated labels keep their place.</summary>
+    private void DrawText(DrawingContext dc, string text, double x, double y, double align = 0, double minimum = double.NegativeInfinity)
     {
-        var formatted = new FormattedText(text, CultureInfo.GetCultureInfo("fr-FR"), FlowDirection.LeftToRight, new Typeface(AppTypography.Family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), 10, ThemeManager.GetBrush("MutedBrush"), VisualTreeHelper.GetDpi(this).PixelsPerDip);
-        dc.DrawText(formatted, new Point(x, y));
+        var formatted = new FormattedText(text, Loc.Culture, FlowDirection.LeftToRight, new Typeface(AppTypography.Family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), 10, ThemeManager.GetBrush("MutedBrush"), VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        dc.DrawText(formatted, new Point(Math.Max(minimum, x - formatted.Width * align), y));
     }
 }
