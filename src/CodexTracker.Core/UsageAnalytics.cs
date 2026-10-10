@@ -140,7 +140,8 @@ public static class QuotaAlertEvaluator
         // Desktop Claude has no reset date. A measured full quota rearms thresholds,
         // without declaring a reset; partial corrections keep their deduplication.
         // The prior observation also repairs masks persisted by older versions at 100%.
-        var undatedFullQuota = window.ResetsAt is null && remaining == 100 ||
+        // An inferred Claude date is not a server date: a measured full quota still marks the new period.
+        var undatedFullQuota = (window.ResetsAt is null || window.IsResetEstimated) && remaining == 100 ||
             previous.ResetsAt is null && previous.Remaining == 100;
         var mask = newPeriod || undatedFullQuota ? 0 : previous.NotifiedThresholdMask;
         var lastReset = previous.LastObservedReset;

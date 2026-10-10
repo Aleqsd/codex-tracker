@@ -40,6 +40,36 @@ internal static class ClaudeDesktopUsageReader
         return latest;
     }
 
+    /// <summary>Weekly usage readings of the selected organization, oldest first, to locate an observed weekly reset.</summary>
+    internal static async Task<IReadOnlyList<(DateTimeOffset At, double Used)>> ReadWeeklyAsync(IReadOnlyList<string> paths,
+        ClaudeCodeIdentity identity, CancellationToken token)
+    {
+        var separator = identity.AccountId.IndexOf('/');
+        if (separator < 0 || !Guid.TryParse(identity.AccountId[(separator + 1)..], out var organization)) return [];
+        var readings = new List<(DateTimeOffset, double)>();
+        foreach (var path in paths)
+        {
+            try
+            {
+                using var document = await ClaudeCodeIdentity.ReadDocumentAsync(path, token);
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("version", out var version) || !version.TryGetInt32(out var number) || number != 2 ||
+                    !root.TryGetProperty("samples", out var samples) || samples.ValueKind != JsonValueKind.Array) continue;
+                foreach (var sample in samples.EnumerateArray())
+                {
+                    if (sample.ValueKind != JsonValueKind.Object || !Guid.TryParse(ClaudeCodeIdentity.Text(sample, "org"), out var org) || org != organization ||
+                        !sample.TryGetProperty("t", out var t) || !t.TryGetInt64(out var milliseconds) ||
+                        !sample.TryGetProperty("u", out var usage) || usage.ValueKind != JsonValueKind.Object ||
+                        !usage.TryGetProperty("sd", out var used) || used.ValueKind != JsonValueKind.Number || !used.TryGetDouble(out var value)) continue;
+                    try { readings.Add((DateTimeOffset.FromUnixTimeMilliseconds(milliseconds), value)); }
+                    catch (ArgumentOutOfRangeException) { }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { }
+        }
+        return readings;
+    }
+
     internal static AccountSnapshot? Parse(JsonElement root, ClaudeCodeIdentity identity, Guid organization, DateTimeOffset now)
     {
         // Version 1 had no organization identifier. It cannot safely be assigned to a personal/work account.

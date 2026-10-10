@@ -109,7 +109,8 @@ internal sealed class ResetsView : UserControl
         (!_preferences.Current.PrivacyMode && account.Profile.OrganizationName is { } organization ? " · " + organization : "");
     private string AccountName(AccountState account) => account.Profile.ProviderName + " · " + AccountLabel(account);
     private static string KindLabel(ResetScheduleEntry entry) => entry.IsUndetailedReserve ? Loc.T("Réserves sans date") : entry.Kind switch
-    { ResetKind.Weekly => Loc.T("Reset hebdomadaire"), ResetKind.Short => Loc.T("Reset 5 heures"), _ => Loc.T("Expiration de réserve") };
+    { ResetKind.Weekly => Inferred(entry) ? Loc.T("Reset hebdomadaire · estimé") : Loc.T("Reset hebdomadaire"), ResetKind.Short => Loc.T("Reset 5 heures"), _ => Loc.T("Expiration de réserve") };
+    private static bool Inferred(ResetScheduleEntry entry) => entry.Kind == ResetKind.Weekly && entry.Account.Snapshot?.Weekly is { IsResetEstimated: true } window && window.ResetsAt == entry.At;
     private static string EntryKey(ResetScheduleEntry entry) => $"{entry.Account.Profile.Id}:{entry.Kind}:{entry.CreditId}:{entry.At:O}";
     internal void ShowWeek() => _weekChoice.IsChecked = true;
     internal void ShowAnnouncements()
@@ -318,7 +319,7 @@ internal sealed class ResetsView : UserControl
         {
             var reset = ExpectedReset.For(entry.Account, entry.Kind, now, _state.GlobalResetFeed, _state.ManualCodexReset);
             var expected = reset is not null && (reset.Announcement is not null || reset.At == entry.At);
-            countdown.Text = expected ? Loc.T("≈100 % · à confirmer") : entry.At is null ? Loc.T("Date inconnue") : entry.At > now ? Display.Countdown(entry.At) : entry.Kind == ResetKind.Reserve ? Loc.T("Expiration passée") : Loc.F("Reset à confirmer dans {0}", entry.Account.Profile.ProviderName);
+            countdown.Text = expected ? Loc.T("≈100 % · à confirmer") : entry.At is null ? Loc.T("Date inconnue") : entry.At > now ? (Inferred(entry) ? "≈ " : "") + Display.Countdown(entry.At) : entry.Kind == ResetKind.Reserve ? Loc.T("Expiration passée") : Loc.F("Reset à confirmer dans {0}", entry.Account.Profile.ProviderName);
             countdown.ToolTip = expected ? Loc.T("Quota probablement rechargé. Ouvrez le compte pour confirmer ; le dernier relevé reste conservé.") : null;
             countdown.SetResourceReference(TextBlock.ForegroundProperty, expected ? "GoodBrush" : entry.At <= now || (entry.Kind == ResetKind.Reserve && entry.At - now <= TimeSpan.FromDays(1)) ? "WarningBrush" : "TextBrush");
             freshness.Text = entry.Account.Error is not null ? Loc.T("Dernier essai en échec · relevé conservé")

@@ -11,8 +11,10 @@ public sealed record AccountProfile(Guid Id, string Email, AccountProvider Provi
     public string IdentityKey => Provider + "\n" + Email.Trim().ToUpperInvariant() +
         (Provider == AccountProvider.ClaudeCode ? "\n" + ProviderAccountId : "");
 }
-public sealed record QuotaWindow(double UsedPercent, int? WindowDurationMins, DateTimeOffset? ResetsAt)
+/// <param name="EstimatedResetFrom">Set only for an inferred reset: the reset is expected between this instant and <paramref name="ResetsAt"/>.</param>
+public sealed record QuotaWindow(double UsedPercent, int? WindowDurationMins, DateTimeOffset? ResetsAt, DateTimeOffset? EstimatedResetFrom = null)
 {
+    [System.Text.Json.Serialization.JsonIgnore] public bool IsResetEstimated => EstimatedResetFrom is not null && ResetsAt is not null;
     public double RemainingPercent => Math.Clamp(100 - UsedPercent, 0, 100);
     public bool IsWeekly => WindowDurationMins == 10080;
 }

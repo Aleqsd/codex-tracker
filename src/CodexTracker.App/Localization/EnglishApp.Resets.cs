@@ -4,6 +4,7 @@ internal static partial class EnglishApp
 {
     internal static readonly (string French, string English)[] Resets =
     [
+        ("Reset hebdomadaire · estimé", "Weekly reset · estimated"),
         // ResetsView: heading, actions and filters
         ("Prochains resets", "Upcoming resets"),
         ("Reset Codex…", "Codex reset…"),

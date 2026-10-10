@@ -16,6 +16,9 @@ internal static class Display
     // Gauges carry the accent; text keeps the neutral colour until a threshold is reached.
     public static Brush QuotaBarBrush(double? value) => value is null ? ThemeManager.GetBrush("SubtleBrush") : value < 10 ? Red : value <= 20 ? Orange : ThemeManager.GetBrush("AccentBrush");
     public static string Percent(double? value) => value is null ? "—" : $"{Math.Floor(value.Value):0}%";
+    /// <summary>Inferred Claude weekly reset: the bracket is shown instead of a single precise date.</summary>
+    public static string EstimatedReset(QuotaWindow window) => Loc.F("Reset hebdomadaire estimé entre le {0} et le {1}.\nDéduit de la dernière remise à zéro de la semaine observée : Claude la renouvelle au même moment chaque semaine.\nUne date fournie par Claude Code remplace cette estimation.",
+        Exact(window.EstimatedResetFrom), Exact(window.ResetsAt)) + "\n" + Zone(window.ResetsAt);
     public static string Exact(DateTimeOffset? date) => date?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", Loc.Culture) ?? Loc.T("Indisponible");
     public static string Zone(DateTimeOffset? date)
     {
@@ -146,10 +149,13 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ShortSummary => HasManualShortReset ? Loc.F("5 h : {0} · déclaré", ShortWindowRemaining) : Loc.F("5 h : {0}", ShortWindowRemaining);
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCountdown => HasManualWeeklyReset ? Loc.T("À reconfirmer") : Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
+    private bool WeeklyResetInferred => _account.Snapshot?.Weekly?.IsResetEstimated == true && !HasManualWeeklyReset && !HasWeeklyEstimate;
+    private string Approximate => WeeklyResetInferred ? "≈ " : "";
+    public string ResetCountdown => HasManualWeeklyReset ? Loc.T("À reconfirmer") : Approximate + Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetCompact => WeeklyEstimate?.Announcement is not null ? Loc.T("À reconfirmer") : HasWeeklyEstimate ? Loc.T("Reset passé")
-        : HasManualWeeklyReset ? Loc.T("À reconfirmer") : Display.Remaining(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetHint => HasManualWeeklyReset ? ManualResetHint : HasWeeklyEstimate ? EstimateHint : $"{ResetExact}\n{ResetZone}";
+        : HasManualWeeklyReset ? Loc.T("À reconfirmer") : Approximate + Display.Remaining(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetHint => HasManualWeeklyReset ? ManualResetHint : HasWeeklyEstimate ? EstimateHint
+        : WeeklyResetInferred ? Display.EstimatedReset(_account.Snapshot!.Weekly!) : $"{ResetExact}\n{ResetZone}";
     // Both languages start the countdown with a capital ("Dans …", "In …"); the sentence continues it in lower case.
     public string SummaryReset => Loc.F("Reset hebdomadaire {0}", ResetCountdown.ToLowerInvariant());
     public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";

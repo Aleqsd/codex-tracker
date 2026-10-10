@@ -126,6 +126,11 @@ public sealed class ClaudeDesktopTests
         Assert.All(notifications, n => { Assert.Equal(NotificationKind.Threshold, n.Kind); Assert.Equal(20, n.Threshold); });
         Assert.Equal(new[] { UsageWindowKind.Weekly, UsageWindowKind.Short }, notifications.Select(n => n.Window));
         await restarted.RefreshAsync(); Assert.Equal(2, notifications.Count);
-        Assert.Null(restarted.State.ActiveAccount.Snapshot!.Weekly!.ResetsAt); Assert.Null(restarted.State.ActiveAccount.Snapshot.Short!.ResetsAt);
+        // The observed weekly drop (85 % → 0 %) brackets one reset; the next one is projected a week later, marked as estimated.
+        var weekly = restarted.State.ActiveAccount.Snapshot!.Weekly!;
+        Assert.True(weekly.IsResetEstimated);
+        Assert.InRange(weekly.EstimatedResetFrom!.Value, at.AddMinutes(2).AddSeconds(-1) + WeeklyResetInference.Period, at.AddMinutes(2).AddSeconds(1) + WeeklyResetInference.Period);
+        Assert.InRange(weekly.ResetsAt!.Value, at.AddMinutes(4).AddSeconds(-1) + WeeklyResetInference.Period, at.AddMinutes(4).AddSeconds(1) + WeeklyResetInference.Period);
+        Assert.Null(restarted.State.ActiveAccount.Snapshot.Short!.ResetsAt);
     }
 }

@@ -3,7 +3,7 @@ using CodexTracker.Core;
 namespace CodexTracker.Codex;
 
 internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeCodeObservations observations,
-    IReadOnlyList<string> desktopPaths) : IAccountUsageReader
+    IReadOnlyList<string> desktopPaths, Func<Guid, IReadOnlyList<UsageSample>>? history = null) : IAccountUsageReader
 {
     public async Task<AccountSnapshot> ReadAsync(AccountProfile profile, string expectedAccountId, CancellationToken cancellationToken)
     {
@@ -14,7 +14,41 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
         AccountSnapshot? terminal = null;
         try { terminal = observations.Read(identity); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or TrackerException) { }
-        return desktop is not null && (terminal is null || desktop.FetchedAt > terminal.FetchedAt) ? desktop : terminal ??
+        var latest = desktop is not null && (terminal is null || desktop.FetchedAt > terminal.FetchedAt) ? desktop : terminal ??
             throw new TrackerException(Loc.T("Quotas Claude en attente. Ouvrez l’application Claude pour un relevé automatique, ou configurez les relevés du terminal dans Réglages → Général."));
+        latest = KeepTerminalResets(latest, terminal);
+        if (latest.Weekly is { ResetsAt: null })
+        {
+            var observed = (history?.Invoke(profile.Id) ?? []).Where(s => s.WeeklyRemaining is not null)
+                .Select(s => (s.Timestamp, 100 - s.WeeklyRemaining!.Value))
+                .Concat(await ClaudeDesktopUsageReader.ReadWeeklyAsync(desktopPaths, identity, cancellationToken));
+            latest = WithWeeklyReset(latest, WeeklyResetInference.Next(WeeklyResetInference.LatestReset(observed), latest.FetchedAt));
+        }
+        return latest;
     }
+
+    /// <summary>A newer Desktop reading has no dates: a terminal date for the same, still running period stays valid.</summary>
+    internal static AccountSnapshot KeepTerminalResets(AccountSnapshot latest, AccountSnapshot? terminal)
+    {
+        if (terminal is null || ReferenceEquals(latest, terminal)) return latest;
+        var dated = terminal.Buckets.SelectMany(b => b.Windows).Where(w => w.ResetsAt > latest.FetchedAt).ToArray();
+        if (dated.Length == 0) return latest;
+        return latest with
+        {
+            Buckets = latest.Buckets.Select(bucket => bucket with
+            {
+                Windows = bucket.Windows.Select(window => window.ResetsAt is null && dated.FirstOrDefault(d => d.WindowDurationMins == window.WindowDurationMins) is { } source
+                    ? window with { ResetsAt = source.ResetsAt } : window).ToArray()
+            }).ToArray()
+        };
+    }
+
+    internal static AccountSnapshot WithWeeklyReset(AccountSnapshot snapshot, WeeklyResetInference.Bracket? next) => next is null ? snapshot : snapshot with
+    {
+        Buckets = snapshot.Buckets.Select(bucket => bucket with
+        {
+            Windows = bucket.Windows.Select(window => window.IsWeekly && window.ResetsAt is null
+                ? window with { ResetsAt = next.By, EstimatedResetFrom = next.After } : window).ToArray()
+        }).ToArray()
+    };
 }

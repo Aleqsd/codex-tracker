@@ -100,7 +100,8 @@ internal sealed class TrayPeekWindow : Window
         _weeklyRing.RingBrush = declared ? Display.Green : Display.QuotaBarBrush(weekly); _shortRing.RingBrush = Display.QuotaBarBrush(shortWindow);
         _planChip.Visibility = string.IsNullOrEmpty(_plan.Text) ? Visibility.Collapsed : Visibility.Visible;
         _status.Text = declared ? Loc.T("Reset Codex déclaré") : account?.IsActive == true ? Loc.F("Compte actif dans {0}", account.Profile.ProviderName) : Loc.T("Compte affiché dans l’icône");
-        _reset.Text = declared ? Loc.T("Prochain reset à reconfirmer") : nextReset is null ? Loc.T("Reset hebdomadaire indisponible") : "Reset · " + Display.Countdown(nextReset);
+        _reset.Text = declared ? Loc.T("Prochain reset à reconfirmer") : nextReset is null ? Loc.T("Reset hebdomadaire indisponible")
+            : "Reset · " + (snapshot?.Weekly is { IsResetEstimated: true } inferred && inferred.ResetsAt == nextReset ? "≈ " : "") + Display.Countdown(nextReset);
         _reset.ToolTip = declared ? Loc.F("Reset Codex déclaré le {0} · {1}", Display.Exact(state.ManualCodexReset!.At), Display.Zone(state.ManualCodexReset.At)) : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
         _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
         _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };

@@ -78,7 +78,7 @@ public sealed partial class TrackerService : ITrackerService
         _claudeObservations = new(_options.DataDirectory, _claudeLocation);
         _claudeDesktopUsagePaths = _options.ClaudeDesktopUsagePaths ?? ClaudeDesktopUsageReader.ResolvePaths(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-        _claudeReader = claudeReader ?? new ClaudeCodeUsageReader(_claudeLocation, _claudeObservations, _claudeDesktopUsagePaths);
+        _claudeReader = claudeReader ?? new ClaudeCodeUsageReader(_claudeLocation, _claudeObservations, _claudeDesktopUsagePaths, GetHistory);
         if (_options.GlobalResetMonitoringEnabled is { } enabled)
         {
             _publicHttp = GlobalResetReader.CreateHttpClient();

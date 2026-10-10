@@ -4,6 +4,9 @@ internal static partial class EnglishApp
 {
     internal static readonly (string French, string English)[] Dashboard =
     [
+        ("Actualiser maintenant", "Refresh now"),
+        ("Actualiser les quotas maintenant", "Refresh quotas now"),
+        ("Reset hebdomadaire estimé entre le {0} et le {1}.\nDéduit de la dernière remise à zéro de la semaine observée : Claude la renouvelle au même moment chaque semaine.\nUne date fournie par Claude Code remplace cette estimation.", "Weekly reset estimated between {0} and {1}.\nInferred from the last observed weekly reset: Claude renews the week at the same time every week.\nA date provided by Claude Code replaces this estimate."),
         ("Comptes", "Accounts"),
         ("Changez de compte dans Codex ou Claude Code : le tracker suit automatiquement. Glissez son icône dans la barre d’état pour la garder visible.", "Switch accounts in Codex or Claude Code and the tracker follows automatically. Drag its icon into the notification area to keep it visible."),
         ("Compris", "Got it"),
