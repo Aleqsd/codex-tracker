@@ -21,7 +21,7 @@ internal static class TrayChecks
         var peek = new TrayPeekWindow(() => opens++);
         try
         {
-            var area = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
+            var area = TestScreen.Area;
             var anchor = new System.Drawing.Point(area.Right - 210, area.Bottom - 30);
             var scroll = (ScrollViewer)peek.Content;
             foreach (var mode in new[] { ThemeMode.Dark, ThemeMode.Light })

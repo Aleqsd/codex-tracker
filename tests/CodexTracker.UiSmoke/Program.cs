@@ -26,11 +26,12 @@ internal static class Program
             foreach (var game in games) game.Dispose();
             if (running)
             {
-                Console.Error.WriteLine("SKIPPED: Final Fantasy XIV est en cours. Tests WPF reportés pour préserver le plein écran ; utiliser la CI.");
+                Console.Error.WriteLine("SKIPPED: Final Fantasy XIV est en cours. Tests WPF reportés pour préserver le plein écran ; relancer après la session de jeu.");
                 return 2;
             }
         }
         var app = new TestApplication();
+        TestScreen.Install();
         app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         System.Xml.Linq.XNamespace ns = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         System.Xml.Linq.XNamespace motion = "clr-namespace:CodexTracker.App;assembly=CodexTracker";
@@ -78,6 +79,7 @@ internal static class Program
 
                 await RequestShow(handle);
                 CheckRendered(window, "First activation from background renders WPF content");
+                Check(WindowsLifecycle.Bounds(handle) is { } shown && TestScreen.Area.Contains(shown.X + shown.Width / 2, shown.Y + shown.Height / 2), "Test windows open on the chosen screen");
                 window.Hide();
                 await RequestShow(handle);
                 CheckRendered(window, "Reopening a hidden window renders content");
@@ -116,6 +118,7 @@ internal static class Program
                 if (source is not null && hook is not null) source.RemoveHook(hook);
                 window?.PrepareExit(); window?.Close();
                 if (service is not null) await service.DisposeAsync();
+                TestScreen.Uninstall();
                 app.Dispatcher.InvokeShutdown();
             }
         });

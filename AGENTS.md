@@ -39,7 +39,7 @@ Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Pyth
 
 ## Vérification proportionnée
 
-Ne jamais lancer les tests UI locaux, aperçus ou automatisations qui activent une fenêtre pendant que Final Fantasy XIV tourne (`ffxiv_dx11.exe` ou `ffxiv.exe`) : ils peuvent faire quitter le plein écran du jeu. Vérifier les processus en lecture seule avant ces actions ; reporter le contrôle local après la session de jeu. Ne pas fermer/minimiser le jeu. Les compilations et tests métier sans interface restent possibles.
+Ne jamais lancer les tests UI locaux, aperçus ou automatisations qui activent une fenêtre pendant que Final Fantasy XIV tourne (`ffxiv_dx11.exe` ou `ffxiv.exe`) : ils peuvent faire quitter le plein écran du jeu. Vérifier les processus en lecture seule avant ces actions ; reporter le contrôle local après la session de jeu. Ne pas fermer/minimiser le jeu. Les compilations et tests métier sans interface restent possibles. Les fenêtres de la suite WPF s’ouvrent sur l’écran à droite du principal s’il existe (`-TestScreen right|left|primary|DISPLAYn` ou `CODEX_TRACKER_TEST_SCREEN`) ; elles prennent tout de même le focus.
 
 Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Avant une release : `scripts/release.ps1 -Publish` réussi sur le commit poussé (compilation, tests métier et WPF, installer + ZIP + SHA-256, test réel stdio), puis `-UpdateThisPc` pour vérifier la mise à jour réelle et la préservation des données existantes.
 

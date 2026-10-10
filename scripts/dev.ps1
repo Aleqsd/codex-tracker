@@ -8,13 +8,17 @@ param(
     [ValidateSet(96,120,144,192)][int]$Dpi = 96,
     [switch]$Claude,
     [switch]$ManualReset,
-    [switch]$Matrix
+    [switch]$Matrix,
+    # Screen for the real WPF test windows: right (default), left, primary or DISPLAYn.
+    [ValidatePattern('^(right|left|primary|DISPLAY\d+)$')]
+    [string]$TestScreen
 )
 $ErrorActionPreference = 'Stop'
 if (Get-Process -Name ffxiv_dx11,ffxiv -ErrorAction SilentlyContinue) {
     throw 'Final Fantasy XIV est en cours : tests UI et aperçus reportés pour préserver le plein écran. La compilation et les tests métier peuvent être lancés séparément ; relancer les vues après la session de jeu.'
 }
 $root = Split-Path -Parent $PSScriptRoot
+if ($TestScreen) { $env:CODEX_TRACKER_TEST_SCREEN = $TestScreen }
 Push-Location $root
 try {
     $demoOptions = @()

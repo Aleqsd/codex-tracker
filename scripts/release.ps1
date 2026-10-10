@@ -18,7 +18,10 @@ param(
     [switch]$InstallCompiler,
     [switch]$Publish,
     [string]$NotesPath,
-    [switch]$UpdateThisPc
+    [switch]$UpdateThisPc,
+    # Screen for the real WPF test windows: right (default), left, primary or DISPLAYn.
+    [ValidatePattern('^(right|left|primary|DISPLAY\d+)$')]
+    [string]$TestScreen
 )
 $ErrorActionPreference = 'Stop'
 if (Get-Process -Name ffxiv_dx11,ffxiv -ErrorAction SilentlyContinue) {
@@ -32,6 +35,7 @@ if ($Version -ne $declaredVersion) { throw "Directory.Build.props déclare $decl
 if ($UpdateThisPc -and -not $Publish) { throw '-UpdateThisPc installe la Release publiée : ajouter -Publish.' }
 # Framework-dependent test hosts need the SDK's runtime when it is not installed system-wide.
 $env:DOTNET_ROOT = Split-Path -Parent (Get-Command $Dotnet).Source
+if ($TestScreen) { $env:CODEX_TRACKER_TEST_SCREEN = $TestScreen }
 
 function Invoke-Step([string]$Name, [scriptblock]$Action) {
     Write-Host "==> $Name" -ForegroundColor Cyan
