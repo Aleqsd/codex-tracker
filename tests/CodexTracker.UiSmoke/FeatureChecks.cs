@@ -284,7 +284,10 @@ internal static class FeatureChecks
             Check(opened.Last().AbsolutePath.EndsWith("/eventedit") && opened.Last().Query.Contains("action=TEMPLATE") && Field<TextBlock>(calendar, "_status").Text.Contains("Enregistrer"), "Single event button opens a Google draft without claiming it was saved");
             var countBefore = opened.Count; calendar.OpenEntry(new("old", "Old", "", DateTimeOffset.UtcNow.AddDays(-1)));
             Check(opened.Count == countBefore && Field<TextBlock>(calendar, "_status").Text.Contains("changé"), "Outdated events cannot open a stale Google draft");
+            static string? Protocol() { using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Classes\codextracker\shell\open\command"); return key?.GetValue(null) as string; }
+            var protocolBefore = Protocol();
             var icsPath = Path.Combine(directory, "calendar.ics"); calendar.ExportToFile(icsPath);
+            Check(Protocol() == protocolBefore, "A fictional calendar export never registers the codextracker link in Windows");
             Check(File.ReadAllText(icsPath).Contains("BEGIN:VEVENT") && File.ReadAllText(icsPath).Contains("Studio"), "Manual calendar export still includes account display names"); calendar.Close();
             var failedBrowser = new CalendarWindow(window, service, preferences, theme, openBrowser: _ => throw new IOException()); failedBrowser.Show();
             Field<Button>(failedBrowser, "_google").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));

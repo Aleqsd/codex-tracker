@@ -49,6 +49,8 @@ internal sealed class PreferencesStore
         Converters = { new JsonStringEnumConverter() }
     };
     private readonly string? _path;
+    /// <summary>Only the real tracker keeps preferences on disk; demos and test hosts never do.</summary>
+    public bool IsPersistent => _path is not null;
     public string DataDirectory { get; }
     public TrackerPreferences Current { get; private set; } = Normalize(new());
     public bool RecoveryRequired => Current.RecoveryPending;
