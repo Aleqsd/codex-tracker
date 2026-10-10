@@ -112,7 +112,12 @@ public partial class MainWindow : Window
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; HideToTray(); } }
     private void HideToTray() { Hide(); ShowInTaskbar = false; }
-    public void ShowPanel() { ShowInTaskbar = true; Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Ui.EnsureWindowVisible(this); Activate(); }
+    internal bool Offscreen { get; set; }
+    public void ShowPanel()
+    {
+        if (Offscreen) { Show(); return; }
+        ShowInTaskbar = true; Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Ui.EnsureWindowVisible(this); Activate();
+    }
     internal void ShowResetWeek() { ShowResets(); _resets.ShowWeek(); }
     internal void ShowResets() { ShowPanel(); ResetsTab.IsSelected = true; }
     internal void OpenPage(string page)

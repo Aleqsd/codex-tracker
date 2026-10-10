@@ -223,7 +223,7 @@ internal sealed class ResetsView : UserControl
     private string DateLabel(DateOnly date, DateTimeOffset now)
     {
         var today = DateOnly.FromDateTime(now.LocalDateTime);
-        return date == today ? Loc.T("Aujourd’hui") : date == today.AddDays(1) ? Loc.T("Demain") : date.ToString(date.Year == today.Year ? "dddd dd MMMM" : "dddd dd MMMM yyyy");
+        return date == today ? Loc.T("Aujourd’hui") : date == today.AddDays(1) ? Loc.T("Demain") : date.ToString(date.Year == today.Year ? "dddd dd MMMM" : "dddd dd MMMM yyyy", Loc.Culture);
     }
     private void AddDays(StackPanel target, IEnumerable<ResetScheduleEntry> entries, DateTimeOffset now)
     {
@@ -238,7 +238,7 @@ internal sealed class ResetsView : UserControl
     {
         var navigation = new Grid { Margin = new Thickness(2, 10, 0, 10) };
         navigation.ColumnDefinitions.Add(new ColumnDefinition()); navigation.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var range = Ui.Text($"{_week:dd MMM} – {_week.AddDays(6):dd MMM yyyy}", 13); range.FontWeight = FontWeights.Medium; range.VerticalAlignment = VerticalAlignment.Center; navigation.Children.Add(range);
+        var range = Ui.Text(_week.ToString("dd MMM", Loc.Culture) + " – " + _week.AddDays(6).ToString("dd MMM yyyy", Loc.Culture), 13); range.FontWeight = FontWeights.Medium; range.VerticalAlignment = VerticalAlignment.Center; navigation.Children.Add(range);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var (icon, name, shift) in new[] { ("ChevronLeftIcon", Loc.T("Semaine précédente"), -7), ("", Loc.T("Semaine actuelle"), 0), ("ChevronRightIcon", Loc.T("Semaine suivante"), 7) })
         {
@@ -260,7 +260,7 @@ internal sealed class ResetsView : UserControl
         {
             var dayBrush = day.Date == today ? "AccentBrush" : "TextBrush";
             var content = new StackPanel();
-            var name = Ui.Text(day.Date.ToString("ddd"), 11, day.Date == today ? "AccentBrush" : "MutedBrush"); name.TextAlignment = TextAlignment.Center; content.Children.Add(name);
+            var name = Ui.Text(day.Date.ToString("ddd", Loc.Culture), 11, day.Date == today ? "AccentBrush" : "MutedBrush"); name.TextAlignment = TextAlignment.Center; content.Children.Add(name);
             var date = Ui.Text(day.Date.ToString("dd"), 19, dayBrush); date.FontWeight = day.Date == today ? FontWeights.Bold : FontWeights.Medium; date.TextAlignment = TextAlignment.Center; date.Margin = new Thickness(0, 3, 0, 4); content.Children.Add(date);
             var count = Ui.Text(day.Entries.Count == 0 ? "—" : day.Entries.Count == 1 ? Loc.T("1 reset") : Loc.F("{0} resets", day.Entries.Count), 10, day.Entries.Count == 0 ? "SubtleBrush" : "MutedBrush"); count.TextAlignment = TextAlignment.Center; content.Children.Add(count);
             var select = new Button { Content = content, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(2, 9, 2, 9), Margin = new Thickness(2, 0, 2, 0), FontWeight = FontWeights.Normal };

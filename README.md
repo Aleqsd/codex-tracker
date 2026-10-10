@@ -1,7 +1,7 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Sachez toujours combien il vous reste de Codex et de Claude Code.</strong><br>Votre quota, l’heure de la prochaine recharge et un rappel au bon moment, directement dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.15/CodexTracker-0.9.15-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
-<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · Version 0.9.15</sub></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.16/CodexTracker-0.9.16-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · Français ou English · Version 0.9.16</sub></p>
 
 <p align="center"><img src="docs/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges en clair et aperçu de la barre des tâches, avec des comptes fictifs" width="880"></p>
 
@@ -23,8 +23,8 @@ Codex Tracker répond à trois questions, sans rien configurer :
 <td width="50%" valign="top"><img src="docs/resets-week.png" alt="Semaine des recharges avec comptes fictifs"><br><strong>Le calendrier des recharges.</strong> Les prochaines recharges jour par jour, et les crédits de reset Codex en réserve avec leur date d’expiration.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="docs/reminders.png" alt="Réglages des rappels avec comptes fictifs"><br><strong>Prévenu au bon moment.</strong> Une notification Windows avant une recharge, sous 20, 10 ou 5 % de quota, ou quand un autre compte vient de se recharger.</td>
-<td width="50%" valign="top"><img src="docs/settings.png" alt="Réglages généraux, démonstration"><br><strong>Discret et à votre goût.</strong> Thème clair ou sombre comme Windows, noms et photos pour vos comptes, export vers Google Agenda.</td>
+<td width="50%" valign="top"><img src="docs/reminders.png" alt="Réglages des rappels avec comptes fictifs"><br><strong>Prévenu au bon moment.</strong> Une notification Windows avant une recharge, sous 20, 10 ou 5 % de quota, une heure avant d’être à court au rythme actuel, ou quand un autre compte vient de se recharger. Un clic ouvre le suivi, ou « Rappeler » la représente plus tard.</td>
+<td width="50%" valign="top"><img src="docs/settings.png" alt="Réglages généraux, démonstration"><br><strong>Discret et à votre goût.</strong> Interface en français ou en anglais, thème clair ou sombre comme Windows, noms et photos pour vos comptes, export vers Google Agenda.</td>
 </tr>
 </table>
 

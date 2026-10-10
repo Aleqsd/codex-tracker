@@ -70,7 +70,7 @@ public partial class App : System.Windows.Application
                 ? e.Args[languageArgument + 1] == "en" ? AppLanguage.English : AppLanguage.French
                 : e.Args.Contains("--preview") ? AppLanguage.French : preferences.Current.Language;
             Loc.Register(EnglishApp.All); Loc.Use(language);
-            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture = Loc.Culture;
+            // Display formatting passes Loc.Culture explicitly: a culture set in this async method would not outlive its flow.
             System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = Loc.Culture;
             if (IsDemo && demoInstance >= 0) preferences.Update(p => p with { McpEnabled = true });
             var updates = new UpdateService();
@@ -120,6 +120,12 @@ public partial class App : System.Windows.Application
             _environmentTimer.Tick += EnvironmentTimerTick;
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
+            if (e.Args.Contains("--preview"))
+            {
+                // Previews render off-screen without activation: they never take focus from the user's work or game.
+                window.Offscreen = true; window.ShowActivated = false; window.ShowInTaskbar = false;
+                window.WindowStartupLocation = WindowStartupLocation.Manual; window.Left = window.Top = -32000;
+            }
             if (!e.Args.Contains("--background")) window.Show();
             await window.InitializeAsync();
             if (_exiting) return;
