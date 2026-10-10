@@ -127,6 +127,8 @@ Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 
 
 ### Rappels locaux et connecteurs facultatifs
 
+Les notifications Windows proposent **Ouvrir le suivi**, qui affiche directement Comptes ou Resets, et **Rappeler** dans 15 minutes, 1 heure ou 4 heures. Le rappel est géré par Windows lui-même, même si le tracker est fermé entre-temps. Si Windows refuse ce format, une bulle classique s’affiche à la place.
+
 **Tester une notification Windows**, dans **Rappels** ou **Canaux**, affiche son résultat sous le bouton et l’enregistre dans **Historique**. Si Windows signale une application en plein écran, une présentation, une session inactive ou des notifications désactivées, le test explique pourquoi il est ignoré. Quittez le mode concerné puis réessayez. **Réglages Windows ↗** ouvre la page des notifications sans modifier vos choix.
 
 Une demande transmise à Windows ne confirme pas l’affichage d’une bannière. Si rien n’apparaît, vérifiez **Paramètres Windows → Système → Notifications**, notamment **Ne pas déranger** et ses règles automatiques. Les rappels planifiés temporairement bloqués par le plein écran ou une session inactive sont différés, puis réessayés uniquement tant que leur échéance est à venir. Un test manuel ignoré nécessite un nouveau clic.

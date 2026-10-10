@@ -30,9 +30,9 @@ try {
         # The framework-dependent developer exe needs the SDK's runtime on machines without a system install.
         $dotnetCommand = (Get-Command $Dotnet).Source
         $env:DOTNET_ROOT = Split-Path -Parent $dotnetCommand
-        & $Python scripts/test-mcp.py (Join-Path $root 'src/CodexTracker.App/bin/Release/net10.0-windows/CodexTracker.exe')
+        & $Python scripts/test-mcp.py (Join-Path $root 'src/CodexTracker.App/bin/Release/net10.0-windows10.0.19041.0/CodexTracker.exe')
         if ($LASTEXITCODE) { throw 'Tests MCP échoués.' }
-        & $Python scripts/test-claude.py (Join-Path $root 'src/CodexTracker.App/bin/Release/net10.0-windows/CodexTracker.exe')
+        & $Python scripts/test-claude.py (Join-Path $root 'src/CodexTracker.App/bin/Release/net10.0-windows10.0.19041.0/CodexTracker.exe')
         if ($LASTEXITCODE) { throw 'Tests du collecteur Claude Code échoués.' }
     } elseif ($Action -eq 'Demo') {
         & $Dotnet run --project src/CodexTracker.App -c Release --no-build -- --demo --theme $Theme @demoOptions

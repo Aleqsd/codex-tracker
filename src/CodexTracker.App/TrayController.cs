@@ -29,14 +29,16 @@ internal sealed class TrayController : IDisposable
     private Icon? _icon;
     private string? _iconKey;
     private bool _disposed, _suspended;
+    private string _notificationPage = "Resets";
 
     public TrayController(MainWindow window, ITrackerService service, PreferencesStore preferences, Func<Task> exit)
     {
         _window = window; _service = service; _exit = exit; _preferences = preferences;
         _peek = new TrayPeekWindow(_window.ShowPanel);
         _tray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
-        _desktop = new((title, body) => _tray.ShowBalloonTip(8000, title, body, Forms.ToolTipIcon.Info),
-            () => !_disposed && !_suspended && _tray.Visible);
+        _desktop = new(ShowDesktop, () => !_disposed && !_suspended && _tray.Visible);
+        if (service is not DemoTrackerService)
+            WindowsToasts.Listen(page => _window.Dispatcher.InvokeAsync(() => { if (!_disposed) _window.OpenPage(page); }));
         _tray.MouseClick += (_, e) =>
         {
             HidePeek();
@@ -206,6 +208,7 @@ internal sealed class TrayController : IDisposable
         var latest = pending.OrderByDescending(n => n.Kind == NotificationKind.Threshold).ThenBy(n => n.Threshold ?? 100).First();
         var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current);
         if (pending.Length > 1) body += $"\n{pending.Length - 1} autre événement dans le suivi.";
+        _notificationPage = latest.Kind == NotificationKind.Reset ? "Resets" : "Comptes";
         _desktop.Send(title, body);
     }
 
@@ -217,8 +220,15 @@ internal sealed class TrayController : IDisposable
         _peek.Hide();
     }
 
+    // Toasts carry an "open" action and a Windows-managed snooze; the classic balloon remains the fallback.
+    private void ShowDesktop(string title, string body)
+    {
+        try { WindowsToasts.Show(title, body, _notificationPage); }
+        catch (Exception) { _tray.ShowBalloonTip(8000, title, body, Forms.ToolTipIcon.Info); }
+    }
     private DeliveryResult ShowReminders(IReadOnlyList<ReminderOccurrence> rows)
     {
+        _notificationPage = "Resets";
         if (rows.Count == 0) return new(DeliveryStatus.Failed, "Aucun rappel à transmettre à Windows.");
         if (rows.Count == 1 && rows[0].Key.StartsWith("test/", StringComparison.Ordinal))
             return _desktop.Send("Codex Tracker · Test", "Les alertes de quota et de reset apparaîtront ici. Cliquez pour ouvrir l’onglet Resets.");

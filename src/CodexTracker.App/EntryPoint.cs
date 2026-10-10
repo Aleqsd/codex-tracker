@@ -6,6 +6,11 @@ internal static class EntryPoint
     public static int Main(string[] args)
     {
         if (args.Contains("--mcp")) return Mcp.McpHost.RunAsync(args).GetAwaiter().GetResult();
+        if (args.Contains("--unregister-notifications"))
+        {
+            try { WindowsToasts.Unregister(); } catch (Exception) { /* Uninstallation continues without notification cleanup. */ }
+            return 0;
+        }
         if (args.Contains("--claude-statusline") || args.Contains("--claude-session-start"))
         {
             try

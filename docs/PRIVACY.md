@@ -23,6 +23,8 @@ Des copies `.bak` des préférences, profils et relevés permettent leur récup�
 
 Les canaux et le MCP peuvent être désactivés depuis les réglages. Les fiches de connecteurs permettent d’effacer les identifiants. Retirer un compte supprime son suivi local ; le compte sera redétecté si vous l’ouvrez ensuite dans Codex.
 
+Pour afficher des notifications avec boutons, le tracker s’enregistre auprès de Windows pour l’utilisateur courant : clés sous `HKCU\Software\Classes` et icône sous `%LOCALAPPDATA%\ToastNotificationManagerCompat`. La désinstallation retire cet enregistrement.
+
 La désinstallation conserve les données pour permettre une réinstallation. Pour tout supprimer, quittez le tracker puis supprimez son dossier `%LOCALAPPDATA%\CodexTracker`. Les événements déjà importés dans Google Agenda, les messages transmis et les données du client assistant doivent être supprimés dans les services correspondants.
 
 Après une récupération d’un ancien stockage Windows redirigé, une copie peut aussi subsister dans `%LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Local\CodexTracker`. Elle est conservée pour éviter une perte de données. Pour effacer cette copie, supprimer uniquement ce sous-dossier `CodexTracker`, jamais le dossier du package Codex entier. Les sauvegardes privées créées manuellement hors du dossier principal doivent également être gérées séparément.

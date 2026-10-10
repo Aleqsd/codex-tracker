@@ -99,6 +99,9 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 Filename: "{app}\CodexTracker.exe"; Parameters: "--background"; Description: "Ouvrir Codex Tracker"; Flags: nowait postinstall skipifsilent
 
+[UninstallRun]
+Filename: "{app}\CodexTracker.exe"; Parameters: "--unregister-notifications"; Flags: runhidden waituntilterminated; RunOnceId: "UnregisterNotifications"
+
 [Code]
 procedure InitializeWizard();
 begin
