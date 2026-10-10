@@ -1,6 +1,6 @@
 # Code signing policy
 
-**Current status: no signing service is active. Released Codex Tracker binaries are currently unsigned.** The Foundation application submitted on 23 September 2026 did not obtain signing access. The prepared integration remains disabled; no approval by SignPath Foundation is claimed.
+**Current status: no signing service is active. Released Codex Tracker binaries are currently unsigned.** The Foundation application submitted on 23 September 2026 did not obtain signing access. The prepared integration remains disabled; no approval by SignPath Foundation is claimed. The project no longer uses GitHub Actions: releases are built locally, so the GitHub-hosted signing workflow described below has been removed and this policy is suspended.
 
 Codex Tracker is maintained by [Aleqsd](https://github.com/Aleqsd). The intended signing process uses [SignPath Foundation](https://signpath.org/) for this MIT-licensed project, subject to its acceptance and conditions.
 

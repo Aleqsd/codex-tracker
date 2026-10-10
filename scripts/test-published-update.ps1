@@ -33,7 +33,7 @@ if (!$Run) {
         mode = 'plan'; writesFiles = $false; usesNetwork = $false; launchesApplication = $false
         sourceVersion = $SourceVersion; targetVersion = $TargetVersion; installMode = $InstallMode
         includePrereleases = [bool]$IncludePrereleases; channelAwareSource = $channelAware
-        requires = @('Windows x64; PowerShell 7', 'Profil Windows jetable ou runner CI vierge',
+        requires = @('Windows x64; PowerShell 7', 'Profil Windows jetable (VM ou Windows Sandbox)',
             'Aucune donnee Codex/Tracker, aucune installation ou instance Tracker',
             'Opt-in explicite -Run -DedicatedTestProfile')
         steps = @('Verifier une fois les Releases publiques, arreter si GitHub limite les requetes',

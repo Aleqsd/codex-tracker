@@ -4,7 +4,7 @@ Cette recette vérifie une mise à niveau avec les exécutables publiés, sans c
 
 ## Environnement obligatoire
 
-Utiliser une VM Windows x64 jetable, un profil Windows réservé au test ou un runner CI Windows éphémère. Aucun compte Codex, aucune installation ou donnée Codex Tracker ne doit y être présent. Le script refuse ces états ; il ne sauvegarde, déplace, remplace ni supprime un profil existant. Déclarer `-DedicatedTestProfile` signifie que cet environnement est réservé au test.
+Utiliser une VM Windows x64 jetable, Windows Sandbox ou un profil Windows réservé au test. Pour le poste habituel, `scripts/update-this-pc.ps1` installe la Release par le moteur de mise à jour et vérifie la conservation des comptes, sans ce script. Aucun compte Codex, aucune installation ou donnée Codex Tracker ne doit y être présent. Le script refuse ces états ; il ne sauvegarde, déplace, remplace ni supprime un profil existant. Déclarer `-DedicatedTestProfile` signifie que cet environnement est réservé au test.
 
 Le mode démo ne convient pas : il désactive volontairement la mise à jour automatique. Changer seulement `LOCALAPPDATA` ou copier l’EXE dans un autre dossier ne suffit pas à isoler l’application normale.
 
@@ -26,7 +26,7 @@ Dans le profil de test uniquement :
 
 Pour le chemin du bouton, utiliser `-InstallMode Button` **dans un second environnement vierge**. Le script invoque le bouton WPF avec UI Automation ; il ne contourne pas le moteur de mise à jour. Aucun SMS, appel ou email n’est configuré ou envoyé. Les alertes Windows et rappels sont désactivés dans les préférences fictives.
 
-Une cible déclarée préversion par GitHub exige `-IncludePrereleases`. Depuis la source 0.9.0, ce choix est appliqué aux préférences fictives et le script observe les vrais fichiers du canal stable ou préversion. Le workflow expose le même choix. Une version antérieure ne sait pas filtrer les canaux : son essai ne valide donc pas ce filtrage. Pour la future 1.0 stable, omettre l’option et indiquer les versions publiques voulues.
+Une cible déclarée préversion par GitHub exige `-IncludePrereleases`. Depuis la source 0.9.0, ce choix est appliqué aux préférences fictives et le script observe les vrais fichiers du canal stable ou préversion. Une version antérieure ne sait pas filtrer les canaux : son essai ne valide donc pas ce filtrage. Pour la future 1.0 stable, omettre l’option et indiquer les versions publiques voulues.
 
 ## Ce qui est vérifié
 
@@ -39,4 +39,4 @@ Une cible déclarée préversion par GitHub exige `-IncludePrereleases`. Depuis 
 
 Le rapport JSON ne contient que les étapes, résultats, versions, dates et empreintes des exécutables publics. Il exclut chemins, utilisateurs Windows, comptes, données d’utilisation et messages d’erreur libres. `passed` indique la validation de ce parcours précis, pas une validation générale de la version 1.0.
 
-Le script ferme uniquement son instance de test, sans arrêt forcé du tracker. Les fichiers de l’essai restent dans le profil jetable ; détruire ensuite cette VM ou ce runner. Il refuse de réutiliser ce profil, même si une première tentative a échoué après création des données fictives.
+Le script ferme uniquement son instance de test, sans arrêt forcé du tracker. Les fichiers de l’essai restent dans le profil jetable ; détruire ensuite cette VM ou ce profil. Il refuse de réutiliser ce profil, même si une première tentative a échoué après création des données fictives.

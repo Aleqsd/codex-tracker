@@ -20,9 +20,10 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/dev.ps1 -Action Preview -Matrix
 ./scripts/publish.ps1 -Version 0.9.2
 ./scripts/build-installer.ps1 -Version 0.9.2
+./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
 ```
 
-Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Python`. Les artefacts restent sous `artifacts/`, ignoré par Git. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
+Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Python`. Les artefacts restent sous `artifacts/`, ignoré par Git. Pas de CI distante : compilation, tests, paquets et Releases se font en local avec `scripts/release.ps1`. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
 
 ## Invariants
 
@@ -38,9 +39,9 @@ Les scripts acceptent `-Dotnet` pour un SDK hors PATH ; dev accepte aussi `-Pyth
 
 ## Vérification proportionnée
 
-Ne jamais lancer les tests UI locaux, aperçus ou automatisations qui activent une fenêtre pendant que Final Fantasy XIV tourne (`ffxiv_dx11.exe` ou `ffxiv.exe`) : ils peuvent faire quitter le plein écran du jeu. Vérifier les processus en lecture seule avant ces actions ; reporter le contrôle local ou utiliser la CI. Ne pas fermer/minimiser le jeu. Les compilations et tests métier sans interface restent possibles.
+Ne jamais lancer les tests UI locaux, aperçus ou automatisations qui activent une fenêtre pendant que Final Fantasy XIV tourne (`ffxiv_dx11.exe` ou `ffxiv.exe`) : ils peuvent faire quitter le plein écran du jeu. Vérifier les processus en lecture seule avant ces actions ; reporter le contrôle local après la session de jeu. Ne pas fermer/minimiser le jeu. Les compilations et tests métier sans interface restent possibles.
 
-Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Avant une release : CI Windows verte sur le commit publié, installer + ZIP + SHA-256, test réel stdio et préservation des données existantes.
+Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Avant une release : `scripts/release.ps1 -Publish` réussi sur le commit poussé (compilation, tests métier et WPF, installer + ZIP + SHA-256, test réel stdio), puis `-UpdateThisPc` pour vérifier la mise à jour réelle et la préservation des données existantes.
 
 ## Présentation publique
 

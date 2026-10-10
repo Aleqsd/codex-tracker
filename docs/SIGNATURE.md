@@ -1,5 +1,7 @@
 # Signature de distribution
 
+> **Suspendu.** Le projet n’utilise plus GitHub Actions : le parcours SignPath décrit ci-dessous, qui exige une compilation sur runner GitHub et le workflow `signed-release.yml` retiré, n’est plus disponible. Les Releases sont produites localement par `scripts/release.ps1`, non signées.
+
 ## État vérifié le 23 septembre 2026
 
 L’application et l’installateur 0.9.2 sont **non signés** (`NotSigned`). Aucun certificat de distribution n’est configuré pour le projet. Les checksums SHA-256 contrôlent l’intégrité des paquets ; ils ne constituent pas une signature d’éditeur.

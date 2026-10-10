@@ -196,9 +196,10 @@ dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj
 dotnet run --project src/CodexTracker.App -- --demo
 ./scripts/publish.ps1
 ./scripts/build-installer.ps1 -InstallCompiler
+./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
 ```
 
-Les scripts de publication et de création de l’installateur utilisent par défaut la version de `Directory.Build.props` ; `-Version` permet de la préciser explicitement. Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. La CI Windows compile la solution, lance les tests et produit le ZIP autonome ainsi que l’installateur.
+Les scripts de publication et de création de l’installateur utilisent par défaut la version de `Directory.Build.props` ; `-Version` permet de la préciser explicitement. Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. Il n’y a pas de CI distante. `scripts/release.ps1` enchaîne en local la compilation, les tests métier et WPF, le ZIP autonome, l’installateur, leurs SHA-256 et les tests stdio de l’exécutable publié. Avec `-Publish`, il exige un arbre propre poussé sur `main`, crée la Release GitHub (notes : puces de nouveautés ; liens et checksum ZIP ajoutés) ; `-UpdateThisPc` installe ensuite cette Release sur le poste par le moteur de mise à jour et vérifie la conservation des comptes. Il refuse de démarrer pendant Final Fantasy XIV. Le cycle complet de l’installateur exige un profil Windows jetable (voir [PUBLISHED-UPDATE-TEST.md](PUBLISHED-UPDATE-TEST.md)).
 
 La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocole en lecture seule) et `App` (WPF et zone de notification). Les tests utilisent des sessions fictives et ne modifient jamais votre connexion Codex. Ils couvrent les réponses de quotas, valeurs absentes, dates et changements d’heure, changements de fichiers, isolation des comptes et réponses réseau tardives. Les contrôles réels et leurs limites sont détaillés dans [VALIDATION.md](VALIDATION.md).
 
