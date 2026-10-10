@@ -37,6 +37,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     private string[] _healthMessages = [];
     private bool _recoveryRequired;
     private readonly bool _demo;
+    private readonly TextBlock _claudeStatus = new() { FontSize = 12, FontWeight = FontWeights.Medium, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
     private readonly StackPanel _navigation = new() { Margin = new Thickness(0, 10, 18, 0) };
     private readonly ScrollViewer _pageScroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     private readonly Dictionary<string, (StackPanel Content, Button Navigation)> _pages = new();
@@ -98,6 +99,7 @@ internal sealed class SettingsView : UserControl, IDisposable
             catch (Exception) { ShowError(Loc.T("Le presse-papiers est indisponible. Réessayez.")); }
         };
         claude.Children.Add(copyClaude);
+        claude.Children.Insert(1, _claudeStatus);
         claude.Children.Add(Ui.Text(Loc.T("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées."), 11, "MutedBrush"));
         Page("Rappels", Loc.T("Rappels"), Loc.T("Choisissez les échéances, les comptes et les canaux utiles."));
         Section(Loc.T("Échéances"));
@@ -225,7 +227,7 @@ internal sealed class SettingsView : UserControl, IDisposable
             CurrentPage = title; _pageScroll.Content = page.Content; _pageScroll.ScrollToTop();
             UiMotion.FadeIn(_pageScroll);
         }
-        RefreshHealth();
+        RefreshHealth(); RefreshClaudeStatus();
         foreach (var (name, value) in _pages)
             System.Windows.Automation.AutomationProperties.SetItemStatus(value.Navigation, name == title ? Loc.T("Section active") : "");
         _navigationPill.Move();
@@ -297,6 +299,21 @@ internal sealed class SettingsView : UserControl, IDisposable
         _updateStatus.Text = Display.SafeText(_updateStatus.Text, _preferences.Current.PrivacyMode);
         SyncUpdateButton();
         RefreshHealth();
+    }
+    // Terminal readings carry the exact reset dates: say whether they are set up and still arriving.
+    private void RefreshClaudeStatus()
+    {
+        if (_closed) return;
+        if (_demo) { _claudeStatus.Visibility = Visibility.Collapsed; return; }
+        var location = Codex.ClaudeCodeLocation.Resolve(Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR"), Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        var status = new Codex.ClaudeCodeObservations(_preferences.DataDirectory, location).ReadStatus(Environment.ProcessPath!);
+        var stale = status.LastReading is { } last && DateTimeOffset.UtcNow - last > TimeSpan.FromDays(7);
+        _claudeStatus.Text = status.LastReading is { } reading
+            ? Loc.F("Relevés du terminal actifs · dernier le {0}", reading.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Loc.Culture)) +
+              (stale ? "\n" + Loc.T("Ancien : ouvrez une session Claude Code pour remettre à jour la date du reset.") : "")
+            : status.Configured ? Loc.T("Réglage détecté · en attente d’une session Claude Code.")
+            : Loc.T("Relevés du terminal non configurés : la date du reset de la semaine reste estimée.");
+        _claudeStatus.SetResourceReference(TextBlock.ForegroundProperty, status.LastReading is null ? "MutedBrush" : stale ? "WarningBrush" : "GoodBrush");
     }
     internal void RefreshHealth()
     {

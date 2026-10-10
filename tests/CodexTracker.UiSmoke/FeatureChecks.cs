@@ -76,9 +76,13 @@ internal static class FeatureChecks
             Check(weeklyLabels.Contains("Reset hebdomadaire") && !weeklyLabels.Contains("Reset 5 heures") && !weeklyLabels.Contains("Expiration de réserve"), "Weekly filter shows only weekly resets for the selected account");
             resets.Update(service.State);
             Check(kindFilters.SelectedIndex == 1 && resetFilter.SelectedIndex == 1, "Refresh preserves both account and reset type filters");
+            // Codex Pro has no 5-hour quota: the five-hour filter is checked on an account that has one.
+            var shortAccount = service.State.Accounts.First(a => a.Snapshot?.Short is not null).Profile.Id;
+            resetFilter.SelectedItem = resetFilter.Items.Cast<ResetAccountChoice>().First(c => c.Id == shortAccount);
             kindFilters.SelectedIndex = 2; window.UpdateLayout();
             var shortLabels = Tree(timeline).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(shortLabels.Contains("Reset 5 heures") && !shortLabels.Contains("Reset hebdomadaire"), "Five-hour filter uses an explicit reset type label");
+            resetFilter.SelectedIndex = 1; window.UpdateLayout();
             kindFilters.SelectedIndex = 3; window.UpdateLayout();
             foreach (var section in Tree(timeline).OfType<Expander>().ToArray()) section.IsExpanded = true;
             window.UpdateLayout();

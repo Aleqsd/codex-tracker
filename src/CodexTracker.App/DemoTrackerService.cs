@@ -15,7 +15,10 @@ internal sealed class DemoTrackerService : ITrackerService
         double[] fiveHour = [86, 64, 100, 32, 74];
         string[] plans = ["Pro", "Plus", "Pro", "Free", "Plus"];
         var accounts = emails.Select((email, i) => new AccountState(new AccountProfile(Guid.NewGuid(), email),
-            new AccountSnapshot(email, plans[i], [new QuotaBucket("codex", "Codex", [new QuotaWindow(100 - fiveHour[i], 300, now.AddHours(2 + i).AddMinutes(14)), new QuotaWindow(100 - weekly[i], 10080, now.AddDays(2 + i % 3).AddHours(14).AddMinutes(32))])],
+            // Like the real service, Codex Pro reports only its weekly quota.
+            new AccountSnapshot(email, plans[i], [new QuotaBucket("codex", "Codex", plans[i] == "Pro"
+                    ? [new QuotaWindow(100 - weekly[i], 10080, now.AddDays(2 + i % 3).AddHours(14).AddMinutes(32))]
+                    : [new QuotaWindow(100 - fiveHour[i], 300, now.AddHours(2 + i).AddMinutes(14)), new QuotaWindow(100 - weekly[i], 10080, now.AddDays(2 + i % 3).AddHours(14).AddMinutes(32))])],
                 i == 0 ? 3 : i % 3, [new ResetCredit($"demo-{i}", Loc.T("Crédit de reset"), now.AddDays(-5), i == 0 ? now.AddHours(23) : now.AddDays(4 + i))], i == 0 ? now.AddSeconds(-26) : showAdvice && i == 2 ? now.AddMinutes(-12) : now.AddHours(-2 * i).AddMinutes(-12),
                 PlanMultiplier: i == 0 ? 20 : i == 2 ? 5 : null, SubscriptionStartedAt: i == 3 ? null : now.AddMonths(-4 - i), SubscriptionEndsAt: i == 3 ? null : now.AddDays(28 - i)), IsActiveInCodex: i == 0, IsConnected: true)).ToArray();
         if (showExpectedResets)
@@ -51,8 +54,8 @@ internal sealed class DemoTrackerService : ITrackerService
                 {
                     var stamp = end.AddDays(-day).AddMinutes(-minute);
                     double weeklyRemaining = Math.Clamp(account.Snapshot.Weekly!.RemainingPercent + day * 3.4 + minute * 0.025, 0, 100);
-                    double shortRemaining = Math.Clamp(account.Snapshot.Short!.RemainingPercent + minute * 0.1, 0, 100);
-                    samples.Add(new UsageSample(account.Profile.Id, stamp, weeklyRemaining, account.Snapshot.Weekly.ResetsAt, shortRemaining, stamp.Date.AddHours(24)));
+                    double? shortRemaining = account.Snapshot.Short is { } shortWindow ? Math.Clamp(shortWindow.RemainingPercent + minute * 0.1, 0, 100) : null;
+                    samples.Add(new UsageSample(account.Profile.Id, stamp, weeklyRemaining, account.Snapshot.Weekly.ResetsAt, shortRemaining, shortRemaining is null ? null : stamp.Date.AddHours(24)));
                 }
             }
             _history[account.Profile.Id] = samples;

@@ -17,20 +17,47 @@ public sealed class ClaudeCodeObservations(string dataDirectory, ClaudeCodeLocat
     private string AccountPath(string id) => Path.Combine(_root, "account-" + Key(id) + ".json");
     private string SessionPath(Guid id) => Path.Combine(_root, "session-" + id.ToString("N") + ".json");
 
-    public static string Configuration(string executable)
+    public static string Configuration(string executable) => JsonSerializer.Serialize(new
     {
-        // Invoke through PowerShell explicitly: the same command also works when Claude uses Git Bash.
+        hooks = new { SessionStart = new[] { new { matcher = "startup|resume", hooks = new[] { new { type = "command", command = Command(executable, "--claude-session-start"), timeout = 5 } } } } },
+        statusLine = new { type = "command", command = Command(executable, "--claude-statusline") }
+    }, new JsonSerializerOptions { WriteIndented = true });
+
+    // Invoke through PowerShell explicitly: the same command also works when Claude uses Git Bash.
+    private static string Command(string executable, string mode)
+    {
         var path = Path.GetFullPath(executable).Replace('\\', '/').Replace("'", "''");
-        string Command(string mode)
+        var script = $"$ProgressPreference = 'SilentlyContinue'; $OutputEncoding = [Console]::InputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & '{path}' {mode}";
+        return "powershell -NoProfile -NonInteractive -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+    }
+
+    public sealed record TerminalStatus(bool Configured, DateTimeOffset? LastReading);
+
+    /// <summary>
+    /// Whether Claude Code's settings call this collector, and when it last delivered quotas.
+    /// Only the settings file and the inbox file dates are read: no session, quota or token content.
+    /// </summary>
+    public TerminalStatus ReadStatus(string executable)
+    {
+        var configured = false;
+        try
         {
-            var script = $"$ProgressPreference = 'SilentlyContinue'; $OutputEncoding = [Console]::InputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & '{path}' {mode}";
-            return "powershell -NoProfile -NonInteractive -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+            var settings = location.CredentialsPath is { } credentials ? Path.Combine(Path.GetDirectoryName(credentials)!, "settings.json") : null;
+            if (settings is not null && File.Exists(settings))
+            {
+                var text = File.ReadAllText(settings);
+                configured = text.Contains("--claude-statusline", StringComparison.Ordinal) || text.Contains(Command(executable, "--claude-statusline"), StringComparison.Ordinal);
+            }
         }
-        return JsonSerializer.Serialize(new
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
+        DateTimeOffset? last = null;
+        try
         {
-            hooks = new { SessionStart = new[] { new { matcher = "startup|resume", hooks = new[] { new { type = "command", command = Command("--claude-session-start"), timeout = 5 } } } } },
-            statusLine = new { type = "command", command = Command("--claude-statusline") }
-        }, new JsonSerializerOptions { WriteIndented = true });
+            if (Directory.Exists(_root))
+                last = Directory.EnumerateFiles(_root, "account-*.json").Select(path => (DateTimeOffset?)new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)).Max();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        return new(configured, last);
     }
 
     public async Task<string?> CaptureAsync(string input, bool sessionStart, DateTimeOffset now, CancellationToken token = default)
