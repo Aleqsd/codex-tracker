@@ -117,7 +117,17 @@ internal sealed class TrayController : IDisposable
         {
             var old = _icon; _icon = TrayIconRenderer.Render(number, color, dark, iconSize); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
         }
-        var text = account is null ? "Codex Tracker · en attente d’un compte" : $"{account.Profile.ProviderName} · {PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current)}\nSemaine : {(remaining is null ? "indisponible" : number + "% restant")}{(state.ManualCodexReset?.Applies(account, ResetKind.Weekly, PreviewClock.UtcNow) == true ? " · déclaré" : "")}{(!account.IsActive ? " · dernier relevé" : account.IsStale ? " · données anciennes" : "")}\nReset : {Display.Exact(QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, PreviewClock.UtcNow))}";
+        string text;
+        if (account is null) text = Loc.T("Codex Tracker · en attente d’un compte");
+        else
+        {
+            var weekly = remaining is null ? Loc.T("indisponible") : Loc.F("{0}% restant", number);
+            if (state.ManualCodexReset?.Applies(account, ResetKind.Weekly, PreviewClock.UtcNow) == true) weekly = Loc.F("{0} · déclaré", weekly);
+            if (!account.IsActive) weekly = Loc.F("{0} · dernier relevé", weekly);
+            else if (account.IsStale) weekly = Loc.F("{0} · données anciennes", weekly);
+            text = Loc.F("{0} · {1}\nSemaine : {2}\nReset : {3}", account.Profile.ProviderName, PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current),
+                weekly, Display.Exact(QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, PreviewClock.UtcNow)));
+        }
         _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
         _peek.Update(state, _preferences.Current);
         var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.Profile.Email));
@@ -128,16 +138,16 @@ internal sealed class TrayController : IDisposable
         var menu = new Forms.ContextMenuStrip { Font = _menuFont.Font, BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
         menu.Opening += (_, _) => HidePeek();
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
-        menu.Items.Add("Ouvrir le suivi", null, (_, _) => _window.ShowPanel());
-        menu.Items.Add("Actualiser", null, async (_, _) => await _window.RefreshAsync());
-        menu.Items.Add("Réglages", null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
-        menu.Items.Add("Quitter", null, async (_, _) => await _exit());
+        menu.Items.Add(Loc.T("Ouvrir le suivi"), null, (_, _) => _window.ShowPanel());
+        menu.Items.Add(Loc.T("Actualiser"), null, async (_, _) => await _window.RefreshAsync());
+        menu.Items.Add(Loc.T("Réglages"), null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
+        menu.Items.Add(Loc.T("Quitter"), null, async (_, _) => await _exit());
         var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = menu; oldMenu?.Dispose();
     }
     private async Task SafeAsync(Func<Task> operation)
     {
         try { await operation(); }
-        catch (Exception error) { _window.ShowPanel(); _window.ShowMessage("Action impossible", error.Message); }
+        catch (Exception error) { _window.ShowPanel(); _window.ShowMessage(Loc.T("Action impossible"), error.Message); }
     }
 
     private void OnTrayHover()
@@ -207,7 +217,8 @@ internal sealed class TrayController : IDisposable
         if (pending.Length == 0) return;
         var latest = pending.OrderByDescending(n => n.Kind == NotificationKind.Threshold).ThenBy(n => n.Threshold ?? 100).First();
         var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current);
-        if (pending.Length > 1) body += $"\n{pending.Length - 1} autre événement dans le suivi.";
+        var others = pending.Length - 1;
+        if (others > 0) body += "\n" + (others == 1 ? Loc.T("1 autre événement dans le suivi.") : Loc.F("{0} autre événement dans le suivi.", others));
         _notificationPage = latest.Kind == NotificationKind.Reset ? "Resets" : "Comptes";
         _desktop.Send(title, body);
     }
@@ -229,9 +240,9 @@ internal sealed class TrayController : IDisposable
     private DeliveryResult ShowReminders(IReadOnlyList<ReminderOccurrence> rows)
     {
         _notificationPage = "Resets";
-        if (rows.Count == 0) return new(DeliveryStatus.Failed, "Aucun rappel à transmettre à Windows.");
+        if (rows.Count == 0) return new(DeliveryStatus.Failed, Loc.T("Aucun rappel à transmettre à Windows."));
         if (rows.Count == 1 && rows[0].Key.StartsWith("test/", StringComparison.Ordinal))
-            return _desktop.Send("Codex Tracker · Test", "Les alertes de quota et de reset apparaîtront ici. Cliquez pour ouvrir l’onglet Resets.");
+            return _desktop.Send("Codex Tracker · Test", Loc.T("Les alertes de quota et de reset apparaîtront ici. Cliquez pour ouvrir l’onglet Resets."));
         var message = DesktopReminderText.For(rows);
         return _desktop.Send(message.Title, message.Body, deferWhenBusy: true);
     }

@@ -19,28 +19,28 @@ internal sealed class WindowsNotificationDelivery(
     {
         try
         {
-            if (!available()) return new(DeliveryStatus.Failed, "L’icône de notification est indisponible. Rouvrez le tracker puis réessayez.");
+            if (!available()) return new(DeliveryStatus.Failed, Loc.T("L’icône de notification est indisponible. Rouvrez le tracker puis réessayez."));
             if (!(enabled ?? NotificationsEnabled)())
-                return new(DeliveryStatus.Skipped, "Les notifications Windows sont désactivées. Vérifiez les paramètres de notification Windows puis réessayez.");
+                return new(DeliveryStatus.Skipped, Loc.T("Les notifications Windows sont désactivées. Vérifiez les paramètres de notification Windows puis réessayez."));
             var reason = (state ?? ReadState)() switch
             {
-                WindowsNotificationState.Away => "Windows indique une session verrouillée ou inactive.",
-                WindowsNotificationState.Busy => "Windows suspend les notifications : une application est en plein écran ou le mode présentation est actif.",
-                WindowsNotificationState.FullScreen => "Windows suspend les notifications pendant une application en plein écran exclusif.",
-                WindowsNotificationState.Presentation => "Le mode présentation de Windows suspend les notifications.",
-                WindowsNotificationState.QuietTime => "Windows suspend temporairement les notifications après une ouverture de session ou une mise à niveau.",
+                WindowsNotificationState.Away => Loc.T("Windows indique une session verrouillée ou inactive."),
+                WindowsNotificationState.Busy => Loc.T("Windows suspend les notifications : une application est en plein écran ou le mode présentation est actif."),
+                WindowsNotificationState.FullScreen => Loc.T("Windows suspend les notifications pendant une application en plein écran exclusif."),
+                WindowsNotificationState.Presentation => Loc.T("Le mode présentation de Windows suspend les notifications."),
+                WindowsNotificationState.QuietTime => Loc.T("Windows suspend temporairement les notifications après une ouverture de session ou une mise à niveau."),
                 _ => null
             };
             if (reason is not null) return deferWhenBusy
-                ? new(DeliveryStatus.Deferred, reason + " Le rappel sera réessayé tant qu’il reste pertinent.")
-                : new(DeliveryStatus.Skipped, reason + " Quittez ce mode puis réessayez.");
+                ? new(DeliveryStatus.Deferred, Loc.F("{0} Le rappel sera réessayé tant qu’il reste pertinent.", reason))
+                : new(DeliveryStatus.Skipped, Loc.F("{0} Quittez ce mode puis réessayez.", reason));
             show(title, body);
             // A successful shell call is not evidence that a banner was displayed or read.
-            return new(DeliveryStatus.Accepted, "Demande transmise à Windows ; affichage non confirmé. Si rien n’apparaît, vérifiez « Ne pas déranger » et les paramètres de notification Windows.");
+            return new(DeliveryStatus.Accepted, Loc.T("Demande transmise à Windows ; affichage non confirmé. Si rien n’apparaît, vérifiez « Ne pas déranger » et les paramètres de notification Windows."));
         }
         catch (Exception)
         {
-            return new(DeliveryStatus.Failed, "Windows n’a pas pu recevoir la notification. Rouvrez le tracker puis réessayez.");
+            return new(DeliveryStatus.Failed, Loc.T("Windows n’a pas pu recevoir la notification. Rouvrez le tracker puis réessayez."));
         }
     }
 

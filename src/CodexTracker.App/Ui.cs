@@ -156,7 +156,7 @@ internal class ThemedWindow : Window
         var root = new Grid(); root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(50) }); root.RowDefinitions.Add(new RowDefinition());
         var header = new Grid { Margin = new Thickness(24, 0, 8, 0) };
         Heading = Ui.Text(title, 14); Heading.FontWeight = FontWeights.Medium; Heading.VerticalAlignment = VerticalAlignment.Center; Heading.Margin = new Thickness(0, 0, 44, 0);
-        var close = Ui.IconButton("CloseIcon", "Fermer", "Fermer", 15); close.Style = (Style)FindResource("ChromeCloseButton");
+        var close = Ui.IconButton("CloseIcon", Loc.T("Fermer"), Loc.T("Fermer"), 15); close.Style = (Style)FindResource("ChromeCloseButton");
         close.HorizontalAlignment = HorizontalAlignment.Right; close.VerticalAlignment = VerticalAlignment.Center;
         WindowChrome.SetIsHitTestVisibleInChrome(close, true); close.Click += (_, _) => Close();
         header.Children.Add(Heading); header.Children.Add(close);

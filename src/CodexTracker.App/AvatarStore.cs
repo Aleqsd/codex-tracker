@@ -20,19 +20,19 @@ internal static class AvatarStore
     public static BitmapSource ReadImage(string path)
     {
         if (!Path.IsPathFullyQualified(path) || path.StartsWith(@"\\", StringComparison.Ordinal))
-            throw new IOException("Choisissez une image enregistrée sur ce PC.");
+            throw new IOException(Loc.T("Choisissez une image enregistrée sur ce PC."));
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        if (stream.Length > 8 * 1024 * 1024) throw new IOException("Choisissez une image de moins de 8 Mo.");
+        if (stream.Length > 8 * 1024 * 1024) throw new IOException(Loc.T("Choisissez une image de moins de 8 Mo."));
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
-        if (decoder is not PngBitmapDecoder and not JpegBitmapDecoder) throw new IOException("Choisissez un PNG ou JPEG.");
+        if (decoder is not PngBitmapDecoder and not JpegBitmapDecoder) throw new IOException(Loc.T("Choisissez un PNG ou JPEG."));
         var frame = decoder.Frames[0];
         if (frame.PixelWidth <= 0 || frame.PixelHeight <= 0 || frame.PixelWidth > 16384 || frame.PixelHeight > 16384 ||
-            (long)frame.PixelWidth * frame.PixelHeight > 40_000_000) throw new IOException("Image trop grande (40 mégapixels maximum).");
+            (long)frame.PixelWidth * frame.PixelHeight > 40_000_000) throw new IOException(Loc.T("Image trop grande (40 mégapixels maximum)."));
         stream.Position = 0;
         var image = new BitmapImage(); image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad;
         image.DecodePixelWidth = 256; image.StreamSource = stream; image.EndInit(); image.Freeze();
         var side = Math.Min(image.PixelWidth, image.PixelHeight);
-        if (side <= 0 || image.PixelHeight > 16384) throw new IOException("Dimensions de l’image non prises en charge.");
+        if (side <= 0 || image.PixelHeight > 16384) throw new IOException(Loc.T("Dimensions de l’image non prises en charge."));
         var crop = new CroppedBitmap(image, new Int32Rect((image.PixelWidth - side) / 2, (image.PixelHeight - side) / 2, side, side));
         crop.Freeze(); return crop;
     }

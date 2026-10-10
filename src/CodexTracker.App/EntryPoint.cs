@@ -45,7 +45,10 @@ internal static class EntryPoint
                 if (Codex.DesktopEnvironment.IsStorageRedirected(new Codex.TrackerServiceOptions().DataDirectory))
                 {
                     if (args.Contains(Codex.DesktopEnvironment.RelaunchArgument))
-                        throw new InvalidOperationException("Windows redirige encore le stockage. Lancez Codex Tracker depuis le menu Démarrer ; aucun compte n’a été réinitialisé.");
+                    {
+                        UseWindowsLanguage();
+                        throw new InvalidOperationException(Loc.T("Windows redirige encore le stockage. Lancez Codex Tracker depuis le menu Démarrer ; aucun compte n’a été réinitialisé."));
+                    }
                     Codex.DesktopEnvironment.StartUnvirtualized(Environment.ProcessPath!,
                         args.Append(Codex.DesktopEnvironment.RelaunchArgument));
                     return 0;
@@ -53,11 +56,18 @@ internal static class EntryPoint
             }
             catch (Exception error)
             {
-                System.Windows.MessageBox.Show("Impossible d’ouvrir le stockage habituel.\n\n" + error.Message,
+                UseWindowsLanguage();
+                System.Windows.MessageBox.Show(Loc.F("Impossible d’ouvrir le stockage habituel.\n\n{0}", error.Message),
                     "Codex Tracker", MessageBoxButton.OK, MessageBoxImage.Error);
                 return 1;
             }
         }
         var app = new App(); app.InitializeComponent(); return app.Run();
     }
+
+    /// <summary>
+    /// For the storage errors only, which end the process before the preferences can be trusted:
+    /// the Windows language stands in for the saved choice. Normal starts apply the preference in App.
+    /// </summary>
+    private static void UseWindowsLanguage() { Loc.Register(EnglishApp.All); Loc.Use(AppLanguage.System); }
 }

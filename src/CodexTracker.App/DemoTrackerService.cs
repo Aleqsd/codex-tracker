@@ -16,7 +16,7 @@ internal sealed class DemoTrackerService : ITrackerService
         string[] plans = ["Pro", "Plus", "Pro", "Free", "Plus"];
         var accounts = emails.Select((email, i) => new AccountState(new AccountProfile(Guid.NewGuid(), email),
             new AccountSnapshot(email, plans[i], [new QuotaBucket("codex", "Codex", [new QuotaWindow(100 - fiveHour[i], 300, now.AddHours(2 + i).AddMinutes(14)), new QuotaWindow(100 - weekly[i], 10080, now.AddDays(2 + i % 3).AddHours(14).AddMinutes(32))])],
-                i == 0 ? 3 : i % 3, [new ResetCredit($"demo-{i}", "Crédit de reset", now.AddDays(-5), i == 0 ? now.AddHours(23) : now.AddDays(4 + i))], i == 0 ? now.AddSeconds(-26) : showAdvice && i == 2 ? now.AddMinutes(-12) : now.AddHours(-2 * i).AddMinutes(-12),
+                i == 0 ? 3 : i % 3, [new ResetCredit($"demo-{i}", Loc.T("Crédit de reset"), now.AddDays(-5), i == 0 ? now.AddHours(23) : now.AddDays(4 + i))], i == 0 ? now.AddSeconds(-26) : showAdvice && i == 2 ? now.AddMinutes(-12) : now.AddHours(-2 * i).AddMinutes(-12),
                 PlanMultiplier: i == 0 ? 20 : i == 2 ? 5 : null, SubscriptionStartedAt: i == 3 ? null : now.AddMonths(-4 - i), SubscriptionEndsAt: i == 3 ? null : now.AddDays(28 - i)), IsActiveInCodex: i == 0, IsConnected: true)).ToArray();
         if (showExpectedResets)
         {
@@ -38,7 +38,7 @@ internal sealed class DemoTrackerService : ITrackerService
         }
         State = new TrackerState(accounts, accounts[0].Profile.Id, OnboardingComplete: true);
         if (showGlobalResets) State = State with { GlobalResetFeed = new([
-            new("demo-reset", "Source fictive", "https://example.com/reset-demo", "https://example.com/reset-scope-demo",
+            new("demo-reset", Loc.T("Source fictive"), "https://example.com/reset-demo", "https://example.com/reset-scope-demo",
                 now.AddHours(-2), now.AddHours(-1), now.AddMinutes(-1), ["plus", "pro"], [ResetKind.Weekly, ResetKind.Short])], now.AddMinutes(-1)) };
         foreach (var account in accounts)
         {
@@ -64,8 +64,8 @@ internal sealed class DemoTrackerService : ITrackerService
         var account = State.Accounts.FirstOrDefault(a => a.Profile.Id == accountId);
         var hours = (account?.Snapshot?.Weekly?.RemainingPercent ?? 72) / 1.5;
         return account?.IsActive == true
-            ? new UsageForecast(TimeSpan.FromHours(hours), PreviewClock.UtcNow.AddHours(hours), "Au rythme récent, estimation indicative fondée sur les relevés de démonstration. Votre usage peut changer.", UsageWindowKind.Weekly)
-            : new UsageForecast(null, null, "Ouvrez ce compte dans Codex pour obtenir une estimation fondée sur son utilisation récente.");
+            ? new UsageForecast(TimeSpan.FromHours(hours), PreviewClock.UtcNow.AddHours(hours), Loc.T("Au rythme récent, estimation indicative fondée sur les relevés de démonstration. Votre usage peut changer."), UsageWindowKind.Weekly)
+            : new UsageForecast(null, null, Loc.T("Ouvrez ce compte dans Codex pour obtenir une estimation fondée sur son utilisation récente."));
     }
     public Task InitializeAsync(CancellationToken cancellationToken = default) { Notify(); return Task.CompletedTask; }
     public Task SuspendAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

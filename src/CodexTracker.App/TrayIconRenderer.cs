@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using CodexTracker.Core;
 using Color = System.Drawing.Color;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
 using Point = System.Windows.Point;
@@ -80,11 +81,11 @@ internal static class TrayIconRenderer
             var pixels = new byte[stride * rendered.PixelHeight];
             rendered.CopyPixels(pixels, stride, 0);
             bounds = InkBounds(pixels, rendered.PixelWidth, rendered.PixelHeight);
-            if (bounds.IsEmpty) throw new InvalidOperationException("Le texte de l’icône n’a pas pu être rendu.");
+            if (bounds.IsEmpty) throw new InvalidOperationException(Loc.T("Le texte de l’icône n’a pas pu être rendu."));
             if (bounds.Width <= size - 2 && bounds.Height <= maxHeight) return pixels;
             fontSize = Math.Min(fontSize - .25, fontSize * Math.Min((size - 2d) / bounds.Width, (double)maxHeight / bounds.Height));
         }
-        throw new InvalidOperationException("Le texte de l’icône dépasse la taille disponible.");
+        throw new InvalidOperationException(Loc.T("Le texte de l’icône dépasse la taille disponible."));
     }
 
     private static Rectangle InkBounds(byte[] pixels, int width, int height)

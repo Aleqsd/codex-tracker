@@ -28,7 +28,7 @@ internal sealed class TrayPeekWindow : Window
     {
         SetResourceReference(StyleProperty, typeof(Window));
         // The shared window style applies the same smoothing as the main interface.
-        Title = "Aperçu Codex Tracker";
+        Title = Loc.T("Aperçu Codex Tracker");
         Width = 322;
         SizeToContent = SizeToContent.Height;
         WindowStyle = WindowStyle.None;
@@ -52,14 +52,14 @@ internal sealed class TrayPeekWindow : Window
         heading.Children.Add(_name); Grid.SetColumn(_planChip, 1); heading.Children.Add(_planChip); content.Children.Add(heading);
         var quotas = new Grid { Margin = new Thickness(0, 18, 0, 18) };
         quotas.ColumnDefinitions.Add(new()); quotas.ColumnDefinitions.Add(new());
-        var weekly = Metric("Semaine", _weekly, _weeklyRing);
-        var shortWindow = Metric("5 heures", _short, _shortRing);
+        var weekly = Metric(Loc.T("Semaine"), _weekly, _weeklyRing);
+        var shortWindow = Metric(Loc.T("5 heures"), _short, _shortRing);
         quotas.Children.Add(weekly); Grid.SetColumn(shortWindow, 1); quotas.Children.Add(shortWindow); content.Children.Add(quotas);
         _reserves.Children.Add(_reserve); _reserves.Children.Add(_expirations); content.Children.Add(_reserves);
         ToolTipService.SetInitialShowDelay(_reserve, 150);
         ToolTipService.SetShowDuration(_reserve, 60000);
         content.Children.Add(_reset); content.Children.Add(_freshness);
-        var button = new Button { Content = "Ouvrir le suivi", Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 18, 0, 0), Padding = new Thickness(10, 8, 10, 8), HorizontalAlignment = HorizontalAlignment.Stretch };
+        var button = new Button { Content = Loc.T("Ouvrir le suivi"), Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 18, 0, 0), Padding = new Thickness(10, 8, 10, 8), HorizontalAlignment = HorizontalAlignment.Stretch };
         button.Click += (_, _) => { Hide(); open(); }; content.Children.Add(button);
         SourceInitialized += (_, _) =>
         {
@@ -91,7 +91,7 @@ internal sealed class TrayPeekWindow : Window
         var shortWindow = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Short, now);
         var declared = account is not null && state.ManualCodexReset?.Applies(account, ResetKind.Weekly, now) == true;
         var nextReset = account is null ? null : QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now);
-        _name.Text = account is null ? "En attente d’un compte" : PrivacyText.ContextualAccount(account.Profile, state, preferences);
+        _name.Text = account is null ? Loc.T("En attente d’un compte") : PrivacyText.ContextualAccount(account.Profile, state, preferences);
         _plan.Text = snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", null => "", var other => other };
         if (snapshot?.PlanMultiplier is int multiplier) _plan.Text += $" {multiplier}×";
         _weekly.Text = Display.Percent(weekly); _short.Text = Display.Percent(shortWindow);
@@ -99,23 +99,23 @@ internal sealed class TrayPeekWindow : Window
         _weekly.Foreground = Display.QuotaBrush(weekly); _short.Foreground = Display.QuotaBrush(shortWindow);
         _weeklyRing.RingBrush = declared ? Display.Green : Display.QuotaBarBrush(weekly); _shortRing.RingBrush = Display.QuotaBarBrush(shortWindow);
         _planChip.Visibility = string.IsNullOrEmpty(_plan.Text) ? Visibility.Collapsed : Visibility.Visible;
-        _status.Text = declared ? "Reset Codex déclaré" : account?.IsActive == true ? $"Compte actif dans {account.Profile.ProviderName}" : "Compte affiché dans l’icône";
-        _reset.Text = declared ? "Prochain reset à reconfirmer" : nextReset is null ? "Reset hebdomadaire indisponible" : "Reset · " + Display.Countdown(nextReset);
-        _reset.ToolTip = declared ? $"Reset Codex déclaré le {Display.Exact(state.ManualCodexReset!.At)} · {Display.Zone(state.ManualCodexReset.At)}" : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
+        _status.Text = declared ? Loc.T("Reset Codex déclaré") : account?.IsActive == true ? Loc.F("Compte actif dans {0}", account.Profile.ProviderName) : Loc.T("Compte affiché dans l’icône");
+        _reset.Text = declared ? Loc.T("Prochain reset à reconfirmer") : nextReset is null ? Loc.T("Reset hebdomadaire indisponible") : "Reset · " + Display.Countdown(nextReset);
+        _reset.ToolTip = declared ? Loc.F("Reset Codex déclaré le {0} · {1}", Display.Exact(state.ManualCodexReset!.At), Display.Zone(state.ManualCodexReset.At)) : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
         _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
         _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };
         _expirations.Text = snapshot?.ResetCredits is { Count: > 0 } credits
             ? string.Join("\n", credits.OrderBy(c => c.ExpiresAt ?? DateTimeOffset.MaxValue).Select(c =>
-                c.ExpiresAt is { } expires ? $"{(expires <= DateTimeOffset.UtcNow ? "Expiration passée" : "Expire le")} {Display.Exact(expires)} · {Display.Zone(expires)}" : "Expiration non communiquée"))
-            : "Dates d’expiration non communiquées";
+                c.ExpiresAt is { } expires ? Display.Expiry(expires, DateTimeOffset.UtcNow) + " · " + Display.Zone(expires) : Loc.T("Expiration non communiquée")))
+            : Loc.T("Dates d’expiration non communiquées");
         var reservesVisible = account?.Profile.Provider != AccountProvider.ClaudeCode;
         _reserves.Visibility = reservesVisible ? Visibility.Visible : Visibility.Collapsed;
-        if (snapshot is null) _freshness.Text = "Ouvrez Codex ou Claude Code pour détecter votre compte.";
+        if (snapshot is null) _freshness.Text = Loc.T("Ouvrez Codex ou Claude Code pour détecter votre compte.");
         else
         {
             var age = DateTimeOffset.UtcNow - snapshot.FetchedAt;
-            var ageText = age.TotalMinutes < 1 ? "à l’instant" : age.TotalHours < 1 ? $"il y a {(int)age.TotalMinutes} min" : $"le {snapshot.FetchedAt.ToLocalTime():dd/MM à HH:mm}";
-            _freshness.Text = account?.IsActive != true ? "Dernier relevé " + ageText : account.IsStale ? "Données anciennes · " + ageText : "Actualisé " + ageText;
+            var ageText = age.TotalMinutes < 1 ? Loc.T("à l’instant") : age.TotalHours < 1 ? Loc.F("il y a {0} min", (int)age.TotalMinutes) : Loc.F("le {0:dd/MM à HH:mm}", snapshot.FetchedAt.ToLocalTime());
+            _freshness.Text = account?.IsActive != true ? Loc.F("Dernier relevé {0}", ageText) : account.IsStale ? Loc.F("Données anciennes · {0}", ageText) : Loc.F("Actualisé {0}", ageText);
         }
         _freshness.ToolTip = snapshot is null ? null : Display.Exact(snapshot.FetchedAt) + " · " + Display.Zone(snapshot.FetchedAt);
     }

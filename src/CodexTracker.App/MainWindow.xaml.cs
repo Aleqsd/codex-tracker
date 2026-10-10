@@ -54,7 +54,7 @@ public partial class MainWindow : Window
         _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast };
         InitializeComponent();
         AppVersionLabel.Text = $"v{_updates.CurrentVersion}";
-        AppVersionLabel.ToolTip = $"Version installée : {_updates.CurrentVersion}";
+        AppVersionLabel.ToolTip = Loc.F("Version installée : {0}", _updates.CurrentVersion);
         _updates.PreparationChanged += UpdatePreparationChanged;
         UpdatePresentation();
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync(), () => OpenManualCodexReset()); ResetsTab.Content = _resets;
@@ -119,7 +119,7 @@ public partial class MainWindow : Window
     {
         if (page == "Resets") { ShowResets(); return; }
         if (page == "Comptes") { ShowPanel(); AccountsTab.IsSelected = true; return; }
-        if (page is not ("Général" or "Rappels" or "Canaux" or "Historique" or "Calendrier" or "Assistants" or "Application")) throw new ArgumentException("Page inconnue.");
+        if (page is not ("Général" or "Rappels" or "Canaux" or "Historique" or "Calendrier" or "Assistants" or "Application")) throw new ArgumentException(Loc.T("Page inconnue."));
         ShowSettings(); Settings.ShowPage(page);
     }
     public void PrepareExit()
@@ -165,18 +165,18 @@ public partial class MainWindow : Window
     internal void PresentUpdate(string? version, bool downloading)
     {
         UpdateBanner.Visibility = version is not null || downloading ? Visibility.Visible : Visibility.Collapsed;
-        UpdateHeadline.Text = downloading ? "Une mise à jour se télécharge…" : $"Version {version} prête à installer";
-        UpdateHint.Text = downloading ? "Le suivi continue en arrière-plan." : _preferences.Current.InstallUpdatesAtStartup
-            ? "Maintenant, ou automatiquement au prochain démarrage du tracker." : "Téléchargée et vérifiée. Vos comptes et réglages sont conservés.";
-        if (!_installingUpdate && _updates.Prepared?.AutomaticAttempted == true) UpdateHint.Text = "Installation précédente interrompue. Vous pouvez réessayer.";
+        UpdateHeadline.Text = downloading ? Loc.T("Une mise à jour se télécharge…") : Loc.F("Version {0} prête à installer", version);
+        UpdateHint.Text = downloading ? Loc.T("Le suivi continue en arrière-plan.") : _preferences.Current.InstallUpdatesAtStartup
+            ? Loc.T("Maintenant, ou automatiquement au prochain démarrage du tracker.") : Loc.T("Téléchargée et vérifiée. Vos comptes et réglages sont conservés.");
+        if (!_installingUpdate && _updates.Prepared?.AutomaticAttempted == true) UpdateHint.Text = Loc.T("Installation précédente interrompue. Vous pouvez réessayer.");
         UpdateNowButton.Visibility = version is not null && !downloading ? Visibility.Visible : Visibility.Collapsed;
         UpdateNowButton.IsEnabled = !_installingUpdate;
-        UpdateNowButton.Content = _installingUpdate ? "Installation…" : "Mettre à jour et relancer";
+        UpdateNowButton.Content = _installingUpdate ? Loc.T("Installation…") : Loc.T("Mettre à jour et relancer");
     }
     private async void UpdateNow_Click(object sender, RoutedEventArgs e)
     {
         try { await InstallReadyUpdateAsync(); }
-        catch (Exception error) { if (!_canClose) ShowMessage("Mise à jour indisponible", error.Message); }
+        catch (Exception error) { if (!_canClose) ShowMessage(Loc.T("Mise à jour indisponible"), error.Message); }
     }
     internal async Task InstallReadyUpdateAsync()
     {
@@ -185,7 +185,7 @@ public partial class MainWindow : Window
         try
         {
             if (!await _updates.LaunchPreparedAsync(false, false, _lifetime.Token))
-                throw new IOException("La mise à jour n’est plus prête. Recherchez-la à nouveau dans les réglages.");
+                throw new IOException(Loc.T("La mise à jour n’est plus prête. Recherchez-la à nouveau dans les réglages."));
             await ((App)System.Windows.Application.Current).ExitAsync();
         }
         finally
@@ -205,14 +205,14 @@ public partial class MainWindow : Window
         _refreshing = true;
         try { await _service.RefreshAsync(_lifetime.Token); }
         catch (OperationCanceledException) { }
-        catch (Exception error) { if (IsVisible && !_canClose) ShowMessage("Actualisation indisponible", error.Message); }
+        catch (Exception error) { if (IsVisible && !_canClose) ShowMessage(Loc.T("Actualisation indisponible"), error.Message); }
         finally { _refreshing = false; }
     }
     private async Task RunAsync(Func<Task> operation)
     {
         try { await operation(); }
         catch (OperationCanceledException) { }
-        catch (Exception error) { if (!_canClose) ShowMessage("L’action n’a pas abouti", error.Message); }
+        catch (Exception error) { if (!_canClose) ShowMessage(Loc.T("L’action n’a pas abouti"), error.Message); }
     }
     private static Guid Id(object sender) => (Guid)((FrameworkElement)sender).Tag;
     private async void Import_Click(object sender, RoutedEventArgs e) => await RunAsync(() => _service.ImportCurrentAccountAsync(_lifetime.Token));
@@ -244,7 +244,7 @@ public partial class MainWindow : Window
         var details = new HistoryWindow(this, _service, _preferences, id, Theme);
         details.Show(); return details;
     }
-    internal void ShowMessage(string title, string message) => new TrackerDialog(this, title, Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();
+    internal void ShowMessage(string title, string message) => new TrackerDialog(this, title, Display.SafeText(message, _preferences.Current.PrivacyMode), Loc.T("Fermer"), null).ShowDialog();
     public void ShowSettings()
     {
         ShowPanel(); _ = Settings; SettingsTab.IsSelected = true;
@@ -253,13 +253,13 @@ public partial class MainWindow : Window
     public void SaveScreenshot(string path, double dpi) => Ui.SaveScreenshot(this, path, dpi);
     public void SaveDetailsScreenshot(string path, double dpi)
     {
-        if (!_model.IsDemo) throw new InvalidOperationException("Les captures de détails nécessitent le mode démonstration.");
+        if (!_model.IsDemo) throw new InvalidOperationException(Loc.T("Les captures de détails nécessitent le mode démonstration."));
         var account = _service.State.Accounts.FirstOrDefault(); if (account is null) return;
         var window = OpenHistory(account.Profile.Id); window.UpdateLayout(); Ui.SaveScreenshot(window, path, dpi); window.Close();
     }
     public void SaveSettingsScreenshot(string path, double dpi)
     {
-        if (!_model.IsDemo) throw new InvalidOperationException("Les captures des réglages nécessitent le mode démonstration.");
+        if (!_model.IsDemo) throw new InvalidOperationException(Loc.T("Les captures des réglages nécessitent le mode démonstration."));
         ShowSettings(); UpdateLayout(); Ui.SaveScreenshot(this, path, dpi);
     }
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);

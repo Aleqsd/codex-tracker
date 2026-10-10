@@ -15,10 +15,10 @@ internal static class WindowsToasts
             .AddToastInput(new ToastSelectionBox("snooze")
             {
                 DefaultSelectionBoxItemId = "60",
-                Items = { new("15", "Dans 15 minutes"), new("60", "Dans 1 heure"), new("240", "Dans 4 heures") }
+                Items = { new("15", Loc.T("Dans 15 minutes")), new("60", Loc.T("Dans 1 heure")), new("240", Loc.T("Dans 4 heures")) }
             })
-            .AddButton(new ToastButton().SetContent("Ouvrir le suivi").AddArgument(PageArgument, page))
-            .AddButton(new ToastButtonSnooze("Rappeler") { SelectionBoxId = "snooze" })
+            .AddButton(new ToastButton().SetContent(Loc.T("Ouvrir le suivi")).AddArgument(PageArgument, page))
+            .AddButton(new ToastButtonSnooze(Loc.T("Rappeler")) { SelectionBoxId = "snooze" })
             .Show(toast => toast.Group = "codex-tracker");
     }
 

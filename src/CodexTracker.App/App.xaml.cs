@@ -58,7 +58,7 @@ public partial class App : System.Windows.Application
             if (new[] { "--screenshot", "--peek-screenshot", "--details-screenshot", "--settings-screenshot" }.Any(e.Args.Contains)) UiMotion.Suppressed = true;
             if (e.Args.Contains("--preview"))
             {
-                if (!IsDemo) throw new ArgumentException("Les aperçus nécessitent --demo.");
+                if (!IsDemo) throw new ArgumentException(Loc.T("Les aperçus nécessitent --demo."));
                 UiMotion.Suppressed = true;
                 PreviewClock.Fixed = DateTimeOffset.Parse("2026-09-21T12:00:00Z");
                 RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
@@ -131,7 +131,7 @@ public partial class App : System.Windows.Application
                     _assistantServer = new(window, window.Assistant, e.Args);
                 }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
-                { window.AssistantError = "MCP indisponible : journal local illisible. Le suivi reste actif."; }
+                { window.AssistantError = Loc.T("MCP indisponible : journal local illisible. Le suivi reste actif."); }
             }
             UpdateBootstrap.MarkHealthy(e.Args);
             if (e.Args.Contains("--preview"))
@@ -143,7 +143,7 @@ public partial class App : System.Windows.Application
             if (imageArgument >= 0 && imageArgument + 1 < e.Args.Length)
             {
                 // Render the fictional demo only; never export private account data accidentally.
-                if (!IsDemo) throw new InvalidOperationException("--screenshot nécessite --demo.");
+                if (!IsDemo) throw new InvalidOperationException(Loc.F("{0} nécessite --demo.", "--screenshot"));
                 int dpiArgument = Array.IndexOf(e.Args, "--dpi");
                 double dpi = dpiArgument >= 0 && dpiArgument + 1 < e.Args.Length && double.TryParse(e.Args[dpiArgument + 1], out var parsed) ? Math.Clamp(parsed, 96, 288) : 96;
                 window.ShowPanel();
@@ -153,7 +153,7 @@ public partial class App : System.Windows.Application
             int peekArgument = Array.IndexOf(e.Args, "--peek-screenshot");
             if (peekArgument >= 0 && peekArgument + 1 < e.Args.Length)
             {
-                if (!IsDemo) throw new InvalidOperationException("--peek-screenshot nécessite --demo.");
+                if (!IsDemo) throw new InvalidOperationException(Loc.F("{0} nécessite --demo.", "--peek-screenshot"));
                 int dpiArgument = Array.IndexOf(e.Args, "--dpi");
                 double dpi = dpiArgument >= 0 && dpiArgument + 1 < e.Args.Length && double.TryParse(e.Args[dpiArgument + 1], out var parsed) ? Math.Clamp(parsed, 96, 288) : 96;
                 _tray.SavePeekScreenshot(Path.GetFullPath(e.Args[peekArgument + 1]), dpi);
@@ -162,7 +162,7 @@ public partial class App : System.Windows.Application
             {
                 int argument = Array.IndexOf(e.Args, option);
                 if (argument < 0 || argument + 1 >= e.Args.Length) continue;
-                if (!IsDemo) throw new InvalidOperationException($"{option} nécessite --demo.");
+                if (!IsDemo) throw new InvalidOperationException(Loc.F("{0} nécessite --demo.", option));
                 if (option == "--details-screenshot") window.SaveDetailsScreenshot(Path.GetFullPath(e.Args[argument + 1]), 96);
                 else window.SaveSettingsScreenshot(Path.GetFullPath(e.Args[argument + 1]), 96);
             }
@@ -171,7 +171,7 @@ public partial class App : System.Windows.Application
         catch (Exception error)
         {
             if (_exiting) return;
-            System.Windows.MessageBox.Show($"Codex Tracker n’a pas pu démarrer.\n\n{error.Message}", "Codex Tracker", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(Loc.F("Codex Tracker n’a pas pu démarrer.\n\n{0}", error.Message), "Codex Tracker", MessageBoxButton.OK, MessageBoxImage.Error);
             await ExitAsync();
         }
     }
@@ -199,7 +199,7 @@ public partial class App : System.Windows.Application
         Window target = window;
         if (Option("--size", "normal") == "compact") { target.Width = Math.Max(target.MinWidth, 660); target.Height = Math.Max(target.MinHeight, 500); }
         var dpi = double.Parse(Option("--dpi", "96"), System.Globalization.CultureInfo.InvariantCulture);
-        if (dpi is not (96 or 120 or 144 or 192)) throw new ArgumentException("DPI : 96, 120, 144 ou 192.");
+        if (dpi is not (96 or 120 or 144 or 192)) throw new ArgumentException(Loc.T("DPI : 96, 120, 144 ou 192."));
         await Task.Delay(200); target.UpdateLayout(); Ui.SaveScreenshot(target, Path.GetFullPath(Option("--preview", "artifacts/preview.png")), dpi);
     }
 
@@ -266,7 +266,7 @@ public partial class App : System.Windows.Application
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception error) { if (!_exiting && MainWindow is MainWindow window && window.IsVisible) window.ShowMessage("Reprise du suivi", error.Message); }
+        catch (Exception error) { if (!_exiting && MainWindow is MainWindow window && window.IsVisible) window.ShowMessage(Loc.T("Reprise du suivi"), error.Message); }
     });
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string windowName);
