@@ -235,9 +235,7 @@ internal sealed class TrayController : IDisposable
     internal void SavePeekScreenshot(string path, double dpi = 96)
     {
         _peek.Update(_service.State, _preferences.Current);
-        _peek.ShowNear(Forms.Cursor.Position);
-        _peek.SaveScreenshot(path, dpi);
-        _peek.Hide();
+        _peek.SaveOffscreenScreenshot(path, dpi);
     }
 
     // Toasts carry an "open" action and a Windows-managed snooze; the classic balloon remains the fallback.

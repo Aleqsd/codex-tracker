@@ -11,7 +11,7 @@ internal sealed class TrayPeekWindow : Window
     // Codex and Claude Code can both be in use: each active account gets its own section.
     private readonly StackPanel _sections = new();
     private DrawingPoint _anchor;
-    private bool _positionQueued, _positioning, _closed;
+    private bool _positionQueued, _positioning, _closed, _offscreen;
 
     public TrayPeekWindow(Action open)
     {
@@ -179,7 +179,7 @@ internal sealed class TrayPeekWindow : Window
     }
     private void Position()
     {
-        if (_closed || !IsVisible || _positioning) return;
+        if (_closed || !IsVisible || _positioning || _offscreen) return;
         _positioning = true;
         try
         {
@@ -197,6 +197,14 @@ internal sealed class TrayPeekWindow : Window
     {
         if (!IsVisible || WindowsLifecycle.Bounds(new WindowInteropHelper(this).Handle) is not PixelRect bounds) return false;
         return point.X >= bounds.X - 5 && point.X <= bounds.Right + 5 && point.Y >= bounds.Y - 5 && point.Y <= bounds.Bottom + 5;
+    }
+
+    /// <summary>Documentation capture rendered off-screen: nothing appears near the cursor.</summary>
+    internal void SaveOffscreenScreenshot(string path, double dpi = 96)
+    {
+        _offscreen = true;
+        try { WindowStartupLocation = WindowStartupLocation.Manual; Left = Top = -32000; Show(); UpdateLayout(); SaveScreenshot(path, dpi); Hide(); }
+        finally { _offscreen = false; }
     }
 
     internal void SaveScreenshot(string path, double dpi = 96)

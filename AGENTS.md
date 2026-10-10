@@ -18,6 +18,7 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/dev.ps1 -Action Demo
 ./scripts/dev.ps1 -Action Preview -View Assistants -Theme dark
 ./scripts/dev.ps1 -Action Preview -Matrix
+./scripts/visuals.ps1
 ./scripts/publish.ps1 -Version 0.9.2
 ./scripts/build-installer.ps1 -Version 0.9.2
 ./scripts/bump.ps1 -Version 0.9.19
@@ -46,4 +47,4 @@ Modifier une règle métier : tests de ses limites et erreurs. Modifier une comm
 
 ## Présentation publique
 
-README bref, orienté installation et usage ; détails dans docs/UTILISATION.md. Tour GIF rapide, exclusivement fictif. Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.
+README bref, orienté installation et usage ; détails dans docs/UTILISATION.md. Tour GIF rapide, exclusivement fictif ; `scripts/visuals.ps1` régénère hors écran le visuel principal, les captures du guide et le GIF (Pillow requis). Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.

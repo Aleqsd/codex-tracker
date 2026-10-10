@@ -120,9 +120,9 @@ public partial class App : System.Windows.Application
             _environmentTimer.Tick += EnvironmentTimerTick;
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
-            if (e.Args.Contains("--preview"))
+            if (e.Args.Contains("--preview") || e.Args.Any(a => a.StartsWith("--", StringComparison.Ordinal) && a.EndsWith("-screenshot", StringComparison.Ordinal)))
             {
-                // Previews render off-screen without activation: they never take focus from the user's work or game.
+                // Previews and captures render off-screen without activation: they never take focus from the user's work or game.
                 window.Offscreen = true; window.ShowActivated = false; window.ShowInTaskbar = false;
                 window.WindowStartupLocation = WindowStartupLocation.Manual; window.Left = window.Top = -32000;
             }

@@ -144,10 +144,13 @@ internal class ThemedWindow : Window
     protected readonly TextBlock Heading;
     protected readonly ScrollViewer ContentScroll;
     private readonly ThemeManager _theme;
+    private readonly bool _offscreen;
     public ThemedWindow(Window owner, string title, ThemeManager theme, double width, double height)
     {
         SetResourceReference(StyleProperty, typeof(Window));
         Owner = owner; _theme = theme; Title = title; Width = width; Height = height;
+        // A capture from an off-screen preview stays off-screen too.
+        _offscreen = owner is MainWindow { Offscreen: true };
         MinWidth = Math.Min(width, 440); MinHeight = 390; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize; ShowInTaskbar = false; UseLayoutRounding = true;
         SetResourceReference(BackgroundProperty, "BackgroundBrush"); SetResourceReference(ForegroundProperty, "TextBrush");
@@ -165,7 +168,8 @@ internal class ThemedWindow : Window
         UiMotion.SetRise(root, 10); UiMotion.SetFadeOnShow(root, true);
         frame.Child = root; Content = frame;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); }; theme.Changed += ThemeChanged;
-        Loaded += (_, _) => Ui.EnsureWindowVisible(this);
+        if (_offscreen) { WindowStartupLocation = WindowStartupLocation.Manual; Left = Top = -32000; ShowActivated = false; }
+        Loaded += (_, _) => { if (!_offscreen) Ui.EnsureWindowVisible(this); };
         DpiChanged += (_, _) => Dispatcher.InvokeAsync(() => Ui.EnsureWindowVisible(this), System.Windows.Threading.DispatcherPriority.Loaded);
         Closed += (_, _) => theme.Changed -= ThemeChanged;
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
