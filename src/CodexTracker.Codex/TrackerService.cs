@@ -391,16 +391,19 @@ public sealed partial class TrackerService : ITrackerService
     {
         var previous = _telemetry.GetValueOrDefault(profile.Id) ?? AccountTelemetry.Empty;
         var samples = UsageAnalytics.Append(previous.Samples, UsageAnalytics.FromSnapshot(profile.Id, snapshot));
-        var evaluation = QuotaAlertEvaluator.Observe(profile, snapshot, previous.Alerts,
-            suppressNotifications: (claude ? _claudeNotificationBaselineGeneration : _notificationBaselineGeneration) != generation);
+        var suppress = (claude ? _claudeNotificationBaselineGeneration : _notificationBaselineGeneration) != generation;
+        var evaluation = QuotaAlertEvaluator.Observe(profile, snapshot, previous.Alerts, suppress);
         if (claude) _claudeNotificationBaselineGeneration = generation; else _notificationBaselineGeneration = generation;
-        var current = new AccountTelemetry(samples, evaluation.State);
+        // Same one-hour window as the details forecast; gaps and resets already split the trend.
+        var recent = samples.Where(s => s.Timestamp >= snapshot.FetchedAt.AddHours(-1)).ToArray();
+        var (alerts, warning) = ForecastAlert.Observe(profile, snapshot, evaluation.State, UsageAnalytics.Estimate(recent, snapshot.FetchedAt), suppress);
+        var current = new AccountTelemetry(samples, alerts);
         _telemetry[profile.Id] = current;
         try
         {
             // Persist deduplication before publishing events: restarting cannot replay an alert.
             _store.SaveTelemetry(profile.Id, current);
-            return evaluation.Notifications;
+            return warning is null ? evaluation.Notifications : [.. evaluation.Notifications, warning];
         }
         catch (Exception ex) when (IsRecoverable(ex)) { return Array.Empty<QuotaNotification>(); }
     }

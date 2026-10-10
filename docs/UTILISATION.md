@@ -121,6 +121,8 @@ Chaque compte conserve jusqu’à 90 jours de relevés locaux. Les graphiques pr
 
 Une estimation d’épuisement apparaît après au moins 15 minutes de relevés récents et continus, si leur évolution est suffisamment régulière. Elle indique la première fenêtre susceptible de s’épuiser, au rythme observé, avant son prochain reset. Un compte inactif, des données insuffisantes ou un rythme trop irrégulier restent sans estimation.
 
+La même estimation apparaît sur la tuile de chaque compte actif : **Épuisé dans ≈ …** en orange, ou **À ce rythme · jusqu’au reset** en vert ; le survol donne l’heure exacte. Si le rythme vide un quota avant sa recharge, **Prévenir avant l’épuisement** (Réglages → Rappels, activé par défaut) envoie une notification Windows environ une heure avant, une seule fois par période ; une récupération des préférences la désactive comme les autres alertes.
+
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
 
 ### Rappels locaux et connecteurs facultatifs

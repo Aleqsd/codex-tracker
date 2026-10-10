@@ -5,7 +5,8 @@ namespace CodexTracker.App;
 internal static class NotificationPolicy
 {
     public static bool IsEnabled(QuotaNotification notification, TrackerPreferences preferences) =>
-        notification.Kind == NotificationKind.Reset ? preferences.ResetNotifications : notification.Threshold switch
+        notification.Kind == NotificationKind.Reset ? preferences.ResetNotifications
+        : notification.Kind == NotificationKind.Forecast ? preferences.ForecastNotifications : notification.Threshold switch
         {
             20 => preferences.Alert20,
             10 => preferences.Alert10,
@@ -20,6 +21,8 @@ internal static class NotificationPolicy
         var name = account is null ? "Compte suivi" : PrivacyText.Account(account.Profile, state, preferences ?? new());
         var window = notification.Window == UsageWindowKind.Short ? "5 heures" : "semaine";
         var provider = account?.Profile.ProviderName ?? "Codex";
+        if (notification.Kind == NotificationKind.Forecast)
+            return ("Quota bientôt épuisé à ce rythme", $"{name} · {window}\nAu rythme actuel, plus rien vers {notification.ExhaustionAt?.ToLocalTime():HH:mm}, avant la recharge.");
         return notification.Kind == NotificationKind.Reset
             ? ("Quota rechargé", $"{name} · {window}\n{provider} a confirmé le renouvellement du quota.")
             : ("Quota bientôt épuisé", $"{name} · {window}\nIl reste {notification.Threshold} % ou moins. Cliquez pour consulter le suivi.");

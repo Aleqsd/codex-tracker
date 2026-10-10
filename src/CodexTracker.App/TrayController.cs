@@ -185,7 +185,7 @@ internal sealed class TrayController : IDisposable
         if (_disposed || _suspended || !NotificationPolicy.IsEnabled(notification, _preferences.Current)) return;
         var key = (notification.AccountId, notification.Window);
         if (!_pendingNotifications.TryGetValue(key, out var previous) || notification.Kind == NotificationKind.Reset ||
-            previous.Kind == NotificationKind.Reset || notification.Threshold < previous.Threshold)
+            previous.Kind is NotificationKind.Reset or NotificationKind.Forecast || notification.Threshold < previous.Threshold)
             _pendingNotifications[key] = notification;
         if (!_notifications.IsEnabled) _notifications.Start();
     });

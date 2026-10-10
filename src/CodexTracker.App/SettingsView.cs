@@ -87,6 +87,8 @@ internal sealed class SettingsView : UserControl, IDisposable
         thresholds.Children.Add(PreferenceCheck("20 %", p => p.Alert20, (p, v) => p with { Alert20 = v }));
         thresholds.Children.Add(PreferenceCheck("10 %", p => p.Alert10, (p, v) => p with { Alert10 = v }));
         thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); quotas.Children.Add(thresholds);
+        Toggle("Prévenir avant l’épuisement", "Si le rythme observé vide un quota avant sa recharge, une notification arrive environ une heure avant. Une fois par période, sans estimation si la consommation est irrégulière.",
+            p => p.ForecastNotifications, (p, value) => p with { ForecastNotifications = value });
         Row(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
         Toggle("Prévenir après un reset", "Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille.", p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Section("Annonces de resets généraux");

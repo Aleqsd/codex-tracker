@@ -57,6 +57,10 @@
             <TextBlock Text="Reset semaine" Style="{StaticResource MetricLabel}"/>
             <TextBlock Grid.Column="1" Text="{Binding ResetCompact}" Style="{StaticResource MetricValue}"/>
            </Grid>
+           <Grid Margin="0,8,0,0" ToolTip="{Binding ForecastHint}" Visibility="{Binding HasForecast, Converter={StaticResource BoolVisibility}}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding ForecastLabel}" Style="{StaticResource MetricLabel}"/>
+            <TextBlock Grid.Column="1" Text="{Binding ForecastText}" Foreground="{Binding ForecastBrush}" Style="{StaticResource MetricValue}"/>
+           </Grid>
            <Border Style="{StaticResource ReserveMetric}" Padding="0" MinHeight="0" Margin="0,8,0,0" Visibility="{Binding HasReserves, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="{Binding ReserveSummary}">
             <Border.ToolTip><ToolTip Content="{Binding ReserveHint}" ContentTemplate="{StaticResource ReserveTooltip}"/></Border.ToolTip>
             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Resets en réserve" Style="{StaticResource MetricLabel}"/><TextBlock Grid.Column="1" Text="{Binding ReserveCount}" Foreground="{Binding ReserveBrush}" Style="{StaticResource MetricValue}"/></Grid>

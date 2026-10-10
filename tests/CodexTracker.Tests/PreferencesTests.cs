@@ -63,6 +63,35 @@ public sealed class PreferencesTests
     }
 
     [Fact]
+    public void PaceWarningsAreOnByDefaultIndependentAndDisabledByRecovery()
+    {
+        using var directory = new TestDirectory();
+        File.WriteAllText(directory.File("preferences.json"), "{\"alert10\":false}");
+        var older = new PreferencesStore(dataDirectory: directory.Root);
+        Assert.True(older.Current.ForecastNotifications);
+        older.Update(p => p with { ForecastNotifications = false });
+        Assert.False(new PreferencesStore(dataDirectory: directory.Root).Current.ForecastNotifications);
+        var warning = new QuotaNotification(Guid.NewGuid(), "pace@example.test", NotificationKind.Forecast, null, DateTimeOffset.UtcNow, UsageWindowKind.Short, DateTimeOffset.UtcNow.AddMinutes(40));
+        Assert.True(NotificationPolicy.IsEnabled(warning, new() { Alert20 = false, Alert10 = false, Alert5 = false, ResetNotifications = false }));
+        Assert.False(NotificationPolicy.IsEnabled(warning, new() { ForecastNotifications = false }));
+        File.WriteAllText(directory.File("preferences.json"), "{broken");
+        Assert.False(new PreferencesStore(dataDirectory: directory.Root).Current.ForecastNotifications);
+    }
+
+    [Fact]
+    public void PaceWarningNamesTheAccountWindowAndEstimatedTime()
+    {
+        var profile = new AccountProfile(Guid.NewGuid(), "pace@example.test");
+        var state = new TrackerState([new(profile)], profile.Id);
+        var at = new DateTimeOffset(2026, 9, 20, 15, 40, 0, TimeSpan.Zero);
+        var (title, body) = NotificationPolicy.Compose(new(profile.Id, profile.Email, NotificationKind.Forecast, null, at.AddMinutes(-40), UsageWindowKind.Weekly, at), state);
+        Assert.Contains("rythme", title);
+        Assert.Contains(profile.Email, body);
+        Assert.Contains("semaine", body);
+        Assert.Contains(at.ToLocalTime().ToString("HH:mm"), body);
+    }
+
+    [Fact]
     public void PrivacyLabelsAreDistinctAndNeverUseInitialsOrEmailFragments()
     {
         var first = new AccountProfile(Guid.NewGuid(), "first@example.test");

@@ -1,14 +1,14 @@
 namespace CodexTracker.Core;
 
 public enum UsageWindowKind { Weekly, Short }
-public enum NotificationKind { Threshold, Reset }
+public enum NotificationKind { Threshold, Reset, Forecast }
 
 public sealed record UsageSample(Guid AccountId, DateTimeOffset Timestamp, double? WeeklyRemaining,
     DateTimeOffset? WeeklyResetsAt, double? ShortRemaining = null, DateTimeOffset? ShortResetsAt = null);
 public sealed record UsageForecast(TimeSpan? TimeToExhaustion, DateTimeOffset? EstimatedExhaustionAt,
-    string Explanation, UsageWindowKind? Window = null);
+    string Explanation, UsageWindowKind? Window = null, bool LastsUntilReset = false);
 public sealed record QuotaNotification(Guid AccountId, string Email, NotificationKind Kind, int? Threshold,
-    DateTimeOffset ObservedAt, UsageWindowKind Window = UsageWindowKind.Weekly);
+    DateTimeOffset ObservedAt, UsageWindowKind Window = UsageWindowKind.Weekly, DateTimeOffset? ExhaustionAt = null);
 
 public static class UsageAnalytics
 {
@@ -90,7 +90,7 @@ public static class UsageAnalytics
             return Unavailable("Le rythme de consommation est trop irrégulier pour une estimation fiable.", window);
         var hours = remaining.Value / -slope;
         if (!double.IsFinite(hours) || hours > (reset.Value - latest.Timestamp).TotalHours)
-            return Unavailable($"Au rythme observé, le reset du quota {label} devrait précéder son épuisement.", window);
+            return new(null, null, $"Au rythme observé, le reset du quota {label} devrait précéder son épuisement.", window, LastsUntilReset: true);
         var exhaustion = latest.Timestamp + TimeSpan.FromHours(hours);
         var timeLeft = exhaustion > now ? exhaustion - now : TimeSpan.Zero;
         return new(timeLeft, exhaustion, $"Estimation du quota {label}, si le rythme observé reste comparable.", window);
@@ -105,7 +105,7 @@ public static class UsageAnalytics
 }
 
 public sealed record QuotaWindowAlertState(double Remaining, DateTimeOffset? ResetsAt, DateTimeOffset ObservedAt,
-    int NotifiedThresholdMask = 0, DateTimeOffset? LastObservedReset = null);
+    int NotifiedThresholdMask = 0, DateTimeOffset? LastObservedReset = null, DateTimeOffset? ForecastNotifiedFor = null);
 public sealed record QuotaAlertState(QuotaWindowAlertState? Weekly = null, QuotaWindowAlertState? Short = null);
 public sealed record QuotaAlertEvaluation(QuotaAlertState State, IReadOnlyList<QuotaNotification> Notifications);
 
@@ -157,6 +157,27 @@ public static class QuotaAlertEvaluator
                 }
             }
         }
-        return new(remaining, window.ResetsAt, observedAt, mask, lastReset);
+        return new(remaining, window.ResetsAt, observedAt, mask, lastReset, previous.ForecastNotifiedFor);
+    }
+}
+
+/// <summary>Warns once per quota period when the observed pace empties a window before its reset.</summary>
+public static class ForecastAlert
+{
+    public static readonly TimeSpan Lead = TimeSpan.FromHours(1);
+
+    public static (QuotaAlertState State, QuotaNotification? Notification) Observe(AccountProfile profile, AccountSnapshot snapshot,
+        QuotaAlertState state, UsageForecast forecast, bool suppressNotifications = false)
+    {
+        if (forecast is not { Window: { } window, EstimatedExhaustionAt: { } exhaustion, TimeToExhaustion: { } left }) return (state, null);
+        var quota = window == UsageWindowKind.Weekly ? snapshot.Weekly : snapshot.Short;
+        var alert = window == UsageWindowKind.Weekly ? state.Weekly : state.Short;
+        // Dated periods only: the reset identifies the period and must still follow the exhaustion.
+        if (quota?.ResetsAt is not { } reset || alert is null || alert.ResetsAt != reset || exhaustion >= reset) return (state, null);
+        if (left > Lead || left <= TimeSpan.Zero || alert.ForecastNotifiedFor == reset) return (state, null);
+        var updated = alert with { ForecastNotifiedFor = reset };
+        var next = window == UsageWindowKind.Weekly ? state with { Weekly = updated } : state with { Short = updated };
+        return (next, suppressNotifications ? null
+            : new(profile.Id, profile.Email, NotificationKind.Forecast, null, snapshot.FetchedAt, window, exhaustion));
     }
 }

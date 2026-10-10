@@ -59,7 +59,16 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     private TrackerState _state;
     private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
-    public AccountViewModel(AccountState account, TrackerState state, PreferencesStore preferences) { _account = account; _state = state; _preferences = preferences; }
+    public AccountViewModel(AccountState account, TrackerState state, PreferencesStore preferences, Func<Guid, UsageForecast>? forecast = null)
+    { _account = account; _state = state; _preferences = preferences; _forecast = forecast; }
+    private readonly Func<Guid, UsageForecast>? _forecast;
+    private UsageForecast? Forecast => IsActive ? _forecast?.Invoke(Id) : null;
+    public bool HasForecast => Forecast is { EstimatedExhaustionAt: not null } or { LastsUntilReset: true };
+    public string ForecastLabel => Forecast?.EstimatedExhaustionAt is not null ? "Épuisé dans" : "À ce rythme";
+    public string ForecastText => Forecast?.EstimatedExhaustionAt is { } at ? "≈ " + Display.Countdown(at).Replace("Dans ", "") : "jusqu’au reset";
+    public Brush ForecastBrush => Forecast?.EstimatedExhaustionAt is not null ? Display.Orange : Display.Green;
+    public string ForecastHint => Forecast is not { } forecast ? "" : forecast.EstimatedExhaustionAt is { } at
+        ? $"{forecast.Explanation}\nÉpuisement estimé : {Display.Exact(at)}\n{Display.Zone(at)}" : forecast.Explanation;
     public void Update(AccountState account, TrackerState state) { _account = account; _state = state; Tick(); }
     public void Tick() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     private TrackerState PresentationState => _state with { ManualCodexReset = _preferences.Current.ManualCodexReset };
@@ -179,6 +188,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
+    /// <summary>Pace estimate for active accounts; absent in isolated view-model tests.</summary>
+    internal Func<Guid, UsageForecast>? Forecast { get; set; }
     public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow); }
     public bool IsDemo { get; }
     public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive);
@@ -249,7 +260,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
         var sorted = source.OrderBy(a => a.account.Profile.Provider).ThenByDescending(a => a.account.IsActive).ThenBy(a => a.index);
         var ordered = sorted.Select(a => a.account).ToArray();
         var existing = Accounts.ToDictionary(a => a.Id);
-        var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences); }).ToArray();
+        var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences, Forecast); }).ToArray();
         foreach (var group in next.GroupBy(a => a.ProviderName))
         {
             var count = group.Count(); var index = 0;

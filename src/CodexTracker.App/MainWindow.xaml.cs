@@ -51,7 +51,7 @@ public partial class MainWindow : Window
         Reminders = new(service, preferences, demo);
         Commands = new(preferences, Reminders.Secrets);
         Theme = new ThemeManager(preferences);
-        _model = new DashboardViewModel(demo, preferences);
+        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast };
         InitializeComponent();
         AppVersionLabel.Text = $"v{_updates.CurrentVersion}";
         AppVersionLabel.ToolTip = $"Version installée : {_updates.CurrentVersion}";
