@@ -1,53 +1,79 @@
 <h1 align="center">Codex Tracker</h1>
-<p align="center">Vos quotas Codex et Claude Code, vos resets et vos rappels — dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.14/CodexTracker-0.9.14-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
-<p align="center">Windows 11 · x64 · Gratuit · Données locales — avec Codex ou Claude Code installé</p>
-<p align="center"><sub>0.9.14 · nouveau design et animations</sub></p>
+<p align="center"><strong>Sachez toujours combien il vous reste de Codex et de Claude Code.</strong><br>Votre quota, l’heure de la prochaine recharge et un rappel au bon moment, directement dans la barre des tâches Windows.</p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.15/CodexTracker-0.9.15-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a></p>
+<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · Version 0.9.15</sub></p>
 
-![Tour rapide de Codex Tracker : comptes, semaine, agenda, rappels, thèmes et assistants](docs/tour.gif)
-<p align="center"><sub>Démonstration avec des comptes fictifs. <a href="docs/resets-week.png">Aperçu statique</a></sub></p>
+<p align="center"><img src="docs/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges en clair et aperçu de la barre des tâches, avec des comptes fictifs" width="880"></p>
 
-## Commencer en une minute
+## En deux mots
 
-1. **Installez** le fichier `Setup.exe` ci-dessus. Aucun runtime ni droit administrateur à ajouter.
-2. **Ouvrez Codex.** Le tracker détecte le compte connecté. Vos autres comptes apparaissent quand vous les utilisez dans Codex.
-3. **Gardez l’icône dans la barre d’état.** Survolez-la pour un aperçu, cliquez pour ouvrir le tableau de bord.
+Codex et Claude Code limitent votre usage : un quota sur **5 heures** et un autre sur **la semaine**. Une fois épuisé, il faut attendre qu’il se recharge, et rien ne vous dit clairement où vous en êtes.
 
-Le bouton **flèche vers le coin**, à côté de **—**, masque le tracker dans la barre d’état et le retire de la barre des tâches. Le suivi continue.
+Codex Tracker répond à trois questions, sans rien configurer :
 
-## L’essentiel, en un coup d’œil
+- **Combien il me reste ?** Le pourcentage s’affiche dans l’icône de la barre des tâches. Survolez-la pour le détail.
+- **Quand ça se recharge ?** L’heure exacte de chaque recharge, pour chaque compte, en liste ou sur la semaine.
+- **Lequel de mes comptes utiliser ?** Tous vos comptes Codex et Claude Code côte à côte, personnels comme professionnels.
 
-- **📊 Comptes** — quota hebdomadaire dans l’icône, offre, réserves et dernier relevé pour chaque compte.
-- **📅 Resets** — agenda ou grille de la semaine, filtres par compte/type et réserve qui expire en premier.
-- **🔔 Rappels** — notifications Windows avant un reset ou l’expiration d’une réserve, aux délais de votre choix.
-- **🎨 À votre goût** — thème clair/sombre, noms et avatars personnalisés. Import des échéances dans Google Agenda.
+## Ce que vous obtenez
 
-**Claude est aussi détecté automatiquement.** L’application Claude fournit ses derniers quotas locaux sans réglage. Les comptes personnels et d’entreprise restent distincts, même avec la même adresse. Pour le terminal, un réglage est proposé dans **Réglages → Général → Claude Code**. [Sources et limites](docs/CLAUDE-CODE.md).
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/dashboard.png" alt="Tableau de bord avec comptes fictifs"><br><strong>Vos comptes d’un coup d’œil.</strong> Un anneau par compte actif, une barre pour chacun des autres et la date de leur dernier relevé.</td>
+<td width="50%" valign="top"><img src="docs/resets-week.png" alt="Semaine des recharges avec comptes fictifs"><br><strong>Le calendrier des recharges.</strong> Les prochaines recharges jour par jour, et les crédits de reset Codex en réserve avec leur date d’expiration.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/reminders.png" alt="Réglages des rappels avec comptes fictifs"><br><strong>Prévenu au bon moment.</strong> Une notification Windows avant une recharge, sous 20, 10 ou 5 % de quota, ou quand un autre compte vient de se recharger.</td>
+<td width="50%" valign="top"><img src="docs/settings.png" alt="Réglages généraux, démonstration"><br><strong>Discret et à votre goût.</strong> Thème clair ou sombre comme Windows, noms et photos pour vos comptes, export vers Google Agenda.</td>
+</tr>
+</table>
 
-**Un reset général Codex a eu lieu ?** Cliquez sur **Reset Codex…**, saisissez sa date et son heure : les comptes sans relevé plus récent affichent **100 % · déclaré**. Les relevés restent conservés ; Claude Code n’est pas concerné.
+<p align="center"><img src="docs/tour.gif" alt="Tour rapide : comptes, semaine, recharges, rappels, thème clair et assistants" width="760"><br><sub>Toutes les images utilisent des comptes fictifs.</sub></p>
 
-## Bon à savoir
+## Installer en trois étapes
 
-**Seul le compte actif de chaque outil est actualisé**. Codex est interrogé toutes les deux minutes par défaut. Les autres conservent leur dernier relevé daté. Une date ou une valeur absente reste inconnue.
+1. **Téléchargez et lancez** l’installateur ci-dessus. Pas de droits administrateur, rien d’autre à installer.
+2. **Utilisez Codex ou Claude Code comme d’habitude.** Le compte connecté apparaît tout seul. Vos autres comptes s’ajoutent quand vous les ouvrez.
+3. **Gardez l’icône visible** : glissez-la depuis la flèche ^ de la barre des tâches. Fermer la fenêtre la range simplement à côté de l’horloge ; le suivi continue.
 
-**Un autre compte a probablement récupéré son quota ?** Une notification Windows et un encart le signalent après son échéance. **≈100 % — estimé** reste à confirmer en ouvrant ce compte dans Codex ; le dernier quota mesuré est conservé au survol.
+Les mises à jour se téléchargent seules ; un bouton **Mettre à jour et relancer** apparaît quand une version est prête.
 
-**Reset général annoncé par l’équipe Codex :** les annonces reconnues sont vérifiées auprès de leur source originale. Les comptes concernés affichent une estimation temporaire, avec date et liens dans **Resets**. Désactivation dans **Réglages → Rappels** ; [fonctionnement et limites](docs/GLOBAL-RESETS.md).
+## Vos données restent chez vous
 
-**Les rappels nécessitent un PC éveillé et le tracker ouvert.** Le démarrage avec Windows est facultatif. Aucun service distant n’est nécessaire pour les notifications Windows.
+- **Rien à créer, rien à partager.** Pas d’inscription, pas de serveur : tout est enregistré sur votre PC.
+- **Aucun mot de passe demandé.** Le tracker lit les quotas que Codex et Claude Code connaissent déjà. Il ne lit pas vos conversations et ne change jamais de compte à votre place.
+- **Peu de connexions, et choisies.** Il recherche les mises à jour sur GitHub et, si vous le laissez faire, les annonces publiques de reset général. Les deux se désactivent dans les réglages.
 
-**Les options avancées restent facultatives.** Vous pouvez connecter vos propres comptes Twilio/SendGrid pour SMS, appels et emails, ou activer le [MCP local](docs/MCP.md) pour votre assistant. Ces options sont désactivées par défaut ; les frais éventuels dépendent de vos prestataires.
+Le détail est dans la [page confidentialité](docs/PRIVACY.md).
 
-## Installer autrement ou aller plus loin
+<details>
+<summary><strong>Questions fréquentes</strong></summary>
 
-- **Sans installation :** prenez le ZIP portable dans les [Releases](https://github.com/Aleqsd/codex-tracker/releases). Le petit fichier `.sha256` sert aux mises à jour automatiques ; vous pouvez l’ignorer.
-- **Mises à jour :** téléchargement automatique, puis bouton **Mettre à jour et relancer** ou installation au prochain démarrage. **Réglages → Application** permet aussi de recevoir les préversions ; seules les versions stables sont recherchées par défaut.
-- **WinGet :** [publication soumise à Microsoft](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
-- [Guide d’utilisation](docs/UTILISATION.md) · [Confidentialité](docs/PRIVACY.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues)
+**Pourquoi seul le compte ouvert est-il mis à jour ?**
+Le tracker lit le compte actif dans Codex et dans Claude. Les autres gardent leur dernier relevé, toujours daté. Quand l’heure de recharge d’un compte inactif est passée, il l’affiche comme « probablement rechargé », à confirmer en ouvrant ce compte.
 
-Un problème ? **Réglages → Application → Préparer un diagnostic** donne un aperçu sans comptes ni secrets, à copier dans votre signalement.
+**Faut-il laisser l’application ouverte ?**
+Pour les rappels, oui : elle reste discrète dans la barre des tâches et peut démarrer avec Windows. Le PC doit être allumé.
 
-[Code signing policy](docs/CODE-SIGNING-POLICY.md) — les exécutables actuels ne sont pas encore signés. Aucun service de signature n’est activé.
+**Et Claude Code dans le terminal ?**
+L’application Claude est détectée automatiquement. Pour le terminal, copiez le réglage proposé dans **Réglages → Général → Claude Code**. [Sources et limites](docs/CLAUDE-CODE.md).
+
+**OpenAI a rechargé tous les quotas d’un coup ?**
+Cliquez sur **Reset Codex…** et indiquez l’heure. Les comptes concernés affichent « 100 % · déclaré » jusqu’au prochain relevé réel. Les annonces publiques reconnues sont aussi signalées automatiquement ([fonctionnement](docs/GLOBAL-RESETS.md)).
+
+**C’est payant ?**
+Non. Seuls les SMS, appels et emails, facultatifs, passent par vos propres comptes Twilio ou SendGrid et suivent leurs tarifs.
+
+</details>
+
+## Pour aller plus loin
+
+- **Sans installation** : le ZIP portable est dans les [versions publiées](https://github.com/Aleqsd/codex-tracker/releases). Son petit fichier `.sha256` sert aux mises à jour automatiques.
+- **Assistants de code** : un [serveur MCP local](docs/MCP.md), désactivé par défaut, permet à votre assistant de consulter vos quotas.
+- **WinGet** : [publication soumise à Microsoft](docs/WINGET.md), identifiant prévu `Aleqsd.CodexTracker`.
+- [Guide d’utilisation complet](docs/UTILISATION.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues). **Réglages → Application → Préparer un diagnostic** produit un résumé sans compte ni secret à joindre à votre signalement.
+
+[Code signing policy](docs/CODE-SIGNING-POLICY.md) : les exécutables actuels ne sont pas encore signés. Windows peut donc afficher un avertissement SmartScreen au premier lancement.
 
 <details>
 <summary>Développer ou contribuer</summary>
@@ -65,4 +91,4 @@ Les aperçus utilisent exclusivement des données fictives. Voir la [validation]
 
 ---
 
-Projet indépendant, non affilié à OpenAI ou Anthropic. Licence [MIT](LICENSE).
+<sub>Projet indépendant, non affilié à OpenAI ni à Anthropic. Codex et Claude sont des marques de leurs propriétaires respectifs. Licence [MIT](LICENSE).</sub>

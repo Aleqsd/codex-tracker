@@ -53,6 +53,8 @@ Le choix Liste / Semaine utilise `ResetKindFilter`. La semaine présente sept jo
 
 ## Tour animé du README
 
+`docs/hero.png` assemble trois rendus fictifs (Comptes sombre, Semaine claire, aperçu de la barre d’état) avec coins arrondis et ombres, sur fond transparent pour les deux thèmes de GitHub. Les captures de `docs/` utilisées par le README et le guide proviennent des mêmes rendus hors écran.
+
 Après les aperçus normaux à 96 DPI, `python scripts/tour.py` (Pillow) assemble six écrans fictifs : Comptes, Semaine, Resets, Rappels, Général en clair et Assistants. Chaque écran reste 1,8 seconde, avec une transition de 120 ms, des légendes courtes et une progression discrète. Le GIF utilise une palette commune et une boucle de 11,52 secondes. Ne jamais utiliser des captures des comptes réels.
 
 ## Plusieurs outils et reset déclaré
