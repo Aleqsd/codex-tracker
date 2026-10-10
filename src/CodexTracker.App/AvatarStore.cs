@@ -1,4 +1,6 @@
+using System.Windows;
 using System.Windows.Media.Imaging;
+using CodexTracker.Core;
 
 namespace CodexTracker.App;
 
@@ -9,6 +11,7 @@ internal static class AvatarStore
         file.EndsWith(".png", StringComparison.Ordinal) && Guid.TryParseExact(file[..^4], "N", out _)
             ? Path.Combine(directory, "avatars", file) : null;
 
+    public static string? PathFor(string directory, string? file) => Resolve(directory, file);
     public static BitmapSource? Load(string directory, string? file)
     {
         var path = Resolve(directory, file); if (path is null) return null;

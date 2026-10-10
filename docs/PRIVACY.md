@@ -6,6 +6,8 @@ Codex Tracker est une application indépendante, sans compte de service Tracker 
 
 Le tracker observe le compte connecté dans Codex et conserve les identités, offres, quotas, échéances, préférences, avatars et historiques dans `%LOCALAPPDATA%\CodexTracker`. Les relevés des comptes inactifs sont des copies datées. Le journal des notifications couvre 30 jours. Les clés des connecteurs sont chiffrées par Windows DPAPI pour l’utilisateur courant ; les autres données locales ne sont pas toutes chiffrées.
 
+Un **profil exporté** (Réglages → Application → Profil) contient ces données privées, chiffrées par le mot de passe que vous choisissez ; ne le partagez pas avec ce mot de passe. Les clés des canaux, l’accès des assistants et le journal d’envoi n’y figurent pas.
+
 Il ne se connecte pas à un autre compte et ne modifie pas la session de Codex. La collecte utilise la CLI Codex installée, qui communique avec les services OpenAI pour le compte actif.
 
 Des copies `.bak` des préférences, profils et relevés permettent leur récupération. Les fichiers corrompus sont conservés localement avant remplacement et peuvent aussi contenir des données privées : ne les partagez pas. Le diagnostic proposé dans l’onglet Réglages utilise une liste limitée de versions, états techniques et dates, sans compte, quota, chemin personnel ni secret ; son contenu est montré avant copie et n’est jamais envoyé automatiquement.

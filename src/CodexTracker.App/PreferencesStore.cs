@@ -94,6 +94,12 @@ internal sealed class PreferencesStore
     {
         var value = JsonSerializer.Deserialize<TrackerPreferences>(bytes, Json) ?? throw new JsonException("Préférences absentes.");
         if (value.ManualCodexReset is { } reset && reset.At > reset.DeclaredAt) throw new JsonException("Déclaration de reset invalide.");
+        return Sanitize(value);
+    }
+
+    /// <summary>Same repairs as a file read from disk: settings from another PC go through them before being applied.</summary>
+    internal static TrackerPreferences Sanitize(TrackerPreferences value)
+    {
         if (!Enum.IsDefined(value.ThemeMode)) value = value with { ThemeMode = ThemeMode.System };
         if (!Enum.IsDefined(value.SortMode)) value = value with { SortMode = SortMode.Active };
         if (!Enum.IsDefined(value.Language)) value = value with { Language = AppLanguage.System };

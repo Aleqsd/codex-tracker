@@ -180,6 +180,15 @@ internal sealed class SettingsView : UserControl, IDisposable
         _updateTimer.Tick += (_, _) => SyncUpdateButton();
         Loaded += (_, _) => { if (!_closed) { RefreshHealth(); RefreshCheck(); _updateTimer.Start(); } };
         Unloaded += (_, _) => _updateTimer.Stop();
+        Section(Loc.T("Profil"));
+        var transfer = Block();
+        transfer.Children.Add(Ui.Text(Loc.T("Emportez vos comptes, leurs derniers relevés, l’historique, les réglages, noms et avatars sur un autre PC. Le fichier est chiffré par un mot de passe ; les clés des canaux et l’accès des assistants restent sur ce PC."), 12, "MutedBrush"));
+        var transferActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
+        var exportProfile = new Button { Content = Loc.T("Exporter le profil…"), IsEnabled = !demo, Margin = new Thickness(0, 0, 8, 0) };
+        exportProfile.Click += async (_, _) => await ExportProfileAsync(); transferActions.Children.Add(exportProfile);
+        var importProfile = new Button { Content = Loc.T("Importer un profil…"), IsEnabled = !demo };
+        importProfile.Click += async (_, _) => await ImportProfileAsync(); transferActions.Children.Add(importProfile);
+        transfer.Children.Add(transferActions);
         Section(Loc.T("Diagnostic"));
         var support = Block();
         support.Children.Add(_health);
@@ -361,6 +370,66 @@ internal sealed class SettingsView : UserControl, IDisposable
         try { if (!_demo) await _updates.LoadPreparedAsync(_lifetime.Token); }
         catch (OperationCanceledException) { }
     }
+    private const string ProfileExtension = ".codextracker";
+    private async Task ExportProfileAsync()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog { Filter = Loc.T("Profil Codex Tracker") + "|*" + ProfileExtension, FileName = $"CodexTracker-profil-{DateTime.Now:yyyy-MM-dd}{ProfileExtension}", DefaultExt = ProfileExtension, AddExtension = true };
+        if (dialog.ShowDialog(_owner) != true) return;
+        var password = AskPassword(Loc.T("Protéger le profil"), Loc.T("Ce mot de passe sera demandé à l’import. Il n’est enregistré nulle part : sans lui, le fichier est illisible."), confirm: true);
+        if (password is null) return;
+        try
+        {
+            var service = _owner.TrackerService;
+            var archive = await Task.Run(() => ProfileTransfer.Export(service, _preferences, password, DateTimeOffset.UtcNow));
+            await File.WriteAllBytesAsync(dialog.FileName, archive);
+            ShowInfo(Loc.T("Profil exporté"), Loc.F("{0} comptes, leur historique et vos réglages sont dans le fichier chiffré. Importez-le depuis Réglages → Application sur l’autre PC.", service.State.Accounts.Count));
+        }
+        catch (Exception error) when (error is Codex.TrackerException or IOException or UnauthorizedAccessException) { ShowError(error.Message); }
+    }
+    private async Task ImportProfileAsync()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = Loc.T("Profil Codex Tracker") + "|*" + ProfileExtension };
+        if (dialog.ShowDialog(_owner) != true) return;
+        var password = AskPassword(Loc.T("Importer un profil"), Loc.T("Saisissez le mot de passe choisi lors de l’export."), confirm: false);
+        if (password is null) return;
+        try
+        {
+            if (new FileInfo(dialog.FileName).Length > Codex.ProfileArchive.MaximumBytes) throw new Codex.TrackerException(Loc.T("Fichier de profil trop volumineux."));
+            var archive = await File.ReadAllBytesAsync(dialog.FileName);
+            var bundle = await Task.Run(() => ProfileTransfer.Read(archive, password));
+            var confirm = new TrackerDialog(_owner, Loc.T("Importer ce profil ?"), Loc.F("{0} comptes, exportés le {1:dd/MM/yyyy à HH:mm}.\nLes comptes et l’historique s’ajoutent à ceux de ce PC ; un relevé plus récent ici est conservé. Les réglages, rappels, noms et avatars du fichier remplacent ceux de ce PC. Les clés des canaux et l’accès des assistants ne changent pas.",
+                bundle.Profiles.Accounts.Count, bundle.ExportedAt.ToLocalTime()), Loc.T("Importer"), Loc.T("Annuler"));
+            if (confirm.ShowDialog() != true) return;
+            var language = _preferences.Current.Language;
+            var result = await ProfileTransfer.ImportAsync(bundle, _owner.TrackerService, _commands, _preferences);
+            ShowInfo(Loc.T("Profil importé"), Loc.F("{0} comptes ajoutés, {1} mis à jour.", result.Added, result.Updated) +
+                (_preferences.Current.Language != language ? "\n" + Loc.T("La langue du profil s’appliquera au prochain démarrage.") : ""));
+        }
+        catch (Exception error) when (error is Codex.TrackerException or IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException) { ShowError(error.Message); }
+    }
+    private string? AskPassword(string title, string message, bool confirm)
+    {
+        var hint = message;
+        while (true)
+        {
+            var dialog = new TrackerDialog(_owner, title, hint, Loc.T("Continuer"), Loc.T("Annuler"));
+            PasswordBox Field(string label)
+            {
+                var caption = Ui.Text(label, 11, "MutedBrush"); caption.Margin = new Thickness(0, 16, 0, 0); dialog.Extra.Children.Add(caption);
+                var box = new PasswordBox { Margin = new Thickness(0, 5, 0, 0), Padding = new Thickness(9, 7, 9, 7), MinHeight = 34 };
+                System.Windows.Automation.AutomationProperties.SetName(box, label); dialog.Extra.Children.Add(box); return box;
+            }
+            var first = Field(Loc.T("Mot de passe"));
+            var second = confirm ? Field(Loc.T("Confirmer le mot de passe")) : null;
+            dialog.Loaded += (_, _) => first.Focus();
+            if (dialog.ShowDialog() != true) return null;
+            if (first.Password.Length < Codex.ProfileArchive.MinimumPasswordLength)
+                hint = message + "\n\n" + Loc.F("Choisissez un mot de passe d’au moins {0} caractères.", Codex.ProfileArchive.MinimumPasswordLength);
+            else if (second is not null && second.Password != first.Password) hint = message + "\n\n" + Loc.T("Les deux mots de passe diffèrent.");
+            else return first.Password;
+        }
+    }
+    private void ShowInfo(string title, string message) => new TrackerDialog(_owner, title, message, Loc.T("Fermer"), null).ShowDialog();
     private void ShowError(string message) => new TrackerDialog(_owner, Loc.T("Action indisponible"), Display.SafeText(message, _preferences.Current.PrivacyMode), Loc.T("Fermer"), null).ShowDialog();
     private async Task CheckAsync()
     {

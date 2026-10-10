@@ -71,6 +71,12 @@ Avant toute préférence ou collecte réelle, `EntryPoint` vérifie le chemin ph
 
 Sous le verrou exclusif du magasin normal, `ProfileStore.Recovery` rapproche une seule fois les anciens profils du cache Codex par adresse, choisit les relevés selon `FetchedAt`, réattribue les historiques et sauvegarde les fichiers d’origine. Les sources restent intactes. Le journal de migration empêche de réimporter un compte supprimé volontairement. Un journal endommagé bloque la fusion ; ne jamais effacer ce journal pour contourner une erreur. Voir [STORAGE-RECOVERY.md](STORAGE-RECOVERY.md).
 
+## Profil transférable et liens d’agenda
+
+`ProfileArchive` (Codex) chiffre un contenu gzip en AES-256-GCM avec une clé PBKDF2-SHA256 (600 000 itérations, sel aléatoire) ; format, version et itérations sont authentifiés. `ProfileTransfer` (App) y place `ITrackerService.ExportProfiles()`, les préférences et les avatars. À l’import, `TrackerService.ImportProfilesAsync` associe les comptes par `AccountProfile.IdentityKey`, garde l’identifiant local, ne prend un relevé que s’il est plus récent et jamais daté du futur, puis unit les historiques (`UsageAnalytics.Merge`) ; rien n’est supprimé. Les préférences passent par `PreferencesStore.Sanitize` puis `ApplicationCommands.SavePreferences`, en conservant MCP, récupération et reset déclaré du PC ; les avatars sont décodés et réencodés comme un choix local.
+
+`CalendarExport` ajoute `codextracker://account/{id}` (propriété `URL` et description). L’installateur déclare le protocole sous `HKCU\Software\Classes`, `AccountLink` l’enregistre pour une copie portable lors d’un export hors démonstration. Une seconde instance transmet l’identifiant au tracker déjà ouvert dans les deux paramètres du message `CodexTracker.OpenAccount.v1`.
+
 ## Comptes Claude Code et resets déclarés
 
 `AccountProfile.Provider` vaut Codex pour les anciens profils ; un profil Claude Code portant la même adresse reste distinct. `ProviderAccountId` associe UUID de compte et UUID d’organisation : les organisations personnelle et professionnelle sur une même adresse gardent des profils et historiques séparés. `TrackerService` partage la persistance et la télémétrie mais conserve une génération, une annulation et une collecte indépendantes par outil. Une modification Claude n’entraîne pas de requête Codex. Les deux comptes actifs apparaissent dans le tableau de bord ; l’icône privilégie Codex lorsqu’ils sont tous deux connectés.

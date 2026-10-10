@@ -49,6 +49,12 @@ public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? Se
     public AccountState? SelectedAccount => ActiveAccount;
 }
 
+/// <summary>Accounts with their last observation and history, carried by a profile export to another PC.</summary>
+public sealed record ProfileData(IReadOnlyList<AccountProfile> Accounts, IReadOnlyDictionary<Guid, AccountSnapshot> Snapshots,
+    IReadOnlyDictionary<Guid, IReadOnlyList<UsageSample>> History);
+/// <param name="Accounts">Each imported account id, mapped to the account id on this PC.</param>
+public sealed record ProfileImport(int Added, int Updated, IReadOnlyDictionary<Guid, Guid> Accounts);
+
 public interface ITrackerService : IAsyncDisposable
 {
     event EventHandler? Changed;
@@ -65,4 +71,9 @@ public interface ITrackerService : IAsyncDisposable
     Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default);
     Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default);
     Task CompleteOnboardingAsync(CancellationToken cancellationToken = default);
+    ProfileData ExportProfiles() => new([.. State.Accounts.Select(a => a.Profile)],
+        State.Accounts.Where(a => a.Snapshot is not null).ToDictionary(a => a.Profile.Id, a => a.Snapshot!),
+        State.Accounts.ToDictionary(a => a.Profile.Id, a => GetHistory(a.Profile.Id)));
+    Task<ProfileImport> ImportProfilesAsync(ProfileData data, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(Loc.T("L’import de profil n’est pas disponible en démonstration."));
 }

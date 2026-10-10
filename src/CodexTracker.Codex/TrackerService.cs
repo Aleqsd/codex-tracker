@@ -421,6 +421,52 @@ public sealed partial class TrackerService : ITrackerService
         }
     }
 
+    /// <summary>
+    /// Merges accounts exported from another PC. A known account (same identity) keeps its id and takes the other
+    /// observation only when it is newer; dates are never changed. Histories are united. Nothing is removed.
+    /// </summary>
+    public async Task<ProfileImport> ImportProfilesAsync(ProfileData data, CancellationToken cancellationToken = default)
+    {
+        var profiles = (data.Accounts ?? []).Where(p => p is not null && Enum.IsDefined(p.Provider) && !string.IsNullOrWhiteSpace(p.Email) && p.Email.Length <= 320 &&
+            (p.Provider != AccountProvider.ClaudeCode || !string.IsNullOrWhiteSpace(p.ProviderAccountId))).DistinctBy(p => p.IdentityKey).ToArray();
+        if (profiles.Length == 0 || profiles.Length > 500) throw new TrackerException(Loc.T("Ce profil ne contient aucun compte utilisable."));
+        int added = 0, updated = 0;
+        var map = new Dictionary<Guid, Guid>();
+        await ChangeAsync(() =>
+        {
+            var now = DateTimeOffset.UtcNow;
+            var accounts = State.Accounts.ToList();
+            foreach (var profile in profiles)
+            {
+                // An observation is kept only for its own account, never redated, never from the future.
+                var snapshot = data.Snapshots?.GetValueOrDefault(profile.Id) is { } candidate && SameEmail(candidate.Email, profile.Email) &&
+                    candidate.FetchedAt <= now.AddMinutes(1) ? candidate : null;
+                var index = accounts.FindIndex(a => a.Profile.IdentityKey == profile.IdentityKey);
+                if (index < 0)
+                {
+                    var id = accounts.Any(a => a.Profile.Id == profile.Id) || profile.Id == Guid.Empty ? Guid.NewGuid() : profile.Id;
+                    accounts.Add(new(profile with { Id = id }, snapshot));
+                    map[profile.Id] = id; added++;
+                    continue;
+                }
+                var local = accounts[index];
+                map[profile.Id] = local.Profile.Id;
+                if (snapshot is not null && (local.Snapshot is null || snapshot.FetchedAt > local.Snapshot.FetchedAt))
+                { accounts[index] = local with { Snapshot = snapshot }; updated++; }
+            }
+            Set(State with { Accounts = accounts.ToArray() });
+            foreach (var (source, target) in map)
+            {
+                if (data.History?.GetValueOrDefault(source) is not { Count: > 0 } samples) continue;
+                var local = _telemetry.GetValueOrDefault(target) ?? AccountTelemetry.Empty;
+                var merged = local with { Samples = UsageAnalytics.Merge(local.Samples, samples, target, now), AccountId = target };
+                _telemetry[target] = merged;
+                _store.SaveTelemetry(target, merged);
+            }
+        }, cancellationToken);
+        return new(added, updated, map);
+    }
+
     public async Task RemoveAccountAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await ChangeAsync(() =>

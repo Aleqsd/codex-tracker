@@ -38,6 +38,13 @@ public static class UsageAnalytics
         return retained.AsReadOnly();
     }
 
+    /// <summary>Union of two histories of the same account: points at the same instant keep the local one; retention and size limits apply.</summary>
+    public static IReadOnlyList<UsageSample> Merge(IEnumerable<UsageSample> local, IEnumerable<UsageSample> imported, Guid accountId, DateTimeOffset now) =>
+        local.Select(s => (Sample: s, Local: true)).Concat(imported.Select(s => (Sample: s with { AccountId = accountId }, Local: false)))
+            .Where(p => p.Sample.AccountId == accountId && IsValid(p.Sample) && p.Sample.Timestamp >= now - Retention && p.Sample.Timestamp <= now.AddMinutes(1))
+            .GroupBy(p => p.Sample.Timestamp).Select(g => g.OrderByDescending(p => p.Local).First().Sample)
+            .OrderBy(s => s.Timestamp).TakeLast(MaximumSamplesPerAccount).ToArray();
+
     public static UsageForecast Estimate(IReadOnlyList<UsageSample> history, DateTimeOffset now)
     {
         if (history.Count == 0) return Unavailable(Loc.T("L'estimation apparaîtra après au moins 15 minutes de suivi continu."));

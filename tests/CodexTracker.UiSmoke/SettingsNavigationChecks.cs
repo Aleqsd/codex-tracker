@@ -68,6 +68,13 @@ internal static class SettingsNavigationChecks
             var bounds = quit.TransformToAncestor(scroll).TransformBounds(new Rect(quit.RenderSize));
             Check(bounds.Top >= 0 && bounds.Bottom <= scroll.ActualHeight + 1,
                 "The last application action remains reachable at the bottom of compact settings");
+            var exportProfile = Tree(settings).OfType<Button>().Single(b => Equals(b.Content, "Exporter le profil…"));
+            var importProfile = Tree(settings).OfType<Button>().Single(b => Equals(b.Content, "Importer un profil…"));
+            exportProfile.BringIntoView(); window.UpdateLayout();
+            Check(exportProfile.IsVisible && !exportProfile.IsEnabled && !importProfile.IsEnabled,
+                "Profile export and import are offered in Application, disabled in the fictional demo");
+            await Task.Delay(450); window.UpdateLayout();
+            window.SaveScreenshot(System.IO.Path.GetFullPath("artifacts/previews/profile-section-compact.png"), 96);
             var navigation = Tree(settings).OfType<Button>().Single(b => Equals(b.Content, "Général"));
             navigation.Focus(); navigation.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
             Check(Keyboard.FocusedElement is Button next && Equals(next.Content, "Rappels"),
