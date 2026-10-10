@@ -1,9 +1,9 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-Moves the repository to a new version: Directory.Build.props, README download links and packages.lock.json.
+Moves the repository to a new version: Directory.Build.props and the README download links, then restores.
 .DESCRIPTION
-Lock files record project versions, so they are restored here and must be committed with the bump.
+Commit the changed files together; a changed packages.lock.json means a real dependency change.
 #>
 [CmdletBinding()]
 param(
@@ -28,4 +28,4 @@ foreach ($file in @($props, (Join-Path $root 'README.md'))) {
 }
 & $Dotnet restore (Join-Path $root 'CodexTracker.slnx')
 if ($LASTEXITCODE) { throw 'Restauration échouée.' }
-Write-Output "Version $previous → $Version : Directory.Build.props, README.md et packages.lock.json à committer."
+Write-Output "Version $previous → $Version : fichiers modifiés à committer ensemble."

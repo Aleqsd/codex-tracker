@@ -25,7 +25,7 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
 ```
 
-Les scripts trouvent un SDK .NET 10 dans le PATH ou dans `%LOCALAPPDATA%\Microsoft\dotnet` (dotnet-install) ; `-Dotnet` en impose un autre, dev accepte aussi `-Python`. `bump.ps1` change la version, les liens du README et les `packages.lock.json` (qui notent la version des projets) : committer les trois ensemble. Les artefacts restent sous `artifacts/`, ignoré par Git. Pas de CI distante : compilation, tests, paquets et Releases se font en local avec `scripts/release.ps1`. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
+Les scripts trouvent un SDK .NET 10 dans le PATH ou dans `%LOCALAPPDATA%\Microsoft\dotnet` (dotnet-install) ; `-Dotnet` en impose un autre, dev accepte aussi `-Python`. `bump.ps1` change la version et les liens du README, puis restaure : committer ensemble les fichiers modifiés. Les `packages.lock.json` sont identiques en compilation et en publication (`src/Directory.Build.props`) ; une différence signale un vrai changement de dépendances. Les artefacts restent sous `artifacts/`, ignoré par Git. Pas de CI distante : compilation, tests, paquets et Releases se font en local avec `scripts/release.ps1`. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
 
 ## Invariants
 
