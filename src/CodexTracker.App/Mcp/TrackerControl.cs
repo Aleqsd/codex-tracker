@@ -81,18 +81,20 @@ internal sealed class TrackerControl : IDisposable
                 var candidate = p.Apply(_preferences.Current);
                 ApplicationCommands.ValidatePhone(candidate.PhonePolicy);
                 run = () => { _commands.SavePreferences(p.Apply); return Task.FromResult("Réglages enregistrés."); };
-                summary = "Modifier les réglages généraux."; break;
+                summary = Loc.T("Modifier les réglages généraux."); break;
             case "set_phone":
                 var phone = Read<PhonePolicy>(request.Value); ApplicationCommands.ValidatePhone(phone);
                 confirm = ApplicationCommands.ExpandsPhone(_preferences.Current.PhonePolicy, phone);
-                summary = $"Limites : {phone.SmsPerDay} SMS et {phone.CallsPerDay} appels / jour.\nSilence : {(phone.QuietEnabled ? $"{phone.QuietStart}:00–{phone.QuietEnd}:00" : "désactivé")} ({phone.TimeZoneId}).";
+                summary = Loc.F("Limites : {0} SMS et {1} appels / jour.\nSilence : {2} ({3}).", phone.SmsPerDay, phone.CallsPerDay,
+                    phone.QuietEnabled ? $"{phone.QuietStart}:00–{phone.QuietEnd}:00" : Loc.T("désactivé"), phone.TimeZoneId);
                 run = () => { _commands.SavePreferences(p => p with { PhonePolicy = phone }); return Task.FromResult("Limites enregistrées."); }; break;
             case "set_rules":
                 var rules = Read<ReminderRule[]>(request.Value); ApplicationCommands.ValidateRules(rules);
                 if (rules.Any(r => r.AccountIds?.Any(id => !state.Accounts.Any(a => a.Profile.Id == id)) == true)) throw new ArgumentException("Compte inconnu.");
                 confirm = ApplicationCommands.ExpandsExternalRules(_preferences.Current.ReminderRules!, rules);
-                summary = "Remplacer les règles de rappel :\n" + string.Join("\n", rules.Where(r => r.Enabled && r.Channels.Length > 0).Select(r =>
-                    $"{ReminderPlanner.Label(r.Kind)} · {string.Join(", ", r.LeadMinutes)} min avant · {string.Join(", ", r.Channels)} · " + (r.AccountIds is null ? "tous les comptes" : string.Join(", ", state.Accounts.Where(a => r.AccountIds.Contains(a.Profile.Id)).Select(a => a.Profile.Email))))) + Destinations();
+                summary = Loc.T("Remplacer les règles de rappel :") + "\n" + string.Join("\n", rules.Where(r => r.Enabled && r.Channels.Length > 0).Select(r =>
+                    Loc.F("{0} · {1} min avant · {2} · {3}", ReminderPlanner.Label(r.Kind), string.Join(", ", r.LeadMinutes), string.Join(", ", r.Channels),
+                        r.AccountIds is null ? Loc.T("tous les comptes") : string.Join(", ", state.Accounts.Where(a => r.AccountIds.Contains(a.Profile.Id)).Select(a => a.Profile.Email))))) + Destinations();
                 run = () => { _commands.SavePreferences(p => p with { ReminderRules = rules }); return Task.FromResult("Règles enregistrées."); }; break;
             case "set_channel":
                 var change = Read<ChannelChange>(request.Value);
@@ -102,18 +104,20 @@ internal sealed class TrackerControl : IDisposable
                 else throw new ArgumentException("Fournir un seul connecteur : twilio ou sendgrid.");
                 // A complete replacement is explicit: omitted Enabled remains false, so saving keys never enables delivery.
                 confirm = next.Twilio.Enabled && next.Twilio != old.Twilio || next.SendGrid.Enabled && next.SendGrid != old.SendGrid;
-                summary = change.Provider == "twilio" ? $"Twilio · {(next.Twilio.Enabled ? "activer / modifier" : "désactiver")}\nSMS depuis {next.Twilio.SmsFrom}\nAppels depuis {next.Twilio.CallFrom}\nDestinataire : {next.Twilio.To}\nIdentifiants : masqués." : $"SendGrid · {(next.SendGrid.Enabled ? "activer / modifier" : "désactiver")}\nDe : {next.SendGrid.From}\nVers : {next.SendGrid.To}\nClé : masquée.";
+                summary = change.Provider == "twilio"
+                    ? Loc.F("Twilio · {0}\nSMS depuis {1}\nAppels depuis {2}\nDestinataire : {3}\nIdentifiants : masqués.", next.Twilio.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.Twilio.SmsFrom, next.Twilio.CallFrom, next.Twilio.To)
+                    : Loc.F("SendGrid · {0}\nDe : {1}\nVers : {2}\nClé : masquée.", next.SendGrid.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.SendGrid.From, next.SendGrid.To);
                 run = () => { _commands.SaveSecrets(next); return Task.FromResult("Connecteur enregistré ; aucun envoi effectué."); }; break;
             case "delete_credentials":
                 var provider = Read<ProviderQuery>(request.Value).Provider;
                 if (provider is not ("twilio" or "sendgrid")) throw new ArgumentException("Connecteur inconnu.");
                 run = () => { var secrets = _window.Reminders.Secrets.Read(); _commands.SaveSecrets(provider == "twilio" ? secrets with { Twilio = new() } : secrets with { SendGrid = new() }); return Task.FromResult("Identifiants supprimés ; canal désactivé."); };
-                summary = "Supprimer les identifiants " + provider; break;
+                summary = Loc.F("Supprimer les identifiants {0}", provider); break;
             case "test":
                 var channel = Read<TestQuery>(request.Value).Channel;
                 if (!Enum.IsDefined(channel)) throw new ArgumentException("Canal inconnu.");
                 confirm = channel != ReminderChannel.Windows;
-                summary = $"Envoyer un test {channel}. Les frais éventuels sont facturés par votre prestataire." + Destinations() + "\nMessage : test de rappel Codex Tracker. Les limites et heures silencieuses restent appliquées.";
+                summary = Loc.F("Envoyer un test {0}. Les frais éventuels sont facturés par votre prestataire.", channel) + Destinations() + "\n" + Loc.T("Message : test de rappel Codex Tracker. Les limites et heures silencieuses restent appliquées.");
                 run = async () => { var result = await _window.Reminders.TestAsync(channel, () => !_disposed && _preferences.Current.McpEnabled && _commands.Revision == revision); return $"{result.Status} · {result.Detail}"; }; break;
             default: throw new ArgumentException("Commande inconnue.");
         }
@@ -130,7 +134,7 @@ internal sealed class TrackerControl : IDisposable
     private string Destinations()
     {
         var s = _window.Reminders.Secrets.Read();
-        return $"\nDestinataire SMS/appels : {s.Twilio.To}\nDestinataire email : {s.SendGrid.To}";
+        return "\n" + Loc.F("Destinataire SMS/appels : {0}\nDestinataire email : {1}", s.Twilio.To, s.SendGrid.To);
     }
     private async Task<AssistantAction> Execute(string id, Func<Task<string>> run)
     {
@@ -143,14 +147,14 @@ internal sealed class TrackerControl : IDisposable
     {
         if (!_pending.TryGetValue(id, out var pending) || _actions.Find(id)?.Status != "pending") return;
         _window.ShowPanel();
-        var dialog = new TrackerDialog(_window, "Demande de l’assistant", summary + "\n\nExpire après cinq minutes. Aucun envoi avant votre confirmation.", "Confirmer", "Annuler");
+        var dialog = new TrackerDialog(_window, Loc.T("Demande de l’assistant"), summary + "\n\n" + Loc.T("Expire après cinq minutes. Aucun envoi avant votre confirmation."), Loc.T("Confirmer"), Loc.T("Annuler"));
         _dialogs[id] = dialog;
         var accepted = dialog.ShowDialog() == true; _dialogs.Remove(id);
         if (!_pending.ContainsKey(id)) return;
         if (!accepted) { Cancel(id, "Refusé ou fenêtre fermée."); return; }
         if (_actions.Find(id)?.Status != "pending" || pending.Revision != Revision || !_preferences.Current.McpEnabled) { Cancel(id, "Confirmation expirée ou réglages modifiés."); return; }
         try { await Execute(id, pending.Run); }
-        catch { _window.AssistantError = "MCP suspendu : impossible de persister le résultat. Aucun nouvel envoi autorisé."; }
+        catch { _window.AssistantError = Loc.T("MCP suspendu : impossible de persister le résultat. Aucun nouvel envoi autorisé."); }
     }
     private void Cancel(string id, string reason)
     {
@@ -164,7 +168,7 @@ internal sealed class TrackerControl : IDisposable
             _ = Revision;
             foreach (var id in _pending.Keys.ToArray()) if (_actions.Find(id)?.Status != "pending") Cancel(id, "Confirmation expirée.");
         }
-        catch { _window.AssistantError = "MCP suspendu : journal local indisponible."; _timer.Stop(); _pending.Clear(); foreach (var dialog in _dialogs.Values.ToArray()) dialog.Close(); }
+        catch { _window.AssistantError = Loc.T("MCP suspendu : journal local indisponible."); _timer.Stop(); _pending.Clear(); foreach (var dialog in _dialogs.Values.ToArray()) dialog.Close(); }
     }
     private static object Public(AssistantAction a) => new { requestId = a.Id, a.Status, a.ExpiresAt, a.Detail };
     private static T Read<T>(JsonElement value) => value.Deserialize<T>(Json) ?? throw new ArgumentException("Paramètres manquants.");

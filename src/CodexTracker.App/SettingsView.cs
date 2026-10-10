@@ -33,7 +33,7 @@ internal sealed class SettingsView : UserControl, IDisposable
     private bool _includePrereleases;
     private readonly StackPanel _health = new();
     private readonly TextBlock _announcementsStatus = Ui.Text("", 11, "MutedBrush");
-    private readonly Button _checkAnnouncements = new() { Content = "Vérifier les annonces", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 9, 0, 0) };
+    private readonly Button _checkAnnouncements = new() { Content = Loc.T("Vérifier les annonces"),HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 9, 0, 0) };
     private string[] _healthMessages = [];
     private bool _recoveryRequired;
     private readonly bool _demo;
@@ -61,10 +61,10 @@ internal sealed class SettingsView : UserControl, IDisposable
         Grid.SetColumn(_pageScroll, 1); layout.Children.Add(_pageScroll);
         Content = layout;
         System.Windows.Input.KeyboardNavigation.SetTabNavigation(_navigation, System.Windows.Input.KeyboardNavigationMode.Continue);
-        Page("Général", "Adaptez le suivi à votre façon de travailler.");
-        Section("Apparence");
-        _themeSelector = new ComboBox { Tag = FindResource("DropdownThemeIcon"), ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, "Comme Windows"), new ThemeChoice(AppThemeMode.Light, "Clair"), new ThemeChoice(AppThemeMode.Dark, "Sombre") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
-        Row(Labelled("Thème", _themeSelector));
+        Page("Général", Loc.T("Général"), Loc.T("Adaptez le suivi à votre façon de travailler."));
+        Section(Loc.T("Apparence"));
+        _themeSelector = new ComboBox { Tag = FindResource("DropdownThemeIcon"), ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, Loc.T("Comme Windows")), new ThemeChoice(AppThemeMode.Light, Loc.T("Clair")), new ThemeChoice(AppThemeMode.Dark, Loc.T("Sombre")) }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
+        Row(Labelled(Loc.T("Thème"), _themeSelector));
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
         _languageSelector = new ComboBox { Tag = FindResource("SettingsGeneralIcon"), ItemsSource = new[] { new LanguageChoice(AppLanguage.System, Loc.T("Comme Windows")), new LanguageChoice(AppLanguage.French, "Français"), new LanguageChoice(AppLanguage.English, "English") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         var language = new StackPanel(); language.Children.Add(Labelled(Loc.T("Langue"), _languageSelector));
@@ -84,39 +84,39 @@ internal sealed class SettingsView : UserControl, IDisposable
             var pending = Loc.Resolve(chosen) == AppLanguage.English != Loc.IsEnglish;
             _languageHint.Visibility = _restart.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
         };
-        Toggle("Aperçu au survol de l’icône", "Le quota et le prochain reset, sans ouvrir le panneau.", p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
-        Section("Actualisation");
-        _refreshSelector = Choice("Compte actif", "DropdownRefreshIcon", [new(1, "Chaque minute"), new(2, "Toutes les 2 min"), new(5, "Toutes les 5 min")], v => Save(p => p with { RefreshMinutes = v }));
-        Toggle("Adapter à mon activité", "Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate.", p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
+        Toggle(Loc.T("Aperçu au survol de l’icône"), Loc.T("Le quota et le prochain reset, sans ouvrir le panneau."), p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
+        Section(Loc.T("Actualisation"));
+        _refreshSelector = Choice(Loc.T("Compte actif"), "DropdownRefreshIcon", [new(1, Loc.T("Chaque minute")), new(2, Loc.T("Toutes les 2 min")), new(5, Loc.T("Toutes les 5 min"))], v => Save(p => p with { RefreshMinutes = v }));
+        Toggle(Loc.T("Adapter à mon activité"), Loc.T("Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate."), p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
         Section("Claude Code");
         var claude = Block();
-        claude.Children.Add(Ui.Text("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session.", 12, "MutedBrush"));
-        var copyClaude = new Button { Content = "Copier le réglage Claude Code", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 12), IsEnabled = !demo };
+        claude.Children.Add(Ui.Text(Loc.T("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session."), 12, "MutedBrush"));
+        var copyClaude = new Button { Content = Loc.T("Copier le réglage Claude Code"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 12), IsEnabled = !demo };
         copyClaude.Click += (_, _) =>
         {
-            try { System.Windows.Clipboard.SetText(Codex.ClaudeCodeObservations.Configuration(Environment.ProcessPath!)); copyClaude.Content = "Réglage copié"; }
-            catch (Exception) { ShowError("Le presse-papiers est indisponible. Réessayez."); }
+            try { System.Windows.Clipboard.SetText(Codex.ClaudeCodeObservations.Configuration(Environment.ProcessPath!)); copyClaude.Content = Loc.T("Réglage copié"); }
+            catch (Exception) { ShowError(Loc.T("Le presse-papiers est indisponible. Réessayez.")); }
         };
         claude.Children.Add(copyClaude);
-        claude.Children.Add(Ui.Text("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées.", 11, "MutedBrush"));
-        Page("Rappels", "Choisissez les échéances, les comptes et les canaux utiles.");
-        Section("Échéances");
+        claude.Children.Add(Ui.Text(Loc.T("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées."), 11, "MutedBrush"));
+        Page("Rappels", Loc.T("Rappels"), Loc.T("Choisissez les échéances, les comptes et les canaux utiles."));
+        Section(Loc.T("Échéances"));
         ReloadableSection(() => ReminderSettingsView.Rules(preferences, owner.TrackerService, _commands));
-        Section("Quotas");
+        Section(Loc.T("Quotas"));
         var quotas = Block();
-        quotas.Children.Add(Ui.Text("Prévenir quand le quota restant franchit un seuil.", 12, "MutedBrush"));
+        quotas.Children.Add(Ui.Text(Loc.T("Prévenir quand le quota restant franchit un seuil."), 12, "MutedBrush"));
         var thresholds = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
-        thresholds.Children.Add(PreferenceCheck("20 %", p => p.Alert20, (p, v) => p with { Alert20 = v }));
-        thresholds.Children.Add(PreferenceCheck("10 %", p => p.Alert10, (p, v) => p with { Alert10 = v }));
-        thresholds.Children.Add(PreferenceCheck("5 %", p => p.Alert5, (p, v) => p with { Alert5 = v })); quotas.Children.Add(thresholds);
-        Toggle("Prévenir avant l’épuisement", "Si le rythme observé vide un quota avant sa recharge, une notification arrive environ une heure avant. Une fois par période, sans estimation si la consommation est irrégulière.",
+        thresholds.Children.Add(PreferenceCheck(Loc.T("20 %"), p => p.Alert20, (p, v) => p with { Alert20 = v }));
+        thresholds.Children.Add(PreferenceCheck(Loc.T("10 %"), p => p.Alert10, (p, v) => p with { Alert10 = v }));
+        thresholds.Children.Add(PreferenceCheck(Loc.T("5 %"), p => p.Alert5, (p, v) => p with { Alert5 = v })); quotas.Children.Add(thresholds);
+        Toggle(Loc.T("Prévenir avant l’épuisement"), Loc.T("Si le rythme observé vide un quota avant sa recharge, une notification arrive environ une heure avant. Une fois par période, sans estimation si la consommation est irrégulière."),
             p => p.ForecastNotifications, (p, value) => p with { ForecastNotifications = value });
         Row(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
-        Toggle("Prévenir après un reset", "Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille.", p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
-        Section("Annonces de resets généraux");
-        Toggle("Vérifier les annonces publiques", "Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables.", p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
+        Toggle(Loc.T("Prévenir après un reset"), Loc.T("Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille."), p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
+        Section(Loc.T("Annonces de resets généraux"));
+        Toggle(Loc.T("Vérifier les annonces publiques"), Loc.T("Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables."), p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
         var announcements = Block();
-        announcements.Children.Add(Ui.Text("Les comptes inactifs concernés affichent ≈100 % pendant 24 h maximum (5 h pour le quota court). Le dernier relevé reste conservé. Les notifications suivent le réglage « Prévenir après un reset ».", 11, "MutedBrush"));
+        announcements.Children.Add(Ui.Text(Loc.T("Les comptes inactifs concernés affichent ≈100 % pendant 24 h maximum (5 h pour le quota court). Le dernier relevé reste conservé. Les notifications suivent le réglage « Prévenir après un reset »."), 11, "MutedBrush"));
         _announcementsStatus.Margin = new Thickness(0, 8, 0, 0); announcements.Children.Add(_announcementsStatus);
         _checkAnnouncements.Click += async (_, _) =>
         {
@@ -126,43 +126,43 @@ internal sealed class SettingsView : UserControl, IDisposable
             finally { if (!_closed) RefreshHealth(); }
         };
         _checkAnnouncements.Margin = new Thickness(0, 12, 0, 0); announcements.Children.Add(_checkAnnouncements);
-        Page("Canaux", "Notifications Windows et connecteurs facultatifs.");
+        Page("Canaux", Loc.T("Canaux"), Loc.T("Notifications Windows et connecteurs facultatifs."));
         Section(null);
         ReloadableSection(() => ReminderSettingsView.Channels(preferences, owner.Reminders, demo, _commands));
-        Page("Historique", "Le suivi local de vos rappels sur les 30 derniers jours.");
+        Page("Historique", Loc.T("Historique"), Loc.T("Le suivi local de vos rappels sur les 30 derniers jours."));
         Section(null);
         Row(ReminderSettingsView.History(owner.Reminders));
-        Page("Calendrier", "Retrouvez les échéances de vos comptes dans votre agenda.");
+        Page("Calendrier", Loc.T("Calendrier"), Loc.T("Retrouvez les échéances de vos comptes dans votre agenda."));
         Section(null);
         var agenda = Block();
-        var calendar = new Button { Content = "Ouvrir les options Google Agenda…", HorizontalAlignment = HorizontalAlignment.Left };
+        var calendar = new Button { Content = Loc.T("Ouvrir les options Google Agenda…"), HorizontalAlignment = HorizontalAlignment.Left };
         calendar.Click += (_, _) => owner.OpenCalendar(); agenda.Children.Add(calendar);
-        var calendarHint = Ui.Text("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas.", 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 9, 0, 0); agenda.Children.Add(calendarHint);
-        Page("Assistants", "Pilotez le tracker depuis votre assistant de code.");
+        var calendarHint = Ui.Text(Loc.T("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas."), 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 9, 0, 0); agenda.Children.Add(calendarHint);
+        Page("Assistants", Loc.T("Assistants"), Loc.T("Pilotez le tracker depuis votre assistant de code."));
         Section(null);
         Row(Mcp.AssistantSettingsView.Create(owner, preferences, demo));
-        Page("Application", "Démarrage, mises à jour et version installée.");
-        Section("Démarrage");
-        var startup = new CheckBox { Content = "Démarrer avec Windows", IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Style = (Style)FindResource("Switch") };
+        Page("Application", Loc.T("Application"), Loc.T("Démarrage, mises à jour et version installée."));
+        Section(Loc.T("Démarrage"));
+        var startup = new CheckBox { Content = Loc.T("Démarrer avec Windows"), IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Style = (Style)FindResource("Switch") };
         startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; Row(startup);
-        Section("Mises à jour");
+        Section(Loc.T("Mises à jour"));
         var version = Ui.Text(_updates.CurrentVersion, 13); version.FontWeight = FontWeights.Medium;
-        Row(Labelled("Version installée", version));
-        Toggle("Télécharger automatiquement les mises à jour", "Recherche au démarrage puis toutes les 15 minutes sur GitHub. Le suivi continue pendant le téléchargement.",
+        Row(Labelled(Loc.T("Version installée"), version));
+        Toggle(Loc.T("Télécharger automatiquement les mises à jour"), Loc.T("Recherche au démarrage puis toutes les 15 minutes sur GitHub. Le suivi continue pendant le téléchargement."),
             p => p.DownloadUpdatesAutomatically, (p, value) => p with { DownloadUpdatesAutomatically = value });
-        Toggle("Installer au prochain démarrage du tracker", "Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation.",
+        Toggle(Loc.T("Installer au prochain démarrage du tracker"), Loc.T("Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation."),
             p => p.InstallUpdatesAtStartup, (p, value) => p with { InstallUpdatesAtStartup = value });
-        Toggle("Recevoir aussi les préversions", "Désactivé : versions stables uniquement. Activez pour essayer les versions bêta avant leur validation complète.",
+        Toggle(Loc.T("Recevoir aussi les préversions"), Loc.T("Désactivé : versions stables uniquement. Activez pour essayer les versions bêta avant leur validation complète."),
             p => p.IncludePrereleaseUpdates, (p, value) => p with { IncludePrereleaseUpdates = value });
         var lastUpdate = demo ? null : updates.ReadLastResult();
         var status = Block();
-        _updateStatus = Ui.Text(demo ? "Les mises à jour sont désactivées dans la démonstration." : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : "Vérifiez les versions publiées sur le dépôt officiel.", 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 0, 0, 10); status.Children.Add(_updateStatus);
+        _updateStatus = Ui.Text(demo ? Loc.T("Les mises à jour sont désactivées dans la démonstration.") : lastUpdate is not null ? Display.SafeText(lastUpdate.Message, preferences.Current.PrivacyMode) : Loc.T("Vérifiez les versions publiées sur le dépôt officiel."), 11, "MutedBrush"); _updateStatus.Margin = new Thickness(0, 0, 0, 10); status.Children.Add(_updateStatus);
         _preparationStatus = Ui.Text("", 11, "MutedBrush"); _preparationStatus.Margin = new Thickness(0, 0, 0, 10); _preparationStatus.Visibility = Visibility.Collapsed; status.Children.Add(_preparationStatus);
         _automaticStatus = Ui.Text("", 11, "MutedBrush"); _automaticStatus.Margin = new Thickness(0, 0, 0, 10); _automaticStatus.Visibility = demo ? Visibility.Collapsed : Visibility.Visible; status.Children.Add(_automaticStatus);
         var actions = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) };
-        _check = new Button { Content = "Rechercher une mise à jour", IsEnabled = !demo, Margin = new Thickness(0, 0, 8, 0) }; _check.Click += async (_, _) => await CheckAsync(); actions.Children.Add(_check);
-        _install = new Button { Content = "Installer et relancer", Visibility = Visibility.Collapsed, Style = (Style)FindResource("PrimaryButton") }; _install.Click += async (_, _) => await InstallAsync(); actions.Children.Add(_install); status.Children.Add(actions);
-        var releases = new Button { Content = "Voir les versions sur GitHub ↗", Style = (Style)FindResource("LinkButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };
+        _check = new Button { Content = Loc.T("Rechercher une mise à jour"), IsEnabled = !demo, Margin = new Thickness(0, 0, 8, 0) }; _check.Click += async (_, _) => await CheckAsync(); actions.Children.Add(_check);
+        _install = new Button { Content = Loc.T("Installer et relancer"), Visibility = Visibility.Collapsed, Style = (Style)FindResource("PrimaryButton") }; _install.Click += async (_, _) => await InstallAsync(); actions.Children.Add(_install); status.Children.Add(actions);
+        var releases = new Button { Content = Loc.T("Voir les versions sur GitHub ↗"),Style = (Style)FindResource("LinkButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };
         releases.Click += (_, _) =>
         {
             try { Process.Start(new ProcessStartInfo(UpdateService.ReleasesPage.AbsoluteUri) { UseShellExecute = true }); }
@@ -178,14 +178,14 @@ internal sealed class SettingsView : UserControl, IDisposable
         _updateTimer.Tick += (_, _) => SyncUpdateButton();
         Loaded += (_, _) => { if (!_closed) { RefreshHealth(); RefreshCheck(); _updateTimer.Start(); } };
         Unloaded += (_, _) => _updateTimer.Stop();
-        Section("Diagnostic");
+        Section(Loc.T("Diagnostic"));
         var support = Block();
         support.Children.Add(_health);
-        var diagnostic = new Button { Content = "Préparer un diagnostic…", HorizontalAlignment = HorizontalAlignment.Left };
+        var diagnostic = new Button { Content = Loc.T("Préparer un diagnostic…"), HorizontalAlignment = HorizontalAlignment.Left };
         diagnostic.Click += (_, _) => ShowDiagnostic(); support.Children.Add(diagnostic);
-        var privacy = Ui.Text("Aperçu avant copie. Aucun compte, quota, chemin personnel ni identifiant secret.", 11, "MutedBrush"); privacy.Margin = new Thickness(0, 9, 0, 0); support.Children.Add(privacy);
+        var privacy = Ui.Text(Loc.T("Aperçu avant copie. Aucun compte, quota, chemin personnel ni identifiant secret."), 11, "MutedBrush"); privacy.Margin = new Thickness(0, 9, 0, 0); support.Children.Add(privacy);
         _group = null;
-        var quit = new Button { Content = "Quitter Codex Tracker", Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-2, 16, 0, 0) };
+        var quit = new Button { Content = Loc.T("Quitter Codex Tracker"),Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-2, 16, 0, 0) };
         quit.SetResourceReference(ForegroundProperty, "DangerBrush");
         quit.Click += async (_, _) => await ((App)System.Windows.Application.Current).ExitAsync(); _page.Children.Add(quit);
         preferences.Changed += PreferencesChanged;
@@ -202,19 +202,20 @@ internal sealed class SettingsView : UserControl, IDisposable
     private void ReloadableSection(Func<FrameworkElement> create)
     {
         var host = new ContentControl { Content = create(), HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        var reload = new Button { Content = "Recharger la section", Style = (Style)FindResource("LinkButton"),
+        var reload = new Button { Content = Loc.T("Recharger la section"), Style = (Style)FindResource("LinkButton"),
             HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0, 2, 0, 6),
-            ToolTip = "Relire la configuration actuelle. Les modifications non enregistrées de cette section seront abandonnées." };
+            ToolTip = Loc.T("Relire la configuration actuelle. Les modifications non enregistrées de cette section seront abandonnées.") };
         reload.Click += (_, _) => { host.Content = create(); _pageScroll.ScrollToTop(); };
         var block = Block(); block.Children.Add(reload); block.Children.Add(host);
     }
-    private void Page(string title, string description)
+    /// <summary>The French <paramref name="key"/> identifies the page for navigation; <paramref name="title"/> is displayed.</summary>
+    private void Page(string key, string title, string description)
     {
         _page = new StackPanel { Margin = new Thickness(6, 10, 14, 28) }; _group = null; UiMotion.SetStagger(_page, true);
         var heading = Ui.Text(title, 22); heading.FontWeight = FontWeights.Medium; _page.Children.Add(heading);
         var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 5, 0, 0); _page.Children.Add(hint);
-        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 2), Tag = FindResource(title switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
-        button.Click += (_, _) => ShowPage(title); _navigation.Children.Add(button); _pages.Add(title, (_page, button));
+        var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 2), Tag = FindResource(key switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
+        button.Click += (_, _) => ShowPage(key); _navigation.Children.Add(button); _pages.Add(key, (_page, button));
     }
     internal void ShowPage(string title)
     {
@@ -226,7 +227,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         }
         RefreshHealth();
         foreach (var (name, value) in _pages)
-            System.Windows.Automation.AutomationProperties.SetItemStatus(value.Navigation, name == title ? "Section active" : "");
+            System.Windows.Automation.AutomationProperties.SetItemStatus(value.Navigation, name == title ? Loc.T("Section active") : "");
         _navigationPill.Move();
     }
     /// <summary>Starts a titled card; following rows and blocks are placed inside it.</summary>
@@ -285,7 +286,7 @@ internal sealed class SettingsView : UserControl, IDisposable
             _includePrereleases = _preferences.Current.IncludePrereleaseUpdates;
             _updates.SetIncludePrereleases(_includePrereleases);
             _release = null; _nextCheckAt = null; _install.Visibility = Visibility.Collapsed;
-            _updateStatus.Text = _includePrereleases ? "Préversions incluses. Recherchez une mise à jour." : "Versions stables uniquement. Recherchez une mise à jour.";
+            _updateStatus.Text = _includePrereleases ? Loc.T("Préversions incluses. Recherchez une mise à jour.") : Loc.T("Versions stables uniquement. Recherchez une mise à jour.");
             ShowPreparation();
             _ = ReloadPreparedAsync();
         }
@@ -301,18 +302,18 @@ internal sealed class SettingsView : UserControl, IDisposable
     {
         if (_closed) return;
         var feed = _owner.TrackerService.State.GlobalResetFeed;
-        _announcementsStatus.Text = !_preferences.Current.MonitorGlobalResets ? "Vérification désactivée."
-            : _demo ? "Démonstration · aucun accès réseau."
-            : (feed?.IsChecking == true ? "Vérification des sources en cours…\n" : "") +
-                (feed?.CheckedAt is { } checkedAt ? $"Dernier contrôle réussi : {Display.Exact(checkedAt)} · {Display.Zone(checkedAt)}" : "Aucun contrôle réussi pour le moment.") +
-                (feed?.Error is { } error ? "\n" + error : feed?.CheckedAt is not null && feed.Announcements.All(a => !a.IsCurrent(PreviewClock.UtcNow)) ? "\nAucune annonce récente reconnue." : "") +
-                (feed?.NextCheckAt is { } next && !feed.IsChecking ? next <= PreviewClock.UtcNow ? "\nProchaine vérification imminente." : $"\nProchain essai : {Display.Exact(next)}" : "");
-        _checkAnnouncements.Content = feed?.IsChecking == true ? "Vérification…" : "Vérifier les annonces";
+        _announcementsStatus.Text = !_preferences.Current.MonitorGlobalResets ? Loc.T("Vérification désactivée.")
+            : _demo ? Loc.T("Démonstration · aucun accès réseau.")
+            : (feed?.IsChecking == true ? Loc.T("Vérification des sources en cours…") + "\n" : "") +
+                (feed?.CheckedAt is { } checkedAt ? Loc.F("Dernier contrôle réussi : {0} · {1}", Display.Exact(checkedAt), Display.Zone(checkedAt)) : Loc.T("Aucun contrôle réussi pour le moment.")) +
+                (feed?.Error is { } error ? "\n" + error : feed?.CheckedAt is not null && feed.Announcements.All(a => !a.IsCurrent(PreviewClock.UtcNow)) ? "\n" + Loc.T("Aucune annonce récente reconnue.") : "") +
+                (feed?.NextCheckAt is { } next && !feed.IsChecking ? next <= PreviewClock.UtcNow ? "\n" + Loc.T("Prochaine vérification imminente.") : "\n" + Loc.F("Prochain essai : {0}", Display.Exact(next)) : "");
+        _checkAnnouncements.Content = feed?.IsChecking == true ? Loc.T("Vérification…") : Loc.T("Vérifier les annonces");
         _checkAnnouncements.IsEnabled = !_demo && _preferences.Current.MonitorGlobalResets && feed?.IsChecking != true &&
             !(PreviewClock.UtcNow < feed?.ManualRetryAt);
-        _checkAnnouncements.ToolTip = _demo ? "Aucun accès réseau dans la démonstration." : feed?.ManualRetryAt > PreviewClock.UtcNow
-            ? $"Prochain contrôle manuel possible le {Display.Exact(feed.ManualRetryAt)}. Les limites de la source sont respectées."
-            : "Relit les annonces publiques sans actualiser les comptes. Un contrôle manuel par minute maximum.";
+        _checkAnnouncements.ToolTip = _demo ? Loc.T("Aucun accès réseau dans la démonstration.") : feed?.ManualRetryAt > PreviewClock.UtcNow
+            ? Loc.F("Prochain contrôle manuel possible le {0}. Les limites de la source sont respectées.", Display.Exact(feed.ManualRetryAt))
+            : Loc.T("Relit les annonces publiques sans actualiser les comptes. Un contrôle manuel par minute maximum.");
         var messages = _owner.HealthWarnings();
         if (_healthMessages.SequenceEqual(messages) && _recoveryRequired == _preferences.RecoveryRequired) return;
         _healthMessages = messages; _recoveryRequired = _preferences.RecoveryRequired;
@@ -322,32 +323,32 @@ internal sealed class SettingsView : UserControl, IDisposable
             var notice = Ui.Text(message, 11, "MutedBrush"); notice.Margin = new Thickness(0, 0, 0, 10); _health.Children.Add(notice);
         }
         if (!_preferences.RecoveryRequired) return;
-        var acknowledge = new Button { Content = "Valider les réglages récupérés", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
+        var acknowledge = new Button { Content = Loc.T("Valider les réglages récupérés"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
         acknowledge.Click += (_, _) =>
         {
             try { _preferences.AcknowledgeRecovery(); Sync(); }
-            catch (Exception) { ShowError("Les réglages récupérés n’ont pas pu être enregistrés. Les fichiers existants sont conservés."); }
+            catch (Exception) { ShowError(Loc.T("Les réglages récupérés n’ont pas pu être enregistrés. Les fichiers existants sont conservés.")); }
         };
         _health.Children.Add(acknowledge);
     }
     private void ShowDiagnostic()
     {
         var report = _owner.BuildDiagnostic();
-        var dialog = new TrackerDialog(_owner, "Diagnostic à partager", report, "Copier", "Fermer");
+        var dialog = new TrackerDialog(_owner, Loc.T("Diagnostic à partager"), report, Loc.T("Copier"), Loc.T("Fermer"));
         if (dialog.ShowDialog() != true) return;
         try { Clipboard.SetText(report); }
-        catch (Exception) { ShowError("Le presse-papiers est occupé. Réessayez dans quelques secondes."); }
+        catch (Exception) { ShowError(Loc.T("Le presse-papiers est occupé. Réessayez dans quelques secondes.")); }
     }
     private async Task ReloadPreparedAsync()
     {
         try { if (!_demo) await _updates.LoadPreparedAsync(_lifetime.Token); }
         catch (OperationCanceledException) { }
     }
-    private void ShowError(string message) => new TrackerDialog(_owner, "Action indisponible", Display.SafeText(message, _preferences.Current.PrivacyMode), "Fermer", null).ShowDialog();
+    private void ShowError(string message) => new TrackerDialog(_owner, Loc.T("Action indisponible"), Display.SafeText(message, _preferences.Current.PrivacyMode), Loc.T("Fermer"), null).ShowDialog();
     private async Task CheckAsync()
     {
         if (_demo) return;
-        _updateBusy = true; SyncUpdateButton(); _install.Visibility = Visibility.Collapsed; _updateStatus.Text = "Recherche en cours…";
+        _updateBusy = true; SyncUpdateButton(); _install.Visibility = Visibility.Collapsed; _updateStatus.Text = Loc.T("Recherche en cours…");
         try
         {
             var result = await _updates.CheckDetailedAsync(_lifetime.Token);
@@ -356,7 +357,7 @@ internal sealed class SettingsView : UserControl, IDisposable
             if (_preferences.Current.DownloadUpdatesAutomatically && result.IsVerifiedNow && result.Release is { } release)
                 await _updates.PrepareAsync(release, _lifetime.Token);
         }
-        catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Recherche annulée."; }
+        catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = Loc.T("Recherche annulée."); }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
         finally { _updateBusy = false; if (!_closed) SyncUpdateButton(); }
     }
@@ -364,12 +365,12 @@ internal sealed class SettingsView : UserControl, IDisposable
     {
         _release = result.Release; _nextCheckAt = result.NextCheckAt;
         var text = result.IsVerifiedNow
-            ? _release is null ? $"Aucune version plus récente sur le canal {(_updates.IncludePrereleases ? "stable + préversions" : "stable")}." : $"Version {_release.Version} disponible."
-            : result.Message + (_release is null ? " La version actuelle n’a pas été revérifiée." : $" Version {_release.Version} connue dans le cache.");
+            ? _release is null ? Loc.F("Aucune version plus récente sur le canal {0}.", _updates.IncludePrereleases ? Loc.T("stable + préversions") : Loc.T("stable")) : Loc.F("Version {0} disponible.", _release.Version)
+            : result.Message + " " + (_release is null ? Loc.T("La version actuelle n’a pas été revérifiée.") : Loc.F("Version {0} connue dans le cache.", _release.Version));
         if (result.VerifiedAt is { } checkedAt)
-            text += $"\n{(result.IsVerifiedNow ? "Vérifié" : "Cache vérifié")} le {checkedAt.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
+            text += "\n" + (result.IsVerifiedNow ? Loc.F("Vérifié le {0:dd/MM/yyyy à HH:mm:ss}.", checkedAt.ToLocalTime()) : Loc.F("Cache vérifié le {0:dd/MM/yyyy à HH:mm:ss}.", checkedAt.ToLocalTime()));
         if (result.NextCheckAt is { } next && next > DateTimeOffset.UtcNow)
-            text += $"\nNouvelle vérification possible dès le {next.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
+            text += "\n" + Loc.F("Nouvelle vérification possible dès le {0:dd/MM/yyyy à HH:mm:ss}.", next.ToLocalTime());
         _updateStatus.Text = text;
         _install.Visibility = _release is null ? Visibility.Collapsed : Visibility.Visible;
         SyncUpdateButton();
@@ -378,13 +379,13 @@ internal sealed class SettingsView : UserControl, IDisposable
     {
         _check.IsEnabled = !_demo && !_updateBusy && !_updates.IsPreparing && !(_nextCheckAt > DateTimeOffset.UtcNow);
         _install.IsEnabled = !_demo && !_updateBusy && !_updates.IsPreparing;
-        _check.ToolTip = _nextCheckAt > DateTimeOffset.UtcNow ? $"Disponible à {_nextCheckAt.Value.ToLocalTime():HH:mm:ss}." : null;
-        _automaticStatus.Text = !_preferences.Current.DownloadUpdatesAutomatically ? "Recherche automatique désactivée."
-            : _automaticUpdates is null ? "Recherche automatique indisponible dans cet exécutable."
-            : !_automaticUpdates.IsEnabled ? "Recherche automatique en pause."
-            : _automaticUpdates.IsChecking ? _updates.IsPreparing ? "Téléchargement automatique en cours…" : "Recherche automatique en cours…"
-            : _automaticUpdates.NextCheck <= DateTimeOffset.UtcNow ? "Prochaine recherche automatique imminente."
-            : $"Prochaine recherche automatique : {_automaticUpdates.NextCheck.ToLocalTime():dd/MM/yyyy à HH:mm:ss}.";
+        _check.ToolTip = _nextCheckAt > DateTimeOffset.UtcNow ? Loc.F("Disponible à {0:HH:mm:ss}.", _nextCheckAt.Value.ToLocalTime()) : null;
+        _automaticStatus.Text = !_preferences.Current.DownloadUpdatesAutomatically ? Loc.T("Recherche automatique désactivée.")
+            : _automaticUpdates is null ? Loc.T("Recherche automatique indisponible dans cet exécutable.")
+            : !_automaticUpdates.IsEnabled ? Loc.T("Recherche automatique en pause.")
+            : _automaticUpdates.IsChecking ? _updates.IsPreparing ? Loc.T("Téléchargement automatique en cours…") : Loc.T("Recherche automatique en cours…")
+            : _automaticUpdates.NextCheck <= DateTimeOffset.UtcNow ? Loc.T("Prochaine recherche automatique imminente.")
+            : Loc.F("Prochaine recherche automatique : {0:dd/MM/yyyy à HH:mm:ss}.", _automaticUpdates.NextCheck.ToLocalTime());
     }
     private void CheckChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(RefreshCheck);
     private void RefreshCheck()
@@ -402,7 +403,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         if (_updates.Prepared is { } ready)
         {
             _release = ready.Release;
-            _install.Content = "Mettre à jour et relancer";
+            _install.Content = Loc.T("Mettre à jour et relancer");
             _install.Visibility = Visibility.Visible;
         }
         SyncUpdateButton();
@@ -410,13 +411,13 @@ internal sealed class SettingsView : UserControl, IDisposable
     private async Task InstallAsync()
     {
         if (_release is null || _demo) return;
-        _updateBusy = true; SyncUpdateButton(); _install.IsEnabled = false; _updateStatus.Text = "Téléchargement et vérification de la mise à jour…";
+        _updateBusy = true; SyncUpdateButton(); _install.IsEnabled = false; _updateStatus.Text = Loc.T("Téléchargement et vérification de la mise à jour…");
         try
         {
             await _updates.PrepareAsync(_release, _lifetime.Token);
             if (!_closed) await _owner.InstallReadyUpdateAsync();
         }
-        catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = "Installation annulée."; }
+        catch (OperationCanceledException) { if (!_closed) _updateStatus.Text = Loc.T("Installation annulée."); }
         catch (Exception error) { if (!_closed) _updateStatus.Text = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
         finally { _updateBusy = false; if (!_closed) SyncUpdateButton(); }
     }

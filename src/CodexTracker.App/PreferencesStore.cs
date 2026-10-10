@@ -51,7 +51,7 @@ internal sealed class PreferencesStore
     public TrackerPreferences Current { get; private set; } = Normalize(new());
     public bool RecoveryRequired => Current.RecoveryPending;
     public string? RecoveryWarning => RecoveryRequired
-        ? "Des préférences locales étaient illisibles. Les réglages disponibles ont été récupérés avec les rappels, alertes et assistants désactivés. Vérifiez vos réglages avant de les réactiver. Le fichier d’origine est conservé."
+        ? Loc.T("Des préférences locales étaient illisibles. Les réglages disponibles ont été récupérés avec les rappels, alertes et assistants désactivés. Vérifiez vos réglages avant de les réactiver. Le fichier d’origine est conservé.")
         : null;
     public event EventHandler? Changed;
     public string Revision { get; private set; } = Guid.NewGuid().ToString("N");
@@ -128,11 +128,11 @@ internal static class PrivacyText
             profile.OrganizationName is { } organization ? " · " + organization : "");
     public static string Account(AccountProfile profile, TrackerState state, TrackerPreferences preferences) =>
         preferences.Appearances.GetValueOrDefault(profile.Id)?.Name is { Length: > 0 } name ? name : profile.Email;
-    public static string Email(string email, bool privacy) => privacy ? "Compte masqué" : email;
+    public static string Email(string email, bool privacy) => privacy ? Loc.T("Compte masqué") : email;
     public static string Account(AccountProfile profile, TrackerState state, bool privacy)
     {
         if (!privacy) return profile.Email;
         var index = state.Accounts.Select(a => a.Profile.Id).ToList().IndexOf(profile.Id);
-        return index >= 0 ? $"Compte {index + 1:00}" : "Compte masqué";
+        return index >= 0 ? Loc.F("Compte {0:00}", index + 1) : Loc.T("Compte masqué");
     }
 }
