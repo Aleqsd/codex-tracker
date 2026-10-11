@@ -17,7 +17,9 @@ public partial class MainWindow : Window
     private readonly UpdateService _updates;
     private readonly AutomaticUpdater? _automaticUpdates;
     private readonly bool _demo;
-    private bool _installingUpdate;
+    private bool _installingUpdate, _checkingUpdate;
+    // A footer check result stays readable for a few seconds, then the version returns.
+    private readonly System.Windows.Threading.DispatcherTimer _versionNotice = new() { Interval = TimeSpan.FromSeconds(8) };
     private readonly ResetsView _resets;
     private SettingsView? _settings;
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -53,8 +55,9 @@ public partial class MainWindow : Window
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast };
         InitializeComponent();
-        AppVersionLabel.Text = $"v{_updates.CurrentVersion}";
-        AppVersionLabel.ToolTip = Loc.F("Version installée : {0}", _updates.CurrentVersion);
+        ShowVersion();
+        CheckUpdateButton.IsEnabled = !_demo;
+        _versionNotice.Tick += (_, _) => { _versionNotice.Stop(); if (!_canClose) ShowVersion(); };
         _updates.PreparationChanged += UpdatePreparationChanged;
         UpdatePresentation();
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync(), () => OpenManualCodexReset()); ResetsTab.Content = _resets;
@@ -167,6 +170,48 @@ public partial class MainWindow : Window
         (_service as Codex.TrackerService)?.GetCompatibilityDiagnostic(), Reminders.Error is null,
         Assistant is not null && AssistantError is null, _demo ? WindowsNotificationState.Unknown : WindowsNotificationDelivery.ReadState(),
         _updates.Prepared is not null, _demo);
+    private void ShowVersion()
+    {
+        AppVersionLabel.Text = $"v{_updates.CurrentVersion}";
+        AppVersionLabel.ToolTip = Loc.F("Version installée : {0}", _updates.CurrentVersion);
+    }
+    // Same check as Settings → Application: a newer version downloads and the usual banner offers to install it.
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_demo || _checkingUpdate || _canClose) return;
+        _checkingUpdate = true; _versionNotice.Stop(); CheckUpdateButton.IsEnabled = false;
+        if (CheckUpdateButton.Content is FrameworkElement icon) UiMotion.Spin(icon);
+        AppVersionLabel.Text = Loc.T("Recherche…");
+        string text, hint;
+        try
+        {
+            var result = await _updates.CheckDetailedAsync(_lifetime.Token);
+            if (_canClose) return;
+            if (result.IsVerifiedNow && result.Release is { } release)
+            {
+                text = Loc.F("v{0} disponible", release.Version);
+                hint = _preferences.Current.DownloadUpdatesAutomatically ? Loc.T("Téléchargement et vérification en cours ; un bandeau proposera de l’installer.")
+                    : Loc.T("Téléchargement automatique désactivé : installez-la depuis Réglages → Application.");
+                AppVersionLabel.Text = text; AppVersionLabel.ToolTip = hint;
+                if (_preferences.Current.DownloadUpdatesAutomatically) await _updates.PrepareAsync(release, _lifetime.Token);
+            }
+            else if (result.IsVerifiedNow)
+            {
+                text = Loc.T("À jour") + $" · v{_updates.CurrentVersion}";
+                hint = Loc.F("Aucune version plus récente. Vérifié le {0:dd/MM/yyyy à HH:mm:ss}.", (result.VerifiedAt ?? DateTimeOffset.UtcNow).ToLocalTime());
+            }
+            else
+            {
+                text = Loc.T("Vérifiée récemment") + $" · v{_updates.CurrentVersion}";
+                hint = result.Message + (result.NextCheckAt is { } next && next > DateTimeOffset.UtcNow ? "\n" + Loc.F("Nouvelle vérification possible dès le {0:dd/MM/yyyy à HH:mm:ss}.", next.ToLocalTime()) : "");
+            }
+        }
+        catch (OperationCanceledException) { return; }
+        catch (Exception error) { text = Loc.T("Recherche impossible") + $" · v{_updates.CurrentVersion}"; hint = Display.SafeText(error.Message, _preferences.Current.PrivacyMode); }
+        finally { _checkingUpdate = false; if (!_canClose) CheckUpdateButton.IsEnabled = true; }
+        if (_canClose) return;
+        AppVersionLabel.Text = text; AppVersionLabel.ToolTip = hint; _versionNotice.Start();
+    }
     private void UpdatePreparationChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdatePresentation);
     private void UpdatePresentation()
     {

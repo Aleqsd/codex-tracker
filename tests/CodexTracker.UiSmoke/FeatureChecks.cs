@@ -60,6 +60,9 @@ internal static class FeatureChecks
                 Check(window.IsVisible && !window.Dispatcher.HasShutdownStarted, "Fictional preview cannot install a real update");
             }
             window.PresentUpdate(null, false);
+            var checkUpdate = (Button)window.FindName("CheckUpdateButton"); var versionLabel = (TextBlock)window.FindName("AppVersionLabel");
+            Check(checkUpdate.IsVisible && !checkUpdate.IsEnabled && versionLabel.Text.StartsWith("v", StringComparison.Ordinal) && checkUpdate.TranslatePoint(new Point(), versionLabel).X >= versionLabel.ActualWidth,
+                "The footer version has its own update check button, disabled in the fictional demo");
             mainTabs.SelectedItem = resetsTab; await Task.Delay(100);
             Check(resets.IsVisible && Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("à venir")), "Resets tab renders a chronological schedule");
             var resetFilter = Field<ComboBox>(resets, "_accounts");
