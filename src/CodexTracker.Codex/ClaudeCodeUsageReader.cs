@@ -20,6 +20,8 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
         if (latest.Weekly is { ResetsAt: null })
         {
             var samples = history?.Invoke(profile.Id) ?? [];
+            // The terminal reading is ignored once its session expires, but the date it gave for the running period stays true.
+            if (PendingExactWeeklyReset(samples, latest.FetchedAt) is { } pending) return WithKnownWeeklyReset(latest, pending);
             var observed = samples.Where(s => s.WeeklyRemaining is not null)
                 .Select(s => (s.Timestamp, 100 - s.WeeklyRemaining!.Value))
                 .Concat(await ClaudeDesktopUsageReader.ReadWeeklyAsync(desktopPaths, identity, cancellationToken));
@@ -44,6 +46,18 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
             }).ToArray()
         };
     }
+
+    /// <summary>Latest exact weekly date recorded for a period still running at the reading's time.</summary>
+    internal static DateTimeOffset? PendingExactWeeklyReset(IEnumerable<UsageSample> samples, DateTimeOffset at) =>
+        samples.Where(s => !s.WeeklyResetEstimated && s.WeeklyResetsAt > at && s.Timestamp <= at).OrderBy(s => s.Timestamp).LastOrDefault()?.WeeklyResetsAt;
+
+    internal static AccountSnapshot WithKnownWeeklyReset(AccountSnapshot snapshot, DateTimeOffset reset) => snapshot with
+    {
+        Buckets = snapshot.Buckets.Select(bucket => bucket with
+        {
+            Windows = bucket.Windows.Select(window => window.IsWeekly && window.ResetsAt is null ? window with { ResetsAt = reset } : window).ToArray()
+        }).ToArray()
+    };
 
     /// <summary>A past weekly date given by Claude Code is an exact reset moment; it keeps anchoring the following weeks.</summary>
     internal static DateTimeOffset? LastExactWeeklyReset(IEnumerable<UsageSample> samples, AccountSnapshot? terminal, DateTimeOffset at) =>

@@ -133,4 +133,34 @@ public sealed class ClaudeDesktopTests
         Assert.InRange(weekly.ResetsAt!.Value, at.AddMinutes(4).AddSeconds(-1) + WeeklyResetInference.Period, at.AddMinutes(4).AddSeconds(1) + WeeklyResetInference.Period);
         Assert.Null(restarted.State.ActiveAccount.Snapshot.Short!.ResetsAt);
     }
+
+    [Fact]
+    public async Task TheTerminalWeeklyDateSurvivesAnExpiredSessionAndANewerDesktopReading()
+    {
+        using var directory = new TestDirectory(); ClaudeFixture.SignIn(directory);
+        var path = directory.File("plan-usage-history.json"); var now = DateTimeOffset.UtcNow;
+        File.WriteAllText(path, History(now.AddMinutes(-20), Organization, new { fh = 30, sd = 40 }));
+        var options = new TrackerServiceOptions { DataDirectory = directory.File("data"), ClaudeLocation = ClaudeFixture.Location(directory),
+            ClaudeDesktopUsagePaths = [path], AutomaticRefresh = false, MonitorAuthChanges = false };
+        await using var service = new TrackerService(directory.File("missing-auth.json"), options);
+        await service.InitializeAsync();
+        Assert.Null(service.State.ActiveAccount!.Snapshot!.Weekly!.ResetsAt);
+
+        // Claude Code gives the exact weekly date once…
+        var collector = new ClaudeCodeObservations(options.DataDirectory, options.ClaudeLocation!); var session = Guid.NewGuid();
+        await collector.CaptureAsync(ClaudeFixture.Input(session), true, now.AddMinutes(-10));
+        await collector.CaptureAsync(ClaudeFixture.Input(session, 25), false, now.AddMinutes(-10));
+        await service.RefreshAsync();
+        var exact = service.State.ActiveAccount!.Snapshot!.Weekly!.ResetsAt;
+        Assert.NotNull(exact);
+
+        // …then its session expires and only the Desktop app keeps reading, without dates.
+        ClaudeFixture.SignIn(directory, expires: now.AddHours(-1));
+        File.WriteAllText(path, History(now.AddMinutes(-5), Organization, new { fh = 35, sd = 41 }));
+        await service.RefreshAsync();
+        var weekly = service.State.ActiveAccount!.Snapshot!.Weekly!;
+        Assert.Equal(59, weekly.RemainingPercent);
+        Assert.Equal(exact, weekly.ResetsAt);
+        Assert.False(weekly.IsResetEstimated);
+    }
 }
