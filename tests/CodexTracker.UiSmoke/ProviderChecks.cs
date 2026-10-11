@@ -62,7 +62,14 @@ internal static class ProviderChecks
             announcement.IsExpanded = true; window.UpdateLayout();
             Check(Tree(announcement).OfType<TextBlock>().Any(t => t.Text.Contains("reset manuel prioritaire")), "A manual declaration takes priority over public reset estimates");
             resets.Update(service.State); window.OpenPage("Comptes");
+            window.UpdateLayout(); await Task.Delay(400); window.UpdateLayout();
+            var declareLinks = Tree(window).OfType<Button>().Where(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Déclarer un reset général Codex").ToArray();
+            Check(declareLinks.Count(b => b.IsVisible) == 1 && !Tree(window).OfType<Button>().Any(b => Equals(b.Content, "Reset Codex…")),
+                $"The general reset is declared from the Codex section header only, not from the global toolbar ({declareLinks.Length} links, {declareLinks.Count(b => b.IsVisible)} visible)");
             var editor = window.OpenManualCodexReset(); await Task.Delay(30);
+            await Task.Delay(450); editor.UpdateLayout();
+            Ui.SaveScreenshot(editor, System.IO.Path.GetFullPath("artifacts/previews/manual-reset.png"), 96);
+            Check(Tree(editor).OfType<TextBlock>().Any(t => t.Text.Contains("comptes Codex passent à 100 %")), "The reset form shows how many Codex accounts it changes");
             TypographyChecks.AssertBundled(editor);
             var time = Field<TextBox>(editor, "_time"); var save = Field<Button>(editor, "_save");
             time.Text = "oops"; Check(!save.IsEnabled, "Reset form rejects invalid times before saving");

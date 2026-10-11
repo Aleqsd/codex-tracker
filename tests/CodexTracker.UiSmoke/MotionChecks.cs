@@ -45,7 +45,8 @@ internal static class MotionChecks
             tabs.SelectedItem = accounts;
             accounts.Focus();
             await Settle();
-            Check(host.Opacity == 1 && !host.HasAnimatedProperties && accounts.IsKeyboardFocused,
+            // Logical focus: Windows may keep the foreground on the user's own window while the suite runs.
+            Check(host.Opacity == 1 && !host.HasAnimatedProperties && (accounts.IsKeyboardFocused || System.Windows.Input.FocusManager.GetFocusedElement(window) == accounts),
                 "Rapid tab navigation settles completely without stealing keyboard focus");
             UiMotion.SetEnabled(window, false);
             tabs.SelectedIndex = 1;

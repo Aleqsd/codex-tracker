@@ -93,7 +93,8 @@ internal static class ResetsLayoutChecks
             accounts.SelectedValue = demo.State.Accounts.First(a => a.Profile.Provider == AccountProvider.ClaudeCode).Profile.Id;
             window.UpdateLayout();
             Check(!Tree(view).OfType<Expander>().Any(e => e.Name == "ReserveResets"), "Claude-only selection does not display Codex reserve controls");
-            Tree(view).OfType<Button>().Single(b => Equals(b.Content, "Reset Codex…")).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            var more = Tree(view).OfType<Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Autres actions des resets");
+            more.ContextMenu!.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Déclarer un reset général Codex…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Check(declarations == 1, "The reset declaration action remains accessible from the new page");
             Console.WriteLine($"PASS {_checks} simplified reset layout WPF checks");
         }

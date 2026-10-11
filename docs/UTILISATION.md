@@ -59,7 +59,7 @@ Les derniers quotas du cache local de l’application Claude sont lus automatiqu
 
 ## Déclarer un reset général Codex
 
-Si un reset général Codex a été effectué, cliquez sur **Reset Codex…** dans Comptes ou Resets et indiquez sa date et son heure locale. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
+Si un reset général Codex a été effectué, cliquez sur **Reset général…** à côté de l’en-tête **Codex** de la liste des comptes (ou dans le menu **…** de Resets). Choisissez un raccourci (**À l’instant**, **Il y a 30 min**…) ou un jour des huit derniers et une heure locale ; la fenêtre résume l’instant choisi et le nombre de comptes Codex concernés. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
 
 La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). Les prochaines échéances seront connues après ce nouveau relevé. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées.
 

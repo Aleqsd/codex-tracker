@@ -44,11 +44,6 @@ internal sealed class ResetsView : UserControl
         var title = Ui.Text(Loc.T("Prochains resets"), 22); title.FontWeight = FontWeights.Medium; introduction.Children.Add(title);
         _summary.Margin = new Thickness(0, 5, 0, 0); introduction.Children.Add(_summary); heading.Children.Add(introduction);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        if (declareReset is not null)
-        {
-            var declare = new Button { Content = Loc.T("Reset Codex…"), Style = (Style)FindResource("QuietButton"), Padding = new Thickness(11, 7, 11, 7), Margin = new Thickness(0, 0, 4, 0), ToolTip = Loc.T("Déclarer ou modifier l’heure d’un reset général Codex") };
-            declare.Click += (_, _) => declareReset(); actions.Children.Add(declare);
-        }
         _refresh = Ui.IconButton("DropdownRefreshIcon", Loc.T("Actualiser les comptes actifs de Codex et Claude Code"), Loc.T("Actualiser les comptes actifs"));
         _refresh.Click += (_, _) => { UiMotion.Spin((FrameworkElement)_refresh.Content); refresh(); }; actions.Children.Add(_refresh);
         var more = Ui.IconButton("MoreIcon", Loc.T("Autres actions"), Loc.T("Autres actions des resets"), 18, 3);
@@ -56,6 +51,11 @@ internal sealed class ResetsView : UserControl
         var export = new MenuItem { Header = Loc.T("Google Agenda ↗") };
         export.Click += (_, _) => calendar((_accounts.SelectedItem as ResetAccountChoice)?.Id);
         more.ContextMenu = new ContextMenu { Items = { export } };
+        if (declareReset is not null)
+        {
+            var declare = new MenuItem { Header = Loc.T("Déclarer un reset général Codex…") };
+            declare.Click += (_, _) => declareReset(); more.ContextMenu.Items.Insert(0, declare);
+        }
         more.Click += (_, _) => { more.ContextMenu.PlacementTarget = more; more.ContextMenu.IsOpen = true; };
         actions.Children.Add(more); Grid.SetColumn(actions, 1); heading.Children.Add(actions); root.Children.Add(heading);
 

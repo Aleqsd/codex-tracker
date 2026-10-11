@@ -59,7 +59,7 @@ Pour les rappels, oui : elle reste discrète dans la barre des tâches et peut d
 L’application Claude est détectée automatiquement. Pour le terminal, copiez le réglage proposé dans **Réglages → Général → Claude Code**. [Sources et limites](docs/CLAUDE-CODE.md).
 
 **OpenAI a rechargé tous les quotas d’un coup ?**
-Cliquez sur **Reset Codex…** et indiquez l’heure. Les comptes concernés affichent « 100 % · déclaré » jusqu’au prochain relevé réel. Les annonces publiques reconnues sont aussi signalées automatiquement ([fonctionnement](docs/GLOBAL-RESETS.md)).
+Cliquez sur **Reset général…** à côté de l’en-tête Codex et indiquez l’heure. Les comptes concernés affichent « 100 % · déclaré » jusqu’au prochain relevé réel. Les annonces publiques reconnues sont aussi signalées automatiquement ([fonctionnement](docs/GLOBAL-RESETS.md)).
 
 **C’est payant ?**
 Non. Seuls les SMS, appels et emails, facultatifs, passent par vos propres comptes Twilio ou SendGrid et suivent leurs tarifs.
