@@ -18,7 +18,6 @@ internal static partial class EnglishApp
         ("Aperçu au survol de l’icône", "Preview on icon hover"),
         ("Le quota et le prochain reset, sans ouvrir le panneau.", "Quota and next reset, without opening the panel."),
         ("Actualisation", "Refresh"),
-        ("Compte actif", "Active account"),
         ("Chaque minute", "Every minute"),
         ("Toutes les 2 min", "Every 2 min"),
         ("Toutes les 5 min", "Every 5 min"),
@@ -125,7 +124,6 @@ internal static partial class EnglishApp
         ("Vérifiez les versions publiées sur le dépôt officiel.", "Check the versions published on the official repository."),
         ("Rechercher une mise à jour", "Check for updates"),
         ("Installer et relancer", "Install and restart"),
-        ("Mettre à jour et relancer", "Update and restart"),
         ("Voir les versions sur GitHub ↗", "See releases on GitHub ↗"),
         ("Préversions incluses. Recherchez une mise à jour.", "Pre-releases included. Check for updates."),
         ("Versions stables uniquement. Recherchez une mise à jour.", "Stable versions only. Check for updates."),
@@ -160,7 +158,6 @@ internal static partial class EnglishApp
         ("Les réglages récupérés n’ont pas pu être enregistrés. Les fichiers existants sont conservés.", "The recovered settings couldn’t be saved. Existing files are kept."),
         ("Diagnostic à partager", "Diagnostic report to share"),
         ("Copier", "Copy"),
-        ("Fermer", "Close"),
         ("Le presse-papiers est occupé. Réessayez dans quelques secondes.", "The clipboard is busy. Try again in a few seconds."),
         ("Action indisponible", "Action unavailable"),
 

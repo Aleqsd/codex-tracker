@@ -5,13 +5,9 @@ internal static partial class EnglishApp
     internal static readonly (string French, string English)[] Windows =
     [
         // Shared buttons of secondary windows
-        ("Fermer", "Close"),
-        ("Annuler", "Cancel"),
         ("Enregistrer", "Save"),
 
         // HistoryWindow ("Semaine" and "5 heures" are in Resets)
-        ("Détails et historique", "Details and history"),
-        ("Resets en réserve", "Reset credits"),
         ("Quota restant", "Quota left"),
         ("24 heures", "24 hours"),
         ("7 jours", "7 days"),
@@ -33,12 +29,10 @@ internal static partial class EnglishApp
         ("Retirer ce compte du suivi ?", "Stop tracking this account?"),
         ("Son historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans son application.", "Its local history will be deleted. It will reappear when you open it in its app."),
         ("Retirer", "Remove"),
-        ("Action indisponible", "Action unavailable"),
         ("Maintenant", "Now"),
         ("Les premiers relevés apparaîtront ici.", "The first readings will appear here."),
 
         // CalendarWindow
-        ("Calendrier", "Calendar"),
         ("Google Agenda", "Google Calendar"),
         ("Toutes vos échéances", "All your reset dates"),
         ("Resets et expirations, dans l’agenda de votre choix.", "Resets and expiries, in the calendar of your choice."),
@@ -72,7 +66,6 @@ internal static partial class EnglishApp
         ("Fichier prêt à importer. Aucun ajout dans Google Agenda n’est confirmé par le tracker.", "File ready to import. The tracker cannot confirm anything was added to Google Calendar."),
 
         // ManualCodexResetWindow
-        ("Déclarer un reset Codex", "Declare a Codex reset"),
         ("Déclarer un reset général Codex", "Declare a general Codex reset"),
         ("Quand le reset a-t-il eu lieu ?", "When did the reset happen?"),
         ("OpenAI a remis à zéro les quotas de tout le monde ? Indiquez l’heure : vos comptes Codex afficheront 100 % jusqu’à leur prochain relevé.", "Did OpenAI reset everyone's quotas? Enter the time: your Codex accounts show 100% until their next reading."),
@@ -94,14 +87,11 @@ internal static partial class EnglishApp
         ("Reset général…", "General reset…"),
         ("Aujourd’hui · {0:ddd d MMM}", "Today · {0:ddd, MMM d}"),
         ("Hier · {0:ddd d MMM}", "Yesterday · {0:ddd, MMM d}"),
-        ("À quelle heure le reset général a-t-il eu lieu ?", "When did the global reset happen?"),
-        ("Tous les comptes Codex sans relevé plus récent afficheront 100 % sur les quotas de 5 heures et de la semaine, avec la mention « reset déclaré ». Les comptes Claude Code et les resets en réserve sont conservés.", "All Codex accounts without a newer reading will show 100% on the 5-hour and weekly quotas, marked “reset declared”. Claude Code accounts and reset credits are kept."),
         ("Date", "Date"),
         ("Date du reset Codex", "Codex reset date"),
         ("Heure (HH:mm)", "Time (HH:mm)"),
         ("Heure du reset Codex", "Codex reset time"),
         ("Heure locale · {0}", "Local time · {0}"),
-        ("Les derniers relevés et l’historique mesuré restent conservés. Un nouveau relevé remplace la déclaration pour son compte. Les prochaines échéances restent inconnues jusqu’à ce relevé ; la déclaration expire après 5 h / 7 jours.", "The latest readings and measured history are kept. A new reading replaces the declaration for its account. Upcoming resets stay unknown until that reading; the declaration expires after 5 h / 7 days."),
         ("Annuler la déclaration", "Withdraw declaration"),
         ("Déclarer le reset", "Declare reset"),
         ("Indiquez une date et une heure au format HH:mm.", "Enter a date and a time in HH:mm format."),

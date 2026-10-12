@@ -185,7 +185,6 @@ internal static class EnglishCore
         ("Codex Tracker. {0}. {1} prévu le {2:dd MMMM à HH:mm}. Relevé du {3:dd MMMM à HH:mm}. Vérifiez votre compte dans Codex.", "Codex Tracker. {0}. {1} due on {2:d MMMM 'at' HH:mm}. Reading from {3:d MMMM 'at' HH:mm}. Check your account in Codex."),
         // SMS text stays ASCII so a message fits in one GSM-7 segment.
         ("Reset semaine", "Weekly reset"),
-        ("Reset 5 h", "5-hour reset"),
         ("Reset 5h", "5h reset"),
         ("Expiration reserve", "Credit expiry"),
         ("Codex {0}: {1} le {2:dd/MM HH:mm zzz}. Releve {3:dd/MM HH:mm zzz}. Verifiez dans Codex.", "Codex {0}: {1} on {2:dd/MM HH:mm zzz}. Reading {3:dd/MM HH:mm zzz}. Check in Codex."),
