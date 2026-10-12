@@ -62,7 +62,8 @@ public partial class MainWindow : Window
         UpdatePresentation();
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(),
             () => _ = RefreshAsync(), () => OpenManualCodexReset(), (entry, enabled) =>
-                Commands.SetResetAlert(_service.State, entry.Account.Profile.Id, entry.Kind, entry.At!.Value, enabled, PreviewClock.UtcNow, Commands.Revision));
+                Commands.SetResetAlert(_service.State, entry.Account.Profile.Id, entry.Kind, entry.At!.Value, enabled, PreviewClock.UtcNow, Commands.Revision),
+            () => { if (_preferences.Current.ManualCodexReset is { } reset) Commands.SavePreferences(p => p with { DismissedManualCodexReset = reset.DeclaredAt }); });
         ResetsTab.Content = _resets;
         MainTabs.SelectionChanged += (_, e) =>
         { if (ReferenceEquals(e.OriginalSource, MainTabs) && SettingsTab.IsSelected) _ = Settings; };

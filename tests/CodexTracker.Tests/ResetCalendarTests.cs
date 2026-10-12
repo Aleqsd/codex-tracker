@@ -47,6 +47,17 @@ public sealed class ResetCalendarTests
         Assert.Single(day.Entries);
     }
 
+    // Now is Saturday 24 October 2026, 14:00 in Paris; summer time ends the next night.
+    [Theory]
+    [InlineData("2026-10-24T11:00:00Z", 0)]
+    [InlineData("2026-10-24T21:59:00Z", 0)]
+    [InlineData("2026-10-24T22:00:00Z", 1)]
+    [InlineData("2026-10-23T21:59:00Z", -1)]
+    [InlineData("2026-10-25T23:30:00Z", 2)]
+    [InlineData("2026-10-31T11:00:00Z", 7)]
+    public void DaysFromCountsLocalCalendarDaysNotElapsedTime(string instant, int days) =>
+        Assert.Equal(days, ResetCalendar.DaysFrom(DateTimeOffset.Parse(instant), Now, Paris));
+
     [Fact]
     public void WeekExcludesOutsideDatesAndNeverRecursAnObservedQuota()
     {

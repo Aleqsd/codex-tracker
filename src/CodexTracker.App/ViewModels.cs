@@ -24,8 +24,24 @@ internal static class Display
     /// <summary>The Claude application gives no reset date: how to get one automatically.</summary>
     public static string ClaudeResetHelp => Loc.T("L’application Claude ne communique pas la date du reset.\nPour l’obtenir automatiquement :\n1. Installez Claude Code, puis connectez-vous avec ce compte Claude (/login).\n2. Réglages → Général → « Copier le réglage Claude Code », puis collez-le dans ~/.claude/settings.json.\n3. Envoyez un message dans une nouvelle session Claude Code.\nLa date relevée est ensuite reprojetée chaque semaine. Sans Claude Code, elle sera estimée après la prochaine remise à zéro observée.");
     public static string Exact(DateTimeOffset? date) => date?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", Loc.Culture) ?? Loc.T("Indisponible");
-    public static string ResetHour(DateTimeOffset? date, bool estimated = false) => date is null ? "—"
-        : (estimated ? "≈ " : "") + date.Value.ToLocalTime().ToString("HH:mm", Loc.Culture);
+    /// <summary>"14:00" today; any other day is named ("Demain 14:00", "Jeu. 14:00", then "17/10"), since an hour alone reads as today.</summary>
+    public static string ResetHour(DateTimeOffset? date, bool estimated = false)
+    {
+        if (date is null) return "—";
+        var local = date.Value.ToLocalTime();
+        var moment = ResetCalendar.DaysFrom(date.Value, PreviewClock.UtcNow, TimeZoneInfo.Local) switch
+        {
+            0 => local.ToString("HH:mm", Loc.Culture),
+            1 => Loc.F("Demain {0:HH:mm}", local),
+            -1 => Loc.F("Hier {0:HH:mm}", local),
+            // Within the coming week the weekday is unambiguous. Beyond it, or further back, the date alone
+            // keeps compact panels readable: the countdown and the tooltip give the hour.
+            > 1 and < 7 => Capitalized(local.ToString("ddd HH:mm", Loc.Culture)),
+            _ => local.ToString("dd/MM", Loc.Culture),
+        };
+        return (estimated ? "≈ " : "") + moment;
+    }
+    private static string Capitalized(string text) => text.Length == 0 ? text : char.ToUpper(text[0], Loc.Culture) + text[1..];
     public static string ResetTiming(DateTimeOffset? date, bool estimated = false) => date is null ? Loc.T("Indisponible")
         : ResetHour(date, estimated) + " · " + Remaining(date);
     public static string Zone(DateTimeOffset? date)
@@ -159,19 +175,26 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public Brush ShortBarBrush => HasManualShortReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Short?.RemainingPercent);
     public bool HasShortWindow => _account.HasShortWindow;
     public string ShortSummary => HasManualShortReset ? Loc.F("5 h : {0} · déclaré", ShortWindowRemaining) : Loc.F("5 h : {0}", ShortWindowRemaining);
-    public string ShortResetHour => Display.ResetHour(QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
-    public string ShortResetCompact => HasManualShortReset ? Loc.T("À reconfirmer") : Display.Remaining(_account.Snapshot?.Short?.ResetsAt);
-    public string ShortResetHint => HasManualShortReset ? ManualResetHint
+    /// <summary>Under a declaration, the window restarts at the declared instant: its next reset is shown as an estimate.</summary>
+    private DateTimeOffset? Projected(ResetKind kind) => PresentationState.ManualCodexReset?.ProjectedReset(_account, kind, PreviewClock.UtcNow);
+    private string ProjectedHint(ResetKind kind) => ManualResetHint + (Projected(kind) is { } at ? "\n" + Loc.F("Prochain reset estimé : {0} · {1}", Display.Exact(at), Display.Zone(at)) : "");
+    public string ShortResetHour => Projected(ResetKind.Short) is { } projected ? Display.ResetHour(projected, estimated: true)
+        : Display.ResetHour(QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
+    public string ShortResetCompact => Projected(ResetKind.Short) is { } projected ? "≈ " + Display.Remaining(projected)
+        : HasManualShortReset ? Loc.T("À reconfirmer") : Display.Remaining(_account.Snapshot?.Short?.ResetsAt);
+    public string ShortResetHint => HasManualShortReset ? ProjectedHint(ResetKind.Short)
         : $"{Display.Exact(_account.Snapshot?.Short?.ResetsAt)}\n{Display.Zone(_account.Snapshot?.Short?.ResetsAt)}";
     public string ResetExact => Display.Exact(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetZone => Display.Zone(_account.Snapshot?.Weekly?.ResetsAt);
     private bool WeeklyResetInferred => _account.Snapshot?.Weekly?.IsResetEstimated == true && !HasManualWeeklyReset && !HasWeeklyEstimate;
     private string Approximate => WeeklyResetInferred ? "≈ " : "";
-    public string ResetHour => Display.ResetHour(QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow), WeeklyResetInferred);
-    public string ResetCountdown => HasManualWeeklyReset ? Loc.T("À reconfirmer") : Approximate + Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetHour => Projected(ResetKind.Weekly) is { } projected ? Display.ResetHour(projected, estimated: true)
+        : Display.ResetHour(QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow), WeeklyResetInferred);
+    public string ResetCountdown => Projected(ResetKind.Weekly) is { } projected ? "≈ " + Display.Countdown(projected)
+        : Approximate + Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetCompact => WeeklyEstimate?.Announcement is not null ? Loc.T("À reconfirmer") : HasWeeklyEstimate ? Loc.T("Reset passé")
-        : HasManualWeeklyReset ? Loc.T("À reconfirmer") : Approximate + Display.Remaining(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetHint => HasManualWeeklyReset ? ManualResetHint : HasWeeklyEstimate ? EstimateHint
+        : Projected(ResetKind.Weekly) is { } projected ? "≈ " + Display.Remaining(projected) : Approximate + Display.Remaining(_account.Snapshot?.Weekly?.ResetsAt);
+    public string ResetHint => HasManualWeeklyReset ? ProjectedHint(ResetKind.Weekly) : HasWeeklyEstimate ? EstimateHint
         : WeeklyResetInferred ? Display.EstimatedReset(_account.Snapshot!.Weekly!) : NeedsResetHelp ? Display.ClaudeResetHelp : $"{ResetExact}\n{ResetZone}";
     /// <summary>A measured Claude week without any date: the tooltip explains how to obtain one.</summary>
     public bool NeedsResetHelp => IsClaude && _account.Snapshot?.Weekly is { ResetsAt: null } && !HasWeeklyEstimate;

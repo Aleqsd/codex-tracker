@@ -5,6 +5,7 @@ internal static partial class EnglishApp
     internal static readonly (string French, string English)[] Resets =
     [
         ("Reset hebdomadaire · estimé", "Weekly reset · estimated"),
+        ("Reset 5 heures · estimé", "5-hour reset · estimated"),
         // ResetsView: heading, actions and filters
         ("Prochains resets", "Upcoming resets"),
         ("Actualiser les comptes actifs de Codex et Claude Code", "Refresh the active Codex and Claude Code accounts"),
@@ -39,7 +40,9 @@ internal static partial class EnglishApp
         ("{0} échéances à venir", "{0} upcoming resets"),
         ("Selon les derniers relevés. Les comptes inactifs ne sont pas actualisés en arrière-plan.", "Based on the latest readings. Inactive accounts are not refreshed in the background."),
         ("Reset Codex déclaré · {0:dd/MM à HH:mm}", "Codex reset declared · {0:dd/MM 'at' HH:mm}"),
-        ("Les prochaines échéances seront confirmées par de nouveaux relevés.", "Upcoming resets will be confirmed by new readings."),
+        ("Les comptes sans nouveau relevé affichent un reset estimé depuis cette heure ; un nouveau relevé le remplace.", "Accounts without a new reading show a reset estimated from this time; a new reading replaces it."),
+        ("Estimé depuis le reset Codex déclaré le {0} ; un nouveau relevé le remplace.", "Estimated from the Codex reset declared on {0}; a new reading replaces it."),
+        ("Échéance estimée depuis le reset déclaré : actualisez ce compte dans Codex pour programmer une notification.", "Estimated from the declared reset: refresh this account in Codex to schedule a notification."),
         ("Aucun compte détecté.", "No account detected."),
         ("Aucune date à venir connue pour cette sélection.", "No known upcoming dates for this selection."),
         ("À confirmer · {0}", "To confirm · {0}"),

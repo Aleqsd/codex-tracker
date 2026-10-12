@@ -135,8 +135,9 @@ internal sealed class TrayPeekWindow : Window
             var weekly = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Weekly, now);
             var shortWindow = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Short, now);
             var declared = account is not null && state.ManualCodexReset?.Applies(account, ResetKind.Weekly, now) == true;
-            var nextReset = account is null ? null : QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now);
-            var shortReset = account is null ? null : QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now);
+            // A declared reset restarts the windows: accounts without a new reading show the projected, estimated date.
+            var (nextReset, weeklyProjected) = account is null ? (null, false) : QuotaPresentation.ShownResetsAt(state, account, ResetKind.Weekly, now);
+            var (shortReset, shortProjected) = account is null ? (null, false) : QuotaPresentation.ShownResetsAt(state, account, ResetKind.Short, now);
             var shortDeclared = account is not null && state.ManualCodexReset?.Applies(account, ResetKind.Short, now) == true;
             _name.Text = account is null ? Loc.T("En attente d’un compte") : PrivacyText.ContextualAccount(account.Profile, state, preferences);
             _plan.Text = snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", null => "", var other => System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(other) };
@@ -149,12 +150,13 @@ internal sealed class TrayPeekWindow : Window
             _status.Text = declared ? Loc.T("Reset Codex déclaré") : account?.IsActive == true ? Loc.F("Compte actif dans {0}", account.Profile.ProviderName) : Loc.T("Compte affiché dans l’icône");
             _shortResetRow.Visibility = showShort ? Visibility.Visible : Visibility.Collapsed;
             _weeklyResetRow.Margin = showShort ? new Thickness(0, 5, 0, 0) : new Thickness();
-            _shortReset.Text = shortDeclared ? Loc.T("À reconfirmer") : Display.ResetTiming(shortReset);
-            _weeklyReset.Text = declared ? Loc.T("À reconfirmer") : Display.ResetTiming(nextReset,
-                snapshot?.Weekly is { IsResetEstimated: true } inferred && inferred.ResetsAt == nextReset);
+            _shortReset.Text = shortDeclared && !shortProjected ? Loc.T("À reconfirmer") : Display.ResetTiming(shortReset, shortProjected);
+            _weeklyReset.Text = declared && !weeklyProjected ? Loc.T("À reconfirmer") : Display.ResetTiming(nextReset,
+                weeklyProjected || snapshot?.Weekly is { IsResetEstimated: true } inferred && inferred.ResetsAt == nextReset);
             var declaredHint = state.ManualCodexReset is { } manual ? Loc.F("Reset Codex déclaré le {0} · {1}", Display.Exact(manual.At), Display.Zone(manual.At)) : "";
-            _shortResetRow.ToolTip = shortDeclared ? declaredHint : Display.Exact(shortReset) + " · " + Display.Zone(shortReset);
-            _weeklyResetRow.ToolTip = declared ? declaredHint : snapshot?.Weekly is { IsResetEstimated: true } estimate && estimate.ResetsAt == nextReset
+            string ProjectedHint(DateTimeOffset? at) => declaredHint + (at is { } projected ? "\n" + Loc.F("Prochain reset estimé : {0} · {1}", Display.Exact(projected), Display.Zone(projected)) : "");
+            _shortResetRow.ToolTip = shortDeclared ? ProjectedHint(shortProjected ? shortReset : null) : Display.Exact(shortReset) + " · " + Display.Zone(shortReset);
+            _weeklyResetRow.ToolTip = declared ? ProjectedHint(weeklyProjected ? nextReset : null) : snapshot?.Weekly is { IsResetEstimated: true } estimate && estimate.ResetsAt == nextReset
                 ? Display.EstimatedReset(estimate) : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
             _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
             _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };

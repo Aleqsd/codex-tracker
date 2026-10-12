@@ -7,6 +7,10 @@ public static class ResetCalendar
 {
     public static DateOnly Monday(DateOnly date) => date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
 
+    /// <summary>Calendar days from <paramref name="now"/> to <paramref name="at"/> in the zone: 0 today, 1 tomorrow, -1 yesterday.</summary>
+    public static int DaysFrom(DateTimeOffset at, DateTimeOffset now, TimeZoneInfo zone) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(at, zone).DateTime).DayNumber - DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).DateTime).DayNumber;
+
     public static IReadOnlyList<ResetCalendarDay> Week(IEnumerable<ResetScheduleEntry> entries, DateOnly date, TimeZoneInfo zone)
     {
         var monday = Monday(date);

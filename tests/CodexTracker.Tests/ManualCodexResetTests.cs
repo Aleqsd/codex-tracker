@@ -40,12 +40,46 @@ public sealed class ManualCodexResetTests
         var state = new TrackerState([old, newer], null) { ManualCodexReset = new(Now.AddMinutes(-30), Now) };
         Assert.Equal(20, QuotaPresentation.Remaining(state, newer, ResetKind.Weekly, Now));
         var schedule = ResetSchedule.Entries(state, old.Profile.Id, Now);
-        Assert.All(schedule.Where(e => e.Kind != ResetKind.Reserve), e => Assert.Null(e.At));
+        // The old deadlines disappear; only the estimate projected from the declaration is listed.
+        var projected = Now.AddMinutes(-30).AddDays(7);
+        var weekly = schedule.Single(e => e.Kind == ResetKind.Weekly);
+        Assert.Equal(projected, weekly.At); Assert.True(weekly.IsProjected);
+        Assert.Null(schedule.Single(e => e.Kind == ResetKind.Short).At);
         Assert.NotNull(schedule.Single(e => e.Kind == ResetKind.Reserve && e.CreditId == "credit").At);
+        Assert.All(ResetSchedule.Entries(state, newer.Profile.Id, Now), e => Assert.False(e.IsProjected));
         var export = CalendarExport.Entries(state, a => a.Email, Now);
         Assert.Equal(1, export.Count(e => e.Uid.StartsWith(CalendarExport.Identity(old.Profile.Id, "credit", "credit", Now.AddDays(1)))));
+        Assert.DoesNotContain(export, e => e.StartsAt == projected);
         var rules = new[] { new ReminderRule(ResetKind.Weekly, true, [10080], [ReminderChannel.Windows]) };
         Assert.DoesNotContain(ReminderPlanner.Due(state, rules, Now), r => r.AccountId == old.Profile.Id);
+    }
+
+    [Fact]
+    public void DeclarationProjectsAnEstimatedRestartOnlyForWindowsTheAccountHas()
+    {
+        var pro = Account(); var plus = Account() with { Snapshot = Account().Snapshot! with { PlanType = "plus" } };
+        var declared = Now.AddMinutes(-30); var reset = new ManualCodexReset(declared, Now);
+        var state = new TrackerState([pro, plus, Account(AccountProvider.ClaudeCode)], null) { ManualCodexReset = reset };
+        Assert.Equal(Shown(declared.AddDays(7), true), QuotaPresentation.ShownResetsAt(state, pro, ResetKind.Weekly, Now));
+        Assert.Equal(Shown(null, false), QuotaPresentation.ShownResetsAt(state, pro, ResetKind.Short, Now));
+        Assert.Equal(Shown(declared.AddHours(5), true), QuotaPresentation.ShownResetsAt(state, plus, ResetKind.Short, Now));
+        Assert.Equal(Shown(Now.AddDays(2), false), QuotaPresentation.ShownResetsAt(state, state.Accounts[2], ResetKind.Weekly, Now));
+        Assert.Null(reset.ProjectedReset(plus, ResetKind.Short, declared.AddHours(5)));
+        Assert.Null(reset.ProjectedReset(plus, ResetKind.Reserve, Now));
+        // Once the declared week is over, the measured (old) date is back, never a repeated projection.
+        Assert.Equal(Shown(Now.AddDays(2), false), QuotaPresentation.ShownResetsAt(state, pro, ResetKind.Weekly, declared.AddDays(7)));
+    }
+    private static (DateTimeOffset? At, bool Projected) Shown(DateTimeOffset? at, bool projected) => (at, projected);
+
+    [Fact]
+    public void AnAlertCannotBeScheduledOnAProjectedReset()
+    {
+        using var directory = new TestDirectory(); var preferences = new PreferencesStore(dataDirectory: directory.Root);
+        var commands = new ApplicationCommands(preferences, new NotificationSecretStore(directory.Root));
+        var account = Account(); var state = new TrackerState([account], null) { ManualCodexReset = new(Now.AddMinutes(-30), Now) };
+        var revision = commands.Revision;
+        Assert.Throws<ArgumentException>(() => commands.SetResetAlert(state, account.Profile.Id, ResetKind.Weekly, Now.AddMinutes(-30).AddDays(7), true, Now, revision));
+        Assert.Equal(revision, commands.Revision); Assert.Empty(preferences.Current.ResetAlerts);
     }
 
     [Fact]

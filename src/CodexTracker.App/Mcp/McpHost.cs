@@ -48,7 +48,7 @@ internal sealed class TrackerTools(LocalClient client)
     public Task<JsonElement> Status(CancellationToken token) => Call("status", new { }, token);
     [McpServerTool(Name = "list_accounts", ReadOnly = true), Description("Comptes et quotas observés, type d’abonnement, dates, réserves et ancienneté. Seul le compte actif est actualisé.")]
     public Task<JsonElement> Accounts(CancellationToken token) => Call("accounts", new { }, token);
-    [McpServerTool(Name = "list_resets", ReadOnly = true), Description("Échéances par compte et type, dates connues ou nulles, date d’observation et données anciennes.")]
+    [McpServerTool(Name = "list_resets", ReadOnly = true), Description("Échéances par compte et type, dates connues, estimées après un reset Codex déclaré (isProjected) ou nulles, date d’observation et données anciennes.")]
     public Task<JsonElement> Resets(CancellationToken token) => Call("resets", new { }, token);
     [McpServerTool(Name = "get_notification_history", ReadOnly = true), Description("Les 200 derniers rappels du journal local. Accepté ne signifie pas livré.")]
     public Task<JsonElement> History(CancellationToken token) => Call("history", new { }, token);

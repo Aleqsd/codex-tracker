@@ -49,7 +49,8 @@ public static class ReminderPlanner
         var result = new List<ReminderOccurrence>();
         foreach (var entry in ResetSchedule.Entries(state, now: now))
         {
-            if (entry.At is not { } at || at <= now || entry.Account.Snapshot is not { } snapshot || snapshot.FetchedAt > now) continue;
+            // A date projected from a declaration is an estimate: reminders wait for a measured one.
+            if (entry.IsProjected || entry.At is not { } at || at <= now || entry.Account.Snapshot is not { } snapshot || snapshot.FetchedAt > now) continue;
             if (GlobalResetAnnouncement.For(entry.Account, entry.Kind, state.GlobalResetFeed, now) is not null) continue;
             if (entry.Kind == ResetKind.Reserve && (snapshot.AvailableResetCredits is not > 0 || string.IsNullOrWhiteSpace(entry.CreditId))) continue;
             foreach (var rule in Normalize(rules).Where(r => r.Enabled && r.Kind == entry.Kind && (r.AccountIds is null || r.AccountIds.Contains(entry.Account.Profile.Id))))

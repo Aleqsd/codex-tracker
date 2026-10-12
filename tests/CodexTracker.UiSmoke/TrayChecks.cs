@@ -57,8 +57,12 @@ internal static class TrayChecks
                         "Hover preview distinguishes weekly and five-hour resets and hides unsupported Codex Pro short resets");
                     var claude = both.State.Accounts.Single(a => a.IsActiveInClaudeCode);
                     var shortReset = Tree(peek).OfType<Grid>().Single(g => g.Tag?.ToString() == "ShortResetMetric" && g.IsVisible);
-                    Check(Tree(shortReset).OfType<TextBlock>().Any(t => t.Text.StartsWith(claude.Snapshot!.Short!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm") + " · ")),
+                    Check(Tree(shortReset).OfType<TextBlock>().Any(t => t.Text.StartsWith(Display.ResetHour(claude.Snapshot!.Short!.ResetsAt) + " · ")),
                         "Hover preview displays the Claude five-hour reset hour with its countdown");
+                    var weeklyReset = Tree(peek).OfType<Grid>().Where(g => g.Tag?.ToString() == "WeeklyResetMetric" && g.IsVisible).ToArray();
+                    Check(weeklyReset.Any(g => Tree(g).OfType<TextBlock>().Any(t => t.Text == Display.ResetTiming(claude.Snapshot!.Weekly!.ResetsAt))) &&
+                        Display.ResetHour(claude.Snapshot!.Weekly!.ResetsAt) != claude.Snapshot.Weekly.ResetsAt!.Value.ToLocalTime().ToString("HH:mm"),
+                        "Hover preview names the day of a weekly reset several days away");
                     Check(WindowsLifecycle.Bounds(new WindowInteropHelper(peek).Handle) is { } bounds && bounds.Bottom <= area.Bottom && bounds.Y >= area.Top, "Two-account hover preview stays within the work area");
                     peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-both-{mode}-96.png"), 96);
                     peek.Hide();

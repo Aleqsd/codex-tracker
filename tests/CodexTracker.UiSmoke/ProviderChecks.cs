@@ -46,12 +46,21 @@ internal static class ProviderChecks
                 var weekReset = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "WeeklyResetMetric" && ReferenceEquals(g.DataContext, claude));
                 var claudeSnapshot = service.State.Accounts.Single(a => a.IsActiveInClaudeCode).Snapshot!;
                 Check(Tree(shortReset).OfType<TextBlock>().Any(t => t.Text == "Reset 5 h") &&
-                    Tree(shortReset).OfType<TextBlock>().Any(t => t.Text == claudeSnapshot.Short!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm")) &&
+                    Tree(shortReset).OfType<TextBlock>().Any(t => t.Text == Display.ResetHour(claudeSnapshot.Short!.ResetsAt)) &&
                     Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == "Reset semaine") &&
-                    Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == claudeSnapshot.Weekly!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm")),
+                    Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == Display.ResetHour(claudeSnapshot.Weekly!.ResetsAt)),
                     "Active Claude panel labels both reset types with their own local hour");
+                // The demo weekly reset is four days away: its hour must not read as today's.
+                var weeklyHour = claudeSnapshot.Weekly!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm");
+                Check(Tree(weekReset).OfType<TextBlock>().Any(t => t.Text.Length > weeklyHour.Length + 1 && t.Text.EndsWith(" " + weeklyHour)) &&
+                    !Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == weeklyHour),
+                    "A weekly reset on another day names its day next to the hour");
                 Check(Tree(shortReset).Concat(Tree(weekReset)).OfType<TextBlock>().All(TextFits),
                     $"Reset hours, labels and countdowns fit {theme}, compact={compact}");
+                var codexWeek = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "WeeklyResetMetric" && ReferenceEquals(g.DataContext, codex));
+                Check(Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetHour && t.Text.StartsWith("≈ ")) &&
+                    Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetCompact && t.Text.StartsWith("≈ ")) && Tree(codexWeek).OfType<TextBlock>().All(TextFits),
+                    $"A declared Codex reset shows the estimated next weekly reset in {theme}, compact={compact}");
                 var list = (ItemsControl)window.FindName("AccountsList");
                 var scroll = Tree(window).OfType<ScrollViewer>().First(s => s.Content is StackPanel p && Tree(p).Contains(list));
                 Check(scroll.ViewportHeight > 0 && (!compact || scroll.ScrollableHeight > 0), "Compact dashboard keeps both providers and accounts reachable by scrolling");
@@ -113,7 +122,24 @@ internal static class ProviderChecks
             Check(announcement.Header?.ToString() == "Détail des comptes (5)", "Codex public reset notices exclude Claude accounts");
             announcement.IsExpanded = true; window.UpdateLayout();
             Check(Tree(announcement).OfType<TextBlock>().Any(t => t.Text.Contains("reset manuel prioritaire")), "A manual declaration takes priority over public reset estimates");
-            resets.Update(service.State); window.OpenPage("Comptes");
+            resets.Update(service.State); window.UpdateLayout();
+            var declaredAt = preferences.Current.ManualCodexReset!.At;
+            var projectedRows = Tree(resets).OfType<Expander>().Where(e => e.Tag is ResetScheduleEntry { IsProjected: true }).ToArray();
+            Check(projectedRows.Length > 0 && projectedRows.All(e => e.Tag is ResetScheduleEntry entry &&
+                    entry.At == declaredAt.AddMinutes(entry.Kind == ResetKind.Weekly ? 10080 : 300) && Tree(e).OfType<TextBlock>().Any(t => t.Text.EndsWith(" · estimé"))),
+                "Codex accounts without a new reading list a reset estimated from the declared time");
+            Check(projectedRows.All(e => Tree(e).OfType<Button>().Where(b => b.Tag?.ToString()?.StartsWith("ResetAlert:") == true).All(b => !b.IsEnabled)),
+                "Estimated resets cannot be given a notification until a new reading");
+            var notice = Tree(resets).OfType<Border>().Single(b => b.Name == "DeclaredResetNotice");
+            var dismissNotice = Tree(notice).OfType<Button>().Single();
+            dismissNotice.Focus();
+            Check(dismissNotice.IsKeyboardFocused || FocusManager.GetFocusedElement(window) == dismissNotice, "The declared reset notice in Resets can be dismissed with the keyboard");
+            dismissNotice.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(50); window.UpdateLayout();
+            Check(!Tree(resets).OfType<Border>().Any(b => b.Name == "DeclaredResetNotice") && !dashboard.ShowManualResetBanner &&
+                preferences.Current.DismissedManualCodexReset == preferences.Current.ManualCodexReset!.DeclaredAt &&
+                Tree(resets).OfType<Expander>().Any(e => e.Tag is ResetScheduleEntry { IsProjected: true }),
+                "Dismissing it hides both notices while the declaration and its estimates stay applied");
+            window.OpenPage("Comptes");
             window.UpdateLayout(); await Task.Delay(400); window.UpdateLayout();
             var declareLinks = Tree(window).OfType<Button>().Where(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Déclarer un reset général Codex").ToArray();
             Check(declareLinks.Count(b => b.IsVisible) == 1 && !Tree(window).OfType<Button>().Any(b => Equals(b.Content, "Reset Codex…")),

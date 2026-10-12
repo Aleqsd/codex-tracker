@@ -3,7 +3,7 @@ namespace CodexTracker.Core;
 public enum ResetKind { Weekly, Short, Reserve }
 
 public sealed record ResetScheduleEntry(AccountState Account, ResetKind Kind, DateTimeOffset? At,
-    DateTimeOffset? GrantedAt = null, string? CreditTitle = null, bool IsUndetailedReserve = false, string? CreditId = null);
+    DateTimeOffset? GrantedAt = null, string? CreditTitle = null, bool IsUndetailedReserve = false, string? CreditId = null, bool IsProjected = false);
 
 public static class ResetSchedule
 {
@@ -13,8 +13,11 @@ public static class ResetSchedule
         foreach (var account in state.Accounts.Where(a => accountId is null || a.Profile.Id == accountId))
         {
             var snapshot = account.Snapshot;
-            entries.Add(new(account, ResetKind.Weekly, QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now ?? DateTimeOffset.UtcNow)));
-            entries.Add(new(account, ResetKind.Short, QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now ?? DateTimeOffset.UtcNow)));
+            foreach (var kind in new[] { ResetKind.Weekly, ResetKind.Short })
+            {
+                var (at, projected) = QuotaPresentation.ShownResetsAt(state, account, kind, now ?? DateTimeOffset.UtcNow);
+                entries.Add(new(account, kind, at, IsProjected: projected));
+            }
             var credits = snapshot?.ResetCredits;
             if (credits is { Count: > 0 })
                 entries.AddRange(credits.Select(c => new ResetScheduleEntry(account, ResetKind.Reserve, c.ExpiresAt, c.GrantedAt, c.Title, CreditId: c.Id)));
