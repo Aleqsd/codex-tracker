@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using Color = System.Drawing.Color;
@@ -34,7 +35,7 @@ internal sealed class TrayController : IDisposable
     public TrayController(MainWindow window, ITrackerService service, PreferencesStore preferences, Func<Task> exit)
     {
         _window = window; _service = service; _exit = exit; _preferences = preferences;
-        _peek = new TrayPeekWindow(_window.ShowPanel);
+        _peek = new TrayPeekWindow(_window.ShowPanel, SelectTrayQuota);
         _tray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
         _desktop = new(ShowDesktop, () => !_disposed && !_suspended && _tray.Visible);
         if (service is not DemoTrackerService)
@@ -106,40 +107,47 @@ internal sealed class TrayController : IDisposable
     {
         if (_disposed) return;
         var state = _service.State with { ManualCodexReset = _preferences.Current.ManualCodexReset };
-        var account = state.ActiveAccount;
-        double? remaining = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Weekly, PreviewClock.UtcNow);
+        var (account, window) = TrayQuota.Resolve(state, _preferences.Current);
+        double? remaining = account is null ? null : QuotaPresentation.Remaining(state, account, window, PreviewClock.UtcNow);
         string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
         var dark = _window.Theme.IsDark;
         var color = remaining is null ? Color.FromArgb(140, 140, 140) : remaining > 20 ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(40, 40, 40)) : remaining >= 10 ? (dark ? Color.FromArgb(199, 170, 117) : Color.FromArgb(147, 103, 30)) : (dark ? Color.FromArgb(207, 142, 142) : Color.FromArgb(178, 68, 68));
         int iconSize = WindowsLifecycle.TrayIconPixelSize();
-        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}";
+        var tool = account?.Profile.Provider;
+        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}/{tool}";
         if (_iconKey != key)
         {
-            var old = _icon; _icon = TrayIconRenderer.Render(number, color, dark, iconSize); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
+            var old = _icon; _icon = TrayIconRenderer.Render(number, color, dark, iconSize, tool); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
         }
         string text;
         if (account is null) text = Loc.T("Codex Tracker · en attente d’un compte");
         else if (state.ActiveAccounts.Count > 1)
-            // Codex and Claude Code both in use: one short line each, within the 127-character limit.
-            text = string.Join("\n", state.ActiveAccounts.Select(active =>
+            // Codex and Claude Code both in use: the icon's quota first, one short line each, within the 127-character limit.
+            text = string.Join("\n", state.ActiveAccounts.OrderBy(active => active != account).Select(active =>
             {
-                var left = QuotaPresentation.Remaining(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
-                var line = active.Profile.ProviderName + " · " + (left is null ? Loc.T("indisponible") : Loc.F("{0}% restant", (int)Math.Floor(Math.Clamp(left.Value, 0, 100))));
-                var reset = QuotaPresentation.ResetsAt(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+                var kind = active == account ? window : ResetKind.Weekly;
+                var left = QuotaPresentation.Remaining(state, active, kind, PreviewClock.UtcNow);
+                var name = kind == ResetKind.Short ? Loc.F("{0} · 5 h", active.Profile.ProviderName) : active.Profile.ProviderName;
+                var line = name + " · " + (left is null ? Loc.T("indisponible") : Loc.F("{0}% restant", (int)Math.Floor(Math.Clamp(left.Value, 0, 100))));
+                var reset = QuotaPresentation.ResetsAt(state, active, kind, PreviewClock.UtcNow);
                 return reset is null ? line : reset <= PreviewClock.UtcNow ? Loc.F("{0} · reset attendu", line) : Loc.F("{0} · reset dans {1}", line, Display.Remaining(reset));
             }));
         else
         {
-            var weekly = remaining is null ? Loc.T("indisponible") : Loc.F("{0}% restant", number);
-            if (state.ManualCodexReset?.Applies(account, ResetKind.Weekly, PreviewClock.UtcNow) == true) weekly = Loc.F("{0} · déclaré", weekly);
-            if (!account.IsActive) weekly = Loc.F("{0} · dernier relevé", weekly);
-            else if (account.IsStale) weekly = Loc.F("{0} · données anciennes", weekly);
-            text = Loc.F("{0} · {1}\nSemaine : {2}\nReset : {3}", account.Profile.ProviderName, PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current),
-                weekly, Display.Exact(QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, PreviewClock.UtcNow)));
+            var quota = remaining is null ? Loc.T("indisponible") : Loc.F("{0}% restant", number);
+            if (state.ManualCodexReset?.Applies(account, window, PreviewClock.UtcNow) == true) quota = Loc.F("{0} · déclaré", quota);
+            if (!account.IsActive) quota = Loc.F("{0} · dernier relevé", quota);
+            else if (account.IsStale) quota = Loc.F("{0} · données anciennes", quota);
+            var name = PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current);
+            var reset = Display.Exact(QuotaPresentation.ResetsAt(state, account, window, PreviewClock.UtcNow));
+            text = window == ResetKind.Short
+                ? Loc.F("{0} · {1}\n5 heures : {2}\nReset 5 h : {3}", account.Profile.ProviderName, name, quota, reset)
+                : Loc.F("{0} · {1}\nSemaine : {2}\nReset : {3}", account.Profile.ProviderName, name, quota, reset);
         }
         _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
         _peek.Update(state, _preferences.Current);
-        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.Profile.Email));
+        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + account?.Profile.Id + ":" + window + "/" +
+            string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.HasShortWindow + ":" + a.Profile.Email));
         if (menuKey == _menuKey || _tray.ContextMenuStrip?.Visible == true) return;
         _menuKey = menuKey;
         var background = dark ? Color.FromArgb(23, 24, 28) : Color.FromArgb(255, 255, 255);
@@ -149,9 +157,34 @@ internal sealed class TrayController : IDisposable
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
         menu.Items.Add(Loc.T("Ouvrir le suivi"), null, (_, _) => _window.ShowPanel());
         menu.Items.Add(Loc.T("Actualiser"), null, async (_, _) => await _window.RefreshAsync());
+        if (state.ActiveAccounts.Count > 0)
+        {
+            // Same choice as a click in the hover preview, reachable from the keyboard.
+            var choice = new Forms.ToolStripMenuItem(Loc.T("Quota dans l’icône"));
+            var choices = (Forms.ToolStripDropDownMenu)choice.DropDown;
+            choices.Font = _menuFont.Font; choices.BackColor = background; choices.ForeColor = foreground;
+            choices.ShowImageMargin = false; choices.ShowCheckMargin = true; choices.Renderer = menu.Renderer;
+            foreach (var active in state.ActiveAccounts)
+            foreach (var kind in active.HasShortWindow ? new[] { ResetKind.Weekly, ResetKind.Short } : [ResetKind.Weekly])
+            {
+                var provider = active.Profile.Provider;
+                var label = kind == ResetKind.Short ? Loc.F("{0} · 5 heures", active.Profile.ProviderName) : Loc.F("{0} · semaine", active.Profile.ProviderName);
+                var item = new Forms.ToolStripMenuItem(label) { Checked = active == account && kind == window };
+                item.Click += (_, _) => SelectTrayQuota(provider, kind);
+                choices.Items.Add(item);
+            }
+            menu.Items.Add(choice);
+        }
         menu.Items.Add(Loc.T("Réglages"), null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
         menu.Items.Add(Loc.T("Quitter"), null, async (_, _) => await _exit());
         var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = menu; oldMenu?.Dispose();
+    }
+    private void SelectTrayQuota(AccountProvider provider, ResetKind window)
+    {
+        if (_disposed) return;
+        try { _window.Commands.SetTrayQuota(provider, window); }
+        catch (Exception error) { HidePeek(); _window.ShowPanel(); _window.ShowMessage(Loc.T("Action impossible"), error.Message); }
+        Update();
     }
     private async Task SafeAsync(Func<Task> operation)
     {
@@ -268,6 +301,17 @@ internal sealed class TrayController : IDisposable
     private sealed class DarkMenuRenderer : Forms.ToolStripProfessionalRenderer
     {
         public DarkMenuRenderer(bool dark) : base(new DarkColors(dark)) { }
+        // The stock check glyph is black: draw it in the menu's text color on both themes.
+        protected override void OnRenderItemCheck(Forms.ToolStripItemImageRenderEventArgs e)
+        {
+            var box = e.ImageRectangle;
+            float size = Math.Min(box.Width, box.Height), left = box.Left + (box.Width - size) / 2, top = box.Top + (box.Height - size) / 2;
+            using var pen = new System.Drawing.Pen(e.Item.ForeColor, Math.Max(1.5f, size / 9)) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            var smoothing = e.Graphics.SmoothingMode;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.DrawLines(pen, new PointF[] { new(left + size * .22f, top + size * .52f), new(left + size * .42f, top + size * .72f), new(left + size * .78f, top + size * .32f) });
+            e.Graphics.SmoothingMode = smoothing;
+        }
     }
     private sealed class DarkColors(bool dark) : Forms.ProfessionalColorTable
     {

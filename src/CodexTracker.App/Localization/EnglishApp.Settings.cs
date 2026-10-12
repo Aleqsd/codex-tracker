@@ -16,7 +16,7 @@ internal static partial class EnglishApp
         ("Appliquée au prochain démarrage du tracker.", "Applied the next time the tracker starts."),
         ("Redémarrer maintenant", "Restart now"),
         ("Aperçu au survol de l’icône", "Preview on icon hover"),
-        ("Le quota et le prochain reset, sans ouvrir le panneau.", "Quota and next reset, without opening the panel."),
+        ("Le quota et le prochain reset, sans ouvrir le panneau. Cliquez sur un quota pour l’afficher dans l’icône.", "Quota and next reset, without opening the panel. Click a quota to show it in the icon."),
         ("Actualisation", "Refresh"),
         ("Chaque minute", "Every minute"),
         ("Toutes les 2 min", "Every 2 min"),

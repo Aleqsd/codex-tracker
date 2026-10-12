@@ -32,6 +32,9 @@ internal sealed record TrackerPreferences
     /// <summary>Identities of the dashboard notices dismissed by the user; a new event shows its notice again.</summary>
     public string[] DismissedNotices { get; init; } = [];
     public bool HoverPreview { get; init; } = true;
+    /// <summary>Quota drawn in the notification icon: this tool's active account, else the first active account.</summary>
+    public AccountProvider TrayProvider { get; init; } = AccountProvider.Codex;
+    public ResetKind TrayWindow { get; init; } = ResetKind.Weekly;
     public int RefreshMinutes { get; init; } = 2;
     public bool AdaptiveRefresh { get; init; }
     public bool ExpiryNotifications { get; init; } = true;
@@ -110,6 +113,8 @@ internal sealed class PreferencesStore
         if (!Enum.IsDefined(value.ThemeMode)) value = value with { ThemeMode = ThemeMode.System };
         if (!Enum.IsDefined(value.SortMode)) value = value with { SortMode = SortMode.Active };
         if (!Enum.IsDefined(value.Language)) value = value with { Language = AppLanguage.System };
+        if (!Enum.IsDefined(value.TrayProvider)) value = value with { TrayProvider = AccountProvider.Codex };
+        if (value.TrayWindow is not (ResetKind.Weekly or ResetKind.Short)) value = value with { TrayWindow = ResetKind.Weekly };
         return Normalize(value);
     }
 

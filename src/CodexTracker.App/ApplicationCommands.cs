@@ -18,9 +18,16 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
         ValidateRules(next.ReminderRules!); ValidatePhone(next.PhonePolicy);
         if (next.ResetAlerts is null || next.ResetAlerts.Length > ResetAlertPlanner.MaximumAlerts || next.ResetAlerts.Any(a => !ResetAlertPlanner.Valid(a)))
             throw new ArgumentException(Loc.T("Notifications de reset invalides."));
-        if (!Enum.IsDefined(next.ThemeMode) || !Enum.IsDefined(next.SortMode) || next.RefreshMinutes is not (1 or 2 or 5))
+        if (!Enum.IsDefined(next.ThemeMode) || !Enum.IsDefined(next.SortMode) || next.RefreshMinutes is not (1 or 2 or 5) ||
+            !Enum.IsDefined(next.TrayProvider) || next.TrayWindow is not (ResetKind.Weekly or ResetKind.Short))
             throw new ArgumentException(Loc.T("Réglages invalides."));
         preferences.Update(_ => next);
+    }
+    /// <summary>The quota drawn in the notification icon; choosing the current one again writes nothing.</summary>
+    internal void SetTrayQuota(AccountProvider provider, ResetKind window)
+    {
+        if (preferences.Current.TrayProvider == provider && preferences.Current.TrayWindow == window) return;
+        SavePreferences(p => p with { TrayProvider = provider, TrayWindow = window });
     }
     internal void SaveSecrets(NotificationSecrets value, string? expected = null)
     {

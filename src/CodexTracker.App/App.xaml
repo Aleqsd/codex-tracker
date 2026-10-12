@@ -34,6 +34,16 @@
   <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource QuietButton}"><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="0"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Trigger><MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsPressed" Value="False"/></MultiTrigger.Conditions><Setter Property="motion:UiMotion.Scale" Value="1.08"/></MultiTrigger></Style.Triggers></Style>
   <Style x:Key="ChromeButton" TargetType="Button" BasedOn="{StaticResource IconButton}"><Setter Property="Width" Value="38"/><Setter Property="Height" Value="32"/></Style>
   <Style x:Key="ChromeCloseButton" TargetType="Button" BasedOn="{StaticResource ChromeButton}"><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource DangerBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryButtonTextBrush}"/></Trigger></Style.Triggers></Style>
+  <!-- Quota tile of the hover preview: checked when it is the one drawn in the notification icon. -->
+  <Style x:Key="QuotaChoice" TargetType="RadioButton">
+   <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="4,8,4,7"/><Setter Property="Margin" Value="3,0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+   <Style.Triggers>
+    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource RaisedBrush}"/></Trigger>
+    <Trigger Property="IsChecked" Value="True"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
+    <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow"/></Trigger>
+   </Style.Triggers>
+  </Style>
 
   <Style TargetType="TextBox">
    <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/><Setter Property="Padding" Value="10,8"/><Setter Property="FontSize" Value="13"/><Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}"/>

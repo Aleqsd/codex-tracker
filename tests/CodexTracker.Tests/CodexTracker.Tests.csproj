@@ -28,6 +28,7 @@
     <Compile Include="../../src/CodexTracker.App/WindowsNotificationDelivery.cs" Link="App/WindowsNotificationDelivery.cs" />
     <Compile Include="../../src/CodexTracker.App/WindowPlacement.cs" Link="App/WindowPlacement.cs" />
     <Compile Include="../../src/CodexTracker.App/TrayIconRenderer.cs" Link="App/TrayIconRenderer.cs" />
+    <Compile Include="../../src/CodexTracker.App/TrayQuota.cs" Link="App/TrayQuota.cs" />
     <Compile Include="../../src/CodexTracker.App/AppTypography.cs" Link="App/AppTypography.cs" />
     <Compile Include="../../src/CodexTracker.App/AccountLink.cs" Link="App/AccountLink.cs" />
     <Compile Include="../../src/CodexTracker.App/ProfileTransfer.cs" Link="App/ProfileTransfer.cs" />

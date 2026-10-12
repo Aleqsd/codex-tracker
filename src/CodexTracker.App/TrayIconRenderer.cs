@@ -16,15 +16,19 @@ namespace CodexTracker.App;
 
 internal static class TrayIconRenderer
 {
-    internal static Icon Render(string number, Color color, bool dark, int pixelSize)
+    /// <summary>Official Claude orange, kept for its spark as for the provider icons.</summary>
+    internal static readonly Color ClaudeOrange = Color.FromArgb(217, 119, 87);
+
+    internal static Icon Render(string number, Color color, bool dark, int pixelSize, AccountProvider? provider = null)
     {
-        using var bitmap = RenderBitmap(number, color, dark, pixelSize);
+        using var bitmap = RenderBitmap(number, color, dark, pixelSize, provider);
         IntPtr handle = bitmap.GetHicon();
         try { using var unmanaged = Icon.FromHandle(handle); return (Icon)unmanaged.Clone(); }
         finally { DestroyIcon(handle); }
     }
 
-    internal static Bitmap RenderBitmap(string number, Color color, bool dark, int pixelSize)
+    /// <param name="provider">Tool whose quota is drawn: its sign starts the gauge (› Codex, orange spark Claude Code).</param>
+    internal static Bitmap RenderBitmap(string number, Color color, bool dark, int pixelSize, AccountProvider? provider = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(pixelSize, 16);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(pixelSize, 256);
@@ -38,26 +42,77 @@ internal static class TrayIconRenderer
         // Render the bundled Roboto Medium directly at the shell's physical DPI.
         // Grayscale alpha survives HICON conversion without RGB fringes or resizing.
         var glyph = FitGlyph(label, foreground, pixelSize, out int stride, out var bounds);
+        int inset = Math.Max(1, (int)Math.Round(pixelSize / 10d));
+        int barX = inset, barWidth = pixelSize - 2 * inset;
+        int x = (pixelSize - bounds.Width) / 2;
+        int y = ((known ? barY - 2 : pixelSize) - bounds.Height) / 2;
+        // The sign takes the bottom-left corner, the gauge is centred on it and follows it.
+        // The digits keep their size and only rise when they would touch it (28 px and above 32 px).
+        var mark = provider is { } tool ? ProviderMark(tool, pixelSize, barHeight) : null;
+        int markTop = 0;
+        if (mark is not null)
+        {
+            int markHeight = mark.GetLength(0), markWidth = mark.GetLength(1);
+            markTop = pixelSize - markHeight;
+            barY = markTop + (markHeight - barHeight) / 2;
+            barX = inset + markWidth + Math.Max(1, (int)Math.Round(pixelSize / 16d));
+            barWidth = pixelSize - inset - barX;
+            y = Math.Min(y, markTop - 1 - bounds.Height);
+        }
         var bitmap = new Bitmap(pixelSize, pixelSize, PixelFormat.Format32bppArgb);
         try
         {
-            int x = (pixelSize - bounds.Width) / 2;
-            int y = ((known ? barY - 2 : pixelSize) - bounds.Height) / 2;
-            CopyGlyph(bitmap, glyph, stride, bounds, x, y);
+            var data = bitmap.LockBits(new(0, 0, pixelSize, pixelSize), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                var pixels = new byte[data.Stride * pixelSize];
+                CopyGlyph(pixels, data.Stride, glyph, stride, bounds, x, y);
+                if (mark is not null) CopyMark(pixels, data.Stride, mark, provider == AccountProvider.ClaudeCode ? ClaudeOrange : foreground, inset, markTop);
+                Marshal.Copy(pixels, 0, data.Scan0, pixels.Length);
+            }
+            finally { bitmap.UnlockBits(data); }
             using var graphics = Graphics.FromImage(bitmap);
             if (known)
             {
-                int inset = Math.Max(1, (int)Math.Round(pixelSize / 10d));
-                int width = pixelSize - 2 * inset;
                 using var track = new SolidBrush(dark ? Color.FromArgb(95, 95, 95) : Color.FromArgb(155, 155, 155));
                 using var progress = new SolidBrush(color);
-                graphics.FillRectangle(track, inset, barY, width, barHeight);
-                int filled = (int)Math.Round(width * remaining / 100d);
-                if (filled > 0) graphics.FillRectangle(progress, inset, barY, filled, barHeight);
+                graphics.FillRectangle(track, barX, barY, barWidth, barHeight);
+                int filled = (int)Math.Round(barWidth * remaining / 100d);
+                if (filled > 0) graphics.FillRectangle(progress, barX, barY, filled, barHeight);
             }
             return bitmap;
         }
         catch { bitmap.Dispose(); throw; }
+    }
+
+    /// <summary>Pixel-aligned alpha of the tool's sign, with the gauge's stroke: › for Codex, an eight-ray spark for Claude Code.</summary>
+    internal static byte[,] ProviderMark(AccountProvider provider, int pixelSize, int stroke)
+    {
+        // Same parity as the stroke so that the gauge sits exactly on the sign's middle.
+        int size = Math.Max(3, (int)Math.Round(pixelSize * .22));
+        if ((size - stroke) % 2 != 0) size += pixelSize < 18 ? -1 : 1;
+        if (provider != AccountProvider.ClaudeCode)
+        {
+            var chevron = new byte[size, (size - 1) / 2 + stroke];
+            for (int row = 0; row < size; row++)
+            for (int k = 0; k < stroke; k++) chevron[row, Math.Min(row, size - 1 - row) + k] = 255;
+            return chevron;
+        }
+        var spark = new byte[size, size];
+        int from = (size - stroke) / 2;
+        for (int i = 0; i < size; i++)
+        for (int k = 0; k < stroke; k++) spark[i, from + k] = spark[from + k, i] = 255;
+        // Small sparks dim their diagonal tips: a full 3 × 3 square would read as a dot.
+        byte tip = size switch { 3 => 90, 5 => 170, _ => 255 };
+        for (int row = 0; row < size; row++)
+        for (int column = 0; column < size; column++)
+        {
+            int diagonal = Math.Min(Math.Abs(column - row), Math.Abs(column - (size - 1 - row)));
+            bool corner = (row == 0 || row == size - 1) && (column == 0 || column == size - 1);
+            byte alpha = diagonal == 0 ? (corner ? tip : (byte)255) : stroke > 1 && diagonal == 1 ? (byte)128 : (byte)0;
+            spark[row, column] = Math.Max(spark[row, column], alpha);
+        }
+        return spark;
     }
 
     private static byte[] FitGlyph(string label, Color color, int size, out int stride, out Rectangle bounds)
@@ -98,27 +153,31 @@ internal static class TrayIconRenderer
         return right < 0 ? Rectangle.Empty : Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
     }
 
-    private static void CopyGlyph(Bitmap bitmap, byte[] glyph, int stride, Rectangle bounds, int left, int top)
+    private static void CopyGlyph(byte[] pixels, int targetStride, byte[] glyph, int stride, Rectangle bounds, int left, int top)
     {
-        var data = bitmap.LockBits(new(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-        try
+        for (int y = 0; y < bounds.Height; y++)
+        for (int x = 0; x < bounds.Width; x++)
         {
-            var pixels = new byte[data.Stride * bitmap.Height];
-            for (int y = 0; y < bounds.Height; y++)
-            for (int x = 0; x < bounds.Width; x++)
-            {
-                int source = (y + bounds.Top) * stride + (x + bounds.Left) * 4;
-                int alpha = glyph[source + 3];
-                if (alpha == 0) continue;
-                int target = (y + top) * data.Stride + (x + left) * 4;
-                // WPF uses premultiplied BGRA; System.Drawing's ARGB needs straight alpha.
-                for (int channel = 0; channel < 3; channel++)
-                    pixels[target + channel] = (byte)Math.Clamp((glyph[source + channel] * 255 + alpha / 2) / alpha, 0, 255);
-                pixels[target + 3] = (byte)alpha;
-            }
-            Marshal.Copy(pixels, 0, data.Scan0, pixels.Length);
+            int source = (y + bounds.Top) * stride + (x + bounds.Left) * 4;
+            int alpha = glyph[source + 3];
+            if (alpha == 0) continue;
+            int target = (y + top) * targetStride + (x + left) * 4;
+            // WPF uses premultiplied BGRA; System.Drawing's ARGB needs straight alpha.
+            for (int channel = 0; channel < 3; channel++)
+                pixels[target + channel] = (byte)Math.Clamp((glyph[source + channel] * 255 + alpha / 2) / alpha, 0, 255);
+            pixels[target + 3] = (byte)alpha;
         }
-        finally { bitmap.UnlockBits(data); }
+    }
+
+    private static void CopyMark(byte[] pixels, int targetStride, byte[,] mark, Color color, int left, int top)
+    {
+        for (int y = 0; y < mark.GetLength(0); y++)
+        for (int x = 0; x < mark.GetLength(1); x++)
+        {
+            if (mark[y, x] == 0) continue;
+            int target = (y + top) * targetStride + (x + left) * 4;
+            pixels[target] = color.B; pixels[target + 1] = color.G; pixels[target + 2] = color.R; pixels[target + 3] = mark[y, x];
+        }
     }
 
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);

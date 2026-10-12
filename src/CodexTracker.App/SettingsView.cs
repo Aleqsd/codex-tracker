@@ -85,7 +85,7 @@ internal sealed class SettingsView : UserControl, IDisposable
             var pending = Loc.Resolve(chosen) == AppLanguage.English != Loc.IsEnglish;
             _languageHint.Visibility = _restart.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
         };
-        Toggle(Loc.T("Aperçu au survol de l’icône"), Loc.T("Le quota et le prochain reset, sans ouvrir le panneau."), p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
+        Toggle(Loc.T("Aperçu au survol de l’icône"), Loc.T("Le quota et le prochain reset, sans ouvrir le panneau. Cliquez sur un quota pour l’afficher dans l’icône."), p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
         Section(Loc.T("Actualisation"));
         _refreshSelector = Choice(Loc.T("Compte actif"), "DropdownRefreshIcon", [new(1, Loc.T("Chaque minute")), new(2, Loc.T("Toutes les 2 min")), new(5, Loc.T("Toutes les 5 min"))], v => Save(p => p with { RefreshMinutes = v }));
         Toggle(Loc.T("Adapter à mon activité"), Loc.T("Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate."), p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
