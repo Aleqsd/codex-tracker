@@ -27,6 +27,8 @@ internal sealed record TrackerPreferences
     public bool ForecastNotifications { get; init; } = true;
     public bool MonitorGlobalResets { get; init; } = true;
     public ManualCodexReset? ManualCodexReset { get; init; }
+    /// <summary>Declaration time of the reset whose dashboard notice was dismissed; a new declaration shows it again.</summary>
+    public DateTimeOffset? DismissedManualCodexReset { get; init; }
     public bool HoverPreview { get; init; } = true;
     public int RefreshMinutes { get; init; } = 2;
     public bool AdaptiveRefresh { get; init; }

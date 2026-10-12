@@ -61,7 +61,7 @@ Les derniers quotas du cache local de l’application Claude sont lus automatiqu
 
 Si un reset général Codex a été effectué, cliquez sur **Reset général…** à côté de l’en-tête **Codex** de la liste des comptes (ou dans le menu **…** de Resets). Choisissez un raccourci (**À l’instant**, **Il y a 30 min**…) ou un jour des huit derniers et une heure locale ; la fenêtre résume l’instant choisi et le nombre de comptes Codex concernés. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
 
-La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). Les prochaines échéances seront connues après ce nouveau relevé. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées.
+La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). Les prochaines échéances seront connues après ce nouveau relevé. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées. La croix de l’encart le masque seulement : la déclaration reste appliquée et modifiable depuis **Reset général…** ; une nouvelle déclaration le réaffiche.
 
 ## Lire le tableau de bord
 
@@ -81,7 +81,7 @@ La déclaration est locale et persiste après redémarrage. Elle ne provoque auc
 
 Le bouton **flèche vers le coin**, juste à gauche de **—**, masque la fenêtre dans la barre d’état et la retire de la barre des tâches. Le suivi et les rappels restent actifs ; un clic sur l’icône dans la barre d’état rouvre la fenêtre. **—** conserve la réduction Windows habituelle. **✕** masque aussi l’application ; utilisez **Quitter** dans le menu de l’icône pour l’arrêter.
 
-Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai.
+Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai. Pour actualiser, utilisez le bouton à droite de **Comptes** ou F5.
 
 L’onglet **Réglages**, à côté de **Comptes** et **Resets**, contient sept rubriques : **Général**, **Rappels**, **Canaux**, **Historique**, **Calendrier**, **Assistants** et **Application**. La section sélectionnée et les saisies restent présentes lorsque vous changez d’onglet. Les menus « Icône et libellé » associent une icône discrète à chaque réglage, affichent une coche sur la valeur choisie et restent utilisables au clavier.
 

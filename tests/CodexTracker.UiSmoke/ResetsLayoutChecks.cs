@@ -53,7 +53,9 @@ internal static class ResetsLayoutChecks
             var bellTag = bell.Tag; var alertEntry = (ResetScheduleEntry)first.Tag;
             Check(bell.IsEnabled && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Me prévenir"),
                 "Every known upcoming reset exposes an accessible one-off notification button");
-            bell.Focus(); bell.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(40); window.UpdateLayout();
+            bell.Focus(); bell.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            // Focus returns at Input priority, after the rebuilt row; animations can delay it past a fixed pause.
+            await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Input); window.UpdateLayout();
             bell = Tree(timeline).OfType<Button>().Single(b => Equals(b.Tag, bellTag));
             Check(window.Preferences.Current.ResetAlerts.Any(a => a.Enabled && ResetAlertPlanner.Matches(a, alertEntry.Account.Profile.Id, alertEntry.Kind, alertEntry.At!.Value)) &&
                 bell.IsKeyboardFocused && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Annuler"),

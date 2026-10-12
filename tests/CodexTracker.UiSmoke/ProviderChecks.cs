@@ -23,14 +23,10 @@ internal static class ProviderChecks
         {
             window.Show(); await window.InitializeAsync(); await Task.Delay(50);
             var dashboard = (DashboardViewModel)window.DataContext;
+            window.UpdateLayout();
             var activeCard = (Border)window.FindName("ActiveAccountCard");
-            var summaryButton = (Button)window.FindName("ActiveAccountsSummaryButton");
-            var dismissSummary = (Button)window.FindName("DismissActiveAccountsSummaryButton");
-            Check(!activeCard.IsVisible && activeCard.ActualHeight == 0 && summaryButton.IsVisible,
-                "Active summaries start hidden with a discoverable toolbar action");
-            summaryButton.Focus(); summaryButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-            await Task.Delay(400); window.UpdateLayout();
-            Check(activeCard.IsVisible, "The active-account summary opens on demand without another window");
+            Check(activeCard.IsVisible && activeCard.ActualHeight > 0 && window.FindName("ActiveAccountsSummaryButton") is null,
+                "Active-account summaries are shown at the top of the dashboard without a toggle");
             Check(dashboard.ActiveAccounts.Count == 2 && dashboard.Accounts.Count == 8, "Both providers have separate simultaneously active panels");
             var sameEmail = dashboard.Accounts.Where(a => a.Email == "alex@example.com").ToArray();
             Check(sameEmail.Length == 3 && sameEmail.Select(a => a.ProviderName).Distinct().Count() == 2, "Same email is labelled separately per provider and Claude organization");
@@ -67,22 +63,31 @@ internal static class ProviderChecks
                 scroll.ScrollToBottom(); window.UpdateLayout();
                 Ui.SaveScreenshot(window, Path.GetFullPath($"artifacts/previews/providers-{theme}-{(compact ? "compact" : "normal")}-sections.png"), 96);
                 scroll.ScrollToTop(); window.UpdateLayout();
-                dismissSummary.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); window.UpdateLayout();
-                Check(!card.IsVisible && card.ActualHeight == 0 && window.IsVisible && summaryButton.IsKeyboardFocused,
-                    "Dismiss hides the summary, returns keyboard focus and keeps the dashboard open");
-                Ui.SaveScreenshot(window, Path.GetFullPath($"artifacts/previews/providers-{theme}-{(compact ? "compact" : "normal")}-default.png"), 96);
-                summaryButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(400); window.UpdateLayout();
             }
-            window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(window), 0, Key.Escape) { RoutedEvent = Keyboard.KeyDownEvent });
-            window.UpdateLayout();
-            Check(!activeCard.IsVisible && window.IsVisible && summaryButton.IsKeyboardFocused,
-                "Escape dismisses the summary before hiding the main window");
-            window.OpenPage("Comptes actifs"); window.OpenPage("Comptes actifs"); await Task.Delay(400); window.UpdateLayout();
-            Check(activeCard.IsVisible && ((TabControl)window.FindName("MainTabs")).SelectedIndex == 0,
-                "Repeated summary navigation opens the same account view without toggling it closed");
+            var quotaRefresh = Tree(window).OfType<Button>().Where(b => b.IsVisible && System.Windows.Automation.AutomationProperties.GetName(b)?.StartsWith("Actualiser les quotas") == true).ToArray();
+            Check(quotaRefresh.Length == 1 && System.Windows.Automation.AutomationProperties.GetName(quotaRefresh[0]) == "Actualiser les quotas",
+                "Quotas are refreshed from the account toolbar only, not again from the footer");
+            var banner = (Border)window.FindName("ManualResetBanner"); var dismissBanner = (Button)window.FindName("DismissManualResetButton");
+            var editBanner = Tree(banner).OfType<Button>().Single(b => Equals(b.Content, "Modifier…"));
+            // Logical focus: Windows may keep the foreground on the user's own window while the suite runs.
+            editBanner.Focus(); editBanner.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+            Check(banner.IsVisible && (dismissBanner.IsKeyboardFocused || FocusManager.GetFocusedElement(window) == dismissBanner),
+                "The declared reset notice is dismissible and reachable after Modifier… with Tab");
+            var declared = preferences.Current.ManualCodexReset!;
+            dismissBanner.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(50); window.UpdateLayout();
+            Check(!banner.IsVisible && preferences.Current.DismissedManualCodexReset == declared.DeclaredAt && preferences.Current.ManualCodexReset == declared &&
+                codex.HasManualReset && codex.WeeklyNumber == "100%" && dashboard.HasManualReset,
+                "Dismissing the notice hides it but keeps the declaration applied to the accounts");
+            Check(FocusManager.GetFocusedElement(window) is UIElement { IsVisible: true } next && next != dismissBanner,
+                "Dismissing the notice moves keyboard focus to the next visible control");
+            dashboard.Tick(); await service.RefreshAsync(); await Task.Delay(50); window.UpdateLayout();
+            Check(!banner.IsVisible && dashboard.HasManualReset && activeCard.IsVisible, "A dismissed notice stays hidden after a refresh");
+            var redeclared = DateTimeOffset.UtcNow;
+            preferences.Update(p => p with { ManualCodexReset = new(declared.At, redeclared) }); await Task.Delay(50); window.UpdateLayout();
+            Check(banner.IsVisible, "A new declaration shows its notice again");
             var refused = false;
             try { window.OpenPage("unknown-fixture-page"); } catch (ArgumentException) { refused = true; }
-            Check(refused && activeCard.IsVisible, "Invalid page navigation is refused without dismissing the summary");
+            Check(refused && activeCard.IsVisible, "Invalid page navigation is refused without hiding the summary");
             var originalState = service.State;
             var withoutDates = originalState with { Accounts = originalState.Accounts.Select(a => !a.IsActiveInClaudeCode ? a : a with {
                 Snapshot = a.Snapshot! with { Buckets = a.Snapshot!.Buckets.Select(b => b with {
@@ -96,7 +101,7 @@ internal static class ProviderChecks
                 "Missing Claude reset dates stay unavailable in both active-panel rows");
             dashboard.Update(originalState); window.UpdateLayout();
             await service.RefreshAsync(); await Task.Delay(50); window.UpdateLayout();
-            Check(activeCard.IsVisible, "Account refresh preserves an explicitly opened summary");
+            Check(activeCard.IsVisible, "Account refresh keeps the active-account summary visible");
             var resets = Field<ResetsView>(window, "_resets");
             window.OpenPage("Resets");
             resets.Update(service.State with { GlobalResetFeed = new([

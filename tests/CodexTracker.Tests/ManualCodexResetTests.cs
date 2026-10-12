@@ -77,4 +77,26 @@ public sealed class ManualCodexResetTests
         commands.DeclareCodexReset(null, Now, revision); Assert.Null(preferences.Current.ManualCodexReset);
         Assert.Null(new PreferencesStore(dataDirectory: directory.Root).Current.ManualCodexReset);
     }
+
+    [Fact]
+    public void DismissedNoticePersistsWithoutTouchingTheDeclarationAndANewDeclarationShowsItAgain()
+    {
+        using var directory = new TestDirectory(); var preferences = new PreferencesStore(dataDirectory: directory.Root);
+        var commands = new ApplicationCommands(preferences, new NotificationSecretStore(directory.Root));
+        commands.DeclareCodexReset(Now.AddMinutes(-30), Now, commands.Revision); var declaration = preferences.Current.ManualCodexReset!;
+        commands.SavePreferences(p => p with { DismissedManualCodexReset = declaration.DeclaredAt });
+        var restarted = new PreferencesStore(dataDirectory: directory.Root).Current;
+        Assert.Equal(declaration, restarted.ManualCodexReset); Assert.Equal(declaration.DeclaredAt, restarted.DismissedManualCodexReset);
+        commands.DeclareCodexReset(Now.AddMinutes(-10), Now.AddMinutes(1), commands.Revision);
+        Assert.NotEqual(preferences.Current.DismissedManualCodexReset, preferences.Current.ManualCodexReset!.DeclaredAt);
+    }
+
+    [Fact]
+    public void ProfileImportKeepsTheLocalDeclarationAndItsDismissedNotice()
+    {
+        var local = new TrackerPreferences { ManualCodexReset = new(Now.AddMinutes(-30), Now), DismissedManualCodexReset = Now };
+        var imported = new TrackerPreferences { ManualCodexReset = new(Now.AddHours(-3), Now.AddHours(-2)), DismissedManualCodexReset = Now.AddHours(-2) };
+        var merged = ProfileTransfer.Apply(local, imported, new Dictionary<Guid, Guid>(), new Dictionary<string, string>());
+        Assert.Equal(local.ManualCodexReset, merged.ManualCodexReset); Assert.Equal(Now, merged.DismissedManualCodexReset);
+    }
 }

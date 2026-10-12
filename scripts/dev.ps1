@@ -2,7 +2,7 @@ param(
     [ValidateSet('Check','Demo','Preview')][string]$Action = 'Check',
     [string]$Dotnet,
     [string]$Python = 'python',
-    [ValidateSet('Comptes','Comptes actifs','Resets','Semaine','Général','Rappels','Canaux','Historique','Calendrier','Assistants','Application')][string]$View = 'Comptes',
+    [ValidateSet('Comptes','Resets','Semaine','Général','Rappels','Canaux','Historique','Calendrier','Assistants','Application')][string]$View = 'Comptes',
     [ValidateSet('light','dark')][string]$Theme = 'dark',
     [ValidateSet('normal','compact')][string]$Size = 'normal',
     [ValidateSet(96,120,144,192)][int]$Dpi = 96,

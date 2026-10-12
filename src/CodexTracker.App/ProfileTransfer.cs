@@ -31,7 +31,7 @@ internal static class ProfileTransfer
                 avatars[file] = Convert.ToBase64String(File.ReadAllBytes(path));
         var version = typeof(ProfileTransfer).Assembly.GetName().Version?.ToString(3) ?? "";
         var bundle = new ProfileBundle(CurrentVersion, version, now, service.ExportProfiles(),
-            current with { McpEnabled = false, RecoveryPending = false, ManualCodexReset = null, ResetAlerts = [], SentExpiryReminders = new() }, avatars);
+            current with { McpEnabled = false, RecoveryPending = false, ManualCodexReset = null, DismissedManualCodexReset = null, ResetAlerts = [], SentExpiryReminders = new() }, avatars);
         return ProfileArchive.Protect(JsonSerializer.SerializeToUtf8Bytes(bundle, Json), password);
     }
 
@@ -78,6 +78,7 @@ internal static class ProfileTransfer
         return imported with
         {
             McpEnabled = current.McpEnabled, RecoveryPending = current.RecoveryPending, ManualCodexReset = current.ManualCodexReset,
+            DismissedManualCodexReset = current.DismissedManualCodexReset,
             ResetAlerts = current.ResetAlerts, SentExpiryReminders = current.SentExpiryReminders, Appearances = appearances,
             ReminderRules = imported.ReminderRules?.Select(rule => rule with
             {

@@ -62,7 +62,7 @@ internal sealed class TrackerTools(LocalClient client)
     public Task<JsonElement> Action(string requestId, CancellationToken token) => Call("action", new { requestId }, token);
     [McpServerTool(Name = "refresh_active_account", Destructive = false), Description("Actualise uniquement le compte actif, sans basculer ni renouveler les comptes inactifs.")]
     public Task<JsonElement> Refresh(CancellationToken token) => Call("refresh", new { }, token);
-    [McpServerTool(Name = "open_page", Destructive = false), Description("Ouvre Comptes, Comptes actifs (résumé), Resets, Général, Rappels, Canaux, Historique, Calendrier, Assistants ou Application.")]
+    [McpServerTool(Name = "open_page", Destructive = false), Description("Ouvre Comptes, Resets, Général, Rappels, Canaux, Historique, Calendrier, Assistants ou Application.")]
     public Task<JsonElement> Show(string page, CancellationToken token) => Call("show", new { page }, token);
     [McpServerTool(Name = "update_preferences", Destructive = false), Description("Remplace les réglages généraux après lecture. requestId UUID stable : réutilisez le même pour toute répétition. expectedRevision vient de la dernière lecture.")]
     public Task<JsonElement> SetPreferences(string requestId, string expectedRevision, General settings, CancellationToken token) => Change("set_preferences", requestId, expectedRevision, settings, token);

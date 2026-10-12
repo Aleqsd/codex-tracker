@@ -186,9 +186,6 @@ internal static class EnglishCore
         // SMS text stays ASCII so a message fits in one GSM-7 segment.
         ("Reset semaine", "Weekly reset"),
         ("Reset 5 h", "5-hour reset"),
-        ("Comptes actifs", "Active accounts"),
-        ("Afficher le résumé des comptes actifs", "Show the active accounts summary"),
-        ("Masquer le résumé des comptes actifs", "Hide the active accounts summary"),
         ("Reset 5h", "5h reset"),
         ("Expiration reserve", "Credit expiry"),
         ("Codex {0}: {1} le {2:dd/MM HH:mm zzz}. Releve {3:dd/MM HH:mm zzz}. Verifiez dans Codex.", "Codex {0}: {1} on {2:dd/MM HH:mm zzz}. Reading {3:dd/MM HH:mm zzz}. Check in Codex."),

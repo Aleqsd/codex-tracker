@@ -239,6 +239,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsEmpty => Accounts.Count == 0;
     public string AccountCount => Accounts.Count.ToString(CultureInfo.InvariantCulture);
     public bool HasManualReset => Accounts.Any(a => a.HasManualReset);
+    public bool ShowManualResetBanner => HasManualReset && _preferences.Current.ManualCodexReset?.DeclaredAt != _preferences.Current.DismissedManualCodexReset;
     public string ManualResetCaption => _preferences.Current.ManualCodexReset is { } reset ? Loc.F("Reset Codex déclaré le {0} · {1} compte(s) en attente d’un nouveau relevé", Display.Exact(reset.At), Accounts.Count(a => a.HasManualReset)) : "";
     public string ManualResetHint => string.Join("\n\n", Accounts.Where(a => a.HasManualReset).Select(a => a.ManualResetHint));
     public bool HasExpectedResets => Accounts.Any(a => a.HasResetEstimate);
@@ -291,7 +292,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     {
         foreach (var account in Accounts) account.Tick();
         Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow);
-        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption), nameof(HasManualReset), nameof(ManualResetCaption), nameof(ManualResetHint) })
+        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption), nameof(HasManualReset), nameof(ShowManualResetBanner), nameof(ManualResetCaption), nameof(ManualResetHint) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)

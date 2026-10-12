@@ -24,40 +24,7 @@
    <TabItem x:Name="AccountsTab" Header="{local:T 'Comptes'}" Tag="{StaticResource AccountsIcon}" Style="{StaticResource MainTabStyle}">
    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="0,6,6,22">
     <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,12" Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolVisibility}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{local:T 'Changez de compte dans Codex ou Claude Code : le tracker suit automatiquement. Glissez son icône dans la barre d’état pour la garder visible.'}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,14,0" VerticalAlignment="Center"/><Button Grid.Column="1" Content="{local:T 'Compris'}" Click="Onboarding_Click" Padding="11,6" VerticalAlignment="Center"/></Grid></Border>
-    <Border x:Name="ManualResetBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource AccentSoftBrush}" Visibility="{Binding HasManualReset, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ManualResetHint}">
-     <DockPanel><Button DockPanel.Dock="Right" Content="{local:T 'Modifier…'}" Click="ManualCodexReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource AccentBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/><Viewbox DockPanel.Dock="Left" Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox><TextBlock Text="{Binding ManualResetCaption}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"/></DockPanel>
-    </Border>
-    <Border x:Name="ExpectedResetsBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource GoodSoftBrush}" Visibility="{Binding HasExpectedResets, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ExpectedResetsHint}">
-     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Viewbox Width="17" Height="17" Margin="0,1,11,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource GoodBrush}" StrokeThickness="2"/></Canvas></Viewbox>
-      <StackPanel Grid.Column="1"><TextBlock Text="{Binding ExpectedResetsTitle}" FontSize="12" FontWeight="Medium" TextWrapping="Wrap"/><TextBlock Text="{Binding ExpectedResetsNames}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/><TextBlock Text="{Binding ExpectedResetsCaption}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/></StackPanel>
-      <Button x:Name="ShowExpectedResetButton" Grid.Column="2" Content="{local:T 'Voir'}" Click="ExpectedReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource GoodBrush}" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="{local:T 'Voir le compte probablement rechargé'}"/>
-     </Grid>
-    </Border>
-    <Border local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Visibility="{Binding HasAdvice, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding AdviceHint}">
-     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Viewbox Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownClockIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2"/></Canvas></Viewbox>
-      <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding AdviceTitle}" FontSize="12" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding AdviceAge}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel>
-      <Button Grid.Column="2" Content="{local:T 'Voir'}" Click="Advice_Click" Style="{StaticResource QuietButton}" VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="{local:T 'Consulter ce relevé avant de changer de compte dans Codex'}"/>
-     </Grid>
-    </Border>
-    <Grid Margin="0,24,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="{local:T 'Comptes'}" FontSize="16" FontWeight="Medium" VerticalAlignment="Center"/><Border Style="{StaticResource Chip}" Margin="9,1,0,0"><TextBlock Text="{Binding AccountCount}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource MutedBrush}"/></Border></StackPanel>
-     <StackPanel Grid.Column="1" Orientation="Horizontal">
-      <Button x:Name="ActiveAccountsSummaryButton" Content="{local:T 'Comptes actifs'}" Click="ActiveAccountsSummary_Click" Style="{StaticResource QuietButton}" FontSize="11" Padding="10,7" Margin="0,0,8,0" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}" ToolTip="{local:T 'Afficher le résumé des comptes actifs'}" AutomationProperties.Name="{local:T 'Afficher le résumé des comptes actifs'}"/>
-      <Button Width="34" Height="34" Padding="0" Click="Refresh_Click" IsEnabled="{Binding IsIdle}" ToolTip="{local:T 'Actualiser et détecter les comptes Codex et Claude Code'}" AutomationProperties.Name="{local:T 'Actualiser les quotas'}">
-       <Viewbox Width="15" Height="15"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" StrokeThickness="2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox>
-      </Button>
-     </StackPanel>
-    </Grid>
-    <Border x:Name="ActiveAccountCard" Visibility="Collapsed" Margin="0,12,0,0">
-     <StackPanel>
-      <DockPanel Margin="0,0,0,6">
-       <Button x:Name="DismissActiveAccountsSummaryButton" DockPanel.Dock="Right" Width="28" Height="26" Padding="0" Click="DismissActiveAccountsSummary_Click" Style="{StaticResource IconButton}" ToolTip="{local:T 'Masquer le résumé des comptes actifs'}" AutomationProperties.Name="{local:T 'Masquer le résumé des comptes actifs'}">
-        <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="{StaticResource CloseIcon}" Style="{StaticResource IconPath}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2"/></Canvas></Viewbox>
-       </Button>
-       <TextBlock Text="{local:T 'Comptes actifs'}" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-      </DockPanel>
+    <Border x:Name="ActiveAccountCard" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}">
      <ItemsControl ItemsSource="{Binding ActiveAccounts}" Margin="0,0,-12,0">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" local:UiMotion.Rise="14" local:UiMotion.Stagger="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate><DataTemplate>
@@ -114,8 +81,32 @@
        </Border>
       </DataTemplate></ItemsControl.ItemTemplate>
      </ItemsControl>
-     </StackPanel>
     </Border>
+    <Border x:Name="ManualResetBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource AccentSoftBrush}" Visibility="{Binding ShowManualResetBanner, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ManualResetHint}">
+     <DockPanel><StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"><Button Content="{local:T 'Modifier…'}" Click="ManualCodexReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/><Button x:Name="DismissManualResetButton" Style="{StaticResource IconButton}" Width="28" Height="28" Margin="2,0,-6,0" VerticalAlignment="Center" Click="DismissManualReset_Click" ToolTip="{local:T 'Masquer cet encart · la déclaration reste appliquée'}" AutomationProperties.Name="{local:T 'Masquer l’encart du reset Codex déclaré'}"><Viewbox Width="13" Height="13"><Canvas Width="24" Height="24"><Path Data="{StaticResource CloseIcon}" Style="{StaticResource IconPath}" StrokeThickness="2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox></Button></StackPanel><Viewbox DockPanel.Dock="Left" Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox><TextBlock Text="{Binding ManualResetCaption}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"/></DockPanel>
+    </Border>
+    <Border x:Name="ExpectedResetsBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource GoodSoftBrush}" Visibility="{Binding HasExpectedResets, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ExpectedResetsHint}">
+     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Viewbox Width="17" Height="17" Margin="0,1,11,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource GoodBrush}" StrokeThickness="2"/></Canvas></Viewbox>
+      <StackPanel Grid.Column="1"><TextBlock Text="{Binding ExpectedResetsTitle}" FontSize="12" FontWeight="Medium" TextWrapping="Wrap"/><TextBlock Text="{Binding ExpectedResetsNames}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/><TextBlock Text="{Binding ExpectedResetsCaption}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/></StackPanel>
+      <Button x:Name="ShowExpectedResetButton" Grid.Column="2" Content="{local:T 'Voir'}" Click="ExpectedReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource GoodBrush}" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="{local:T 'Voir le compte probablement rechargé'}"/>
+     </Grid>
+    </Border>
+    <Border local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Visibility="{Binding HasAdvice, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding AdviceHint}">
+     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Viewbox Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownClockIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2"/></Canvas></Viewbox>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding AdviceTitle}" FontSize="12" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding AdviceAge}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel>
+      <Button Grid.Column="2" Content="{local:T 'Voir'}" Click="Advice_Click" Style="{StaticResource QuietButton}" VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="{local:T 'Consulter ce relevé avant de changer de compte dans Codex'}"/>
+     </Grid>
+    </Border>
+    <Grid Margin="0,24,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="{local:T 'Comptes'}" FontSize="16" FontWeight="Medium" VerticalAlignment="Center"/><Border Style="{StaticResource Chip}" Margin="9,1,0,0"><TextBlock Text="{Binding AccountCount}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource MutedBrush}"/></Border></StackPanel>
+     <StackPanel Grid.Column="1" Orientation="Horizontal">
+      <Button Width="34" Height="34" Padding="0" Click="Refresh_Click" IsEnabled="{Binding IsIdle}" ToolTip="{local:T 'Actualiser et détecter les comptes Codex et Claude Code'}" AutomationProperties.Name="{local:T 'Actualiser les quotas'}">
+       <Viewbox Width="15" Height="15"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" StrokeThickness="2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox>
+      </Button>
+     </StackPanel>
+    </Grid>
     <StackPanel>
      <Border local:UiMotion.Rise="12" local:UiMotion.FadeOnShow="True" Style="{StaticResource Card}" Padding="24,32" Margin="0,14,0,0" Visibility="{Binding IsEmpty, Converter={StaticResource BoolVisibility}}"><StackPanel>
       <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center"><Viewbox Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="{StaticResource AccountsIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox></Border>
@@ -176,7 +167,7 @@
   </StackPanel>
   <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource ChromeBrush}" Padding="20,0,16,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <Grid Width="7" Height="7" HorizontalAlignment="Left" VerticalAlignment="Center"><Ellipse Fill="{Binding StatusBrush}" Opacity="0" local:UiMotion.Pulse="{Binding IsBusy}"/><Ellipse Fill="{Binding StatusBrush}"/></Grid>
-   <StackPanel Grid.Column="1" Orientation="Horizontal" ClipToBounds="True"><TextBlock Text="{Binding StatusText}" ToolTip="{Binding StatusHint}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/><Button Style="{StaticResource IconButton}" Width="24" Height="24" Margin="6,0,0,0" VerticalAlignment="Center" Click="Refresh_Click" IsEnabled="{Binding IsIdle}" ToolTip="{local:T 'Actualiser maintenant'}" AutomationProperties.Name="{local:T 'Actualiser les quotas maintenant'}"><Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" StrokeThickness="2.2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox></Button></StackPanel>
+   <TextBlock Grid.Column="1" Text="{Binding StatusText}" ToolTip="{Binding StatusHint}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
    <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource AccentSoftBrush}" Margin="12,0,0,0" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"><TextBlock Text="{local:T 'Démo · comptes fictifs'}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource AccentBrush}"/></Border>
    <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="12,0,0,0"><TextBlock x:Name="AppVersionLabel" Foreground="{DynamicResource SubtleBrush}" FontSize="11" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Version installée de Codex Tracker'}"/><Button x:Name="CheckUpdateButton" Style="{StaticResource IconButton}" Width="24" Height="24" Margin="4,0,-6,0" VerticalAlignment="Center" Click="CheckUpdate_Click" ToolTip="{local:T 'Rechercher une mise à jour'}" AutomationProperties.Name="{local:T 'Rechercher une mise à jour de Codex Tracker'}"><Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" StrokeThickness="2.2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox></Button></StackPanel>
   </Grid></Border>
