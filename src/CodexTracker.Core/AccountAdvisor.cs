@@ -33,29 +33,33 @@ public static class AccountAdvisor
         if (!TryObserve(active, now, MaximumActiveAge, out var current, out var unavailableReason))
             return Unavailable(unavailableReason);
 
-        if (Comfortable(current!))
+        if (Comfortable(active))
             return new(active.Profile.Id, AccountAdviceKind.CurrentComfortable, AccountAdviceConfidence.RecentObservation,
                 Loc.T("Compte actuel confortable"),
-                Loc.F("Les quotas de 5 heures et de la semaine dépassent 20 % dans le relevé du {0}.", Stamp(current!.FetchedAt)),
-                current.FetchedAt, NextReset(current));
+                active.HasShortWindow
+                    ? Loc.F("Les quotas de 5 heures et de la semaine dépassent 20 % dans le relevé du {0}.", Stamp(current!.FetchedAt))
+                    : Loc.F("Le quota de la semaine, seul quota de cette offre, dépasse 20 % dans le relevé du {0}.", Stamp(current!.FetchedAt)),
+                current.FetchedAt, NextReset(active));
 
         // Every eligible account meets the same qualitative condition. Recency, rather than raw
         // percentages or a subscription multiplier, chooses which historical observation to show.
         var candidate = state.Accounts.Where(a => !a.IsActiveInCodex && state.ManualCodexReset?.Applies(a, ResetKind.Weekly, now) != true && state.ManualCodexReset?.Applies(a, ResetKind.Short, now) != true)
-            .Where(a => TryObserve(a, now, MaximumInactiveAge, out var snapshot, out _) && Comfortable(snapshot!))
+            .Where(a => TryObserve(a, now, MaximumInactiveAge, out _, out _) && Comfortable(a))
             .OrderByDescending(a => a.Snapshot!.FetchedAt)
             .ThenBy(a => a.Profile.Id)
             .FirstOrDefault();
 
         if (candidate is null)
             return Unavailable(Loc.T("Un quota du compte actuel est à 20 % ou moins. Aucun autre relevé assez récent, complet et sans reset atteint ne permet de suggérer un compte à vérifier."),
-                current!.FetchedAt, NextReset(current));
+                current!.FetchedAt, NextReset(active));
 
         var previous = candidate.Snapshot!;
         return new(candidate.Profile.Id, AccountAdviceKind.VerifyInCodex, AccountAdviceConfidence.HistoricalObservation,
             Loc.T("À vérifier dans Codex"),
-            Loc.F("Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {0}, ce compte avait plus de 20 % sur les deux fenêtres. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.", Stamp(previous.FetchedAt)),
-            previous.FetchedAt, NextReset(previous));
+            candidate.HasShortWindow
+                ? Loc.F("Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {0}, ce compte avait plus de 20 % sur les deux fenêtres. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.", Stamp(previous.FetchedAt))
+                : Loc.F("Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {0}, ce compte avait plus de 20 % sur la semaine, seul quota de son offre. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.", Stamp(previous.FetchedAt)),
+            previous.FetchedAt, NextReset(candidate));
     }
 
     private static bool TryObserve(AccountState account, DateTimeOffset now, TimeSpan maximumAge,
@@ -82,13 +86,16 @@ public static class AccountAdvisor
             return false;
         }
         var weekly = snapshot.Weekly;
-        var shortWindow = snapshot.Short;
-        if (!KnownWindow(weekly) || !KnownWindow(shortWindow))
+        // Codex Pro has a weekly quota only: a 5-hour window is neither shown nor required for it.
+        var shortWindow = account.HasShortWindow ? snapshot.Short : null;
+        if (!KnownWindow(weekly) || account.HasShortWindow && !KnownWindow(shortWindow))
         {
-            reason = Loc.T("Les deux quotas, de 5 heures et de la semaine, et leurs dates de reset doivent être connus pour donner un conseil.");
+            reason = account.HasShortWindow
+                ? Loc.T("Les deux quotas, de 5 heures et de la semaine, et leurs dates de reset doivent être connus pour donner un conseil.")
+                : Loc.T("Le quota de la semaine et sa date de reset doivent être connus pour donner un conseil.");
             return false;
         }
-        if (weekly!.ResetsAt <= now || shortWindow!.ResetsAt <= now)
+        if (weekly!.ResetsAt <= now || shortWindow?.ResetsAt <= now)
         {
             reason = Loc.T("Une date de reset est atteinte. Un nouveau relevé doit confirmer les quotas ; aucun rechargement n’est supposé.");
             return false;
@@ -99,12 +106,13 @@ public static class AccountAdvisor
     private static bool KnownWindow(QuotaWindow? window) => window is not null &&
         double.IsFinite(window.UsedPercent) && window.UsedPercent is >= 0 and <= 100 && window.ResetsAt is not null;
 
-    private static bool Comfortable(AccountSnapshot snapshot) =>
-        snapshot.Weekly!.RemainingPercent > LowQuotaThreshold && snapshot.Short!.RemainingPercent > LowQuotaThreshold;
+    /// <summary>Only for an account accepted by <see cref="TryObserve"/>: its applicable windows are known.</summary>
+    private static bool Comfortable(AccountState account) => account.Snapshot!.Weekly!.RemainingPercent > LowQuotaThreshold &&
+        (!account.HasShortWindow || account.Snapshot.Short!.RemainingPercent > LowQuotaThreshold);
 
-    private static DateTimeOffset NextReset(AccountSnapshot snapshot) =>
-        snapshot.Weekly!.ResetsAt!.Value <= snapshot.Short!.ResetsAt!.Value
-            ? snapshot.Weekly.ResetsAt.Value : snapshot.Short.ResetsAt.Value;
+    private static DateTimeOffset NextReset(AccountState account) =>
+        account.HasShortWindow && account.Snapshot!.Short!.ResetsAt!.Value < account.Snapshot.Weekly!.ResetsAt!.Value
+            ? account.Snapshot.Short.ResetsAt.Value : account.Snapshot!.Weekly!.ResetsAt!.Value;
 
     private static string Stamp(DateTimeOffset timestamp) => timestamp.ToString("dd/MM/yyyy HH:mm:ss 'UTC'zzz", CultureInfo.InvariantCulture);
 

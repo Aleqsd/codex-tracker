@@ -208,6 +208,46 @@ public sealed class AccountAdvisorTests
         Assert.Equal(Now.AddMinutes(1), advice.NextResetAt);
     }
 
+    [Fact]
+    public void CodexProIsAdvisedOnItsWeeklyQuotaAloneAsShownInTheInterface()
+    {
+        var active = WithoutWindow(Account(ActiveId, active: true, weekly: 10, plan: "pro"), 300);
+        var other = WithoutWindow(Account(OtherId, weekly: 70, plan: "prolite"), 300);
+        var advice = Evaluate(active, other);
+        Assert.Equal(OtherId, advice.AccountId);
+        Assert.Equal(AccountAdviceKind.VerifyInCodex, advice.Kind);
+        Assert.Equal(other.Snapshot!.Weekly!.ResetsAt, advice.NextResetAt);
+        Assert.Contains("seul quota de son offre", advice.Reason);
+        var comfortable = Evaluate(WithoutWindow(Account(ActiveId, active: true, weekly: 20.000001, plan: "Pro"), 300), other);
+        Assert.Equal(AccountAdviceKind.CurrentComfortable, comfortable.Kind);
+        Assert.Contains("seul quota de cette offre", comfortable.Reason);
+        AssertUnavailable(Evaluate(active, WithoutWindow(Account(OtherId, weekly: 20, plan: "pro"), 300)));
+    }
+
+    [Fact]
+    public void AFiveHourWindowReportedForCodexProIsIgnoredLikeInTheInterface()
+    {
+        Assert.Equal(AccountAdviceKind.CurrentComfortable,
+            Evaluate(Account(ActiveId, active: true, weekly: 50, shortQuota: 5, plan: "pro"), Account(OtherId)).Kind);
+        var reached = ChangeWindow(Account(OtherId, shortQuota: 0, plan: "pro"), 300, w => w with { ResetsAt = Now.AddHours(-1) });
+        Assert.Equal(OtherId, Evaluate(Account(ActiveId, active: true, weekly: 10), reached).AccountId);
+    }
+
+    [Fact]
+    public void CodexProStillNeedsAKnownFutureWeeklyResetWhileOtherPlansNeedBothWindows()
+    {
+        var active = Account(ActiveId, active: true, weekly: 10);
+        var pro = WithoutWindow(Account(OtherId, plan: "pro"), 300);
+        AssertUnavailable(Evaluate(active, ChangeWindow(pro, 10080, w => w with { ResetsAt = Now })));
+        AssertUnavailable(Evaluate(active, ChangeWindow(pro, 10080, w => w with { ResetsAt = null })));
+        AssertUnavailable(Evaluate(active, WithoutWindow(pro, 10080)));
+        var advice = Evaluate(WithoutWindow(Account(ActiveId, active: true, weekly: 10, plan: "pro"), 10080), pro);
+        AssertUnavailable(advice);
+        Assert.Contains("quota de la semaine et sa date de reset", advice.Reason);
+        foreach (var plan in new[] { "plus", "free", "team", null })
+            AssertUnavailable(Evaluate(active, WithoutWindow(Account(OtherId, plan: plan), 300)));
+    }
+
     private static AccountAdvice Evaluate(params AccountState[] accounts) => AccountAdvisor.Evaluate(new(accounts, null), Now);
 
     private static void AssertUnavailable(AccountAdvice advice)

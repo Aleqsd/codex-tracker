@@ -169,7 +169,7 @@ Les limites téléphoniques initiales sont **5 SMS et 1 appel par jour**, avec s
 
 Une suggestion discrète apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails ; sa croix la masque jusqu’au prochain relevé à vérifier. Le changement de compte se fait toujours dans Codex.
 
-Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée.
+Le conseil exige les deux quotas et leurs dates de reset (la semaine seule pour Codex Pro, qui n’a pas de quota de 5 heures), un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée.
 
 ## Données locales
 

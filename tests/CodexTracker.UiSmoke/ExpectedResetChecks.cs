@@ -67,13 +67,11 @@ internal static class ExpectedResetChecks
             model.Update(later); window.UpdateLayout();
             Check(reached.IsVisible, "A newly reached reset shows the dismissed notice again");
             var advisedService = new DemoTrackerService(true);
-            // The advisor needs both windows: give the fictitious Pro accounts a known 5-hour quota.
-            var advised = advisedService.State with { Accounts = advisedService.State.Accounts.Select(a => a.Snapshot is { Short: null } snapshot
-                ? a with { Snapshot = snapshot with { Buckets = snapshot.Buckets.Select(b => b with { Windows = [.. b.Windows, new QuotaWindow(10, 300, now.AddHours(3))] }).ToArray() } }
-                : a).ToArray() };
+            // Like the real service, the fictitious Codex Pro accounts report a weekly quota only.
+            var advised = advisedService.State;
             model.Update(advised); window.UpdateLayout();
             var advice = (Border)window.FindName("AdviceBanner");
-            Check(model.HasAdvice && advice.IsVisible, "A reading to check in Codex is announced on the dashboard");
+            Check(model.HasAdvice && advice.IsVisible, "A Codex Pro reading to check, weekly quota only, is announced on the dashboard");
             ((Button)window.FindName("DismissAdviceButton")).RaiseEvent(click);
             await Task.Delay(50); model.Update(advised); window.UpdateLayout();
             Check(!advice.IsVisible && model.HasAdvice && window.Preferences.Current.DismissedNotices.Length == 1,

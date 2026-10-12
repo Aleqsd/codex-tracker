@@ -10,6 +10,7 @@ internal static class EnglishCore
         ("Un reset Codex a été déclaré. Un nouveau relevé mesuré est nécessaire avant de conseiller un autre compte.", "A Codex reset was declared. A new measured reading is needed before suggesting another account."),
         ("Compte actuel confortable", "Current account is comfortable"),
         ("Les quotas de 5 heures et de la semaine dépassent 20 % dans le relevé du {0}.", "The 5-hour and weekly quotas are above 20% in the reading from {0}."),
+        ("Le quota de la semaine, seul quota de cette offre, dépasse 20 % dans le relevé du {0}.", "The weekly quota, the only quota of this plan, is above 20% in the reading from {0}."),
         ("Un quota du compte actuel est à 20 % ou moins. Aucun autre relevé assez récent, complet et sans reset atteint ne permet de suggérer un compte à vérifier.", "A quota on the current account is at 20% or less. No other recent, complete reading without a passed reset can suggest an account to check."),
         ("À vérifier dans Codex", "Check in Codex"),
         ("Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {0}, ce compte avait plus de 20 % sur les deux fenêtres. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.", "A quota on the current account is at 20% or less. At its last reading on {0}, this account had more than 20% in both windows. Check its current quotas in Codex; plan capacities are not compared."),
@@ -18,6 +19,8 @@ internal static class EnglishCore
         ("La lecture du compte actuel est en cours. Le conseil attend son résultat.", "The current account is being read. The advice waits for the result."),
         ("Le dernier relevé du compte actuel est trop ancien ou sa date est incohérente. Actualisez les quotas avant de choisir.", "The last reading of the current account is too old or its date is inconsistent. Refresh quotas before choosing."),
         ("Les deux quotas, de 5 heures et de la semaine, et leurs dates de reset doivent être connus pour donner un conseil.", "Both the 5-hour and weekly quotas, and their reset dates, must be known to give advice."),
+        ("Le quota de la semaine et sa date de reset doivent être connus pour donner un conseil.", "The weekly quota and its reset date must be known to give advice."),
+        ("Un quota du compte actuel est à 20 % ou moins. Au dernier relevé du {0}, ce compte avait plus de 20 % sur la semaine, seul quota de son offre. Ses quotas actuels restent à vérifier dans Codex ; les capacités des offres ne sont pas comparées.", "A quota on the current account is at 20% or less. At its last reading on {0}, this account had more than 20% on its weekly quota, the only one of its plan. Check its current quotas in Codex; plan capacities are not compared."),
         ("Une date de reset est atteinte. Un nouveau relevé doit confirmer les quotas ; aucun rechargement n’est supposé.", "A reset date has passed. A new reading must confirm the quotas; no refill is assumed."),
         ("Conseil indisponible", "Advice unavailable"),
 
