@@ -13,12 +13,12 @@ public sealed class ClaudeCodeNativeResetTests
     private static readonly DateTimeOffset Now = new(2026, 10, 11, 10, 0, 0, TimeSpan.Zero);
     private static readonly ClaudeCodeIdentity Identity = new("native@example.test", ClaudeFixture.First + "/" + Organization, "max", null);
 
-    private static string Record(DateTimeOffset? observed = null, DateTimeOffset? reset = null, string? invalid = null)
+    private static string Record(DateTimeOffset? observed = null, DateTimeOffset? reset = null, string? invalid = null, string version = "2.1.293")
     {
         var info = new Dictionary<string, object?> { ["status"] = "rejected", ["rateLimitType"] = "five_hour",
             ["resetsAt"] = (reset ?? Now.AddHours(2)).ToUnixTimeSeconds() };
         var record = new Dictionary<string, object?> { ["type"] = "assistant", ["error"] = "rate_limit",
-            ["isApiErrorMessage"] = true, ["apiErrorStatus"] = 429, ["version"] = "2.1.293", ["sessionId"] = SessionId,
+            ["isApiErrorMessage"] = true, ["apiErrorStatus"] = 429, ["version"] = version, ["sessionId"] = SessionId,
             ["timestamp"] = (observed ?? Now.AddMinutes(-1)).ToString("O"), ["apiErrorParams"] = new { rate_limit_info = info },
             // A representative state from an earlier request must never replace this response's own metadata.
             ["quotaLimits"] = new { status = "rejected", rateLimitType = "seven_day", resetsAt = Now.AddDays(4).ToUnixTimeSeconds() },
@@ -61,6 +61,17 @@ public sealed class ClaudeCodeNativeResetTests
     [InlineData("representative-only")] [InlineData("string-epoch")] [InlineData("millisecond-epoch")]
     [InlineData("no-zone")]
     public void UnsupportedUnboundAndNonQuotaRecordsCannotProvideDates(string invalid) => Assert.Null(Parse(Record(invalid: invalid)));
+
+    [Theory]
+    [InlineData("2.1.293", true)] [InlineData("2.1.295", true)] [InlineData("2.1.1000", true)]
+    [InlineData("2.1.292", false)] [InlineData("2.2.0", false)] [InlineData("3.0.0", false)] [InlineData("1.1.300", false)]
+    [InlineData("2.1", false)] [InlineData("2.1.295.1", false)] [InlineData("2.1.0295", false)] [InlineData("2.1.295-beta", false)]
+    [InlineData("2.1.", false)] [InlineData("2.1.9999999", false)] [InlineData("2.1.٢٩٥", false)] [InlineData(null, false)]
+    public void OnlyTheVerifiedTwoOneLineFrom293CanProvideADate(string? version, bool supported)
+    {
+        Assert.Equal(supported, ClaudeCodeNativeResetReader.SupportedVersion(version));
+        Assert.Equal(supported, Parse(Record(version: version!)) is not null);
+    }
 
     [Fact]
     public void ExpiredFutureAndImpossibleDeadlinesAreRejectedWithoutProjection()

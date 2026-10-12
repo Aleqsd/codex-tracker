@@ -10,7 +10,7 @@ Assistant → MCP stdio → canal Windows privé → commandes du processus WPF.
 
 Le pont se connecte dès son démarrage, même si aucun outil n’est utilisé. La fermeture du tracker ferme les canaux et les processus MCP ; le client assistant doit alors se reconnecter. Le remplacement de l’exécutable attend au maximum dix secondes sa libération et abandonne sans remplacement si un verrou subsiste.
 
-Le repli des échéances courtes Claude (`ClaudeCodeNativeResetReader`) lit les annotations de quotas des erreurs du Code intégré. L’association Desktop compte/organisation/session et la version 2.1.293 sont obligatoires ; le texte des messages est sauté. Ce collecteur ajoute seulement une échéance exacte encore valable, sans modifier l’heure d’observation des pourcentages. Les appels restent passifs, bornés et annulables ; aucune fenêtre ni CLI fournisseur n’est démarrée.
+Le repli des échéances courtes Claude (`ClaudeCodeNativeResetReader`) lit les annotations de quotas des erreurs du Code intégré. L’association Desktop compte/organisation/session et une version 2.1.x à partir de 2.1.293 sont obligatoires (2.1.293 et 2.1.295 écrivent ces annotations avec le même code ; une nouvelle version mineure ou majeure reste inconnue) ; le texte des messages est sauté. Ce collecteur ajoute seulement une échéance exacte encore valable, sans modifier l’heure d’observation des pourcentages. Les appels restent passifs, bornés et annulables ; aucune fenêtre ni CLI fournisseur n’est démarrée.
 
 ## Ajouter un réglage
 

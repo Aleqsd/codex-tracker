@@ -165,13 +165,18 @@ internal static class ClaudeCodeNativeResetReader
             else reader.Skip();
         }
         if (reader.TokenType != JsonTokenType.EndObject || reader.Read() || type != "assistant" || error != "rate_limit" ||
-            !apiError || status != 429 || version != "2.1.293" || !Guid.TryParseExact(session, "D", out var id) || id != expectedSession || reset is null ||
+            !apiError || status != 429 || !SupportedVersion(version) || !Guid.TryParseExact(session, "D", out var id) || id != expectedSession || reset is null ||
             timestamp is not { Length: >= 20 } || !(timestamp.EndsWith('Z') || timestamp[^6] is '+' or '-' && timestamp[^3] == ':') ||
             !DateTimeOffset.TryParseExact(timestamp, "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture, DateTimeStyles.None, out var observedAt) ||
             observedAt > now || observedAt < now.AddMinutes(-305) || reset.ResetsAt <= observedAt ||
             reset.ResetsAt > observedAt.AddMinutes(305) || !includeEnded && reset.ResetsAt <= now) return null;
         return reset with { ObservedAt = observedAt };
     }
+
+    /// <summary>2.1.293 and 2.1.295 write these annotations with the same code; a new minor or major version stays unknown.</summary>
+    internal static bool SupportedVersion(string? version) =>
+        version?.Split('.') is ["2", "1", { Length: > 0 and <= 6 } patch] && patch[0] != '0' && patch.All(char.IsAsciiDigit) &&
+        int.Parse(patch, CultureInfo.InvariantCulture) >= 293;
 
     private static Reading? ResponseReset(ref Utf8JsonReader reader, DateTimeOffset now)
     {
