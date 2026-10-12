@@ -65,7 +65,7 @@ La déclaration est locale et persiste après redémarrage. Elle ne provoque auc
 
 ## Lire le tableau de bord
 
-**Compte inactif après un reset :** un encart indique les comptes probablement rechargés. La semaine affiche **≈100 % — estimé** ; le survol conserve le quota réellement mesuré et les dates exactes. L’estimation suppose que le compte n’a pas été utilisé ailleurs. Elle disparaît dès un nouveau relevé ou au plus tard après une fenêtre complète (7 jours pour la semaine, 5 heures pour le quota court) ; aucune date suivante n’est inventée.
+**Compte inactif après un reset :** un encart indique les comptes probablement rechargés. La semaine affiche **≈100 % — estimé** ; le survol conserve le quota réellement mesuré et les dates exactes. L’estimation suppose que le compte n’a pas été utilisé ailleurs. Elle disparaît dès un nouveau relevé ou au plus tard après une fenêtre complète (7 jours pour la semaine, 5 heures pour le quota court) ; aucune date suivante n’est inventée. La croix masque l’encart jusqu’au prochain reset passé ; les comptes gardent leur mention **≈100 %**.
 
 **Réglages → Rappels → Prévenir après un reset** commande aussi les notifications Windows des comptes inactifs. Vérification chaque minute, après collecte et à la reprise : une alerte par compte, fenêtre et échéance, groupée si plusieurs resets arrivent ensemble. Après interruption, seules les échéances des dernières 24 heures encore estimables sont annoncées. Les SMS, appels et emails ne sont pas utilisés pour ces estimations. Windows reste maître de l’affichage, notamment en mode Ne pas déranger.
 
@@ -167,7 +167,7 @@ Les limites téléphoniques initiales sont **5 SMS et 1 appel par jour**, avec s
 
 ## Aide au choix du compte
 
-Une suggestion discrète apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails. Le changement de compte se fait toujours dans Codex.
+Une suggestion discrète apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails ; sa croix la masque jusqu’au prochain relevé à vérifier. Le changement de compte se fait toujours dans Codex.
 
 Le conseil exige les deux quotas et leurs dates de reset, un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée.
 

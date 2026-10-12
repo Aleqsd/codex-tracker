@@ -279,8 +279,17 @@ public partial class MainWindow : Window
     /// <summary>Hides the dashboard notice only: the declaration stays applied and editable from the Codex header.</summary>
     private void DismissManualReset_Click(object sender, RoutedEventArgs e)
     {
-        if (_preferences.Current.ManualCodexReset is not { } reset) return;
-        try { Commands.SavePreferences(p => p with { DismissedManualCodexReset = reset.DeclaredAt }); }
+        if (_preferences.Current.ManualCodexReset is { } reset) DismissNotice(sender, p => p with { DismissedManualCodexReset = reset.DeclaredAt });
+    }
+    /// <summary>Hides a notice until a new event replaces it; accounts keep their own estimate labels.</summary>
+    private void DismissEventNotice_Click(object sender, RoutedEventArgs e)
+    {
+        string[] keys = Equals(((FrameworkElement)sender).Tag, "Advice") ? [.. new[] { _model.AdviceNoticeKey }.OfType<string>()] : _model.ExpectedResetNoticeKeys;
+        if (keys.Length > 0) DismissNotice(sender, p => p with { DismissedNotices = _model.Dismissing(keys) });
+    }
+    private void DismissNotice(object sender, Func<TrackerPreferences, TrackerPreferences> change)
+    {
+        try { Commands.SavePreferences(change); }
         catch (Exception error) { ShowMessage(Loc.T("L’action n’a pas abouti"), error.Message); return; }
         // The banner collapses on the next model update: keep keyboard users in place.
         ((UIElement)sender).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));

@@ -54,6 +54,32 @@ internal static class ExpectedResetChecks
                 foreach (var dpi in new[] { 96, 144, 192 })
                     window.SaveScreenshot(Path.GetFullPath($"artifacts/previews/expected-resets-{mode}-{compact}-{dpi}.png"), dpi);
             }
+            var click = new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent);
+            model.Update(demo.State); window.UpdateLayout();
+            var reached = (Border)window.FindName("ExpectedResetsBanner");
+            ((Button)window.FindName("DismissExpectedResetsButton")).RaiseEvent(click);
+            // Saving preferences refreshes the dashboard from the main fixture: show this one again.
+            await Task.Delay(50); model.Update(demo.State); window.UpdateLayout();
+            Check(!reached.IsVisible && model.HasExpectedResets && model.Accounts.Single(a => a.HasWeeklyEstimate).WeeklyDisplayNumber == "≈100%",
+                "Dismissing the reached-reset notice keeps each account's estimate");
+            var later = demo.State with { Accounts = demo.State.Accounts.Select((a, i) => i != 1 ? a : a with { Snapshot = a.Snapshot! with {
+                Buckets = [new("codex", "Codex", [new(82, 10080, now.AddMinutes(-5)), new(65, 300, now.AddMinutes(-12))])] } }).ToArray() };
+            model.Update(later); window.UpdateLayout();
+            Check(reached.IsVisible, "A newly reached reset shows the dismissed notice again");
+            var advisedService = new DemoTrackerService(true);
+            // The advisor needs both windows: give the fictitious Pro accounts a known 5-hour quota.
+            var advised = advisedService.State with { Accounts = advisedService.State.Accounts.Select(a => a.Snapshot is { Short: null } snapshot
+                ? a with { Snapshot = snapshot with { Buckets = snapshot.Buckets.Select(b => b with { Windows = [.. b.Windows, new QuotaWindow(10, 300, now.AddHours(3))] }).ToArray() } }
+                : a).ToArray() };
+            model.Update(advised); window.UpdateLayout();
+            var advice = (Border)window.FindName("AdviceBanner");
+            Check(model.HasAdvice && advice.IsVisible, "A reading to check in Codex is announced on the dashboard");
+            ((Button)window.FindName("DismissAdviceButton")).RaiseEvent(click);
+            await Task.Delay(50); model.Update(advised); window.UpdateLayout();
+            Check(!advice.IsVisible && model.HasAdvice && window.Preferences.Current.DismissedNotices.Length == 1,
+                "Dismissing the advice hides it and forgets identities of notices no longer shown");
+            await advisedService.DisposeAsync();
+            window.Preferences.Update(p => p with { DismissedNotices = [] });
             var inactive = demo.State.Accounts[1];
             var refreshed = inactive with { Snapshot = inactive.Snapshot! with { FetchedAt = now } };
             model.Update(new([refreshed], null));

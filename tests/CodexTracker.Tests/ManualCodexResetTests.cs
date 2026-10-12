@@ -94,9 +94,20 @@ public sealed class ManualCodexResetTests
     [Fact]
     public void ProfileImportKeepsTheLocalDeclarationAndItsDismissedNotice()
     {
-        var local = new TrackerPreferences { ManualCodexReset = new(Now.AddMinutes(-30), Now), DismissedManualCodexReset = Now };
-        var imported = new TrackerPreferences { ManualCodexReset = new(Now.AddHours(-3), Now.AddHours(-2)), DismissedManualCodexReset = Now.AddHours(-2) };
+        var local = new TrackerPreferences { ManualCodexReset = new(Now.AddMinutes(-30), Now), DismissedManualCodexReset = Now, DismissedNotices = ["advice/local"] };
+        var imported = new TrackerPreferences { ManualCodexReset = new(Now.AddHours(-3), Now.AddHours(-2)), DismissedManualCodexReset = Now.AddHours(-2), DismissedNotices = ["advice/other-pc"] };
         var merged = ProfileTransfer.Apply(local, imported, new Dictionary<Guid, Guid>(), new Dictionary<string, string>());
         Assert.Equal(local.ManualCodexReset, merged.ManualCodexReset); Assert.Equal(Now, merged.DismissedManualCodexReset);
+        Assert.Equal(["advice/local"], merged.DismissedNotices);
+    }
+
+    [Fact]
+    public void DismissedNoticesFromAFileAreBoundedAndDeduplicated()
+    {
+        var keys = Enumerable.Range(0, 100).Select(i => $"expected/{i}").Concat(["", new string('x', 257), "expected/1"]).ToArray();
+        var value = PreferencesStore.Sanitize(new TrackerPreferences { DismissedNotices = keys });
+        Assert.Equal(64, value.DismissedNotices.Length); Assert.Equal(value.DismissedNotices.Length, value.DismissedNotices.Distinct().Count());
+        Assert.DoesNotContain(value.DismissedNotices, k => k.Length is 0 or > 256);
+        Assert.Empty(PreferencesStore.Sanitize(new TrackerPreferences { DismissedNotices = null! }).DismissedNotices);
     }
 }

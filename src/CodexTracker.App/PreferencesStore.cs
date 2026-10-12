@@ -29,6 +29,8 @@ internal sealed record TrackerPreferences
     public ManualCodexReset? ManualCodexReset { get; init; }
     /// <summary>Declaration time of the reset whose dashboard notice was dismissed; a new declaration shows it again.</summary>
     public DateTimeOffset? DismissedManualCodexReset { get; init; }
+    /// <summary>Identities of the dashboard notices dismissed by the user; a new event shows its notice again.</summary>
+    public string[] DismissedNotices { get; init; } = [];
     public bool HoverPreview { get; init; } = true;
     public int RefreshMinutes { get; init; } = 2;
     public bool AdaptiveRefresh { get; init; }
@@ -128,7 +130,8 @@ internal sealed class PreferencesStore
         ResetAlerts = ResetAlertPlanner.Normalize(value.ResetAlerts),
         PhonePolicy = NormalizePhone(value.PhonePolicy ?? new()),
         Appearances = value.Appearances ?? new(),
-        SentExpiryReminders = value.SentExpiryReminders ?? new()
+        SentExpiryReminders = value.SentExpiryReminders ?? new(),
+        DismissedNotices = (value.DismissedNotices ?? []).Where(k => k is { Length: > 0 and <= 256 }).Distinct(StringComparer.Ordinal).Take(64).ToArray()
     };
     private static PhonePolicy NormalizePhone(PhonePolicy policy)
     {

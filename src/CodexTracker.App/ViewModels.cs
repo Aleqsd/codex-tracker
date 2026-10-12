@@ -133,6 +133,9 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public GlobalResetAnnouncement? GlobalAnnouncement => WeeklyEstimate?.Announcement ?? ShortEstimate?.Announcement;
     public bool HasWeeklyEstimate => WeeklyEstimate is not null;
     public bool HasResetEstimate => HasWeeklyEstimate || ShortEstimate is not null;
+    /// <summary>Identity of each displayed estimate: a dismissed notice returns only for a new one.</summary>
+    internal IEnumerable<string> EstimateNoticeKeys => new[] { WeeklyEstimate, ShortEstimate }.OfType<ExpectedReset>()
+        .Select(r => r.Announcement is { } a ? $"global/{a.Id}/{Id}/{r.Kind}" : $"expected/{Id}/{r.Kind}/{r.At:O}");
     public bool HasResetNotice => HasResetEstimate || HasManualReset;
     public string WeeklyDisplayNumber => HasManualWeeklyReset ? "100%" : HasWeeklyEstimate ? "≈100%" : WeeklyNumber;
     public Brush WeeklyDisplayBrush => HasManualWeeklyReset || HasWeeklyEstimate ? Display.Green : WeeklyBrush;
@@ -243,6 +246,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public string ManualResetCaption => _preferences.Current.ManualCodexReset is { } reset ? Loc.F("Reset Codex déclaré le {0} · {1} compte(s) en attente d’un nouveau relevé", Display.Exact(reset.At), Accounts.Count(a => a.HasManualReset)) : "";
     public string ManualResetHint => string.Join("\n\n", Accounts.Where(a => a.HasManualReset).Select(a => a.ManualResetHint));
     public bool HasExpectedResets => Accounts.Any(a => a.HasResetEstimate);
+    internal string[] ExpectedResetNoticeKeys => Accounts.SelectMany(a => a.EstimateNoticeKeys).ToArray();
+    public bool ShowExpectedResetsBanner => ExpectedResetNoticeKeys.Except(_preferences.Current.DismissedNotices).Any();
     public bool HasGlobalReset => Accounts.Any(a => a.GlobalAnnouncement is not null);
     public string ExpectedResetsCaption => HasGlobalReset ? Loc.T("Reset général annoncé · estimation datée et sources dans Resets") : Loc.T("Reset prévu passé · estimation à confirmer dans le compte concerné");
     public string ExpectedResetsTitle
@@ -278,6 +283,11 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     private AccountAdvice Advice { get; set; }
     public Guid? AdviceAccountId => Advice.Kind == AccountAdviceKind.VerifyInCodex ? Advice.AccountId : null;
     public bool HasAdvice => AdviceAccountId is not null;
+    internal string? AdviceNoticeKey => AdviceAccountId is { } id ? $"advice/{id}/{Advice.ObservedAt:O}" : null;
+    public bool ShowAdviceBanner => AdviceNoticeKey is { } key && !_preferences.Current.DismissedNotices.Contains(key);
+    /// <summary>Dismissed notices still on screen plus these: identities replaced by newer events are dropped.</summary>
+    internal string[] Dismissing(IEnumerable<string> keys) => _preferences.Current.DismissedNotices
+        .Intersect(ExpectedResetNoticeKeys.Append(AdviceNoticeKey ?? "")).Union(keys).ToArray();
     public string AdviceTitle
     {
         get
@@ -292,7 +302,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     {
         foreach (var account in Accounts) account.Tick();
         Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow);
-        foreach (var property in new[] { nameof(HasAdvice), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption), nameof(HasManualReset), nameof(ShowManualResetBanner), nameof(ManualResetCaption), nameof(ManualResetHint) })
+        foreach (var property in new[] { nameof(HasAdvice), nameof(ShowAdviceBanner), nameof(AdviceTitle), nameof(AdviceAge), nameof(AdviceHint), nameof(AdviceAccountId), nameof(StatusText), nameof(StatusHint), nameof(HasExpectedResets), nameof(ShowExpectedResetsBanner), nameof(ExpectedResetsTitle), nameof(ExpectedResetsNames), nameof(ExpectedResetsHint), nameof(HasGlobalReset), nameof(ExpectedResetsCaption), nameof(HasManualReset), nameof(ShowManualResetBanner), nameof(ManualResetCaption), nameof(ManualResetHint) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public void Update(TrackerState state)
