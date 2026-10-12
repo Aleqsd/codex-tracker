@@ -29,6 +29,7 @@ internal static class EnglishCore
 
         // Reminders and notifications
         ("Reset hebdomadaire", "Weekly reset"),
+        ("Reset hebdomadaire estimé", "Estimated weekly reset"),
         ("Reset 5 heures", "5-hour reset"),
         ("Expiration de réserve", "Credit expiry"),
         ("Un reset en réserve va expirer", "A reserve reset is about to expire"),
@@ -43,6 +44,9 @@ internal static class EnglishCore
         ("{0} · expire le {1:dd/MM/yyyy HH:mm zzz}.\nUtilisez-le dans {2} avant cette date pour ne pas le perdre.\nRelevé : {3:dd/MM/yyyy HH:mm zzz}.", "{0} · expires on {1:dd/MM/yyyy HH:mm zzz}.\nUse it in {2} before then so it is not lost.\nReading: {3:dd/MM/yyyy HH:mm zzz}."),
         ("Reset général annoncé comme terminé", "Global reset announced as complete"),
         ("Compte probablement rechargé", "Account probably refilled"),
+        ("Échéance de reset atteinte", "Reset time reached"),
+        ("Échéance de reset estimée atteinte", "Estimated reset time reached"),
+        ("{0} · {1}\n{2} : heure prévue {3:dd/MM/yyyy HH:mm zzz}.\nVérifiez le quota dans {1} pour confirmer la recharge.", "{0} · {1}\n{2}: scheduled for {3:dd/MM/yyyy HH:mm zzz}.\nCheck the quota in {1} to confirm the refill."),
         ("{0} · Semaine probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", "{0} · Weekly quota probably at 100%.\nPublicly confirmed on {1:dd/MM/yyyy HH:mm:ss zzz}.\nLast reading: {2:dd/MM/yyyy HH:mm:ss zzz}. Confirm in {3}; source in Resets."),
         ("{0} · 5 heures probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", "{0} · 5-hour quota probably at 100%.\nPublicly confirmed on {1:dd/MM/yyyy HH:mm:ss zzz}.\nLast reading: {2:dd/MM/yyyy HH:mm:ss zzz}. Confirm in {3}; source in Resets."),
         ("{0} · Semaine probablement à 100 %.\nReset prévu le {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3}.", "{0} · Weekly quota probably at 100%.\nReset expected on {1:dd/MM/yyyy HH:mm:ss zzz}.\nLast reading: {2:dd/MM/yyyy HH:mm:ss zzz}. Confirm in {3}."),
@@ -181,6 +185,10 @@ internal static class EnglishCore
         ("Codex Tracker. {0}. {1} prévu le {2:dd MMMM à HH:mm}. Relevé du {3:dd MMMM à HH:mm}. Vérifiez votre compte dans Codex.", "Codex Tracker. {0}. {1} due on {2:d MMMM 'at' HH:mm}. Reading from {3:d MMMM 'at' HH:mm}. Check your account in Codex."),
         // SMS text stays ASCII so a message fits in one GSM-7 segment.
         ("Reset semaine", "Weekly reset"),
+        ("Reset 5 h", "5-hour reset"),
+        ("Comptes actifs", "Active accounts"),
+        ("Afficher le résumé des comptes actifs", "Show the active accounts summary"),
+        ("Masquer le résumé des comptes actifs", "Hide the active accounts summary"),
         ("Reset 5h", "5h reset"),
         ("Expiration reserve", "Credit expiry"),
         ("Codex {0}: {1} le {2:dd/MM HH:mm zzz}. Releve {3:dd/MM HH:mm zzz}. Verifiez dans Codex.", "Codex {0}: {1} on {2:dd/MM HH:mm zzz}. Reading {3:dd/MM HH:mm zzz}. Check in Codex."),

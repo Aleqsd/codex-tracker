@@ -23,6 +23,14 @@ internal static class ProviderChecks
         {
             window.Show(); await window.InitializeAsync(); await Task.Delay(50);
             var dashboard = (DashboardViewModel)window.DataContext;
+            var activeCard = (Border)window.FindName("ActiveAccountCard");
+            var summaryButton = (Button)window.FindName("ActiveAccountsSummaryButton");
+            var dismissSummary = (Button)window.FindName("DismissActiveAccountsSummaryButton");
+            Check(!activeCard.IsVisible && activeCard.ActualHeight == 0 && summaryButton.IsVisible,
+                "Active summaries start hidden with a discoverable toolbar action");
+            summaryButton.Focus(); summaryButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            await Task.Delay(400); window.UpdateLayout();
+            Check(activeCard.IsVisible, "The active-account summary opens on demand without another window");
             Check(dashboard.ActiveAccounts.Count == 2 && dashboard.Accounts.Count == 8, "Both providers have separate simultaneously active panels");
             var sameEmail = dashboard.Accounts.Where(a => a.Email == "alex@example.com").ToArray();
             Check(sameEmail.Length == 3 && sameEmail.Select(a => a.ProviderName).Distinct().Count() == 2, "Same email is labelled separately per provider and Claude organization");
@@ -38,6 +46,16 @@ internal static class ProviderChecks
                 TypographyChecks.AssertBundled(window);
                 var card = (Border)window.FindName("ActiveAccountCard");
                 Check(Tree(card).OfType<TextBlock>().Any(t => t.Text == "Compte actif dans Claude Code · Personnel") && Tree(card).OfType<TextBlock>().Any(t => t.Text == "Compte actif dans Codex"), $"Provider panels render in {theme}, compact={compact}");
+                var shortReset = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "ShortResetMetric" && ReferenceEquals(g.DataContext, claude));
+                var weekReset = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "WeeklyResetMetric" && ReferenceEquals(g.DataContext, claude));
+                var claudeSnapshot = service.State.Accounts.Single(a => a.IsActiveInClaudeCode).Snapshot!;
+                Check(Tree(shortReset).OfType<TextBlock>().Any(t => t.Text == "Reset 5 h") &&
+                    Tree(shortReset).OfType<TextBlock>().Any(t => t.Text == claudeSnapshot.Short!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm")) &&
+                    Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == "Reset semaine") &&
+                    Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == claudeSnapshot.Weekly!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm")),
+                    "Active Claude panel labels both reset types with their own local hour");
+                Check(Tree(shortReset).Concat(Tree(weekReset)).OfType<TextBlock>().All(TextFits),
+                    $"Reset hours, labels and countdowns fit {theme}, compact={compact}");
                 var list = (ItemsControl)window.FindName("AccountsList");
                 var scroll = Tree(window).OfType<ScrollViewer>().First(s => s.Content is StackPanel p && Tree(p).Contains(list));
                 Check(scroll.ViewportHeight > 0 && (!compact || scroll.ScrollableHeight > 0), "Compact dashboard keeps both providers and accounts reachable by scrolling");
@@ -49,7 +67,36 @@ internal static class ProviderChecks
                 scroll.ScrollToBottom(); window.UpdateLayout();
                 Ui.SaveScreenshot(window, Path.GetFullPath($"artifacts/previews/providers-{theme}-{(compact ? "compact" : "normal")}-sections.png"), 96);
                 scroll.ScrollToTop(); window.UpdateLayout();
+                dismissSummary.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); window.UpdateLayout();
+                Check(!card.IsVisible && card.ActualHeight == 0 && window.IsVisible && summaryButton.IsKeyboardFocused,
+                    "Dismiss hides the summary, returns keyboard focus and keeps the dashboard open");
+                Ui.SaveScreenshot(window, Path.GetFullPath($"artifacts/previews/providers-{theme}-{(compact ? "compact" : "normal")}-default.png"), 96);
+                summaryButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(400); window.UpdateLayout();
             }
+            window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(window), 0, Key.Escape) { RoutedEvent = Keyboard.KeyDownEvent });
+            window.UpdateLayout();
+            Check(!activeCard.IsVisible && window.IsVisible && summaryButton.IsKeyboardFocused,
+                "Escape dismisses the summary before hiding the main window");
+            window.OpenPage("Comptes actifs"); window.OpenPage("Comptes actifs"); await Task.Delay(400); window.UpdateLayout();
+            Check(activeCard.IsVisible && ((TabControl)window.FindName("MainTabs")).SelectedIndex == 0,
+                "Repeated summary navigation opens the same account view without toggling it closed");
+            var refused = false;
+            try { window.OpenPage("unknown-fixture-page"); } catch (ArgumentException) { refused = true; }
+            Check(refused && activeCard.IsVisible, "Invalid page navigation is refused without dismissing the summary");
+            var originalState = service.State;
+            var withoutDates = originalState with { Accounts = originalState.Accounts.Select(a => !a.IsActiveInClaudeCode ? a : a with {
+                Snapshot = a.Snapshot! with { Buckets = a.Snapshot!.Buckets.Select(b => b with {
+                    Windows = b.Windows.Select(w => w with { ResetsAt = null }).ToArray() }).ToArray() }
+            }).ToArray() };
+            dashboard.Update(withoutDates); window.UpdateLayout();
+            var unknownRows = Tree((Border)window.FindName("ActiveAccountCard")).OfType<Grid>().Where(g =>
+                g.Tag?.ToString() is "ShortResetMetric" or "WeeklyResetMetric" && ReferenceEquals(g.DataContext, claude)).ToArray();
+            Check(unknownRows.Length == 2 && unknownRows.All(g => Tree(g).OfType<TextBlock>().Any(t => t.Text == "—") &&
+                Tree(g).OfType<TextBlock>().Any(t => t.Text == "Indisponible")),
+                "Missing Claude reset dates stay unavailable in both active-panel rows");
+            dashboard.Update(originalState); window.UpdateLayout();
+            await service.RefreshAsync(); await Task.Delay(50); window.UpdateLayout();
+            Check(activeCard.IsVisible, "Account refresh preserves an explicitly opened summary");
             var resets = Field<ResetsView>(window, "_resets");
             window.OpenPage("Resets");
             resets.Update(service.State with { GlobalResetFeed = new([
@@ -88,6 +135,9 @@ internal static class ProviderChecks
         finally { window.PrepareExit(); window.Close(); }
     }
     private static T Field<T>(object target, string name) => (T)target.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(target)!;
+    private static bool TextFits(TextBlock text) => new FormattedText(text.Text, System.Globalization.CultureInfo.GetCultureInfo("fr-FR"),
+        text.FlowDirection, new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize,
+        text.Foreground, VisualTreeHelper.GetDpi(text).PixelsPerDip).Width <= text.ActualWidth + 1;
     private static IEnumerable<DependencyObject> Tree(DependencyObject root)
     {
         yield return root;

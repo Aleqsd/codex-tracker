@@ -7,7 +7,7 @@ public sealed class ReminderDispatcher(
     Func<TrackerState> state, Func<ReminderRule[]> rules, Func<PhonePolicy> phone,
     Func<IReadOnlyDictionary<string, DateTimeOffset>> legacySent,
     Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null,
-    Func<bool>? expectedResetNotifications = null)
+    Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -34,6 +34,9 @@ public sealed class ReminderDispatcher(
                 {
                     token.ThrowIfCancellationRequested();
                     if (journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status != DeliveryStatus.Deferred)) continue;
+                    if (r.LeadMinutes == 0 && r.Channel == ReminderChannel.Windows && journal.Entries.Any(d =>
+                        d.Occurrence.LeadMinutes == 0 && ReminderPlanner.EventKey(d.Occurrence) == ReminderPlanner.EventKey(r) &&
+                        d.Status is DeliveryStatus.Submitting or DeliveryStatus.Shown or DeliveryStatus.Accepted or DeliveryStatus.Delivered or DeliveryStatus.Completed or DeliveryStatus.Unknown)) continue;
                     // Recheck after every await: deleted accounts/disabled rules cannot leave an active queue behind.
                     if (!Due(_clock.GetUtcNow()).Any(x => x.Key == r.Key)) continue;
                     var legacy = r.Kind == ResetKind.Reserve && legacySent().ContainsKey(CalendarExport.Identity(r.AccountId, "credit", r.CreditId!, r.At));
@@ -88,8 +91,11 @@ public sealed class ReminderDispatcher(
     private IReadOnlyList<ReminderOccurrence> Due(DateTimeOffset now)
     {
         var current = state();
+        var requested = ResetAlertPlanner.Due(current, resetAlerts?.Invoke() ?? [], now);
         return ReminderPlanner.Due(current, rules(), now)
-            .Concat(expectedResetNotifications?.Invoke() == true ? ExpectedReset.Due(current, now) : [])
+            .Concat(requested)
+            .Concat(expectedResetNotifications?.Invoke() == true ? ExpectedReset.Due(current, now)
+                .Where(r => !requested.Any(a => ReminderPlanner.EventKey(a) == ReminderPlanner.EventKey(r))) : [])
             .ToArray();
     }
     private void Put(ReminderOccurrence r, DeliveryStatus status, string text) => journal.Put(new(r, status, _clock.GetUtcNow(), text));

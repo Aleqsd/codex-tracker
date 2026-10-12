@@ -17,9 +17,17 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
         var latest = desktop is not null && (terminal is null || desktop.FetchedAt > terminal.FetchedAt) ? desktop : terminal ??
             throw new TrackerException(Loc.T("Quotas Claude en attente. Ouvrez l’application Claude pour un relevé automatique, ou configurez les relevés du terminal dans Réglages → Général."));
         latest = KeepTerminalResets(latest, terminal);
+        var samples = history?.Invoke(profile.Id) ?? [];
+        if (latest.Short is { ResetsAt: null } && PendingExactShortReset(samples, latest.FetchedAt) is { } shortReset)
+            latest = WithKnownReset(latest, shortReset, 300);
+        var now = DateTimeOffset.UtcNow;
+        if (latest.Short is { } shortWindow && !(shortWindow.ResetsAt > now))
+        {
+            var native = await Task.Run(() => ClaudeCodeNativeResetReader.Read(location, desktopPaths, identity, now, cancellationToken), cancellationToken);
+            latest = ClaudeCodeNativeResetReader.Apply(latest, native, now);
+        }
         if (latest.Weekly is { ResetsAt: null })
         {
-            var samples = history?.Invoke(profile.Id) ?? [];
             // The terminal reading is ignored once its session expires, but the date it gave for the running period stays true.
             if (PendingExactWeeklyReset(samples, latest.FetchedAt) is { } pending) return WithKnownWeeklyReset(latest, pending);
             var observed = samples.Where(s => s.WeeklyRemaining is not null)
@@ -51,11 +59,17 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
     internal static DateTimeOffset? PendingExactWeeklyReset(IEnumerable<UsageSample> samples, DateTimeOffset at) =>
         samples.Where(s => !s.WeeklyResetEstimated && s.WeeklyResetsAt > at && s.Timestamp <= at).OrderBy(s => s.Timestamp).LastOrDefault()?.WeeklyResetsAt;
 
-    internal static AccountSnapshot WithKnownWeeklyReset(AccountSnapshot snapshot, DateTimeOffset reset) => snapshot with
+    /// <summary>Short deadlines are never projected; keep an observed date only for its still running period.</summary>
+    internal static DateTimeOffset? PendingExactShortReset(IEnumerable<UsageSample> samples, DateTimeOffset at) =>
+        samples.Where(s => s.ShortResetsAt > at && s.Timestamp <= at).OrderBy(s => s.Timestamp).LastOrDefault()?.ShortResetsAt;
+
+    internal static AccountSnapshot WithKnownWeeklyReset(AccountSnapshot snapshot, DateTimeOffset reset) => WithKnownReset(snapshot, reset, 10080);
+
+    private static AccountSnapshot WithKnownReset(AccountSnapshot snapshot, DateTimeOffset reset, int minutes) => snapshot with
     {
         Buckets = snapshot.Buckets.Select(bucket => bucket with
         {
-            Windows = bucket.Windows.Select(window => window.IsWeekly && window.ResetsAt is null ? window with { ResetsAt = reset } : window).ToArray()
+            Windows = bucket.Windows.Select(window => window.WindowDurationMins == minutes && window.ResetsAt is null ? window with { ResetsAt = reset } : window).ToArray()
         }).ToArray()
     };
 

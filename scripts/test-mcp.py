@@ -6,6 +6,7 @@ import subprocess
 import threading
 import uuid
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 parser = argparse.ArgumentParser()
 parser.add_argument("exe")
@@ -70,6 +71,13 @@ try:
     check(len(a.tool("list_resets")["result"]["resets"]) > 0, "reset types and dates readable")
     b = Client()
     check(b.tool("get_status")["result"]["connections"] == 2, "two clients share one tracker")
+    revision_before_navigation = a.tool("get_status")["result"]["revision"]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        opened = [pool.submit(client.tool, "open_page", page="Comptes actifs") for client in (a, b)]
+        check(all(request.result()["result"]["opened"] for request in opened), "two clients can open the same active summary concurrently")
+    check(a.tool("open_page", page="Comptes actifs")["result"]["opened"], "repeated active-summary navigation remains open")
+    check(a.tool("open_page", page="unknown-fixture-page").get("error") == "invalid_or_unavailable", "unknown navigation is refused")
+    check(a.tool("get_status")["result"]["revision"] == revision_before_navigation, "summary navigation preserves preference revision")
     pref = a.tool("get_preferences")["result"]
     updated = dict(pref["settings"], themeMode="Light")
     rid = str(uuid.uuid4())

@@ -55,7 +55,7 @@ Seul le compte ouvert dans Codex est actualisé, toutes les deux minutes par dé
 
 Le tracker détecte aussi le profil sélectionné dans Claude Code sur Windows, y compris l’onglet Code de l’application Claude. Une même adresse chez Codex et Claude crée des comptes distincts. Les comptes personnels et d’entreprise Claude sont séparés par leur organisation native et nommés dans les vues, même avec la même adresse. Le compte actif de chaque outil est suivi ; leurs autres comptes conservent leur dernier relevé daté. L’icône privilégie Codex lorsqu’ils sont tous deux connectés, puis Claude si Codex est déconnecté.
 
-Les derniers quotas du cache local de l’application Claude sont lus automatiquement, avec leur date d’observation. Le cache ne fournit pas les dates des prochains resets : elles restent inconnues. Pour recevoir aussi les quotas du terminal et leurs échéances, utilisez **Réglages → Général → Claude Code → Copier le réglage Claude Code**, puis fusionnez-le dans vos réglages utilisateur Claude Code. [Étapes et limites](CLAUDE-CODE.md). Sans relevé reçu, les quotas restent inconnus.
+Les derniers quotas du cache local de l’application Claude sont lus automatiquement, avec leur date d’observation. Les réponses de consommation déjà mises en cache fournissent aussi les dates exactes des resets lorsqu’elles sont présentes. Si la date des 5 heures manque, le tracker cherche l’échéance exacte dans les métadonnées d’une erreur de quota native de l’onglet Code, liées au même compte, à la même organisation et à la même session. Aucune requête avec les jetons Claude et aucune ouverture du terminal ne sont nécessaires. Une source absente, expirée ou d’un format inconnu laisse cette heure indisponible. Le réglage **Copier le réglage Claude Code** reste facultatif pour recevoir aussi les relevés du terminal. [Étapes et limites](CLAUDE-CODE.md).
 
 ## Déclarer un reset général Codex
 
@@ -90,6 +90,10 @@ L’onglet **Réglages**, à côté de **Comptes** et **Resets**, contient sept 
 ## Onglet Resets
 
 L’onglet **Resets** affiche d’abord les prochaines échéances, groupées par jour. Chaque ligne montre l’icône officielle Codex ou Claude, le compte, le type de reset et le délai. Cliquez sur une ligne pour retrouver l’heure exacte, le fuseau, le dernier relevé et les détails du crédit. Les filtres par compte et par type sont des listes déroulantes.
+
+Cliquez sur la **cloche** à droite d’un reset des **5 heures** ou de la **semaine** pour être prévenu par notification Windows à cette échéance. La cloche prend la couleur d’accent ; un second clic annule la notification. Ce choix ponctuel est sauvegardé sur ce PC et reste indépendant des rappels configurés dans Réglages. Une date inconnue ou déjà passée ne permet pas de programmer une nouvelle alerte. Si le fournisseur corrige l’échéance avant le reset, l’ancienne alerte devient caduque : choisissez la nouvelle date si vous souhaitez être prévenu.
+
+Le tracker doit tourner en arrière-plan. Après une veille ou un arrêt, il rattrape les alertes des dernières 24 heures, une seule fois. Le message nomme le compte, le fournisseur et la fenêtre ; une heure estimée est signalée comme telle. L’heure atteinte ne confirme pas la recharge effective du quota. Windows décide de l’affichage, notamment en mode Ne pas déranger. Les alertes ponctuelles restent locales lors d’un export ou import de profils.
 
 Les sections **À confirmer**, **Dates inconnues**, **Réserves Codex** et les sources d’un reset général sont repliées par défaut. Une date passée ne confirme pas un nouveau quota. Si le serveur fournit moins de dates de crédits que le compteur de réserves, une ligne signale les dates manquantes. Les compteurs de réserves proviennent des derniers relevés ; les comptes Claude n’ont pas de réserves Codex. Les détails ouverts et les filtres restent conservés après actualisation.
 

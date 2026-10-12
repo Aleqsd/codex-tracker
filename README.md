@@ -23,7 +23,7 @@ Codex Tracker répond à trois questions, sans rien configurer :
 <td width="50%" valign="top"><img src="docs/resets-week.png" alt="Semaine des recharges avec comptes fictifs"><br><strong>Le calendrier des recharges.</strong> Les prochaines recharges jour par jour, et les crédits de reset Codex en réserve avec leur date d’expiration.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="docs/reminders.png" alt="Réglages des rappels avec comptes fictifs"><br><strong>Prévenu au bon moment.</strong> Une notification Windows avant une recharge, sous 20, 10 ou 5 % de quota, une heure avant d’être à court au rythme actuel, ou quand un autre compte vient de se recharger. Un clic ouvre le suivi, ou « Rappeler » la représente plus tard.</td>
+<td width="50%" valign="top"><img src="docs/reminders.png" alt="Réglages des rappels avec comptes fictifs"><br><strong>Prévenu au bon moment.</strong> Activez la cloche d’un reset pour être prévenu à l’heure choisie. Retrouvez aussi les rappels avant une recharge, sous 20, 10 ou 5 % de quota, avant d’être à court ou quand un autre compte peut s’être rechargé. Un clic ouvre le suivi, ou « Rappeler » la représente plus tard.</td>
 <td width="50%" valign="top"><img src="docs/settings.png" alt="Réglages généraux, démonstration"><br><strong>Discret et à votre goût.</strong> Interface en français ou en anglais, thème clair ou sombre comme Windows, noms et photos pour vos comptes, export vers Google Agenda.</td>
 </tr>
 </table>

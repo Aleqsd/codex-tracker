@@ -31,7 +31,7 @@ internal static class ProfileTransfer
                 avatars[file] = Convert.ToBase64String(File.ReadAllBytes(path));
         var version = typeof(ProfileTransfer).Assembly.GetName().Version?.ToString(3) ?? "";
         var bundle = new ProfileBundle(CurrentVersion, version, now, service.ExportProfiles(),
-            current with { McpEnabled = false, RecoveryPending = false, ManualCodexReset = null, SentExpiryReminders = new() }, avatars);
+            current with { McpEnabled = false, RecoveryPending = false, ManualCodexReset = null, ResetAlerts = [], SentExpiryReminders = new() }, avatars);
         return ProfileArchive.Protect(JsonSerializer.SerializeToUtf8Bytes(bundle, Json), password);
     }
 
@@ -65,7 +65,7 @@ internal static class ProfileTransfer
         return result;
     }
 
-    /// <summary>The file's settings replace this PC's, except assistant access, recovery state and the manual Codex reset.</summary>
+    /// <summary>Keep this PC's assistant access, recovery state, manual reset and one-off reset alerts.</summary>
     internal static TrackerPreferences Apply(TrackerPreferences current, TrackerPreferences imported, IReadOnlyDictionary<Guid, Guid> accounts, IReadOnlyDictionary<string, string> avatars)
     {
         var appearances = new Dictionary<Guid, AccountAppearance>(current.Appearances);
@@ -78,7 +78,7 @@ internal static class ProfileTransfer
         return imported with
         {
             McpEnabled = current.McpEnabled, RecoveryPending = current.RecoveryPending, ManualCodexReset = current.ManualCodexReset,
-            SentExpiryReminders = current.SentExpiryReminders, Appearances = appearances,
+            ResetAlerts = current.ResetAlerts, SentExpiryReminders = current.SentExpiryReminders, Appearances = appearances,
             ReminderRules = imported.ReminderRules?.Select(rule => rule with
             {
                 AccountIds = rule.AccountIds?.Where(accounts.ContainsKey).Select(id => accounts[id]).ToArray()

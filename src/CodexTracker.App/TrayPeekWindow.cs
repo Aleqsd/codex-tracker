@@ -71,7 +71,9 @@ internal sealed class TrayPeekWindow : Window
         private readonly QuotaRing _shortRing = new() { Thickness = 6 };
         private readonly Grid _quotas = new();
         private readonly StackPanel _weeklyMetric, _shortMetric;
-        private readonly TextBlock _reset = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
+        private readonly TextBlock _weeklyReset = new() { FontSize = 12, FontWeight = FontWeights.Medium, TextAlignment = TextAlignment.Right, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 0, 0, 0) };
+        private readonly TextBlock _shortReset = new() { FontSize = 12, FontWeight = FontWeights.Medium, TextAlignment = TextAlignment.Right, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 0, 0, 0) };
+        private readonly Grid _weeklyResetRow, _shortResetRow;
         private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
         private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.Medium };
         private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
@@ -80,7 +82,7 @@ internal sealed class TrayPeekWindow : Window
 
         public AccountPeek()
         {
-            _status.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); Muted(_plan); Muted(_reset); Muted(_freshness); Muted(_expirations);
+            _status.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); Muted(_plan); Muted(_freshness); Muted(_expirations);
             Children.Add(_divider); Children.Add(_status);
             var heading = new Grid(); heading.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) }); heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
             _name.Margin = new Thickness(0, 0, 8, 0); _name.VerticalAlignment = VerticalAlignment.Center;
@@ -93,7 +95,20 @@ internal sealed class TrayPeekWindow : Window
             _reserves.Children.Add(_reserve); _reserves.Children.Add(_expirations); Children.Add(_reserves);
             ToolTipService.SetInitialShowDelay(_reserve, 150);
             ToolTipService.SetShowDuration(_reserve, 60000);
-            Children.Add(_reset); Children.Add(_freshness);
+            _shortResetRow = ResetRow(Loc.T("Reset 5 h"), _shortReset, "ShortResetMetric");
+            _weeklyResetRow = ResetRow(Loc.T("Reset semaine"), _weeklyReset, "WeeklyResetMetric");
+            Children.Add(_shortResetRow); Children.Add(_weeklyResetRow); Children.Add(_freshness);
+        }
+
+        private static Grid ResetRow(string label, TextBlock value, string tag)
+        {
+            var row = new Grid { Tag = tag, Background = Brushes.Transparent };
+            row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+            var name = new TextBlock { Text = label, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+            Muted(name); row.Children.Add(name); Grid.SetColumn(value, 1); row.Children.Add(value);
+            ToolTipService.SetShowDuration(row, 60000);
+            return row;
         }
 
         private static StackPanel Metric(string name, TextBlock number, QuotaRing ring)
@@ -121,6 +136,8 @@ internal sealed class TrayPeekWindow : Window
             var shortWindow = account is null ? null : QuotaPresentation.Remaining(state, account, ResetKind.Short, now);
             var declared = account is not null && state.ManualCodexReset?.Applies(account, ResetKind.Weekly, now) == true;
             var nextReset = account is null ? null : QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now);
+            var shortReset = account is null ? null : QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now);
+            var shortDeclared = account is not null && state.ManualCodexReset?.Applies(account, ResetKind.Short, now) == true;
             _name.Text = account is null ? Loc.T("En attente d’un compte") : PrivacyText.ContextualAccount(account.Profile, state, preferences);
             _plan.Text = snapshot?.PlanType?.ToLowerInvariant() switch { "pro" or "prolite" => "Pro", "plus" => "Plus", "free" => "Free", null => "", var other => System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(other) };
             if (snapshot?.PlanMultiplier is int multiplier) _plan.Text += $" {multiplier}×";
@@ -130,9 +147,15 @@ internal sealed class TrayPeekWindow : Window
             _weeklyRing.RingBrush = declared ? Display.Green : Display.QuotaBarBrush(weekly); _shortRing.RingBrush = Display.QuotaBarBrush(shortWindow);
             _planChip.Visibility = string.IsNullOrEmpty(_plan.Text) ? Visibility.Collapsed : Visibility.Visible;
             _status.Text = declared ? Loc.T("Reset Codex déclaré") : account?.IsActive == true ? Loc.F("Compte actif dans {0}", account.Profile.ProviderName) : Loc.T("Compte affiché dans l’icône");
-            _reset.Text = declared ? Loc.T("Prochain reset à reconfirmer") : nextReset is null ? Loc.T("Reset hebdomadaire indisponible")
-                : "Reset · " + (snapshot?.Weekly is { IsResetEstimated: true } inferred && inferred.ResetsAt == nextReset ? "≈ " : "") + Display.Countdown(nextReset);
-            _reset.ToolTip = declared ? Loc.F("Reset Codex déclaré le {0} · {1}", Display.Exact(state.ManualCodexReset!.At), Display.Zone(state.ManualCodexReset.At)) : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
+            _shortResetRow.Visibility = showShort ? Visibility.Visible : Visibility.Collapsed;
+            _weeklyResetRow.Margin = showShort ? new Thickness(0, 5, 0, 0) : new Thickness();
+            _shortReset.Text = shortDeclared ? Loc.T("À reconfirmer") : Display.ResetTiming(shortReset);
+            _weeklyReset.Text = declared ? Loc.T("À reconfirmer") : Display.ResetTiming(nextReset,
+                snapshot?.Weekly is { IsResetEstimated: true } inferred && inferred.ResetsAt == nextReset);
+            var declaredHint = state.ManualCodexReset is { } manual ? Loc.F("Reset Codex déclaré le {0} · {1}", Display.Exact(manual.At), Display.Zone(manual.At)) : "";
+            _shortResetRow.ToolTip = shortDeclared ? declaredHint : Display.Exact(shortReset) + " · " + Display.Zone(shortReset);
+            _weeklyResetRow.ToolTip = declared ? declaredHint : snapshot?.Weekly is { IsResetEstimated: true } estimate && estimate.ResetsAt == nextReset
+                ? Display.EstimatedReset(estimate) : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
             _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
             _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };
             _expirations.Text = snapshot?.ResetCredits is { Count: > 0 } credits

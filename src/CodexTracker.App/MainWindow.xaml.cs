@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
     private bool _canClose, _refreshing;
+    private bool _activeSummaryOpen;
     internal ThemeManager Theme { get; }
     internal PreferencesStore Preferences => _preferences;
     internal ITrackerService TrackerService => _service;
@@ -60,7 +61,10 @@ public partial class MainWindow : Window
         _versionNotice.Tick += (_, _) => { _versionNotice.Stop(); if (!_canClose) ShowVersion(); };
         _updates.PreparationChanged += UpdatePreparationChanged;
         UpdatePresentation();
-        _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(), () => _ = RefreshAsync(), () => OpenManualCodexReset()); ResetsTab.Content = _resets;
+        _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(),
+            () => _ = RefreshAsync(), () => OpenManualCodexReset(), (entry, enabled) =>
+                Commands.SetResetAlert(_service.State, entry.Account.Profile.Id, entry.Kind, entry.At!.Value, enabled, PreviewClock.UtcNow, Commands.Revision));
+        ResetsTab.Content = _resets;
         MainTabs.SelectionChanged += (_, e) =>
         { if (ReferenceEquals(e.OriginalSource, MainTabs) && SettingsTab.IsSelected) _ = Settings; };
         if (demo) Title = "Codex Tracker (démo)";
@@ -72,7 +76,16 @@ public partial class MainWindow : Window
         _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); RefreshHealth(); };
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
-        KeyDown += (_, e) => { if (e.Key == Key.Escape) HideToTray(); if (e.Key == Key.F5) _ = RefreshAsync(); };
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                if (_activeSummaryOpen && AccountsTab.IsSelected) DismissActiveAccountsSummary();
+                else HideToTray();
+                e.Handled = true;
+            }
+            if (e.Key == Key.F5) _ = RefreshAsync();
+        };
     }
     public async Task InitializeAsync()
     {
@@ -87,8 +100,25 @@ public partial class MainWindow : Window
     private void UpdateModel()
     {
         if (_canClose) return;
-        _model.Update(_service.State); _resets.Update(_service.State);
+        _model.Update(_service.State); _resets.Update(_service.State); UpdateActiveAccountsSummary();
         RefreshHealth();
+    }
+    private void UpdateActiveAccountsSummary()
+    {
+        ActiveAccountCard.Visibility = _activeSummaryOpen && _model.HasActive ? Visibility.Visible : Visibility.Collapsed;
+        var action = _activeSummaryOpen ? Loc.T("Masquer le résumé des comptes actifs") : Loc.T("Afficher le résumé des comptes actifs");
+        ActiveAccountsSummaryButton.ToolTip = action;
+        System.Windows.Automation.AutomationProperties.SetName(ActiveAccountsSummaryButton, action);
+    }
+    private void ActiveAccountsSummary_Click(object sender, RoutedEventArgs e)
+    {
+        _activeSummaryOpen = !_activeSummaryOpen;
+        UpdateActiveAccountsSummary();
+    }
+    private void DismissActiveAccountsSummary_Click(object sender, RoutedEventArgs e) => DismissActiveAccountsSummary();
+    private void DismissActiveAccountsSummary()
+    {
+        _activeSummaryOpen = false; UpdateActiveAccountsSummary(); ActiveAccountsSummaryButton.Focus();
     }
     private void RefreshHealth()
     {
@@ -133,6 +163,10 @@ public partial class MainWindow : Window
     {
         if (page == "Resets") { ShowResets(); return; }
         if (page == "Comptes") { ShowPanel(); AccountsTab.IsSelected = true; return; }
+        if (page == "Comptes actifs")
+        {
+            ShowPanel(); AccountsTab.IsSelected = true; _activeSummaryOpen = true; UpdateActiveAccountsSummary(); return;
+        }
         if (page is not ("Général" or "Rappels" or "Canaux" or "Historique" or "Calendrier" or "Assistants" or "Application")) throw new ArgumentException(Loc.T("Page inconnue."));
         ShowSettings(); Settings.ShowPage(page);
     }

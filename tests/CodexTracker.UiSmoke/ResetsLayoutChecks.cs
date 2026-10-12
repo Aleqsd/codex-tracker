@@ -25,12 +25,19 @@ internal static class ResetsLayoutChecks
     internal static async Task Run(MainWindow window)
     {
         var oldClock = PreviewClock.Fixed; var oldTheme = window.Preferences.Current.ThemeMode;
+        var oldAlerts = window.Preferences.Current.ResetAlerts;
         var width = window.Width; var height = window.Height;
         var tab = (TabItem)window.FindName("ResetsTab"); var previous = tab.Content;
         PreviewClock.Fixed = DateTimeOffset.UtcNow;
         await using var demo = new DemoTrackerService(false, true, false, true);
         var declarations = 0;
-        var view = new ResetsView(window.Preferences, _ => { }, () => { }, () => declarations++);
+        ResetsView view = null!;
+        view = new ResetsView(window.Preferences, _ => { }, () => { }, () => declarations++, (entry, enabled) =>
+        {
+            window.Commands.SetResetAlert(demo.State, entry.Account.Profile.Id, entry.Kind, entry.At!.Value, enabled,
+                PreviewClock.UtcNow, window.Commands.Revision);
+            view.Update(demo.State);
+        });
         try
         {
             tab.Content = view; view.Update(demo.State); window.ShowResets(); await Task.Delay(100); window.UpdateLayout();
@@ -42,6 +49,21 @@ internal static class ResetsLayoutChecks
                 "Timezone, grant dates and observation age do not crowd the reset landing view");
             Check(Tree(rows[0]).OfType<Image>().Any(i => i.Source is not null), "Reset rows use the bundled official provider icons");
             var first = rows[0];
+            var bell = Tree(first).OfType<Button>().Single(b => b.Tag is string tag && tag.StartsWith("ResetAlert:"));
+            var bellTag = bell.Tag; var alertEntry = (ResetScheduleEntry)first.Tag;
+            Check(bell.IsEnabled && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Me prévenir"),
+                "Every known upcoming reset exposes an accessible one-off notification button");
+            bell.Focus(); bell.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(40); window.UpdateLayout();
+            bell = Tree(timeline).OfType<Button>().Single(b => Equals(b.Tag, bellTag));
+            Check(window.Preferences.Current.ResetAlerts.Any(a => a.Enabled && ResetAlertPlanner.Matches(a, alertEntry.Account.Profile.Id, alertEntry.Kind, alertEntry.At!.Value)) &&
+                bell.IsKeyboardFocused && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Annuler"),
+                "Clicking the bell saves the chosen deadline and restores keyboard focus after refresh");
+            Check(!Tree(timeline).OfType<Expander>().Single(e => Equals(e.Tag, alertEntry)).IsExpanded,
+                "Notification clicks do not expand the reset details");
+            bell.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(40); window.UpdateLayout();
+            Check(!window.Preferences.Current.ResetAlerts.Any(a => ResetAlertPlanner.Matches(a, alertEntry.Account.Profile.Id, alertEntry.Kind, alertEntry.At!.Value)),
+                "Clicking the selected bell cancels that single reset notification");
+            first = Tree(timeline).OfType<Expander>().First(e => e.Tag is ResetScheduleEntry && e.IsVisible);
             var toggle = Tree(first).OfType<ToggleButton>().Single();
             toggle.BringIntoView(); toggle.Focus(); toggle.IsChecked = true; window.UpdateLayout();
             Check(toggle.IsKeyboardFocused && Tree(first).OfType<TextBlock>().Any(t => t.IsVisible && t.Text.Contains("UTC")),
@@ -74,6 +96,12 @@ internal static class ResetsLayoutChecks
                 Check(Tree(Field<ComboBox>(view, "_kinds")).OfType<TextBlock>().Any(t => t.Text == "Tous les types") &&
                     !Tree(view).OfType<TextBlock>().Any(t => t.IsVisible && t.Text.Contains("ResetTypeChoice")),
                     $"Reset type dropdown displays its label in {theme}, compact={compact}");
+                foreach (var button in Tree(timeline).OfType<Button>().Where(b => b.IsVisible && b.Tag is string tag && tag.StartsWith("ResetAlert:")))
+                {
+                    var bounds = button.TransformToAncestor(window).TransformBounds(new Rect(button.RenderSize));
+                    Check(button.ActualWidth >= 24 && bounds.Left >= 0 && bounds.Right <= window.ActualWidth,
+                        $"Reset notification buttons fit {theme}, compact={compact}");
+                }
                 window.SaveScreenshot(Path.GetFullPath($"artifacts/previews/resets-simple-{theme}-{(compact ? "compact" : "normal")}-120.png"), 120);
                 view.ShowWeek(); await Task.Delay(80); window.UpdateLayout();
                 var days = Tree(view).OfType<Button>().Where(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("Échéances du ")).ToArray();
@@ -101,7 +129,7 @@ internal static class ResetsLayoutChecks
         finally
         {
             tab.Content = previous; PreviewClock.Fixed = oldClock; window.Width = width; window.Height = height;
-            window.Preferences.Update(p => p with { ThemeMode = oldTheme }); window.OpenPage("Comptes");
+            window.Preferences.Update(p => p with { ThemeMode = oldTheme, ResetAlerts = oldAlerts }); window.OpenPage("Comptes");
         }
     }
 }

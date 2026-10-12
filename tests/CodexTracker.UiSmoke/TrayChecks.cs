@@ -53,10 +53,28 @@ internal static class TrayChecks
                     var shown = Tree(peek).OfType<TextBlock>().Where(t => t.IsVisible).Select(t => t.Text).ToArray();
                     Check(shown.Contains("Compte actif dans Codex") && shown.Contains("Compte actif dans Claude Code"), "Hover preview shows the active Codex and Claude Code accounts together");
                     Check(shown.Count(t => t == "5 heures") == 1, "Codex Pro hides its 5-hour quota while Claude Code keeps it");
+                    Check(shown.Count(t => t == "Reset semaine") == 2 && shown.Count(t => t == "Reset 5 h") == 1,
+                        "Hover preview distinguishes weekly and five-hour resets and hides unsupported Codex Pro short resets");
+                    var claude = both.State.Accounts.Single(a => a.IsActiveInClaudeCode);
+                    var shortReset = Tree(peek).OfType<Grid>().Single(g => g.Tag?.ToString() == "ShortResetMetric" && g.IsVisible);
+                    Check(Tree(shortReset).OfType<TextBlock>().Any(t => t.Text.StartsWith(claude.Snapshot!.Short!.ResetsAt!.Value.ToLocalTime().ToString("HH:mm") + " · ")),
+                        "Hover preview displays the Claude five-hour reset hour with its countdown");
                     Check(WindowsLifecycle.Bounds(new WindowInteropHelper(peek).Handle) is { } bounds && bounds.Bottom <= area.Bottom && bounds.Y >= area.Top, "Two-account hover preview stays within the work area");
                     peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-both-{mode}-96.png"), 96);
                     peek.Hide();
+                    peek.Update(both.State with { Accounts = [claude] }, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);
+                    peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-claude-{mode}-96.png"), 96);
+                    peek.Hide();
                 }
+                var unknown = both.State with { Accounts = both.State.Accounts.Where(a => a.IsActiveInClaudeCode).Select(a => a with {
+                    Snapshot = a.Snapshot! with { Buckets = a.Snapshot!.Buckets.Select(b => b with {
+                        Windows = b.Windows.Select(w => w with { ResetsAt = null }).ToArray() }).ToArray() }
+                }).ToArray() };
+                peek.Update(unknown, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);
+                var unknownRows = Tree(peek).OfType<Grid>().Where(g => g.Tag?.ToString() is "ShortResetMetric" or "WeeklyResetMetric" && g.IsVisible).ToArray();
+                Check(unknownRows.Length == 2 && unknownRows.All(g => Tree(g).OfType<TextBlock>().Any(t => t.Text == "Indisponible")),
+                    "Hover preview does not invent hours when Claude reset dates are absent");
+                peek.Hide();
             }
             preferences.Update(p => p with { ThemeMode = ThemeMode.Dark }); await Task.Delay(30);
             peek.Update(service.State, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);

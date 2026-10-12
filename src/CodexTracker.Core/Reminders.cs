@@ -7,7 +7,7 @@ public sealed record PhonePolicy(int SmsPerDay = 5, int CallsPerDay = 1, bool Qu
     int QuietStart = 22, int QuietEnd = 8, string TimeZoneId = "Europe/Paris");
 public sealed record ReminderOccurrence(string Key, Guid AccountId, string AccountName, ResetKind Kind,
     string? CreditId, DateTimeOffset At, DateTimeOffset ObservedAt, int LeadMinutes, ReminderChannel Channel, string? SourceUrl = null,
-    AccountProvider Provider = AccountProvider.Codex)
+    AccountProvider Provider = AccountProvider.Codex, bool IsResetEstimated = false)
 {
     public string ProviderName => Provider == AccountProvider.ClaudeCode ? "Claude Code" : "Codex";
 }
@@ -66,10 +66,15 @@ public static class ReminderPlanner
     public static string EventKey(ReminderOccurrence r) => $"{r.AccountId}/{r.Kind}/{r.CreditId}/{r.At.UtcTicks}/{r.Channel}";
     public static string Label(ResetKind kind) => kind switch { ResetKind.Weekly => Loc.T("Reset hebdomadaire"), ResetKind.Short => Loc.T("Reset 5 heures"), _ => Loc.T("Expiration de réserve") };
     public static bool IsGlobalReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("global/", StringComparison.Ordinal);
+    public static bool IsRequestedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("reset-alert/", StringComparison.Ordinal);
     public static bool IsExpectedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && (r.Key.StartsWith("expected/", StringComparison.Ordinal) || IsGlobalReset(r));
-    public static string Title(ReminderOccurrence r) => IsGlobalReset(r) ? Loc.T("Reset général annoncé comme terminé") : IsExpectedReset(r) ? Loc.T("Compte probablement rechargé")
+    public static string Title(ReminderOccurrence r) => IsRequestedReset(r) ? (r.IsResetEstimated ? Loc.T("Échéance de reset estimée atteinte") : Loc.T("Échéance de reset atteinte"))
+        : IsGlobalReset(r) ? Loc.T("Reset général annoncé comme terminé") : IsExpectedReset(r) ? Loc.T("Compte probablement rechargé")
         : r.Kind == ResetKind.Reserve ? Loc.T("Un reset en réserve va expirer") : Label(r.Kind);
-    public static string Body(ReminderOccurrence r) => IsGlobalReset(r)
+    public static string Body(ReminderOccurrence r) => IsRequestedReset(r)
+        ? Loc.F("{0} · {1}\n{2} : heure prévue {3:dd/MM/yyyy HH:mm zzz}.\nVérifiez le quota dans {1} pour confirmer la recharge.",
+            r.AccountName, r.ProviderName, r.IsResetEstimated ? Loc.T("Reset hebdomadaire estimé") : Label(r.Kind), r.At.ToLocalTime())
+        : IsGlobalReset(r)
         ? r.Kind == ResetKind.Weekly
             ? Loc.F("{0} · Semaine probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)
             : Loc.F("{0} · 5 heures probablement à 100 %.\nConfirmation publique du {1:dd/MM/yyyy HH:mm:ss zzz}.\nDernier relevé : {2:dd/MM/yyyy HH:mm:ss zzz}. À confirmer dans {3} ; source dans Resets.", r.AccountName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime(), r.ProviderName)

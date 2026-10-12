@@ -16,6 +16,8 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
         if (expected is not null) CheckRevision(expected);
         var next = change(preferences.Current);
         ValidateRules(next.ReminderRules!); ValidatePhone(next.PhonePolicy);
+        if (next.ResetAlerts is null || next.ResetAlerts.Length > ResetAlertPlanner.MaximumAlerts || next.ResetAlerts.Any(a => !ResetAlertPlanner.Valid(a)))
+            throw new ArgumentException(Loc.T("Notifications de reset invalides."));
         if (!Enum.IsDefined(next.ThemeMode) || !Enum.IsDefined(next.SortMode) || next.RefreshMinutes is not (1 or 2 or 5))
             throw new ArgumentException(Loc.T("Réglages invalides."));
         preferences.Update(_ => next);
@@ -38,6 +40,26 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
         if (at > now) throw new ArgumentException(Loc.T("Le reset doit avoir eu lieu : choisissez une date et une heure passées."));
         if (preferences.Current.ManualCodexReset?.At == at) return;
         SavePreferences(p => p with { ManualCodexReset = at is { } time ? new(time, now) : null }, expected);
+    }
+    internal void SetResetAlert(TrackerState state, Guid accountId, ResetKind kind, DateTimeOffset at, bool enabled,
+        DateTimeOffset now, string expected)
+    {
+        CheckRevision(expected);
+        var matching = preferences.Current.ResetAlerts.Where(a => ResetAlertPlanner.Matches(a, accountId, kind, at)).ToArray();
+        if (enabled && matching.Any(a => a.Enabled) || !enabled && matching.Length == 0) return;
+        var remaining = preferences.Current.ResetAlerts.Where(a => !ResetAlertPlanner.Matches(a, accountId, kind, at) && a.At >= now.AddDays(-1)).ToArray();
+        if (!enabled) { SavePreferences(p => p with { ResetAlerts = remaining }, expected); return; }
+        if (preferences.RecoveryRequired) throw new InvalidOperationException(Loc.T("Vérifiez d’abord les réglages récupérés avant d’activer une notification."));
+        var account = state.Accounts.FirstOrDefault(a => a.Profile.Id == accountId);
+        if (account?.Snapshot is not { } snapshot || kind is not (ResetKind.Short or ResetKind.Weekly) || at <= now ||
+            kind == ResetKind.Short && !account.HasShortWindow ||
+            QuotaPresentation.ResetsAt(state, account, kind, now) != at)
+            throw new ArgumentException(Loc.T("Cette échéance n’est plus disponible. Actualisez les resets."));
+        var estimated = kind == ResetKind.Weekly && snapshot.Weekly?.IsResetEstimated == true;
+        var alert = new ResetAlert(accountId, kind, at, now, snapshot.FetchedAt, estimated);
+        if (!ResetAlertPlanner.Valid(alert) || remaining.Length >= ResetAlertPlanner.MaximumAlerts)
+            throw new ArgumentException(Loc.T("Notifications de reset invalides."));
+        SavePreferences(p => p with { ResetAlerts = [.. remaining, alert] }, expected);
     }
     internal static void ValidateRules(ReminderRule[] rules)
     {

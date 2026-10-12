@@ -8,6 +8,10 @@ Le tracker observe le compte connecté dans Codex et conserve les identités, of
 
 Un **profil exporté** (Réglages → Application → Profil) contient ces données privées, chiffrées par le mot de passe que vous choisissez ; ne le partagez pas avec ce mot de passe. Les clés des canaux, l’accès des assistants et le journal d’envoi n’y figurent pas.
 
+Pour Claude Desktop, le tracker lit l’historique de consommation et les réponses de quotas déjà présentes dans son cache HTTP local. Il ne décode que la réponse de quotas de l’organisation sélectionnée et n’en conserve que les pourcentages, échéances et date d’observation. Les conversations et les réponses des autres URL ne sont pas décodées. Aucun cookie ou jeton de Desktop n’est utilisé, aucune requête Anthropic supplémentaire n’est faite et aucun fichier natif n’est modifié.
+
+En secours pour les 5 heures, le tracker utilise aussi les associations de sessions du Code intégré, sous le compte **et** l’organisation sélectionnés, puis les annotations natives des erreurs de quota dans la fin des fichiers de session correspondants. Seuls le type d’erreur, la version, l’identifiant de session et les dates sont décodés ; les blocs de message et de contenu sont ignorés sans être matérialisés. Le tracker ne conserve que l’échéance exacte, sans texte, chemin de projet, identifiant de session ou secret. Les données natives restent inchangées et une date expirée ne devient jamais une nouvelle projection.
+
 Il ne se connecte pas à un autre compte et ne modifie pas la session de Codex. La collecte utilise la CLI Codex installée, qui communique avec les services OpenAI pour le compte actif.
 
 Des copies `.bak` des préférences, profils et relevés permettent leur récupération. Les fichiers corrompus sont conservés localement avant remplacement et peuvent aussi contenir des données privées : ne les partagez pas. Le diagnostic proposé dans l’onglet Réglages utilise une liste limitée de versions, états techniques et dates, sans compte, quota, chemin personnel ni secret ; son contenu est montré avant copie et n’est jamais envoyé automatiquement.

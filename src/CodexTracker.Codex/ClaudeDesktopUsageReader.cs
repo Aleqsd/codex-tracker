@@ -37,7 +37,10 @@ internal static class ClaudeDesktopUsageReader
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
         }
-        return latest;
+        var cached = await Task.Run(() => ClaudeDesktopCacheUsageReader.Read(paths, identity, DateTimeOffset.UtcNow, token), token);
+        if (cached is null) return latest;
+        return latest is not null && latest.FetchedAt > cached.FetchedAt
+            ? ClaudeCodeUsageReader.KeepTerminalResets(latest, cached) : cached;
     }
 
     /// <summary>Weekly usage readings of the selected organization, oldest first, to locate an observed weekly reset.</summary>

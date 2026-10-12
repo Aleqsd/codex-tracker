@@ -33,6 +33,7 @@ internal sealed record TrackerPreferences
     public bool ExpiryNotifications { get; init; } = true;
     public int ExpiryLeadHours { get; init; } = 24;
     public ReminderRule[]? ReminderRules { get; init; }
+    public ResetAlert[] ResetAlerts { get; init; } = [];
     /// <summary>Absent in older files: their untouched reserve reminders are upgraded once.</summary>
     public int? RemindersRevision { get; init; }
     public PhonePolicy PhonePolicy { get; init; } = new();
@@ -112,7 +113,8 @@ internal sealed class PreferencesStore
     {
         McpEnabled = false, Alert20 = false, Alert10 = false, Alert5 = false,
         ResetNotifications = false, ForecastNotifications = false, MonitorGlobalResets = false, ExpiryNotifications = false,
-        ReminderRules = value.ReminderRules!.Select(rule => rule with { Enabled = false }).ToArray()
+        ReminderRules = value.ReminderRules!.Select(rule => rule with { Enabled = false }).ToArray(),
+        ResetAlerts = value.ResetAlerts.Select(alert => alert with { Enabled = false }).ToArray()
     };
     private static TrackerPreferences Normalize(TrackerPreferences value) => value with
     {
@@ -121,6 +123,7 @@ internal sealed class PreferencesStore
         ReminderRules = value.ReminderRules is null ? ReminderPlanner.Normalize(ReminderPlanner.Defaults(value.ExpiryNotifications, ExpiryReminders.NormalizeLeadHours(value.ExpiryLeadHours)))
             : value.RemindersRevision is null ? ReminderPlanner.UpgradeReserveDefaults(value.ReminderRules) : ReminderPlanner.Normalize(value.ReminderRules),
         RemindersRevision = 2,
+        ResetAlerts = ResetAlertPlanner.Normalize(value.ResetAlerts),
         PhonePolicy = NormalizePhone(value.PhonePolicy ?? new()),
         Appearances = value.Appearances ?? new(),
         SentExpiryReminders = value.SentExpiryReminders ?? new()

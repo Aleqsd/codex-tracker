@@ -27,6 +27,16 @@ internal static partial class EnglishApp
         ("Vue semaine des resets", "Reset week view"),
 
         // ResetsView: entries
+        ("Me prévenir de ce reset", "Notify me of this reset"),
+        ("Annuler la notification de ce reset", "Cancel this reset notification"),
+        ("Une date connue est nécessaire pour programmer une notification.", "A known date is required to schedule a notification."),
+        ("Cette échéance est déjà atteinte.", "This reset time has already passed."),
+        ("Une notification Windows pour cette échéance : {0}.", "One Windows notification for this reset: {0}."),
+        ("Cette heure de reset est estimée ; la recharge restera à confirmer.", "This reset time is estimated; the refill will still need confirmation."),
+        ("Impossible d’enregistrer la notification de reset.", "Couldn’t save the reset notification."),
+        ("Notifications de reset invalides.", "Invalid reset notifications."),
+        ("Vérifiez d’abord les réglages récupérés avant d’activer une notification.", "Review the recovered settings before enabling a notification."),
+        ("Cette échéance n’est plus disponible. Actualisez les resets.", "This reset is no longer available. Refresh the reset list."),
         ("Réserves sans date", "Undated reset credits"),
         ("Reset hebdomadaire", "Weekly reset"),
         ("Reset 5 heures", "5-hour reset"),

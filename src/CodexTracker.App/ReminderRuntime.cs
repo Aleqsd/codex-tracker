@@ -24,7 +24,8 @@ internal sealed class ReminderRuntime : IDisposable
                 () => preferences.Current.ReminderRules!, () => preferences.Current.PhonePolicy,
                 () => preferences.Current.SentExpiryReminders, rows => ShowWindows?.Invoke(rows)
                     ?? new(DeliveryStatus.Failed, Loc.T("Le canal de notification Windows n’est pas disponible. Rouvrez le tracker puis réessayez.")),
-                expectedResetNotifications: () => preferences.Current.ResetNotifications);
+                expectedResetNotifications: () => preferences.Current.ResetNotifications,
+                resetAlerts: () => preferences.Current.ResetAlerts);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException)
         { Error = Loc.T("Le journal des rappels est illisible. Les envois sont suspendus pour éviter les doublons."); }

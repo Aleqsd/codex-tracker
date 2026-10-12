@@ -16,6 +16,9 @@ internal sealed class ResetsView : UserControl
     private readonly StackPanel _timeline = new();
     private readonly TextBlock _summary = Ui.Text("", 12, "MutedBrush");
     private readonly Button _refresh;
+    private readonly Action<ResetScheduleEntry, bool>? _notify;
+    private readonly List<(ResetScheduleEntry Entry, Button Button)> _alertButtons = [];
+    private readonly TextBlock _notificationStatus = Ui.Text("", 11, "WarningBrush");
     private readonly List<(ResetScheduleEntry Entry, TextBlock Countdown, TextBlock Freshness)> _rows = [];
     private readonly HashSet<string> _openEntries = [];
     private readonly HashSet<string> _openAnnouncements = [];
@@ -30,9 +33,11 @@ internal sealed class ResetsView : UserControl
     private readonly RadioButton _agendaChoice, _weekChoice;
     private readonly SelectionPill? _viewPill;
 
-    internal ResetsView(PreferencesStore preferences, Action<Guid?> calendar, Action refresh, Action? declareReset = null)
+    internal ResetsView(PreferencesStore preferences, Action<Guid?> calendar, Action refresh, Action? declareReset = null,
+        Action<ResetScheduleEntry, bool>? notify = null)
     {
         _preferences = preferences;
+        _notify = notify;
         _accounts = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Id", Tag = FindResource("AccountsIcon"), Margin = new Thickness(0, 0, 8, 0) };
         var root = new Grid { Margin = new Thickness(0, 6, 0, 0) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -43,6 +48,7 @@ internal sealed class ResetsView : UserControl
         var introduction = new StackPanel();
         var title = Ui.Text(Loc.T("Prochains resets"), 22); title.FontWeight = FontWeights.Medium; introduction.Children.Add(title);
         _summary.Margin = new Thickness(0, 5, 0, 0); introduction.Children.Add(_summary); heading.Children.Add(introduction);
+        _notificationStatus.Margin = new Thickness(0, 5, 0, 0); _notificationStatus.Visibility = Visibility.Collapsed; introduction.Children.Add(_notificationStatus);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         _refresh = Ui.IconButton("DropdownRefreshIcon", Loc.T("Actualiser les comptes actifs de Codex et Claude Code"), Loc.T("Actualiser les comptes actifs"));
         _refresh.Click += (_, _) => { UiMotion.Spin((FrameworkElement)_refresh.Content); refresh(); }; actions.Children.Add(_refresh);
@@ -134,7 +140,7 @@ internal sealed class ResetsView : UserControl
         _summary.Text = accounts.Length == 0 ? Loc.T("Détectez un compte pour retrouver ses prochaines échéances.")
             : future.Length == 1 ? Loc.T("1 échéance à venir") : Loc.F("{0} échéances à venir", future.Length);
         _summary.ToolTip = Loc.T("Selon les derniers relevés. Les comptes inactifs ne sont pas actualisés en arrière-plan.");
-        _rows.Clear(); _timeline.Children.Clear(); _announcementCards.Clear();
+        _rows.Clear(); _alertButtons.Clear(); _timeline.Children.Clear(); _announcementCards.Clear();
         if (_state.ManualCodexReset is { } manual && accounts.Any(a => manual.Applies(a, ResetKind.Weekly, now) || manual.Applies(a, ResetKind.Short, now)))
         {
             var notice = Ui.Text(Loc.F("Reset Codex déclaré · {0:dd/MM à HH:mm}", manual.At.ToLocalTime()), 12, "AccentBrush");
@@ -293,6 +299,25 @@ internal sealed class ResetsView : UserControl
         var timing = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         var countdown = Ui.Text("", 13); countdown.FontWeight = FontWeights.Medium; countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown);
         var exact = Ui.Text(entry.At?.ToLocalTime().ToString("HH:mm") ?? Loc.T("Date indisponible"), 11, "MutedBrush"); exact.TextAlignment = TextAlignment.Right; exact.Margin = new Thickness(0, 3, 0, 0); timing.Children.Add(exact); Grid.SetColumn(timing, 2); header.Children.Add(timing);
+        if (_notify is not null && entry.Kind is ResetKind.Weekly or ResetKind.Short)
+        {
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var alert = Ui.IconButton("SettingsNotificationsIcon", "", "");
+            alert.Tag = "ResetAlert:" + EntryKey(entry); alert.Margin = new Thickness(9, 0, 0, 0);
+            alert.VerticalAlignment = VerticalAlignment.Center;
+            alert.Click += (_, e) =>
+            {
+                e.Handled = true;
+                var focused = alert.IsKeyboardFocusWithin;
+                try { _notify(entry, !AlertSelected(entry)); _notificationStatus.Visibility = Visibility.Collapsed; }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException)
+                { _notificationStatus.Text = ex is IOException or UnauthorizedAccessException ? Loc.T("Impossible d’enregistrer la notification de reset.") : ex.Message; _notificationStatus.Visibility = Visibility.Visible; }
+                UpdateAlertButton(entry, alert, PreviewClock.UtcNow);
+                if (focused) Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, (Action)(() =>
+                    _alertButtons.FirstOrDefault(a => EntryKey(a.Entry) == EntryKey(entry)).Button?.Focus()));
+            };
+            Grid.SetColumn(alert, 3); header.Children.Add(alert); _alertButtons.Add((entry, alert));
+        }
         var details = new StackPanel { Margin = new Thickness(48, 0, 20, 12) };
         if (!string.IsNullOrWhiteSpace(entry.CreditTitle)) details.Children.Add(Ui.Text(entry.CreditTitle, 12));
         details.Children.Add(Ui.Text(entry.At is { } at ? $"{Display.Exact(at)} · {Display.Zone(at)}" : Loc.F("Date non communiquée par {0}", entry.Account.Profile.ProviderName), 11, "MutedBrush"));
@@ -315,6 +340,7 @@ internal sealed class ResetsView : UserControl
     private void UpdateTimes(DateTimeOffset now)
     {
         foreach (var card in _announcementCards) card.Tick();
+        foreach (var (entry, button) in _alertButtons) UpdateAlertButton(entry, button, now);
         foreach (var (entry, countdown, freshness) in _rows)
         {
             var reset = ExpectedReset.For(entry.Account, entry.Kind, now, _state.GlobalResetFeed, _state.ManualCodexReset);
@@ -327,5 +353,21 @@ internal sealed class ResetsView : UserControl
                 : Loc.T("Aucun relevé");
             freshness.ToolTip = Loc.F("Dernier relevé : {0}", Display.Exact(entry.Account.Snapshot?.FetchedAt)) + "\n" + entry.Account.Error;
         }
+    }
+    private bool AlertSelected(ResetScheduleEntry entry) => entry.At is { } at && _preferences.Current.ResetAlerts.Any(a =>
+        a.Enabled && ResetAlertPlanner.Matches(a, entry.Account.Profile.Id, entry.Kind, at));
+    private void UpdateAlertButton(ResetScheduleEntry entry, Button button, DateTimeOffset now)
+    {
+        var selected = AlertSelected(entry);
+        button.IsEnabled = selected || entry.At > now && !_preferences.RecoveryRequired;
+        button.SetResourceReference(Control.ForegroundProperty, selected ? "AccentBrush" : "MutedBrush");
+        var action = selected ? Loc.T("Annuler la notification de ce reset") : Loc.T("Me prévenir de ce reset");
+        button.ToolTip = _preferences.RecoveryRequired && !selected ? Loc.T("Vérifiez d’abord les réglages récupérés avant d’activer une notification.")
+            : entry.At is null ? Loc.T("Une date connue est nécessaire pour programmer une notification.")
+            : entry.At <= now && !selected ? Loc.T("Cette échéance est déjà atteinte.")
+            : action + "\n" + Loc.F("Une notification Windows pour cette échéance : {0}.", Display.Exact(entry.At)) +
+                (Inferred(entry) ? "\n" + Loc.T("Cette heure de reset est estimée ; la recharge restera à confirmer.") : "");
+        ToolTipService.SetShowOnDisabled(button, true);
+        System.Windows.Automation.AutomationProperties.SetName(button, action + " · " + KindLabel(entry) + " · " + AccountName(entry.Account));
     }
 }
