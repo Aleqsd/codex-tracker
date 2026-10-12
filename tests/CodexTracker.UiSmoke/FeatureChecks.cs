@@ -224,21 +224,27 @@ internal static class FeatureChecks
             // Expansion queues Loaded and layout work; the timezone is below the expanded Twilio form.
             await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
             // WPF closes popups immediately on an inactive owner. Re-establish the interaction precondition.
-            window.Activate();
+            var foreground = await Foreground.TryActivate(window);
             zone.BringIntoView(); zone.Focus();
             await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
             var zoneBounds = zone.TransformToAncestor(pageScroll).TransformBounds(new Rect(zone.RenderSize));
-            Check(zone.IsLoaded && zone.IsKeyboardFocused && zoneBounds.Top >= 0 && zoneBounds.Bottom <= pageScroll.ViewportHeight + 1,
-                "Timezone dropdown is loaded, visible in the settings viewport and keyboard-focused before opening");
+            Check(zone.IsLoaded && zoneBounds.Top >= 0 && zoneBounds.Bottom <= pageScroll.ViewportHeight + 1,
+                "Timezone dropdown is loaded and visible in the settings viewport");
             var selectedZone = zone.SelectedItem;
-            zone.IsDropDownOpen = true;
-            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
-            var popup = (Popup)zone.Template.FindName("PART_Popup", zone);
-            var selectedItem = (ComboBoxItem)zone.ItemContainerGenerator.ContainerFromIndex(zone.SelectedIndex);
-            Check(popup.IsOpen && selectedZone is TimeZoneInfo && ReferenceEquals(zone.SelectedItem, selectedZone)
-                && selectedItem is { IsSelected: true, IsVisible: true, ActualHeight: > 0 },
-                $"Themed dropdown opens and retains the selected timezone (open={popup.IsOpen}, selection={ReferenceEquals(zone.SelectedItem, selectedZone)}, item={selectedItem is not null}, visible={selectedItem?.IsVisible}, height={selectedItem?.ActualHeight}, active={window.IsActive})");
-            zone.IsDropDownOpen = false;
+            if (!foreground) Foreground.Skip("Themed dropdown keyboard focus and opening");
+            else
+            {
+                Check(zone.IsKeyboardFocused, "Timezone dropdown is keyboard-focused before opening");
+                zone.IsDropDownOpen = true;
+                await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+                var popup = (Popup)zone.Template.FindName("PART_Popup", zone);
+                var selectedItem = (ComboBoxItem)zone.ItemContainerGenerator.ContainerFromIndex(zone.SelectedIndex);
+                Check(popup.IsOpen && selectedZone is TimeZoneInfo && ReferenceEquals(zone.SelectedItem, selectedZone)
+                    && selectedItem is { IsSelected: true, IsVisible: true, ActualHeight: > 0 },
+                    $"Themed dropdown opens and retains the selected timezone (open={popup.IsOpen}, selection={ReferenceEquals(zone.SelectedItem, selectedZone)}, item={selectedItem is not null}, visible={selectedItem?.IsVisible}, height={selectedItem?.ActualHeight}, active={window.IsActive})");
+                zone.IsDropDownOpen = false;
+            }
+            Check(ReferenceEquals(zone.SelectedItem, selectedZone), "The timezone selection is kept after the dropdown interaction");
             settings.ShowPage("Historique"); await Task.Delay(100);
             Check(Tree(settings).OfType<TextBlock>().Any(t => t.Text.StartsWith("Aucun rappel envoyé")), "Empty history explains local reminder tracking");
             window.OpenPage("Comptes"); await Task.Delay(50); window.UpdateLayout();

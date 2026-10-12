@@ -64,7 +64,7 @@ internal static class MotionChecks
             await Settle();
             opacitySource.Value = 0.7;
             Check(content.Opacity == 0.7 && BindingOperations.IsDataBound(content, UIElement.OpacityProperty)
-                && !content.HasAnimatedProperties && draft.IsKeyboardFocused && draft.Text == "Brouillon fictif",
+                && !content.HasAnimatedProperties && Foreground.HasFocus(draft) && draft.Text == "Brouillon fictif",
                 "Repeated fades release their clocks and preserve bindings, drafts and keyboard focus");
 
             UiMotion.SetScale(button, 0.975); UiMotion.SetScale(button, 1);

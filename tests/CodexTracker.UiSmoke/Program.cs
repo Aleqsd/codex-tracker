@@ -111,6 +111,7 @@ internal static class Program
                 await RequestShow(handle);
                 Check(!window.IsVisible, "Activation during shutdown does not reopen the window");
                 Console.WriteLine($"PASS {_checks} WPF activation checks");
+                if (Foreground.Skipped > 0) Console.WriteLine($"SKIP {Foreground.Skipped} interaction(s) needing the Windows foreground: rerun while the PC is idle to cover them");
             }
             catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
             finally
