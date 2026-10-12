@@ -56,6 +56,9 @@ internal static class TrayChecks
                     peek.Update(both.State, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);
                     var shown = Tree(peek).OfType<TextBlock>().Where(t => t.IsVisible).Select(t => t.Text).ToArray();
                     Check(shown.Contains("Compte actif dans Codex") && shown.Contains("Compte actif dans Claude Code"), "Hover preview shows the active Codex and Claude Code accounts together");
+                    var icons = Tree(peek).OfType<Image>().Where(i => i.IsVisible && i.ActualWidth > 0).ToArray();
+                    Check(icons.Length == 2 && icons[0].Source == Application.Current.FindResource("CodexProviderIcon") &&
+                        icons[1].Source == Application.Current.FindResource("ClaudeProviderIcon"), "Hover preview heads each section with the official tool icon of the theme");
                     Check(shown.Count(t => t == "5 heures") == 1, "Codex Pro hides its 5-hour quota while Claude Code keeps it");
                     Check(shown.Count(t => t == "Reset semaine") == 2 && shown.Count(t => t == "Reset 5 h") == 1,
                         "Hover preview distinguishes weekly and five-hour resets and hides unsupported Codex Pro short resets");
@@ -71,6 +74,8 @@ internal static class TrayChecks
                     var choices = Tree(peek).OfType<RadioButton>().Where(r => r.IsVisible).ToArray();
                     Check(choices.Length == 3 && choices[0].IsChecked == true && choices.Count(r => r.IsChecked == true) == 1 &&
                         shown.Count(t => t == "Dans l’icône") == 1, "Hover preview marks the Codex week drawn in the icon by default");
+                    Check(Tree(peek).OfType<QuotaRing>().Where(r => r.IsVisible).ToArray() is { Length: 3 } rings && rings.All(r => double.IsFinite(r.Marker)) &&
+                        choices.All(c => c.ToolTip is string tip && tip.Contains("Rythme régulier : ")), "Hover preview rings carry the steady-pace tick, explained on each tile");
                     var claudeShort = choices.Single(r => r.Tag?.ToString() == "ShortQuotaChoice");
                     claudeShort.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                     Check(selections.LastOrDefault() == (AccountProvider.ClaudeCode, ResetKind.Short), "Clicking the Claude Code 5-hour quota chooses it for the icon");
@@ -80,7 +85,14 @@ internal static class TrayChecks
                     Check(claudeShort.IsChecked == true && choices.Count(r => r.IsChecked == true) == 1 &&
                         Tree(claudeShort).OfType<TextBlock>().Any(t => t.IsVisible && t.Text == "Dans l’icône"), "The icon mark follows the chosen quota");
                     peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-both-claude-5h-{mode}-96.png"), 96);
-                    preferences.Update(p => p with { TrayProvider = AccountProvider.Codex, TrayWindow = ResetKind.Weekly });
+                    preferences.Update(p => p with { TrayIconPerTool = true });
+                    peek.Update(both.State, preferences.Current); await Task.Delay(30);
+                    Check(choices[0].IsChecked == true && claudeShort.IsChecked == true && choices.Count(r => r.IsChecked == true) == 2 &&
+                        Tree(peek).OfType<TextBlock>().Count(t => t.IsVisible && t.Text == "Dans l’icône") == 2, "With one icon per tool, each section marks its own quota");
+                    choices[1].RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                    Check(selections.LastOrDefault() == (AccountProvider.ClaudeCode, ResetKind.Weekly), "Clicking the Claude week chooses it for the Claude icon");
+                    peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-both-per-tool-{mode}-96.png"), 96);
+                    preferences.Update(p => p with { TrayIconPerTool = false, TrayProvider = AccountProvider.Codex, TrayWindow = ResetKind.Weekly, TrayWindows = new() });
                     peek.Hide();
                     peek.Update(both.State with { Accounts = [claude] }, preferences.Current); peek.ShowNear(anchor); await Task.Delay(50);
                     peek.SaveScreenshot(Path.GetFullPath($"artifacts/previews/tray-claude-{mode}-96.png"), 96);

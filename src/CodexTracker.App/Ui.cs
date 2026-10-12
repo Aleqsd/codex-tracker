@@ -89,6 +89,11 @@ public sealed class QuotaRing : FrameworkElement
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty ThicknessProperty = DependencyProperty.Register(nameof(Thickness), typeof(double), typeof(QuotaRing),
         new FrameworkPropertyMetadata(6d, FrameworkPropertyMetadataOptions.AffectsRender));
+    /// <summary>Percentage a steady use would leave now: a short tick across the ring; NaN draws none.</summary>
+    public static readonly DependencyProperty MarkerProperty = DependencyProperty.Register(nameof(Marker), typeof(double), typeof(QuotaRing),
+        new FrameworkPropertyMetadata(double.NaN, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(nameof(MarkerBrush), typeof(Brush), typeof(QuotaRing),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     // Presentation only: the arc sweeps in when shown, the percentage text is always the measured value.
     private static readonly DependencyProperty SweepProperty = DependencyProperty.Register("Sweep", typeof(double), typeof(QuotaRing),
         new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -96,6 +101,8 @@ public sealed class QuotaRing : FrameworkElement
     public Brush? RingBrush { get => (Brush?)GetValue(RingBrushProperty); set => SetValue(RingBrushProperty, value); }
     public Brush? TrackBrush { get => (Brush?)GetValue(TrackBrushProperty); set => SetValue(TrackBrushProperty, value); }
     public double Thickness { get => (double)GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
+    public double Marker { get => (double)GetValue(MarkerProperty); set => SetValue(MarkerProperty, value); }
+    public Brush? MarkerBrush { get => (Brush?)GetValue(MarkerBrushProperty); set => SetValue(MarkerBrushProperty, value); }
     public QuotaRing()
     {
         Loaded += (_, _) => SweepIn();
@@ -119,22 +126,34 @@ public sealed class QuotaRing : FrameworkElement
         var radius = (size - Thickness) / 2; var center = new Point(ActualWidth / 2, ActualHeight / 2);
         if (TrackBrush is { } track) dc.DrawEllipse(null, new Pen(track, Thickness), center, radius, radius);
         var value = (double.IsFinite(Value) ? Math.Clamp(Value, 0, 100) : 0) * (double)GetValue(SweepProperty);
-        if (value <= 0 || RingBrush is null) return;
-        var pen = new Pen(RingBrush, Thickness) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-        if (value >= 99.95) { dc.DrawEllipse(null, pen, center, radius, radius); return; }
-        var angle = value * 3.6;
-        Point At(double degrees)
+        Point At(double degrees, double distance)
         {
             var radians = (degrees - 90) * Math.PI / 180;
-            return new(center.X + radius * Math.Cos(radians), center.Y + radius * Math.Sin(radians));
+            return new(center.X + distance * Math.Cos(radians), center.Y + distance * Math.Sin(radians));
         }
-        var arc = new StreamGeometry();
-        using (var context = arc.Open())
+        if (value > 0 && RingBrush is not null)
         {
-            context.BeginFigure(At(0), false, false);
-            context.ArcTo(At(angle), new Size(radius, radius), 0, angle > 180, SweepDirection.Clockwise, true, false);
+            var pen = new Pen(RingBrush, Thickness) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            if (value >= 99.95) dc.DrawEllipse(null, pen, center, radius, radius);
+            else
+            {
+                var angle = value * 3.6;
+                var arc = new StreamGeometry();
+                using (var context = arc.Open())
+                {
+                    context.BeginFigure(At(0, radius), false, false);
+                    context.ArcTo(At(angle, radius), new Size(radius, radius), 0, angle > 180, SweepDirection.Clockwise, true, false);
+                }
+                arc.Freeze(); dc.DrawGeometry(null, pen, arc);
+            }
         }
-        arc.Freeze(); dc.DrawGeometry(null, pen, arc);
+        // The tick crosses the ring and slightly enters it, readable over the arc as over the track.
+        if (double.IsFinite(Marker) && MarkerBrush is { } marker)
+        {
+            var degrees = Math.Clamp(Marker, 0, 100) * 3.6;
+            var tick = new Pen(marker, Math.Max(1.5, Thickness / 3.5)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            dc.DrawLine(tick, At(degrees, radius - Thickness / 2 - 2.5), At(degrees, radius + Thickness / 2 - 0.5));
+        }
     }
 }
 

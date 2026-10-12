@@ -22,6 +22,18 @@ internal static class ProviderChecks
         try
         {
             window.Show(); await window.InitializeAsync(); await Task.Delay(50);
+            // Real notification icons: the second one appears only when each tool gets its own, and leaves with the option.
+            using (var tray = new TrayController(window, service, preferences, () => Task.CompletedTask))
+            {
+                var second = (System.Windows.Forms.NotifyIcon)typeof(TrayController).GetField("_toolTray", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tray)!;
+                var first = (System.Windows.Forms.NotifyIcon)typeof(TrayController).GetField("_tray", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tray)!;
+                Check(first.Visible && !second.Visible && first.Text.StartsWith("Codex · 100% restant"), "A single notification icon by default, Codex first");
+                preferences.Update(p => p with { TrayIconPerTool = true }); await Task.Delay(30);
+                Check(first.Visible && second.Visible && second.Icon is not null && first.Text.StartsWith("Codex · ") && second.Text.StartsWith("Claude Code · ") &&
+                    first.Text.Contains("\nSemaine : ") && second.Text.Contains("\nSemaine : 43% restant"), "One icon per tool shows each tool's own quota");
+                preferences.Update(p => p with { TrayIconPerTool = false }); await Task.Delay(30);
+                Check(first.Visible && !second.Visible, "Turning the option off removes the second icon");
+            }
             var dashboard = (DashboardViewModel)window.DataContext;
             window.UpdateLayout();
             var activeCard = (Border)window.FindName("ActiveAccountCard");
@@ -57,6 +69,15 @@ internal static class ProviderChecks
                     "A weekly reset on another day names its day next to the hour");
                 Check(Tree(shortReset).Concat(Tree(weekReset)).OfType<TextBlock>().All(TextFits),
                     $"Reset hours, labels and countdowns fit {theme}, compact={compact}");
+                // Claude's week (57 % used, reset in four days of seven) is 14 points under the steady line.
+                var pace = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "PaceMetric" && ReferenceEquals(g.DataContext, claude));
+                Check(pace.IsVisible && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "Rythme") && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "Dépassé de 14 %") &&
+                    Tree(pace).OfType<TextBlock>().Any(t => t.Text.StartsWith("≈ ") && t.Text.EndsWith(" % par jour")) && Tree(pace).OfType<TextBlock>().All(TextFits),
+                    $"The active Claude week shows its steady-pace margin and daily budget in {theme}, compact={compact}");
+                Check(Tree(card).OfType<QuotaRing>().Single(r => ReferenceEquals(r.DataContext, claude)).Marker is var tick && Math.Abs(tick - 400d / 7) < .5,
+                    "The weekly ring places its tick where a steady use would be");
+                Check(!Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "PaceMetric" && ReferenceEquals(g.DataContext, codex)).IsVisible &&
+                    !double.IsFinite(Tree(card).OfType<QuotaRing>().Single(r => ReferenceEquals(r.DataContext, codex)).Marker), "A declared Codex reset shows no invented pace");
                 var codexWeek = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "WeeklyResetMetric" && ReferenceEquals(g.DataContext, codex));
                 Check(Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetHour && t.Text.StartsWith("≈ ")) &&
                     Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetCompact && t.Text.StartsWith("≈ ")) && Tree(codexWeek).OfType<TextBlock>().All(TextFits),

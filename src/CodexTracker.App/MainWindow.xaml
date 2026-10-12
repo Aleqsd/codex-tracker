@@ -42,7 +42,7 @@
           <!-- A lone active account keeps a readable detail column instead of spreading across the window. -->
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="100*" MaxWidth="360"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <Grid Width="86" Height="86" VerticalAlignment="Top" ToolTip="{Binding WeeklyHint}">
-           <local:QuotaRing Value="{Binding WeeklyPercent, Mode=OneWay}" RingBrush="{Binding WeeklyBarBrush}" TrackBrush="{DynamicResource TrackBrush}" Thickness="7"/>
+           <local:QuotaRing Value="{Binding WeeklyPercent, Mode=OneWay}" RingBrush="{Binding WeeklyBarBrush}" TrackBrush="{DynamicResource TrackBrush}" Thickness="7" Marker="{Binding WeeklyPaceMarker, Mode=OneWay}" MarkerBrush="{DynamicResource TextBrush}"/>
            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
             <TextBlock Text="{Binding WeeklyNumber}" FontSize="22" FontWeight="Medium" Foreground="{Binding WeeklyBrush}" HorizontalAlignment="Center"/>
             <TextBlock Text="{Binding WeeklyRingCaption}" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0"/>
@@ -69,6 +69,13 @@
             <TextBlock Text="{local:T 'Reset semaine'}" Style="{StaticResource MetricLabel}"/>
             <TextBlock Grid.Column="1" Text="{Binding ResetHour}" Style="{StaticResource MetricValue}"/>
             <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding ResetCompact}" Style="{StaticResource MetricCountdown}"/>
+           </Grid>
+           <Grid Tag="PaceMetric" Margin="0,8,0,0" ToolTip="{Binding PaceHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasPace, Converter={StaticResource BoolVisibility}}">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{local:T 'Rythme'}" Style="{StaticResource MetricLabel}"/>
+            <TextBlock Grid.Column="1" Text="{Binding PaceText}" Foreground="{Binding PaceBrush}" Style="{StaticResource MetricValue}"/>
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding PaceBudget}" Style="{StaticResource MetricCountdown}"/>
            </Grid>
            <Grid Margin="0,8,0,0" ToolTip="{Binding ForecastHint}" Visibility="{Binding HasForecast, Converter={StaticResource BoolVisibility}}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Text="{Binding ForecastLabel}" Style="{StaticResource MetricLabel}"/>

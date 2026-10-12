@@ -19,15 +19,17 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
         if (next.ResetAlerts is null || next.ResetAlerts.Length > ResetAlertPlanner.MaximumAlerts || next.ResetAlerts.Any(a => !ResetAlertPlanner.Valid(a)))
             throw new ArgumentException(Loc.T("Notifications de reset invalides."));
         if (!Enum.IsDefined(next.ThemeMode) || !Enum.IsDefined(next.SortMode) || next.RefreshMinutes is not (1 or 2 or 5) ||
-            !Enum.IsDefined(next.TrayProvider) || next.TrayWindow is not (ResetKind.Weekly or ResetKind.Short))
+            !Enum.IsDefined(next.TrayProvider) || next.TrayWindow is not (ResetKind.Weekly or ResetKind.Short) ||
+            next.TrayWindows is null || next.TrayWindows.Any(entry => !Enum.IsDefined(entry.Key) || entry.Value is not (ResetKind.Weekly or ResetKind.Short)))
             throw new ArgumentException(Loc.T("Réglages invalides."));
         preferences.Update(_ => next);
     }
-    /// <summary>The quota drawn in the notification icon; choosing the current one again writes nothing.</summary>
+    /// <summary>The quota drawn in the notification icon, remembered for its tool; choosing the current one again writes nothing.</summary>
     internal void SetTrayQuota(AccountProvider provider, ResetKind window)
     {
-        if (preferences.Current.TrayProvider == provider && preferences.Current.TrayWindow == window) return;
-        SavePreferences(p => p with { TrayProvider = provider, TrayWindow = window });
+        var current = preferences.Current;
+        if (current.TrayProvider == provider && current.TrayWindow == window && current.TrayWindows.TryGetValue(provider, out var kept) && kept == window) return;
+        SavePreferences(p => p with { TrayProvider = provider, TrayWindow = window, TrayWindows = new(p.TrayWindows) { [provider] = window } });
     }
     internal void SaveSecrets(NotificationSecrets value, string? expected = null)
     {

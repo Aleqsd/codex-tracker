@@ -65,14 +65,16 @@ internal sealed class TrayPeekWindow : Window
     {
         state = state with { ManualCodexReset = preferences.ManualCodexReset };
         IReadOnlyList<AccountState?> accounts = state.ActiveAccounts.Count > 0 ? [.. state.ActiveAccounts] : [null];
-        var (shown, window) = TrayQuota.Resolve(state, preferences);
+        // With one icon per tool, each section keeps its own choice.
+        var icons = TrayQuota.Icons(state, preferences);
         while (_sections.Children.Count < accounts.Count) _sections.Children.Add(new AccountPeek(_select));
         for (int i = 0; i < _sections.Children.Count; i++)
         {
             var section = (AccountPeek)_sections.Children[i];
             section.Visibility = i < accounts.Count ? Visibility.Visible : Visibility.Collapsed;
             if (i < accounts.Count) section.Update(state, accounts[i], preferences, first: i == 0, compact: accounts.Count > 1,
-                inIcon: accounts[i] is { } account && account == shown ? window : null);
+                inIcon: icons.Where(icon => icon.Account is { } shown && shown == accounts[i]).Select(icon => (ResetKind?)icon.Window).FirstOrDefault(),
+                group: icons.Count > 1 ? "TrayQuota" + i : "TrayQuota");
         }
     }
 
@@ -95,7 +97,9 @@ internal sealed class TrayPeekWindow : Window
         private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.Medium };
         private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
         private readonly StackPanel _reserves = new() { Margin = new Thickness(0, 0, 0, 12) };
-        private readonly TextBlock _status = new() { FontSize = 11, FontWeight = FontWeights.Medium, Margin = new Thickness(0, 0, 0, 8) };
+        private readonly TextBlock _status = new() { FontSize = 11, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        // Official icon of the tool, as on the dashboard's active account cards.
+        private readonly Image _providerIcon = new() { Width = 18, Height = 18, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
         private readonly RadioButton _weeklyChoice, _shortChoice;
         private readonly TextBlock _weeklyInIcon, _shortInIcon;
         private readonly bool _selectable;
@@ -105,7 +109,9 @@ internal sealed class TrayPeekWindow : Window
         {
             _selectable = select is not null;
             _status.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); Muted(_plan); Muted(_freshness); Muted(_expirations);
-            Children.Add(_divider); Children.Add(_status);
+            var status = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+            status.Children.Add(_providerIcon); status.Children.Add(_status);
+            Children.Add(_divider); Children.Add(status);
             var heading = new Grid(); heading.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) }); heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
             _name.Margin = new Thickness(0, 0, 8, 0); _name.VerticalAlignment = VerticalAlignment.Center;
             _planChip.Child = _plan; _planChip.SetResourceReference(Border.BackgroundProperty, "RaisedBrush");
@@ -137,6 +143,7 @@ internal sealed class TrayPeekWindow : Window
         private static StackPanel Metric(string name, TextBlock number, QuotaRing ring, out TextBlock inIcon)
         {
             ring.SetResourceReference(QuotaRing.TrackBrushProperty, "TrackBrush");
+            ring.SetResourceReference(QuotaRing.MarkerBrushProperty, "TextBrush");
             var gauge = new Grid { HorizontalAlignment = HorizontalAlignment.Center };
             number.VerticalAlignment = VerticalAlignment.Center; gauge.Children.Add(ring); gauge.Children.Add(number);
             var label = new TextBlock { Text = name, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) }; Muted(label);
@@ -155,7 +162,7 @@ internal sealed class TrayPeekWindow : Window
             return choice;
         }
 
-        public void Update(TrackerState state, AccountState? account, TrackerPreferences preferences, bool first, bool compact, ResetKind? inIcon)
+        public void Update(TrackerState state, AccountState? account, TrackerPreferences preferences, bool first, bool compact, ResetKind? inIcon, string group)
         {
             var snapshot = account?.Snapshot;
             var now = PreviewClock.UtcNow;
@@ -174,9 +181,13 @@ internal sealed class TrayPeekWindow : Window
             foreach (var (choice, label, kind) in new[] { (_weeklyChoice, _weeklyInIcon, ResetKind.Weekly), (_shortChoice, _shortInIcon, ResetKind.Short) })
             {
                 var selected = inIcon == kind;
+                choice.GroupName = group;
+                var pace = account is null ? null : QuotaPace.For(state, account, kind, PreviewClock.UtcNow);
+                (kind == ResetKind.Weekly ? _weeklyRing : _shortRing).Marker = pace?.Expected ?? double.NaN;
                 choice.IsChecked = selected; choice.IsEnabled = account is not null && _selectable;
                 label.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
-                choice.ToolTip = account is null ? null : selected ? Loc.T("Affiché dans l’icône de la barre des tâches") : Loc.T("Cliquez pour l’afficher dans l’icône de la barre des tâches");
+                choice.ToolTip = account is null ? null : (selected ? Loc.T("Affiché dans l’icône de la barre des tâches") : Loc.T("Cliquez pour l’afficher dans l’icône de la barre des tâches"))
+                    + (pace is null ? "" : "\n" + PaceDisplay.Line(pace));
                 var provider = account?.Profile.ProviderName ?? "Codex Tracker";
                 System.Windows.Automation.AutomationProperties.SetName(choice, kind == ResetKind.Short ? Loc.F("{0} · 5 heures", provider) : Loc.F("{0} · semaine", provider));
             }
@@ -195,6 +206,8 @@ internal sealed class TrayPeekWindow : Window
             _weekly.Foreground = Display.QuotaBrush(weekly); _short.Foreground = Display.QuotaBrush(shortWindow);
             _weeklyRing.RingBrush = declared ? Display.Green : Display.QuotaBarBrush(weekly); _shortRing.RingBrush = Display.QuotaBarBrush(shortWindow);
             _planChip.Visibility = string.IsNullOrEmpty(_plan.Text) ? Visibility.Collapsed : Visibility.Visible;
+            _providerIcon.Visibility = account is null ? Visibility.Collapsed : Visibility.Visible;
+            if (account is not null) _providerIcon.SetResourceReference(Image.SourceProperty, account.Profile.Provider == AccountProvider.ClaudeCode ? "ClaudeProviderIcon" : "CodexProviderIcon");
             _status.Text = declared ? Loc.T("Reset Codex déclaré") : account?.IsActive == true ? Loc.F("Compte actif dans {0}", account.Profile.ProviderName) : Loc.T("Compte affiché dans l’icône");
             _shortResetRow.Visibility = showShort ? Visibility.Visible : Visibility.Collapsed;
             _weeklyResetRow.Margin = showShort ? new Thickness(0, 5, 0, 0) : new Thickness();

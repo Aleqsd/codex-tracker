@@ -35,6 +35,10 @@ internal sealed record TrackerPreferences
     /// <summary>Quota drawn in the notification icon: this tool's active account, else the first active account.</summary>
     public AccountProvider TrayProvider { get; init; } = AccountProvider.Codex;
     public ResetKind TrayWindow { get; init; } = ResetKind.Weekly;
+    /// <summary>Window last chosen for each tool, drawn by its own icon when each tool has one.</summary>
+    public Dictionary<AccountProvider, ResetKind> TrayWindows { get; init; } = new();
+    /// <summary>One notification icon per tool in use instead of a single one.</summary>
+    public bool TrayIconPerTool { get; init; }
     public int RefreshMinutes { get; init; } = 2;
     public bool AdaptiveRefresh { get; init; }
     public bool ExpiryNotifications { get; init; } = true;
@@ -135,6 +139,8 @@ internal sealed class PreferencesStore
         ResetAlerts = ResetAlertPlanner.Normalize(value.ResetAlerts),
         PhonePolicy = NormalizePhone(value.PhonePolicy ?? new()),
         Appearances = value.Appearances ?? new(),
+        TrayWindows = (value.TrayWindows ?? new()).Where(entry => Enum.IsDefined(entry.Key) && entry.Value is ResetKind.Weekly or ResetKind.Short)
+            .ToDictionary(entry => entry.Key, entry => entry.Value),
         SentExpiryReminders = value.SentExpiryReminders ?? new(),
         DismissedNotices = (value.DismissedNotices ?? []).Where(k => k is { Length: > 0 and <= 256 }).Distinct(StringComparer.Ordinal).Take(64).ToArray()
     };

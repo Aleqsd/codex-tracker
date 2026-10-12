@@ -8,7 +8,8 @@ namespace CodexTracker.App;
 
 internal sealed class TrayController : IDisposable
 {
-    private readonly Forms.NotifyIcon _tray;
+    // The second icon exists from startup so that Windows keeps the same identity (and placement) for both.
+    private readonly Forms.NotifyIcon _tray, _toolTray;
     private readonly WindowsNotificationDelivery _desktop;
     private readonly MainWindow _window;
     private readonly ITrackerService _service;
@@ -27,8 +28,8 @@ internal sealed class TrayController : IDisposable
     private DateTimeOffset _peekUpdatedAt;
     private string? _menuKey;
     private int _updateQueued;
-    private Icon? _icon;
-    private string? _iconKey;
+    private Icon? _icon, _toolIcon;
+    private string? _iconKey, _toolIconKey;
     private bool _disposed, _suspended;
     private string _notificationPage = "Resets";
 
@@ -37,15 +38,19 @@ internal sealed class TrayController : IDisposable
         _window = window; _service = service; _exit = exit; _preferences = preferences;
         _peek = new TrayPeekWindow(_window.ShowPanel, SelectTrayQuota);
         _tray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
+        _toolTray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
         _desktop = new(ShowDesktop, () => !_disposed && !_suspended && _tray.Visible);
         if (service is not DemoTrackerService)
             WindowsToasts.Listen(page => _window.Dispatcher.InvokeAsync(() => { if (!_disposed) _window.OpenPage(page); }));
-        _tray.MouseClick += (_, e) =>
+        foreach (var tray in new[] { _tray, _toolTray })
         {
-            HidePeek();
-            if (e.Button == Forms.MouseButtons.Left) _window.Dispatcher.Invoke(_window.ShowPanel);
-        };
-        _tray.MouseMove += (_, _) => OnTrayHover();
+            tray.MouseClick += (_, e) =>
+            {
+                HidePeek();
+                if (e.Button == Forms.MouseButtons.Left) _window.Dispatcher.Invoke(_window.ShowPanel);
+            };
+            tray.MouseMove += (_, _) => OnTrayHover();
+        }
         _tray.BalloonTipClicked += (_, _) => _window.ShowResets();
         _hoverDelay.Tick += (_, _) => ShowPeek();
         _presence.Tick += (_, _) => CheckPeekPresence();
@@ -60,7 +65,9 @@ internal sealed class TrayController : IDisposable
             if (_disposed || _suspended) return;
             // NotifyIcon already processes TaskbarCreated. Reassert the same icon ID
             // after Explorer settles, covering a shell which was not ready on broadcast.
-            _tray.Visible = false; _tray.Visible = true; Update();
+            _tray.Visible = false; _tray.Visible = true;
+            if (_toolTray.Visible) { _toolTray.Visible = false; _toolTray.Visible = true; }
+            Update();
         };
         service.Changed += Changed;
         service.Notification += Notified;
@@ -107,46 +114,22 @@ internal sealed class TrayController : IDisposable
     {
         if (_disposed) return;
         var state = _service.State with { ManualCodexReset = _preferences.Current.ManualCodexReset };
-        var (account, window) = TrayQuota.Resolve(state, _preferences.Current);
-        double? remaining = account is null ? null : QuotaPresentation.Remaining(state, account, window, PreviewClock.UtcNow);
-        string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
+        // One icon, or one per tool in use when asked: each draws its tool's quota with its sign.
+        var icons = TrayQuota.Icons(state, _preferences.Current);
         var dark = _window.Theme.IsDark;
-        var color = remaining is null ? Color.FromArgb(140, 140, 140) : remaining > 20 ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(40, 40, 40)) : remaining >= 10 ? (dark ? Color.FromArgb(199, 170, 117) : Color.FromArgb(147, 103, 30)) : (dark ? Color.FromArgb(207, 142, 142) : Color.FromArgb(178, 68, 68));
         int iconSize = WindowsLifecycle.TrayIconPixelSize();
-        var tool = account?.Profile.Provider;
-        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}/{tool}";
-        if (_iconKey != key)
+        var (account, window) = icons[0];
+        Draw(_tray, ref _icon, ref _iconKey, state, account, window, dark, iconSize,
+            account is not null && icons.Count == 1 && state.ActiveAccounts.Count > 1 ? Summary(state, account, window) : Describe(state, account, window));
+        if (icons.Count > 1)
         {
-            var old = _icon; _icon = TrayIconRenderer.Render(number, color, dark, iconSize, tool); _tray.Icon = _icon; old?.Dispose(); _iconKey = key;
+            var (other, otherWindow) = icons[1];
+            Draw(_toolTray, ref _toolIcon, ref _toolIconKey, state, other, otherWindow, dark, iconSize, Describe(state, other, otherWindow));
         }
-        string text;
-        if (account is null) text = Loc.T("Codex Tracker · en attente d’un compte");
-        else if (state.ActiveAccounts.Count > 1)
-            // Codex and Claude Code both in use: the icon's quota first, one short line each, within the 127-character limit.
-            text = string.Join("\n", state.ActiveAccounts.OrderBy(active => active != account).Select(active =>
-            {
-                var kind = active == account ? window : ResetKind.Weekly;
-                var left = QuotaPresentation.Remaining(state, active, kind, PreviewClock.UtcNow);
-                var name = kind == ResetKind.Short ? Loc.F("{0} · 5 h", active.Profile.ProviderName) : active.Profile.ProviderName;
-                var line = name + " · " + (left is null ? Loc.T("indisponible") : Loc.F("{0}% restant", (int)Math.Floor(Math.Clamp(left.Value, 0, 100))));
-                var reset = QuotaPresentation.ResetsAt(state, active, kind, PreviewClock.UtcNow);
-                return reset is null ? line : reset <= PreviewClock.UtcNow ? Loc.F("{0} · reset attendu", line) : Loc.F("{0} · reset dans {1}", line, Display.Remaining(reset));
-            }));
-        else
-        {
-            var quota = remaining is null ? Loc.T("indisponible") : Loc.F("{0}% restant", number);
-            if (state.ManualCodexReset?.Applies(account, window, PreviewClock.UtcNow) == true) quota = Loc.F("{0} · déclaré", quota);
-            if (!account.IsActive) quota = Loc.F("{0} · dernier relevé", quota);
-            else if (account.IsStale) quota = Loc.F("{0} · données anciennes", quota);
-            var name = PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current);
-            var reset = Display.Exact(QuotaPresentation.ResetsAt(state, account, window, PreviewClock.UtcNow));
-            text = window == ResetKind.Short
-                ? Loc.F("{0} · {1}\n5 heures : {2}\nReset 5 h : {3}", account.Profile.ProviderName, name, quota, reset)
-                : Loc.F("{0} · {1}\nSemaine : {2}\nReset : {3}", account.Profile.ProviderName, name, quota, reset);
-        }
-        _tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
+        _toolTray.Visible = icons.Count > 1;
         _peek.Update(state, _preferences.Current);
-        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + account?.Profile.Id + ":" + window + "/" +
+        var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + _preferences.Current.TrayIconPerTool + "/" +
+            string.Join("|", icons.Select(icon => icon.Account?.Profile.Id + ":" + icon.Window)) + "/" +
             string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.HasShortWindow + ":" + a.Profile.Email));
         if (menuKey == _menuKey || _tray.ContextMenuStrip?.Visible == true) return;
         _menuKey = menuKey;
@@ -169,20 +152,68 @@ internal sealed class TrayController : IDisposable
             {
                 var provider = active.Profile.Provider;
                 var label = kind == ResetKind.Short ? Loc.F("{0} · 5 heures", active.Profile.ProviderName) : Loc.F("{0} · semaine", active.Profile.ProviderName);
-                var item = new Forms.ToolStripMenuItem(label) { Checked = active == account && kind == window };
+                var item = new Forms.ToolStripMenuItem(label) { Checked = icons.Any(icon => icon.Account == active && icon.Window == kind) };
                 item.Click += (_, _) => SelectTrayQuota(provider, kind);
                 choices.Items.Add(item);
+            }
+            if (state.ActiveAccounts.Count > 1)
+            {
+                choices.Items.Add(new Forms.ToolStripSeparator());
+                var perTool = new Forms.ToolStripMenuItem(Loc.T("Une icône par outil")) { Checked = _preferences.Current.TrayIconPerTool };
+                perTool.Click += (_, _) => SavePreference(p => p with { TrayIconPerTool = !p.TrayIconPerTool });
+                choices.Items.Add(perTool);
             }
             menu.Items.Add(choice);
         }
         menu.Items.Add(Loc.T("Réglages"), null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
         menu.Items.Add(Loc.T("Quitter"), null, async (_, _) => await _exit());
-        var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = menu; oldMenu?.Dispose();
+        var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = menu; _toolTray.ContextMenuStrip = menu; oldMenu?.Dispose();
     }
-    private void SelectTrayQuota(AccountProvider provider, ResetKind window)
+    private void Draw(Forms.NotifyIcon tray, ref Icon? icon, ref string? iconKey, TrackerState state, AccountState? account, ResetKind window, bool dark, int iconSize, string text)
+    {
+        double? remaining = account is null ? null : QuotaPresentation.Remaining(state, account, window, PreviewClock.UtcNow);
+        string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
+        var color = remaining is null ? Color.FromArgb(140, 140, 140) : remaining > 20 ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(40, 40, 40)) : remaining >= 10 ? (dark ? Color.FromArgb(199, 170, 117) : Color.FromArgb(147, 103, 30)) : (dark ? Color.FromArgb(207, 142, 142) : Color.FromArgb(178, 68, 68));
+        var tool = account?.Profile.Provider;
+        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}/{tool}";
+        if (iconKey != key)
+        {
+            var old = icon; icon = TrayIconRenderer.Render(number, color, dark, iconSize, tool); tray.Icon = icon; old?.Dispose(); iconKey = key;
+        }
+        tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
+    }
+    /// <summary>The single icon while Codex and Claude Code are both in use: its quota first, one short line each, within the 127-character limit.</summary>
+    private static string Summary(TrackerState state, AccountState account, ResetKind window) =>
+        string.Join("\n", state.ActiveAccounts.OrderBy(active => active != account).Select(active =>
+        {
+            var kind = active == account ? window : ResetKind.Weekly;
+            var left = QuotaPresentation.Remaining(state, active, kind, PreviewClock.UtcNow);
+            var name = kind == ResetKind.Short ? Loc.F("{0} · 5 h", active.Profile.ProviderName) : active.Profile.ProviderName;
+            var line = name + " · " + (left is null ? Loc.T("indisponible") : Loc.F("{0}% restant", (int)Math.Floor(Math.Clamp(left.Value, 0, 100))));
+            var reset = QuotaPresentation.ResetsAt(state, active, kind, PreviewClock.UtcNow);
+            return reset is null ? line : reset <= PreviewClock.UtcNow ? Loc.F("{0} · reset attendu", line) : Loc.F("{0} · reset dans {1}", line, Display.Remaining(reset));
+        }));
+    /// <summary>One account's quota in its icon: tool, account, the drawn window and its reset.</summary>
+    private string Describe(TrackerState state, AccountState? account, ResetKind window)
+    {
+        if (account is null) return Loc.T("Codex Tracker · en attente d’un compte");
+        var remaining = QuotaPresentation.Remaining(state, account, window, PreviewClock.UtcNow);
+        var quota = remaining is null ? Loc.T("indisponible") : Loc.F("{0}% restant", (int)Math.Floor(Math.Clamp(remaining.Value, 0, 100)));
+        if (state.ManualCodexReset?.Applies(account, window, PreviewClock.UtcNow) == true) quota = Loc.F("{0} · déclaré", quota);
+        if (!account.IsActive) quota = Loc.F("{0} · dernier relevé", quota);
+        else if (account.IsStale) quota = Loc.F("{0} · données anciennes", quota);
+        var name = PrivacyText.ContextualAccount(account.Profile, state, _preferences.Current);
+        var reset = Display.Exact(QuotaPresentation.ResetsAt(state, account, window, PreviewClock.UtcNow));
+        return window == ResetKind.Short
+            ? Loc.F("{0} · {1}\n5 heures : {2}\nReset 5 h : {3}", account.Profile.ProviderName, name, quota, reset)
+            : Loc.F("{0} · {1}\nSemaine : {2}\nReset : {3}", account.Profile.ProviderName, name, quota, reset);
+    }
+    private void SelectTrayQuota(AccountProvider provider, ResetKind window) => Apply(() => _window.Commands.SetTrayQuota(provider, window));
+    private void SavePreference(Func<TrackerPreferences, TrackerPreferences> change) => Apply(() => _window.Commands.SavePreferences(change));
+    private void Apply(Action change)
     {
         if (_disposed) return;
-        try { _window.Commands.SetTrayQuota(provider, window); }
+        try { change(); }
         catch (Exception error) { HidePeek(); _window.ShowPanel(); _window.ShowMessage(Loc.T("Action impossible"), error.Message); }
         Update();
     }
@@ -209,7 +240,7 @@ internal sealed class TrayController : IDisposable
         _peek.Update(_service.State, _preferences.Current);
         _peekUpdatedAt = DateTimeOffset.UtcNow;
         _peek.ShowNear(cursor);
-        _tray.Text = "";
+        _tray.Text = ""; _toolTray.Text = "";
         _presence.Start();
     }
 
@@ -295,7 +326,7 @@ internal sealed class TrayController : IDisposable
         _window.Reminders.ShowWindows = null;
         _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
         _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close();
-        _tray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _icon?.Dispose();
+        _tray.Visible = false; _toolTray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _toolTray.Dispose(); _icon?.Dispose(); _toolIcon?.Dispose();
         _menuFont.Dispose();
     }
     private sealed class DarkMenuRenderer : Forms.ToolStripProfessionalRenderer

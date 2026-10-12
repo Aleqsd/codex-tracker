@@ -92,6 +92,32 @@ internal static class Display
         (snapshot is null ? "" : "\n\n" + Loc.F("Dernier relevé : {0}\n{1}\nDisponibilité au moment de ce relevé.", Exact(snapshot.FetchedAt), Zone(snapshot.FetchedAt)));
 }
 
+/// <summary>Texts of the steady pace: a use that would empty the quota exactly at its reset.</summary>
+internal static class PaceDisplay
+{
+    public static string Margin(QuotaPace? pace) => pace is null ? "" : pace.OnPace ? Loc.T("Dans le rythme")
+        : pace.Margin > 0 ? Loc.F("Marge de {0} %", Points(pace.Margin)) : Loc.F("Dépassé de {0} %", Points(-pace.Margin));
+    public static Brush Brush(QuotaPace? pace) => pace is null || pace.OnPace ? ThemeManager.GetBrush("TextBrush") : pace.Margin > 0 ? Display.Green : Display.Orange;
+    /// <summary>Short in compact panels ("≈ 28 % par jour"); the tooltip says until when.</summary>
+    public static string Budget(QuotaPace? pace, bool untilReset = false) => pace?.Budget is not { } budget ? ""
+        : untilReset ? budget.PerHour ? Loc.F("≈ {0:0.#} % par heure jusqu’au reset", Amount(budget.Amount)) : Loc.F("≈ {0:0.#} % par jour jusqu’au reset", Amount(budget.Amount))
+        : budget.PerHour ? Loc.F("≈ {0:0.#} % par heure", Amount(budget.Amount)) : Loc.F("≈ {0:0.#} % par jour", Amount(budget.Amount));
+    /// <summary>One line for a tooltip: "Rythme régulier : marge de 35 % · ≈ 28 % par jour".</summary>
+    public static string Line(QuotaPace pace) => Loc.F("Rythme régulier : {0}", Lower(Margin(pace))) + (Budget(pace) is { Length: > 0 } budget ? " · " + budget : "");
+    private static string Lower(string text) => text.Length == 0 ? text : char.ToLower(text[0], Loc.Culture) + text[1..];
+    /// <summary>What the tick on the ring means, then each window's numbers.</summary>
+    public static string Hint(QuotaPace? weekly, QuotaPace? shortWindow) => string.Join("\n", new[]
+    {
+        Loc.T("Le repère sur l’anneau montre ce qu’un rythme régulier laisserait maintenant pour finir à 0 % au reset."),
+        Explain(Loc.T("Semaine"), weekly), Explain(Loc.T("5 heures"), shortWindow)
+    }.Where(line => line.Length > 0));
+    private static string Explain(string window, QuotaPace? pace) => pace is null ? ""
+        : Loc.F("{0} : un rythme régulier laisserait {1} %, il reste {2} %.", window, (int)Math.Round(pace.Expected), (int)Math.Floor(pace.Remaining))
+            + (Budget(pace, untilReset: true) is { Length: > 0 } budget ? " " + budget + "." : "");
+    private static int Points(double margin) => (int)Math.Round(margin, MidpointRounding.AwayFromZero);
+    private static double Amount(double value) => value >= 10 ? Math.Round(value) : Math.Round(value, 1);
+}
+
 internal sealed class AccountViewModel : INotifyPropertyChanged
 {
     private AccountState _account;
@@ -170,6 +196,13 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public double WeeklyDisplayPercent => HasManualWeeklyReset || HasWeeklyEstimate ? 100 : WeeklyPercent;
     public Brush WeeklyDisplayBarBrush => HasManualWeeklyReset || HasWeeklyEstimate ? Display.Green : WeeklyBarBrush;
     public string WeeklyRingCaption => HasManualWeeklyReset ? Loc.T("déclaré") : Loc.T("semaine");
+    private QuotaPace? WeeklyPace => QuotaPace.For(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow);
+    public double WeeklyPaceMarker => WeeklyPace?.Expected ?? double.NaN;
+    public bool HasPace => WeeklyPace is not null;
+    public string PaceText => PaceDisplay.Margin(WeeklyPace);
+    public Brush PaceBrush => PaceDisplay.Brush(WeeklyPace);
+    public string PaceBudget => PaceDisplay.Budget(WeeklyPace);
+    public string PaceHint => PaceDisplay.Hint(WeeklyPace, QuotaPace.For(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
     public string ShortWindowRemaining => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
     public double ShortPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow) ?? 0;
     public Brush ShortBarBrush => HasManualShortReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Short?.RemainingPercent);
