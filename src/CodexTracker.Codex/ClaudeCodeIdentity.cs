@@ -22,16 +22,17 @@ public sealed record ClaudeCodeLocation(string? ConfigPath, string? CredentialsP
 }
 
 // Display metadata only. Tokens never leave the native credential file or enter this record.
+// ConfirmedAt dates the last native confirmation of terminal metadata: profile fetch or credential write.
 internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string? PlanType,
-    DateTimeOffset? ExpiresAt, int? PlanMultiplier = null, string? OrganizationName = null, bool HasLocalCredential = false)
+    DateTimeOffset? ExpiresAt, int? PlanMultiplier = null, string? OrganizationName = null, bool HasLocalCredential = false,
+    DateTimeOffset? ConfirmedAt = null)
 {
     internal static async Task<ClaudeCodeIdentity> ReadAsync(ClaudeCodeLocation location, CancellationToken token)
     {
         if (location.ConfigPath is null || location.CredentialsPath is null)
             throw new TrackerException(Loc.T("Le dossier CLAUDE_CONFIG_DIR est invalide. Corrigez cette variable puis relancez le tracker."));
         using var config = await ReadDocumentAsync(location.ConfigPath, token);
-        if (config.RootElement.ValueKind != JsonValueKind.Object) throw new JsonException();
-        if (!config.RootElement.TryGetProperty("oauthAccount", out var account) || account.ValueKind != JsonValueKind.Object)
+        var account = Account(config.RootElement) ??
             throw new TrackerException(Loc.T("Aucune identité Claude locale détectée. Ouvrez l’onglet Code de l’application Claude ou connectez-vous dans le terminal."));
         // Desktop supplies its session directly to the embedded CLI. Its selected identity and
         // native usage cache remain usable even when the standalone credential file has no login.
@@ -39,6 +40,53 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
         var oauth = credentials?.RootElement is { ValueKind: JsonValueKind.Object } credentialRoot &&
             credentialRoot.TryGetProperty("claudeAiOauth", out var localOauth) && localOauth.ValueKind == JsonValueKind.Object
             ? localOauth : default;
+        DateTimeOffset? confirmed = credentials is null ? null : new DateTimeOffset(File.GetLastWriteTimeUtc(location.CredentialsPath), TimeSpan.Zero);
+        if (account.TryGetProperty("profileFetchedAt", out var fetched) && fetched.ValueKind == JsonValueKind.Number &&
+            fetched.TryGetInt64(out var fetchedAt) && fetchedAt is > 0 and < 253402300800000 &&
+            DateTimeOffset.FromUnixTimeMilliseconds(fetchedAt) is var profileAt && !(profileAt <= confirmed)) confirmed = profileAt;
+        return FromMetadata(account, oauth) with { ConfirmedAt = confirmed };
+    }
+
+    /// <summary>
+    /// The account Claude Code uses now. A Desktop Code session written after the terminal metadata was last
+    /// confirmed designates another account or organization; known profiles and native agent configurations name it.
+    /// </summary>
+    internal static async Task<ClaudeCodeIdentity> ReadSelectedAsync(ClaudeCodeLocation location, IReadOnlyList<string> desktopPaths,
+        IEnumerable<AccountProfile> known, CancellationToken token)
+    {
+        ClaudeCodeIdentity? terminal = null;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        try { terminal = await ReadAsync(location, token); }
+        catch (Exception ex) when (ex is TrackerException or IOException or UnauthorizedAccessException or JsonException)
+        { failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); }
+        var desktop = await Task.Run(() => ClaudeDesktopSelection.Read(desktopPaths, DateTimeOffset.UtcNow, token), token);
+        if (desktop is null || terminal is not null && (terminal.AccountId == desktop.AccountId || desktop.ActiveAt <= terminal.ConfirmedAt))
+        {
+            failure?.Throw();
+            return terminal!;
+        }
+        var prefix = desktop.Account.ToString("D") + "/";
+        var profiles = known.Where(p => p.Provider == AccountProvider.ClaudeCode && ProfileStore.IsEmail(p.Email) &&
+            p.ProviderAccountId?.StartsWith(prefix, StringComparison.Ordinal) == true).ToArray();
+        if (profiles.FirstOrDefault(p => p.ProviderAccountId == desktop.AccountId) is { } profile)
+            return new(profile.Email.Trim(), desktop.AccountId, profile.ProviderPlanType, null, profile.ProviderPlanMultiplier, profile.OrganizationName);
+        var agent = await ClaudeDesktopSelection.ReadAgentIdentityAsync(desktopPaths, desktop, token);
+        if (agent?.AccountId == desktop.AccountId) return agent;
+        // Same account in another organization: its address is known, but not that organization's name or plan.
+        var email = terminal?.AccountId.StartsWith(prefix, StringComparison.Ordinal) == true ? terminal.Email : profiles.FirstOrDefault()?.Email.Trim() ?? agent?.Email;
+        return email is null
+            ? throw new TrackerException(Loc.T("Claude Desktop utilise un autre compte, dont l’adresse n’est pas connue localement. Connectez-le une fois dans le terminal (claude, puis /login) pour l’identifier."))
+            : new(email, desktop.AccountId, null, null);
+    }
+
+    internal static JsonElement? Account(JsonElement config)
+    {
+        if (config.ValueKind != JsonValueKind.Object) throw new JsonException();
+        return config.TryGetProperty("oauthAccount", out var account) && account.ValueKind == JsonValueKind.Object ? account : null;
+    }
+
+    internal static ClaudeCodeIdentity FromMetadata(JsonElement account, JsonElement oauth)
+    {
         var email = Text(account, "emailAddress");
         var uuid = Text(account, "accountUuid");
         if (email is null || !ProfileStore.IsEmail(email) || !Guid.TryParse(uuid, out var accountId) || accountId == Guid.Empty)

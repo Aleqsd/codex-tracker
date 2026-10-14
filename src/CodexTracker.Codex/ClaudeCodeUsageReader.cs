@@ -7,7 +7,7 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
 {
     public async Task<AccountSnapshot> ReadAsync(AccountProfile profile, string expectedAccountId, CancellationToken cancellationToken)
     {
-        var identity = await ClaudeCodeIdentity.ReadAsync(location, cancellationToken);
+        var identity = await ClaudeCodeIdentity.ReadSelectedAsync(location, desktopPaths, [profile], cancellationToken);
         if (identity.AccountId != expectedAccountId || !string.Equals(identity.Email, profile.Email, StringComparison.OrdinalIgnoreCase))
             throw new TrackerException(Loc.T("Le compte Claude Code a changé. Le relevé a été ignoré."));
         var desktop = await ClaudeDesktopUsageReader.ReadAsync(desktopPaths, identity, cancellationToken);

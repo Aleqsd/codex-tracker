@@ -137,6 +137,7 @@ internal static class EnglishCore
         ("La session Claude Code a expiré. Ouvrez Claude Code pour renouveler votre connexion ; le dernier relevé est conservé.", "The Claude Code session has expired. Open Claude Code to renew your sign-in; the last reading is kept."),
         ("Quotas Claude Code en attente. Activez les relevés dans Réglages → Général, puis utilisez Claude Code.", "Claude Code quotas pending. Turn on readings in Settings → General, then use Claude Code."),
         ("Le compte Claude Code a changé. Le relevé a été ignoré.", "The Claude Code account changed. The reading was ignored."),
+        ("Claude Desktop utilise un autre compte, dont l’adresse n’est pas connue localement. Connectez-le une fois dans le terminal (claude, puis /login) pour l’identifier.", "Claude Desktop uses another account whose address is not known locally. Sign in to it once from the terminal (claude, then /login) to identify it."),
         ("Quotas Claude en attente. Ouvrez l’application Claude pour un relevé automatique, ou configurez les relevés du terminal dans Réglages → Général.", "Claude quotas pending. Open the Claude app for an automatic reading, or set up terminal readings in Settings → General."),
         ("Claude Code · 5 h : {0} · semaine : {1}", "Claude Code · 5h: {0} · week: {1}"),
         ("{0:0}% restant", "{0:0}% left"),

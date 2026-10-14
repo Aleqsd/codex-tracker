@@ -70,7 +70,7 @@ public sealed partial class TrackerService
             if (_suspended) return;
             ClaudeCodeIdentity? identity = null;
             string? warning = null;
-            try { identity = await ClaudeCodeIdentity.ReadAsync(_claudeLocation, token); }
+            try { identity = await ClaudeCodeIdentity.ReadSelectedAsync(_claudeLocation, _claudeDesktopUsagePaths, State.Accounts.Select(a => a.Profile), token); }
             catch (Exception ex) when (IsRecoverable(ex))
             {
                 warning = ex is TrackerException ? ex.Message : ex is FileNotFoundException or DirectoryNotFoundException
