@@ -13,7 +13,11 @@ internal sealed class ChromiumUsageCache(string directory) : IDisposable
     private readonly Dictionary<string, FileStream> _files = new(StringComparer.OrdinalIgnoreCase);
     internal sealed record Response(byte[] Body, string Encoding, DateTimeOffset ObservedAt);
 
-    internal static Response? Read(string directory, Guid organization, DateTimeOffset now, CancellationToken token)
+    internal static Response? Read(string directory, Guid organization, DateTimeOffset now, CancellationToken token) =>
+        Read(directory, "claude.ai", "/api/organizations/" + organization.ToString("D") + "/usage", now, token);
+
+    /// <summary>Newest complete response of one exact HTTPS endpoint, whatever its query string.</summary>
+    internal static Response? Read(string directory, string host, string path, DateTimeOffset now, CancellationToken token)
     {
         using var cache = new ChromiumUsageCache(directory);
         var indexFile = cache.Open("index");
@@ -40,7 +44,7 @@ internal sealed class ChromiumUsageCache(string directory) : IDisposable
                     var length = I32(entry, 32);
                     if (length is < 1 or > MaximumKeyBytes) continue;
                     var key = cache.Key(entry, address, length);
-                    if (!Matches(key, organization) || !cache.Clean(entry, address)) continue;
+                    if (!Matches(key, host, path) || !cache.Clean(entry, address)) continue;
                     var metadata = cache.Block(U32(entry, 56), I32(entry, 40), MaximumMetadataBytes);
                     var info = Metadata(metadata, now);
                     if (info is null || latest is not null && info.Value.At <= latest.ObservedAt) continue;
@@ -58,15 +62,14 @@ internal sealed class ChromiumUsageCache(string directory) : IDisposable
         return latest;
     }
 
-    private static bool Matches(byte[] key, Guid organization)
+    private static bool Matches(byte[] key, string host, string path)
     {
         var text = Encoding.UTF8.GetString(key);
         var url = text[(text.LastIndexOf(' ') + 1)..];
         if (url.StartsWith("0/0/", StringComparison.Ordinal) || url.StartsWith("1/0/", StringComparison.Ordinal)) url = url[4..];
         return url.StartsWith("https://", StringComparison.Ordinal) && Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
-            uri.Host.Equals("claude.ai", StringComparison.OrdinalIgnoreCase) && uri.Port == 443 &&
-            uri.UserInfo.Length == 0 && uri.Fragment.Length == 0 &&
-            uri.AbsolutePath == "/api/organizations/" + organization.ToString("D") + "/usage";
+            uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) && uri.Port == 443 &&
+            uri.UserInfo.Length == 0 && uri.Fragment.Length == 0 && uri.AbsolutePath == path;
     }
 
     private bool Clean(byte[] entry, uint address)

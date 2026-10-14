@@ -49,7 +49,8 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
 
     /// <summary>
     /// The account Claude Code uses now. A Desktop Code session written after the terminal metadata was last
-    /// confirmed designates another account or organization; known profiles and native agent configurations name it.
+    /// confirmed designates another account or organization; Desktop's cached profile response, known profiles
+    /// and native agent configurations name it.
     /// </summary>
     internal static async Task<ClaudeCodeIdentity> ReadSelectedAsync(ClaudeCodeLocation location, IReadOnlyList<string> desktopPaths,
         IEnumerable<AccountProfile> known, CancellationToken token)
@@ -65,6 +66,8 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
             failure?.Throw();
             return terminal!;
         }
+        if (await Task.Run(() => ClaudeDesktopSelection.ReadProfileIdentity(desktopPaths, desktop, DateTimeOffset.UtcNow, token), token) is { } cached)
+            return cached;
         var prefix = desktop.Account.ToString("D") + "/";
         var profiles = known.Where(p => p.Provider == AccountProvider.ClaudeCode && ProfileStore.IsEmail(p.Email) &&
             p.ProviderAccountId?.StartsWith(prefix, StringComparison.Ordinal) == true).ToArray();
@@ -102,15 +105,26 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
             catch (ArgumentOutOfRangeException) { throw new JsonException(); }
         }
         var tier = oauth.ValueKind == JsonValueKind.Object ? Text(oauth, "rateLimitTier") : null;
-        tier ??= Text(account, "userRateLimitTier");
-        int? multiplier = tier is "default_claude_max_20x" ? 20 : tier is "default_claude_max_5x" ? 5 : null;
         var plan = oauth.ValueKind == JsonValueKind.Object ? Text(oauth, "subscriptionType") : null;
-        plan ??= Text(account, "organizationType") switch { "claude_team" => "team", "claude_enterprise" => "enterprise", "claude_max" => "max", "claude_pro" => "pro", _ => null };
-        var name = Text(account, "organizationName");
-        if (name is { Length: > 200 } || name?.Any(char.IsControl) == true) throw new JsonException();
-        name = string.IsNullOrWhiteSpace(name) ? plan is "pro" or "max" ? Loc.T("Personnel") : plan is "team" ? Loc.T("Équipe") : plan is "enterprise" ? Loc.T("Entreprise") : null : name.Trim();
+        plan ??= Plan(Text(account, "organizationType"));
         return new(email.Trim(), accountId.ToString("D") + "/" + organization?.ToLowerInvariant(),
-            plan, expires, multiplier, name, oauth.ValueKind == JsonValueKind.Object && Text(oauth, "accessToken") is { Length: > 0 });
+            plan, expires, Multiplier(tier ?? Text(account, "userRateLimitTier")), OrganizationLabel(Text(account, "organizationName"), plan, email),
+            oauth.ValueKind == JsonValueKind.Object && Text(oauth, "accessToken") is { Length: > 0 });
+    }
+
+    internal static string? Plan(string? organizationType) => organizationType switch
+    {
+        "claude_team" => "team", "claude_enterprise" => "enterprise", "claude_max" => "max", "claude_pro" => "pro", _ => null
+    };
+
+    internal static int? Multiplier(string? tier) => tier is "default_claude_max_20x" ? 20 : tier is "default_claude_max_5x" ? 5 : null;
+
+    // A personal organization is named "<address>'s Organization" by default: the views name it by its kind instead.
+    internal static string? OrganizationLabel(string? name, string? plan, string email)
+    {
+        if (name is { Length: > 200 } || name?.Any(char.IsControl) == true) throw new JsonException();
+        if (plan is "pro" or "max" && string.Equals(name?.Trim(), email.Trim() + "'s Organization", StringComparison.OrdinalIgnoreCase)) name = null;
+        return string.IsNullOrWhiteSpace(name) ? plan is "pro" or "max" ? Loc.T("Personnel") : plan is "team" ? Loc.T("Équipe") : plan is "enterprise" ? Loc.T("Entreprise") : null : name.Trim();
     }
 
     internal static async Task<JsonDocument> ReadDocumentAsync(string path, CancellationToken token)

@@ -65,6 +65,47 @@ public sealed class ClaudeDesktopSelectionTests
     }
 
     [Fact]
+    public async Task DesktopCachedProfileGivesThePlanOfTheSelectedOrganizationOnly()
+    {
+        using var cache = new ClaudeDesktopCacheTests.CacheFixture(); var directory = cache.Directory; var now = DateTimeOffset.UtcNow;
+        SignInEarlier(directory, "work@example.test", organizationName: "Fictional company", organizationType: "claude_team");
+        Session(directory, ClaudeFixture.Second, Personal, now.AddMinutes(-1));
+        static string Profile(Guid organization, string type = "claude_max") => JsonSerializer.Serialize(new
+        {
+            account = new { uuid = ClaudeFixture.Second, email = "personal@example.test", full_name = "fixture-private-name", has_claude_max = true },
+            organization = new { uuid = organization, name = "personal@example.test's Organization", organization_type = type, rate_limit_tier = "default_claude_max_20x" }
+        });
+        const string endpoint = "https://api.anthropic.com/api/oauth/profile";
+        cache.Add(Guid.Empty, now.AddMinutes(-30), Profile(Personal), "br", url: endpoint);
+        cache.Add(Guid.Empty, now.AddMinutes(-20), Profile(Personal, "claude_pro"), url: "https://claude.ai/api/oauth/profile");
+        var files = cache.Files();
+        // A profile already followed without its plan, as created by 0.9.28, receives it.
+        var known = new AccountProfile(Guid.NewGuid(), "personal@example.test", AccountProvider.ClaudeCode, ClaudeFixture.Second + "/" + Personal);
+        var identity = await Selected(directory, known);
+        Assert.Equal("personal@example.test", identity.Email); Assert.Equal("max", identity.PlanType); Assert.Equal(20, identity.PlanMultiplier);
+        Assert.Equal("Personnel", identity.OrganizationName); Assert.Equal(files, cache.Files());
+
+        // A newer profile of another organization cannot describe the selected one.
+        cache.Add(Guid.Empty, now.AddMinutes(-10), Profile(Work), "zstd", url: endpoint);
+        identity = await Selected(directory, known);
+        Assert.Equal("personal@example.test", identity.Email); Assert.Null(identity.PlanType); Assert.Null(identity.PlanMultiplier);
+    }
+
+    [Fact]
+    public async Task OnlyTheDefaultNameOfAPersonalOrganizationIsReplaced()
+    {
+        using var directory = new TestDirectory();
+        ClaudeFixture.SignIn(directory, organizationName: "demo@example.test's Organization", organizationType: "claude_max");
+        Assert.Equal("Personnel", (await ClaudeCodeIdentity.ReadAsync(ClaudeFixture.Location(directory), default)).OrganizationName);
+        ClaudeFixture.SignIn(directory, organizationName: "other@example.test's Organization", organizationType: "claude_max");
+        Assert.Equal("other@example.test's Organization", (await ClaudeCodeIdentity.ReadAsync(ClaudeFixture.Location(directory), default)).OrganizationName);
+        // A team organization keeps any name; without a terminal login the plan comes from its type.
+        ClaudeFixture.SignIn(directory, organizationName: "demo@example.test's Organization", organizationType: "claude_team");
+        File.WriteAllText(directory.File(".credentials.json"), "{}");
+        Assert.Equal("demo@example.test's Organization", (await ClaudeCodeIdentity.ReadAsync(ClaudeFixture.Location(directory), default)).OrganizationName);
+    }
+
+    [Fact]
     public async Task DesktopAloneNamesItsAccountAndMissingSourcesKeepTheOriginalError()
     {
         using var directory = new TestDirectory();

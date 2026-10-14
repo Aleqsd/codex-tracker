@@ -222,7 +222,7 @@ public sealed class ClaudeDesktopCacheTests
 
     private static AccountSnapshot? Read(CacheFixture fixture) => ClaudeDesktopCacheUsageReader.Read([fixture.HistoryPath], Identity, Now, default);
 
-    private sealed class CacheFixture : IDisposable
+    internal sealed class CacheFixture : IDisposable
     {
         internal TestDirectory Directory { get; } = new();
         internal string HistoryPath => Directory.File("plan-usage-history.json");
@@ -239,9 +239,9 @@ public sealed class ClaudeDesktopCacheTests
         }
 
         internal void Add(Guid organization, DateTimeOffset observedAt, string json, string encoding = "", string host = "claude.ai",
-            string suffix = "", DateTimeOffset? responseAt = null, string? invalid = null)
+            string suffix = "", DateTimeOffset? responseAt = null, string? invalid = null, string? url = null)
         {
-            var url = $"https://{host}/api/organizations/{organization:D}/usage{suffix}";
+            url ??= $"https://{host}/api/organizations/{organization:D}/usage{suffix}";
             var key = Encoding.UTF8.GetBytes("1/0/_dk_https://claude.ai https://claude.ai " + url);
             var body = Compress(Encoding.UTF8.GetBytes(json), encoding);
             if (invalid == "damaged-body") body[0] ^= 255;

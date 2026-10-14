@@ -40,6 +40,46 @@ internal static class ClaudeDesktopSelection
     }
 
     /// <summary>
+    /// Desktop's cached response of the profile endpoint that Claude Code reads to fill .claude.json. It names
+    /// the selected account only when both UUIDs match; display names and dates are not retained.
+    /// </summary>
+    internal static ClaudeCodeIdentity? ReadProfileIdentity(IReadOnlyList<string> desktopPaths, Selection selection, DateTimeOffset now,
+        CancellationToken token)
+    {
+        ChromiumUsageCache.Response? latest = null;
+        foreach (var directory in desktopPaths.Select(p => Path.Combine(Path.GetDirectoryName(p)!, "Cache", "Cache_Data"))
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            token.ThrowIfCancellationRequested();
+            try
+            {
+                var response = ChromiumUsageCache.Read(directory, "api.anthropic.com", "/api/oauth/profile", now, token);
+                if (response is not null && (latest is null || response.ObservedAt > latest.ObservedAt)) latest = response;
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or OverflowException) { }
+        }
+        if (latest is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(ClaudeDesktopCacheUsageReader.Decode(latest.Body, latest.Encoding), new() { MaxDepth = 16 });
+            return Profile(document.RootElement, selection);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or InvalidDataException or InvalidOperationException or ZstdSharp.ZstdException) { return null; }
+    }
+
+    internal static ClaudeCodeIdentity? Profile(JsonElement root, Selection selection)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("account", out var account) || account.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("organization", out var organization) || organization.ValueKind != JsonValueKind.Object ||
+            !Guid.TryParse(ClaudeCodeIdentity.Text(account, "uuid"), out var accountId) || accountId != selection.Account ||
+            !Guid.TryParse(ClaudeCodeIdentity.Text(organization, "uuid"), out var organizationId) || organizationId != selection.Organization ||
+            ClaudeCodeIdentity.Text(account, "email") is not { } email || !ProfileStore.IsEmail(email)) return null;
+        var plan = ClaudeCodeIdentity.Plan(ClaudeCodeIdentity.Text(organization, "organization_type"));
+        return new(email.Trim(), selection.AccountId, plan, null, ClaudeCodeIdentity.Multiplier(ClaudeCodeIdentity.Text(organization, "rate_limit_tier")),
+            ClaudeCodeIdentity.OrganizationLabel(ClaudeCodeIdentity.Text(organization, "name"), plan, email));
+    }
+
+    /// <summary>
     /// Desktop agent sessions keep a native CLI configuration per account and organization. The most recent one
     /// of the selected organization is returned, otherwise one of the same account, whose address is still valid.
     /// </summary>
