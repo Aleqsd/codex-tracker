@@ -32,6 +32,32 @@ public sealed class ClaudeDesktopTests
         Assert.Null(shortOnly.Weekly); Assert.Equal(98, shortOnly.Short!.RemainingPercent);
     }
 
+    [Fact]
+    public async Task StorePackageDataMovedToClaudeDataIsStillRead()
+    {
+        using var directory = new TestDirectory();
+        var roaming = directory.File("roaming"); var local = directory.File("local");
+        var package = Path.Combine(local, "Packages", "Claude_pzs8sxrjxfjjc");
+        var redirected = Path.Combine(package, "LocalCache", "Roaming", "Claude");
+        Directory.CreateDirectory(redirected);
+        File.WriteAllText(Path.Combine(redirected, ".user-data-left.claude_pzs8sxrjxfjjc"), "");
+        var moved = Path.Combine(local, "Claude-Data", "claude_pzs8sxrjxfjjc", "plan-usage-history.json");
+
+        // Before the migration, the future folder is already listed so a running tracker notices it.
+        Assert.Contains(moved, ClaudeDesktopUsageReader.ResolvePaths(roaming, local), StringComparer.OrdinalIgnoreCase);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(moved)!);
+        var at = DateTimeOffset.UtcNow.AddMinutes(-5);
+        File.WriteAllText(moved, History(at, Organization, new { fh = 12, sd = 40 }));
+        var paths = ClaudeDesktopUsageReader.ResolvePaths(roaming, local);
+        Assert.Equal(paths.Count, paths.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Contains(Path.Combine(redirected, "plan-usage-history.json"), paths, StringComparer.OrdinalIgnoreCase);
+        var snapshot = await ClaudeDesktopUsageReader.ReadAsync(paths, Identity, CancellationToken.None);
+        Assert.NotNull(snapshot);
+        Assert.Equal(at.ToUnixTimeMilliseconds(), snapshot.FetchedAt.ToUnixTimeMilliseconds());
+        Assert.Equal(88, snapshot.Short!.RemainingPercent); Assert.Equal(60, snapshot.Weekly!.RemainingPercent);
+    }
+
     [Theory]
     [InlineData(-1)] [InlineData(101)] [InlineData(1e300)]
     public void InvalidDesktopPercentageCannotBecomeAQuota(double invalid) =>

@@ -9,13 +9,28 @@ internal static class ClaudeDesktopUsageReader
 {
     internal static IReadOnlyList<string> ResolvePaths(string roaming, string local)
     {
-        var paths = new List<string> { Path.Combine(roaming, "Claude", "plan-usage-history.json") };
+        const string history = "plan-usage-history.json";
+        var paths = new List<string> { Path.Combine(roaming, "Claude", history) };
+        // Since October 2026 the Store package moves its user data out of the redirected Roaming folder to
+        // %LOCALAPPDATA%\Claude-Data\<package family, lowercase>, leaving only a .user-data-left marker behind.
+        // The future folder of each installed package is listed too, so a migration is seen without restarting.
+        var data = Path.Combine(local, "Claude-Data");
+        try
+        {
+            if (Directory.Exists(data))
+                paths.AddRange(Directory.EnumerateDirectories(data).Take(16)
+                    .Where(p => (File.GetAttributes(p) & FileAttributes.ReparsePoint) == 0).Select(p => Path.Combine(p, history)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         var packages = Path.Combine(local, "Packages");
         try
         {
             if (Directory.Exists(packages))
-                paths.AddRange(Directory.EnumerateDirectories(packages, "Claude_*")
-                    .Select(p => Path.Combine(p, "LocalCache", "Roaming", "Claude", "plan-usage-history.json")));
+                foreach (var package in Directory.EnumerateDirectories(packages, "Claude_*"))
+                {
+                    paths.Add(Path.Combine(data, Path.GetFileName(package).ToLowerInvariant(), history));
+                    paths.Add(Path.Combine(package, "LocalCache", "Roaming", "Claude", history));
+                }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         return paths.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();

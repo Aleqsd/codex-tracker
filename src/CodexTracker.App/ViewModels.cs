@@ -335,7 +335,9 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
         }
     }
     public string StatusHint => _state.ActiveAccounts.Count == 0 ? _state.StatusMessage ?? Loc.T("Ouvrez votre compte dans Codex ou Claude Code.")
-        : string.Join("\n\n", _state.ActiveAccounts.Select(a => Loc.F("{0} · dernier relevé reçu : {1}\n{2}\n{3}", a.Profile.ProviderName, Display.Exact(a.Snapshot?.FetchedAt), Display.Zone(a.Snapshot?.FetchedAt), a.Error ?? _state.StatusMessage)));
+        : string.Join("\n\n", _state.ActiveAccounts.Select(a => Loc.F("{0} · dernier relevé reçu : {1}\n{2}\n{3}", a.Profile.ProviderName, Display.Exact(a.Snapshot?.FetchedAt), Display.Zone(a.Snapshot?.FetchedAt),
+            // The shared status message carries the last provider error: don't repeat it under a healthy provider.
+            a.Error ?? (_state.ActiveAccounts.Any(o => o.Error is not null) ? Loc.T("À jour") : _state.StatusMessage))));
     private AccountAdvice Advice { get; set; }
     public Guid? AdviceAccountId => Advice.Kind == AccountAdviceKind.VerifyInCodex ? Advice.AccountId : null;
     public bool HasAdvice => AdviceAccountId is not null;
