@@ -115,10 +115,40 @@ internal sealed class QuotaWidgetProvider : IWidgetProvider
     {
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            try { if (File.Exists(Feed)) return File.ReadAllText(Feed); break; }
+            try { if (File.Exists(Feed)) return Shape(File.ReadAllText(Feed)); break; }
             catch (IOException) { Thread.Sleep(100); }
+            catch (System.Text.Json.JsonException) { break; }
         }
         return """{"title":"Codex Tracker","accounts":[],"empty":"Ouvrez Codex Tracker pour afficher vos quotas · Open Codex Tracker to show your quotas","advice":"","hasAdvice":false,"openLabel":"Codex Tracker","updated":""}""";
+    }
+
+    /// <summary>
+    /// Card data from the tracker's summary: the most urgent account first (the small size shows only it), and a gauge
+    /// drawn with two weighted columns whose colour follows the tracker's (accent, then warning and attention when low).
+    /// </summary>
+    internal static string Shape(string feed)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(feed)!.AsObject();
+        var accounts = (root["accounts"] as System.Text.Json.Nodes.JsonArray ?? []).OfType<System.Text.Json.Nodes.JsonObject>().Select(a =>
+        {
+            var digits = new string((a["percent"]?.GetValue<string>() ?? "").TakeWhile(char.IsDigit).ToArray());
+            int? value = int.TryParse(digits, out var parsed) ? Math.Clamp(parsed, 0, 100) : null;
+            var color = a["color"]?.GetValue<string>() ?? "Default";
+            return (Value: value, Node: new System.Text.Json.Nodes.JsonObject
+            {
+                ["name"] = a["name"]?.GetValue<string>() ?? "",
+                ["provider"] = a["provider"]?.GetValue<string>() ?? "",
+                ["percent"] = a["percent"]?.GetValue<string>() ?? "--",
+                ["color"] = color,
+                ["reset"] = a["detail"]?.GetValue<string>() ?? "",
+                ["fill"] = Math.Max(1, value ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["rest"] = Math.Max(1, 100 - (value ?? 0)).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["bar"] = value is null ? "emphasis" : color switch { "Attention" => "attention", "Warning" => "warning", _ => "accent" },
+            });
+        }).OrderBy(a => a.Value ?? 101).Select(a => (System.Text.Json.Nodes.JsonNode)a.Node).ToArray();
+        root["accounts"] = new System.Text.Json.Nodes.JsonArray(accounts);
+        root["first"] = accounts.FirstOrDefault()?.DeepClone() ?? new System.Text.Json.Nodes.JsonObject();
+        return root.ToJsonString();
     }
 
     private static string ReadTemplate()

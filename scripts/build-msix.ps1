@@ -133,6 +133,7 @@ $manifest = @"
                     <Capabilities>
                       <Capability><Size Name="small" /></Capability>
                       <Capability><Size Name="medium" /></Capability>
+                      <Capability><Size Name="large" /></Capability>
                     </Capabilities>
                     <ThemeResources>
                       <Icons><Icon Path="Assets\StoreLogo.png" /></Icons>
@@ -160,9 +161,15 @@ $output = Join-Path $root "artifacts/CodexTracker-$Version.msix"
 & $makeappx.FullName pack /d $layout /p $output /o /h SHA256 | Out-Null
 if ($LASTEXITCODE) { throw 'makeappx a échoué.' }
 Write-Output "Paquet Store $packageVersion : $output ($([Math]::Round((Get-Item $output).Length / 1MB, 1)) Mo)"
-if ($Unregister -or $Register) { Get-AppxPackage -Name $IdentityName | Remove-AppxPackage -ErrorAction SilentlyContinue }
+if ($Unregister) { Get-AppxPackage -Name $IdentityName | Remove-AppxPackage -ErrorAction SilentlyContinue }
 if ($Register) {
     # Loose layout registration: developer mode only, nothing signed, removed with -Unregister.
-    Add-AppxPackage -Register (Join-Path $layout 'AppxManifest.xml') -ForceApplicationShutdown
+    # Re-registering in place keeps the widgets already pinned on the board.
+    try { Add-AppxPackage -Register (Join-Path $layout 'AppxManifest.xml') -ForceApplicationShutdown -ForceUpdateFromAnyVersion }
+    catch [System.Exception] {
+        if ($_.Exception.HResult -ne -2147009285 -and $_.Exception.Message -notmatch '0x80073CFB') { throw }
+        # Same version already registered from this folder: its files were just replaced in place.
+        Write-Output 'Déjà inscrit : fichiers mis à jour sur place. Pour un manifeste modifié : -Unregister puis -Register.'
+    }
     Write-Output "Paquet de test installé : Win+W → Ajouter des widgets → Codex Tracker."
 }
