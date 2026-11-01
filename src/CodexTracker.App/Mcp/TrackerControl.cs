@@ -59,7 +59,9 @@ internal sealed class TrackerControl : IDisposable
             case "rules": return new { revision, rules = _preferences.Current.ReminderRules };
             case "channels":
                 var s = _window.Reminders.Secrets.Read();
-                return new { revision, twilio = new { s.Twilio.Enabled, hasCredentials = s.Twilio.Secret.Length > 0, s.Twilio.SmsFrom, s.Twilio.CallFrom, s.Twilio.To }, sendGrid = new { s.SendGrid.Enabled, hasCredentials = s.SendGrid.ApiKey.Length > 0, s.SendGrid.From, s.SendGrid.To } };
+                return new { revision, twilio = new { s.Twilio.Enabled, hasCredentials = s.Twilio.Secret.Length > 0, s.Twilio.SmsFrom, s.Twilio.CallFrom, s.Twilio.To }, sendGrid = new { s.SendGrid.Enabled, hasCredentials = s.SendGrid.ApiKey.Length > 0, s.SendGrid.From, s.SendGrid.To },
+                    // The topic is the subscription secret: write-only, like keys.
+                    ntfy = new { s.Push.Enabled, s.Push.Server, hasTopic = s.Push.Topic.Length > 0, hasToken = s.Push.Token.Length > 0, mirrorWindows = _preferences.Current.PushMirror } };
             case "action": return Public(_actions.Find(Read<ActionQuery>(args).RequestId) ?? throw new ArgumentException("Action inconnue."));
             case "refresh":
                 await _window.TrackerService.RefreshAsync(); return new { refreshed = true, revision = Revision, observedAt = _window.TrackerService.State.ActiveAccount?.Snapshot?.FetchedAt };
@@ -117,19 +119,25 @@ internal sealed class TrackerControl : IDisposable
             case "set_channel":
                 var change = Read<ChannelChange>(request.Value);
                 var old = _window.Reminders.Secrets.Read(); var next = old;
-                if (change.Provider == "twilio" && change.Twilio is not null && change.SendGrid is null) next = old with { Twilio = change.Twilio };
-                else if (change.Provider == "sendgrid" && change.SendGrid is not null && change.Twilio is null) next = old with { SendGrid = change.SendGrid };
-                else throw new ArgumentException("Fournir un seul connecteur : twilio ou sendgrid.");
+                var given = new object?[] { change.Twilio, change.SendGrid, change.Ntfy }.Count(c => c is not null);
+                if (given != 1) throw new ArgumentException("Fournir un seul connecteur : twilio, sendgrid ou ntfy.");
+                if (change.Provider == "twilio" && change.Twilio is not null) next = old with { Twilio = change.Twilio };
+                else if (change.Provider == "sendgrid" && change.SendGrid is not null) next = old with { SendGrid = change.SendGrid };
+                else if (change.Provider == "ntfy" && change.Ntfy is not null) next = old with { Ntfy = change.Ntfy };
+                else throw new ArgumentException("Fournir un seul connecteur : twilio, sendgrid ou ntfy.");
                 // A complete replacement is explicit: omitted Enabled remains false, so saving keys never enables delivery.
-                confirm = next.Twilio.Enabled && next.Twilio != old.Twilio || next.SendGrid.Enabled && next.SendGrid != old.SendGrid;
-                summary = change.Provider == "twilio"
-                    ? Loc.F("Twilio · {0}\nSMS depuis {1}\nAppels depuis {2}\nDestinataire : {3}\nIdentifiants : masqués.", next.Twilio.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.Twilio.SmsFrom, next.Twilio.CallFrom, next.Twilio.To)
-                    : Loc.F("SendGrid · {0}\nDe : {1}\nVers : {2}\nClé : masquée.", next.SendGrid.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.SendGrid.From, next.SendGrid.To);
+                confirm = next.Twilio.Enabled && next.Twilio != old.Twilio || next.SendGrid.Enabled && next.SendGrid != old.SendGrid || next.Push.Enabled && next.Push != old.Push;
+                summary = change.Provider switch
+                {
+                    "twilio" => Loc.F("Twilio · {0}\nSMS depuis {1}\nAppels depuis {2}\nDestinataire : {3}\nIdentifiants : masqués.", next.Twilio.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.Twilio.SmsFrom, next.Twilio.CallFrom, next.Twilio.To),
+                    "sendgrid" => Loc.F("SendGrid · {0}\nDe : {1}\nVers : {2}\nClé : masquée.", next.SendGrid.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.SendGrid.From, next.SendGrid.To),
+                    _ => Loc.F("Téléphone (ntfy) · {0}\nServeur : {1}\nSujet : {2}\nVos notifications seront publiées sur ce sujet.", next.Push.Enabled ? Loc.T("activer / modifier") : Loc.T("désactiver"), next.Push.Server, next.Push.Topic)
+                };
                 run = () => { _commands.SaveSecrets(next); return Task.FromResult("Connecteur enregistré ; aucun envoi effectué."); }; break;
             case "delete_credentials":
                 var provider = Read<ProviderQuery>(request.Value).Provider;
-                if (provider is not ("twilio" or "sendgrid")) throw new ArgumentException("Connecteur inconnu.");
-                run = () => { var secrets = _window.Reminders.Secrets.Read(); _commands.SaveSecrets(provider == "twilio" ? secrets with { Twilio = new() } : secrets with { SendGrid = new() }); return Task.FromResult("Identifiants supprimés ; canal désactivé."); };
+                if (provider is not ("twilio" or "sendgrid" or "ntfy")) throw new ArgumentException("Connecteur inconnu.");
+                run = () => { var secrets = _window.Reminders.Secrets.Read(); _commands.SaveSecrets(provider switch { "twilio" => secrets with { Twilio = new() }, "sendgrid" => secrets with { SendGrid = new() }, _ => secrets with { Ntfy = new() } }); return Task.FromResult("Identifiants supprimés ; canal désactivé."); };
                 summary = Loc.F("Supprimer les identifiants {0}", provider); break;
             case "google_connect":
                 var mail = Read<GoogleConnectQuery>(request.Value).Mail;
@@ -160,7 +168,8 @@ internal sealed class TrackerControl : IDisposable
                 // An email from the user's Gmail to the same address costs nothing and reaches nobody else: no local confirmation.
                 var gmailToSelf = channel == ReminderChannel.Email && _window.Calendar.CanMail &&
                     !NotificationProviders.Configured(ReminderChannel.Email, _window.Reminders.Secrets.Read());
-                confirm = channel != ReminderChannel.Windows && !gmailToSelf;
+                // A test on the user's own ntfy topic, already confirmed when it was set up, costs nothing.
+                confirm = channel is not (ReminderChannel.Windows or ReminderChannel.Push) && !gmailToSelf;
                 summary = Loc.F("Envoyer un test {0}. Les frais éventuels sont facturés par votre prestataire.", channel) + Destinations() + "\n" + Loc.T("Message : test de rappel Codex Tracker. Les limites et heures silencieuses restent appliquées.");
                 run = async () => { var result = await _window.Reminders.TestAsync(channel, () => !_disposed && _preferences.Current.McpEnabled && _commands.Revision == revision); return $"{result.Status} · {result.Detail}"; }; break;
             default: throw new ArgumentException("Commande inconnue.");
@@ -231,18 +240,20 @@ internal sealed record TestQuery(ReminderChannel Channel);
 internal sealed record GoogleConnectQuery(bool Mail);
 internal sealed record PathQuery(string Path);
 internal sealed record CreditQuery(Guid AccountId, string CreditId);
-internal sealed record ChannelChange(string Provider, TwilioSettings? Twilio = null, SendGridSettings? SendGrid = null);
+internal sealed record ChannelChange(string Provider, TwilioSettings? Twilio = null, SendGridSettings? SendGrid = null, NtfySettings? Ntfy = null);
 /// <summary>General settings. The calendar, email and credit notice switches are optional: omitted, they keep their value.</summary>
 internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Alert20, bool Alert10, bool Alert5, bool ResetNotifications, bool HoverPreview, int RefreshMinutes, bool AdaptiveRefresh,
-    bool? NewCreditNotifications = null, bool? ReserveAdviceNotifications = null, bool? ReserveMailAlerts = null, bool? GoogleCalendarAutoAdd = null, bool? CalendarSuggestionDismissed = null, bool? ForecastNotifications = null)
+    bool? NewCreditNotifications = null, bool? ReserveAdviceNotifications = null, bool? ReserveMailAlerts = null, bool? GoogleCalendarAutoAdd = null, bool? CalendarSuggestionDismissed = null, bool? ForecastNotifications = null,
+    bool? PushMirror = null)
 {
     internal static General From(TrackerPreferences p) => new(p.ThemeMode, p.SortMode, p.Alert20, p.Alert10, p.Alert5, p.ResetNotifications, p.HoverPreview, p.RefreshMinutes, p.AdaptiveRefresh,
-        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications);
+        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications, p.PushMirror);
     internal TrackerPreferences Apply(TrackerPreferences p) => p with
     {
         ThemeMode = ThemeMode, SortMode = SortMode, Alert20 = Alert20, Alert10 = Alert10, Alert5 = Alert5, ResetNotifications = ResetNotifications, HoverPreview = HoverPreview, RefreshMinutes = RefreshMinutes, AdaptiveRefresh = AdaptiveRefresh,
         NewCreditNotifications = NewCreditNotifications ?? p.NewCreditNotifications, ReserveAdviceNotifications = ReserveAdviceNotifications ?? p.ReserveAdviceNotifications,
         ReserveMailAlerts = ReserveMailAlerts ?? p.ReserveMailAlerts, GoogleCalendarAutoAdd = GoogleCalendarAutoAdd ?? p.GoogleCalendarAutoAdd,
-        CalendarSuggestionDismissed = CalendarSuggestionDismissed ?? p.CalendarSuggestionDismissed, ForecastNotifications = ForecastNotifications ?? p.ForecastNotifications
+        CalendarSuggestionDismissed = CalendarSuggestionDismissed ?? p.CalendarSuggestionDismissed, ForecastNotifications = ForecastNotifications ?? p.ForecastNotifications,
+        PushMirror = PushMirror ?? p.PushMirror
     };
 }

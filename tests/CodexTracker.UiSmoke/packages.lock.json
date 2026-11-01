@@ -317,6 +317,11 @@
           "Microsoft.Extensions.Logging.Abstractions": "10.0.10"
         }
       },
+      "QRCoder": {
+        "type": "Transitive",
+        "resolved": "1.6.0",
+        "contentHash": "XmPA81eo+oRxBuyVdswsSkTGTE1d3thfF11Z1PdD7oB56A6HU4G4AAOdySmGRMb/cljwlFTMWUtosGEnwpS6GA=="
+      },
       "ZstdSharp.Port": {
         "type": "Transitive",
         "resolved": "0.8.8",
@@ -325,17 +330,18 @@
       "CodexTracker": {
         "type": "Project",
         "dependencies": {
-          "CodexTracker.Codex": "[0.9.22, )",
-          "CodexTracker.Core": "[0.9.22, )",
+          "CodexTracker.Codex": "[0.9.37, )",
+          "CodexTracker.Core": "[0.9.37, )",
           "CommunityToolkit.WinUI.Notifications": "[7.1.2, )",
           "Microsoft.Extensions.Hosting": "[10.0.9, )",
-          "ModelContextProtocol": "[2.2.0, )"
+          "ModelContextProtocol": "[2.2.0, )",
+          "QRCoder": "[1.6.0, )"
         }
       },
       "codextracker.codex": {
         "type": "Project",
         "dependencies": {
-          "CodexTracker.Core": "[0.9.22, )",
+          "CodexTracker.Core": "[0.9.37, )",
           "ZstdSharp.Port": "[0.8.8, )"
         }
       },

@@ -12,9 +12,18 @@ public sealed class NotificationProviders(HttpClient http)
 {
     private static bool Sid(string value, string prefix) => Regex.IsMatch(value, "^" + prefix + "[a-fA-F0-9]{32}$");
     private static bool Phone(string value) => Regex.IsMatch(value, @"^\+[1-9]\d{7,14}$");
+    /// <summary>An https server without query, and a topic long enough not to be guessed on a public server.</summary>
+    public static bool PushReady(NtfySettings settings) => settings.Enabled && SubscribeUrl(settings) is not null &&
+        settings.Token.Length <= 512 && !settings.Token.Any(char.IsWhiteSpace);
+    /// <summary>The address a phone subscribes to, or null when the server or topic is invalid.</summary>
+    public static string? SubscribeUrl(NtfySettings settings) =>
+        Uri.TryCreate(settings.Server?.Trim(), UriKind.Absolute, out var server) && server.Scheme == Uri.UriSchemeHttps && server.Query.Length == 0 &&
+        server.Fragment.Length == 0 && string.IsNullOrEmpty(server.UserInfo) && Regex.IsMatch(settings.Topic ?? "", "^[A-Za-z0-9_-]{12,64}$")
+            ? server.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/" + settings.Topic : null;
     public static bool Configured(ReminderChannel channel, NotificationSecrets secrets) => channel switch
     {
         ReminderChannel.Windows => true,
+        ReminderChannel.Push => PushReady(secrets.Push),
         ReminderChannel.Email => secrets.SendGrid.Enabled && !string.IsNullOrWhiteSpace(secrets.SendGrid.ApiKey) && !secrets.SendGrid.ApiKey.Any(char.IsWhiteSpace) && Mail(secrets.SendGrid.From) && Mail(secrets.SendGrid.To),
         _ => secrets.Twilio.Enabled && Sid(secrets.Twilio.AccountSid, "AC") && Sid(secrets.Twilio.KeySid, "SK") && !string.IsNullOrWhiteSpace(secrets.Twilio.Secret)
              && !secrets.Twilio.Secret.Any(char.IsWhiteSpace) && Phone(secrets.Twilio.To) && (channel == ReminderChannel.Call ? Phone(secrets.Twilio.CallFrom) : Phone(secrets.Twilio.SmsFrom) || Regex.IsMatch(secrets.Twilio.SmsFrom, @"^(?=.*[a-zA-Z])[a-zA-Z0-9 ]{1,11}$"))
@@ -29,6 +38,7 @@ public sealed class NotificationProviders(HttpClient http)
     public async Task<DeliveryResult> SendAsync(ReminderOccurrence occurrence, NotificationSecrets secrets, CancellationToken token)
     {
         if (!Configured(occurrence.Channel, secrets)) return new(DeliveryStatus.Failed, Loc.T("Canal désactivé ou configuration incomplète."));
+        if (occurrence.Channel == ReminderChannel.Push) return await SendPushAsync(secrets.Push, ReminderPlanner.Title(occurrence), ReminderPlanner.Body(occurrence), token);
         using var request = occurrence.Channel == ReminderChannel.Email ? Email(occurrence, secrets.SendGrid) : Telephone(occurrence, secrets.Twilio);
         try
         {
@@ -42,6 +52,24 @@ public sealed class NotificationProviders(HttpClient http)
             return new(DeliveryStatus.Accepted, Loc.T("Accepté par Twilio ; suivi en cours."), sid);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or InvalidOperationException or KeyNotFoundException)
+        { return new(DeliveryStatus.Unknown, Loc.T("Résultat inconnu après interruption réseau ; aucune réémission automatique.")); }
+    }
+    /// <summary>One ntfy message (JSON publish, so titles keep their accents). Accepted means the server queued it.</summary>
+    public async Task<DeliveryResult> SendPushAsync(NtfySettings settings, string title, string body, CancellationToken token)
+    {
+        if (!PushReady(settings)) return new(DeliveryStatus.Failed, Loc.T("Canal désactivé ou configuration incomplète."));
+        var server = SubscribeUrl(settings)!;
+        using var request = new HttpRequestMessage(HttpMethod.Post, server[..(server.Length - settings.Topic.Length)]);
+        if (settings.Token.Length > 0) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.Token);
+        static string Cut(string text, int length) => text.Length <= length ? text : text[..(length - 1)] + "…";
+        request.Content = JsonContent.Create(new { topic = settings.Topic, title = Cut(title, 200), message = Cut(body, 3500), priority = 4, tags = new[] { "hourglass_flowing_sand" } });
+        try
+        {
+            using var response = await http.SendAsync(request, token);
+            if (!response.IsSuccessStatusCode) return new((int)response.StatusCode >= 500 ? DeliveryStatus.Unknown : DeliveryStatus.Failed, Loc.F("ntfy : HTTP {0}. Aucune réémission automatique.", (int)response.StatusCode));
+            return new(DeliveryStatus.Accepted, Loc.T("Accepté par ntfy ; réception sur le téléphone non confirmée."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException)
         { return new(DeliveryStatus.Unknown, Loc.T("Résultat inconnu après interruption réseau ; aucune réémission automatique.")); }
     }
     private static HttpRequestMessage Email(ReminderOccurrence r, SendGridSettings settings)

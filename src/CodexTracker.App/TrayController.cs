@@ -328,6 +328,7 @@ internal sealed class TrayController : IDisposable
         if (others > 0) body += "\n" + (others == 1 ? Loc.T("1 autre événement dans le suivi.") : Loc.F("{0} autre événement dans le suivi.", others));
         _notificationPage = latest.Kind == NotificationKind.Reset ? "Resets" : "Comptes"; _notificationCalendar = null; _notificationSuggestSync = false;
         _desktop.Send(title, body);
+        _ = _window.Reminders.MirrorAsync($"alert/{latest.AccountId:N}/{latest.Window}/{latest.Kind}/{latest.Threshold}/{latest.ObservedAt.UtcTicks}", title, body);
     }
 
     internal void SavePeekScreenshot(string path, double dpi = 96)

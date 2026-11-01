@@ -29,7 +29,8 @@ internal sealed class ReminderRuntime : IDisposable
                 newCreditNotifications: () => preferences.Current.NewCreditNotifications,
                 reserveAdvice: () => preferences.Current.ReserveAdviceNotifications,
                 gmail: google is null ? null : (reminder, token) => google.SendMailAsync(reminder, token), gmailReady: () => google?.CanMail == true,
-                reserveMail: () => preferences.Current.ReserveMailAlerts);
+                reserveMail: () => preferences.Current.ReserveMailAlerts,
+                pushMirror: () => preferences.Current.PushMirror);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException)
         { Error = Loc.T("Le journal des rappels est illisible. Les envois sont suspendus pour éviter les doublons."); }
@@ -47,6 +48,14 @@ internal sealed class ReminderRuntime : IDisposable
         if (_dispatcher is null) return Task.FromResult(new DeliveryResult(DeliveryStatus.Failed, Error ?? Loc.T("Le moteur de rappels est indisponible.")));
         if (_paused || _lifetime.IsCancellationRequested) return Task.FromResult(new DeliveryResult(DeliveryStatus.Skipped, Loc.T("Le tracker est suspendu ou en cours de fermeture. Réessayez après sa reprise.")));
         return _dispatcher.TestAsync(channel, _lifetime.Token, stillAuthorized);
+    }
+    /// <summary>Copies a Windows notification shown outside the reminder engine (quota alerts) to the phone, once per key.</summary>
+    internal async Task MirrorAsync(string key, string title, string body)
+    {
+        if (_demo || _paused || _dispatcher is null || _lifetime.IsCancellationRequested) return;
+        try { await _dispatcher.MirrorAsync(key, title, body, _lifetime.Token); }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or System.Text.Json.JsonException)
+        { /* A failed copy never blocks the Windows notification; the journal keeps what was attempted. */ }
     }
     internal void Pause() { _paused = true; _wake.Cancel(); }
     internal void Resume() { if (!_paused) return; _wake = new(); _paused = false; }

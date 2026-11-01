@@ -22,7 +22,7 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/publish.ps1 -Version 0.9.2
 ./scripts/build-installer.ps1 -Version 0.9.2
 ./scripts/bump.ps1 -Version 0.9.19
-./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
+./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc   # -Quick : saute les contrôles que les changements ne touchent pas
 ./scripts/site.ps1 -Deploy
 ./scripts/stats.ps1 -Json
 python scripts/social-preview.py
@@ -51,4 +51,4 @@ Modifier une règle métier : tests de ses limites et erreurs. Modifier une comm
 
 ## Présentation publique
 
-README bref, orienté installation et usage (français, avec `README.en.md` en anglais) ; détails dans docs/UTILISATION.md. Site public https://codex-tracker.zqsdev.com (sources `site/`, Netlify, DNS zqsdev.com chez Netlify) : accueil anglais et français, politique de confidentialité exigée par Google, données structurées, `llms.txt`, sitemap. `scripts/site.ps1 -Deploy` le reconstruit avec la version courante et le publie ; le relancer après chaque release. Garder les deux langues et les deux README alignés sur les fonctions réelles. Tour GIF rapide, exclusivement fictif ; `scripts/visuals.ps1` régénère hors écran le visuel principal, les captures du guide et le GIF (Pillow requis). Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.
+README bref, orienté installation et usage (français, avec `README.en.md` en anglais) ; détails dans docs/UTILISATION.md. Site public https://codex-tracker.zqsdev.com (sources `site/`, Netlify, DNS zqsdev.com chez Netlify) : accueil anglais et français, politique de confidentialité exigée par Google, données structurées, `llms.txt`, sitemap. Netlify reconstruit le site (`scripts/build-site.py`) à chaque push sur main : un changement de site, de docs ou de README ne demande pas de release. `scripts/site.ps1 -Deploy` publie la construction locale tout de suite, `-Draft` donne une adresse d’aperçu. Garder les deux langues et les deux README alignés sur les fonctions réelles. Tour GIF rapide, exclusivement fictif ; `scripts/visuals.ps1` régénère hors écran le visuel principal, les captures du guide et le GIF (Pillow requis). Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.

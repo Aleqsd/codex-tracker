@@ -5,6 +5,7 @@ Codex Tracker est distribué sous licence MIT (voir LICENSE).
 - Model Context Protocol C# SDK 2.2.0 — contributeurs MCP, avec Microsoft — Apache License 2.0. Sources et licence : https://github.com/modelcontextprotocol/csharp-sdk
 - Bibliothèques Microsoft .NET et Microsoft.Extensions — Microsoft et contributeurs — MIT. Sources : https://github.com/dotnet/runtime et https://github.com/dotnet/extensions
 - Microsoft.Bcl.TimeProvider et System.* — .NET Foundation et contributeurs — MIT, distribuées avec le runtime autonome.
+- QRCoder 1.6.0 — Raffael Herrmann, Shane Krueger — MIT. Sources : https://github.com/codebude/QRCoder ; licence dans `docs/licenses/QRCoder-MIT.txt`.
 - ZstdSharp.Port 0.8.8 — Oleg Stepanischev — MIT. Sources : https://github.com/oleg-st/ZstdSharp ; licence dans `docs/licenses/ZstdSharp-MIT.txt`.
 - Roboto 2.137 (Regular, Medium et Bold), Copyright 2011 Google Inc. — Apache License 2.0. Polices distribuées sans modification ; source : https://github.com/google/fonts/tree/724bf98e9f5cb98a1d3d5044f45a2e286b817401/apache/roboto. Licence et attribution dans `docs/licenses/Roboto-Apache-2.0.txt` et `docs/licenses/Roboto-COPYRIGHT.txt`.
 

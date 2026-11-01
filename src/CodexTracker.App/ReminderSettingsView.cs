@@ -5,7 +5,7 @@ namespace CodexTracker.App;
 
 internal static class ReminderSettingsView
 {
-    private static string ChannelName(ReminderChannel channel) => channel switch { ReminderChannel.Windows => "Windows", ReminderChannel.Sms => "SMS", ReminderChannel.Call => Loc.T("Appel"), _ => "Email" };
+    private static string ChannelName(ReminderChannel channel) => channel switch { ReminderChannel.Windows => "Windows", ReminderChannel.Sms => "SMS", ReminderChannel.Call => Loc.T("Appel"), ReminderChannel.Push => Loc.T("Téléphone"), _ => "Email" };
     private static string LeadName(int minutes) => minutes < 60 ? $"{minutes} min" : minutes <= 1440 ? $"{minutes / 60} h" : Loc.F("{0} j", minutes / 1440);
     private static TextBlock Hint(string text) { var hint = Ui.Text(text, 11, "MutedBrush"); hint.Margin = new Thickness(0, 7, 0, 12); return hint; }
     private static StackPanel Panel() => new() { Margin = new Thickness(0, 8, 0, 18) };
@@ -115,7 +115,7 @@ internal static class ReminderSettingsView
                 }
                 rows.Add((lead, boxes));
             }
-            content.Children.Add(grid); content.Children.Add(Hint(Loc.T("SMS, appels et emails nécessitent un connecteur activé dans Canaux.")));
+            content.Children.Add(grid); content.Children.Add(Hint(Loc.T("Téléphone, SMS, appels et emails nécessitent un connecteur activé dans Canaux.")));
             var status = Hint("");
             var save = Button(Loc.T("Enregistrer ces rappels"));
             save.Click += (_, _) =>
@@ -145,6 +145,7 @@ internal static class ReminderSettingsView
         NotificationSecrets secrets;
         try { secrets = runtime.Secrets.Read(); }
         catch { root.Children.Add(Hint(Loc.T("Identifiants locaux illisibles. Aucun écrasement effectué."))); return root; }
+        root.Children.Add(Phone(preferences, runtime, demo, commands, secrets));
         var twilio = Panel(); var enabled = Check(Loc.T("Activer Twilio"), secrets.Twilio.Enabled); twilio.Children.Add(enabled);
         var sid = Field(twilio, "Account SID", secrets.Twilio.AccountSid);
         var key = Field(twilio, "API Key SID", secrets.Twilio.KeySid);
@@ -173,7 +174,7 @@ internal static class ReminderSettingsView
         var remove = Button(Loc.T("Supprimer les identifiants Twilio")); remove.IsEnabled = !demo;
         remove.Click += (_, _) => { try { commands.SaveSecrets(runtime.Secrets.Read() with { Twilio = new() }); secrets = secrets with { Twilio = new() }; enabled.IsChecked = false; sid.Clear(); key.Clear(); secret.Clear(); sms.Clear(); call.Clear(); to.Clear(); twilioStatus.Text = Loc.T("Identifiants supprimés ; canal désactivé."); } catch { twilioStatus.Text = Loc.T("Suppression impossible."); } };
         twilio.Children.Add(remove); twilio.Children.Add(Link(Loc.T("Configurer Twilio ↗"), "https://www.twilio.com/docs/usage/requests-to-twilio"));
-        root.Children.Add(new Expander { Header = Loc.T("Twilio · SMS et appels"), Content = twilio, Margin = new Thickness(0, 16, 0, 10) });
+        root.Children.Add(new Expander { Header = Loc.T("Twilio · SMS et appels"), Content = twilio, Margin = new Thickness(0, 4, 0, 10) });
 
         var email = Panel(); var emailEnabled = Check(Loc.T("Activer SendGrid"), secrets.SendGrid.Enabled); email.Children.Add(emailEnabled);
         var emailKey = Password(email, Loc.T("Clé API SendGrid · permission Mail Send"), secrets.SendGrid.ApiKey);
@@ -223,6 +224,77 @@ internal static class ReminderSettingsView
         root.Children.Add(new Expander { Header = Loc.T("Limites et heures silencieuses"),Content = limits, Margin = new Thickness(0, 4, 0, 10) });
         return root;
     }
+    /// <summary>
+    /// Phone notifications through ntfy: free, no account. The user scans the code with the phone, subscribes in the ntfy app,
+    /// and every Windows notification can be copied there, which Do Not Disturb on the PC does not hide.
+    /// </summary>
+    private static FrameworkElement Phone(PreferencesStore preferences, ReminderRuntime runtime, bool demo, ApplicationCommands commands, NotificationSecrets secrets)
+    {
+        var saved = secrets.Push;
+        var panel = Panel();
+        panel.Children.Add(Hint(Loc.T("Gratuit et sans compte. Installez l’application ntfy sur votre téléphone, puis scannez ce code pour vous abonner : vos notifications Codex Tracker y arrivent, même quand Windows est en mode Ne pas déranger.")));
+        // Scan first; the topic, server and token stay folded below for those who change them.
+        var advanced = Panel();
+        var topic = Field(advanced, Loc.T("Sujet ntfy · secret : quiconque le connaît peut lire vos notifications"), saved.Topic.Length > 0 ? saved.Topic : NtfySettings.NewTopic());
+        var server = Field(advanced, Loc.T("Serveur"), saved.Server);
+        var token = Password(advanced, Loc.T("Jeton d’accès · facultatif, pour un serveur protégé"), saved.Token);
+        var enabled = Check(Loc.T("Activer les notifications sur le téléphone"), saved.Enabled);
+        var code = new System.Windows.Controls.Image { Width = 156, Height = 156, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 2, 0, 6) };
+        RenderOptions.SetBitmapScalingMode(code, BitmapScalingMode.NearestNeighbor);
+        System.Windows.Automation.AutomationProperties.SetName(code, Loc.T("Code QR d’abonnement ntfy"));
+        var address = Ui.Text("", 11, "MutedBrush"); address.TextWrapping = TextWrapping.Wrap;
+        string? Url() => NotificationProviders.SubscribeUrl(new(true, server.Text.Trim(), topic.Text.Trim(), ""));
+        void Preview()
+        {
+            var url = Url();
+            address.Text = url ?? Loc.T("Sujet de 12 à 64 lettres, chiffres, - ou _, et serveur https.");
+            code.Source = url is null ? null : QrCode(url);
+            code.Visibility = url is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+        topic.TextChanged += (_, _) => Preview(); server.TextChanged += (_, _) => Preview(); Preview();
+        panel.Children.Add(code); panel.Children.Add(address); panel.Children.Add(enabled);
+        var mirror = Check(Loc.T("Copier sur le téléphone chaque notification Windows : alertes de quota, rappels et resets"), preferences.Current.PushMirror);
+        panel.Children.Add(mirror);
+        var status = Hint(saved.Enabled ? Loc.T("Configuration enregistrée ; réception non vérifiée.") : Loc.T("Désactivé"));
+        var save = Button(Loc.T("Enregistrer")); save.IsEnabled = !demo;
+        save.Click += (_, _) =>
+        {
+            try
+            {
+                var config = new NtfySettings(enabled.IsChecked == true, server.Text.Trim(), topic.Text.Trim(), token.Password.Trim());
+                var current = runtime.Secrets.Read() with { Ntfy = config };
+                if (config.Enabled && !NotificationProviders.Configured(ReminderChannel.Push, current)) { status.Text = Loc.T("Sujet de 12 à 64 lettres, chiffres, - ou _, et serveur https."); return; }
+                if (runtime.Secrets.Read().Push != saved) { status.Text = Loc.T("Configuration modifiée ailleurs. Utilisez « Recharger la section »."); return; }
+                commands.SaveSecrets(current); saved = current.Push;
+                if (preferences.Current.PushMirror != (mirror.IsChecked == true)) commands.SavePreferences(p => p with { PushMirror = mirror.IsChecked == true });
+                status.Text = Loc.T("Enregistré localement et chiffré. Aucun envoi effectué.");
+            }
+            catch { status.Text = Loc.T("Impossible d’enregistrer les identifiants."); }
+        };
+        var copy = Button(Loc.T("Copier le lien")); copy.Style = (Style)System.Windows.Application.Current.FindResource("QuietButton");
+        copy.Click += (_, _) => { if (Url() is { } url) try { System.Windows.Clipboard.SetText(url); status.Text = Loc.T("Lien copié."); } catch { status.Text = url; } };
+        var actions = new WrapPanel(); actions.Children.Add(save); actions.Children.Add(copy);
+        panel.Children.Add(actions); panel.Children.Add(status);
+        panel.Children.Add(TestButton(Loc.T("Envoyer une notification de test au téléphone"), ReminderChannel.Push, runtime, demo, panel));
+        var remove = Button(Loc.T("Supprimer la configuration ntfy")); remove.IsEnabled = !demo;
+        remove.Click += (_, _) => { try { commands.SaveSecrets(runtime.Secrets.Read() with { Ntfy = new() }); saved = new(); enabled.IsChecked = false; token.Clear(); topic.Text = NtfySettings.NewTopic(); status.Text = Loc.T("Identifiants supprimés ; canal désactivé."); } catch { status.Text = Loc.T("Suppression impossible."); } };
+        panel.Children.Add(new Expander { Header = Loc.T("Sujet et serveur"), Content = advanced, Margin = new Thickness(0, 8, 0, 4) });
+        panel.Children.Add(remove);
+        panel.Children.Add(Link(Loc.T("Installer ntfy sur le téléphone ↗"), "https://docs.ntfy.sh/subscribe/phone/"));
+        // Open until set up: it is the free channel that Do Not Disturb on the PC cannot hide.
+        return new Expander { Header = Loc.T("Téléphone · ntfy, gratuit"), Content = panel, IsExpanded = !saved.Enabled, Margin = new Thickness(0, 16, 0, 4) };
+    }
+
+    private static System.Windows.Media.Imaging.BitmapImage QrCode(string text)
+    {
+        using var generator = new QRCoder.QRCodeGenerator();
+        using var data = generator.CreateQrCode(text, QRCoder.QRCodeGenerator.ECCLevel.M);
+        var png = new QRCoder.PngByteQRCode(data).GetGraphic(6, [16, 17, 20], [255, 255, 255]);
+        var image = new System.Windows.Media.Imaging.BitmapImage();
+        image.BeginInit(); image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; image.StreamSource = new MemoryStream(png); image.EndInit(); image.Freeze();
+        return image;
+    }
+
     internal static FrameworkElement WindowsTest(ReminderRuntime runtime, bool demo) => WindowsTest(() => runtime.TestAsync(ReminderChannel.Windows), demo);
 
     internal static FrameworkElement WindowsTest(Func<Task<DeliveryResult>> test, bool demo)
@@ -255,6 +327,10 @@ internal static class ReminderSettingsView
         };
         actions.Children.Add(button); actions.Children.Add(settings);
         root.Children.Add(actions); root.Children.Add(status);
+        // Do Not Disturb hides toasts; Windows lets the user exempt chosen apps, which only they can set.
+        var priority = Hint(Loc.T("En mode Ne pas déranger, Windows masque ces notifications. Pour les recevoir quand même : Réglages Windows ↗ → Définir les notifications prioritaires → Ajouter des applications → Codex Tracker."));
+        priority.Margin = new Thickness(0, 6, 0, 0);
+        root.Children.Add(priority);
         return root;
     }
 

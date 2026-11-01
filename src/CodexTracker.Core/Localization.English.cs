@@ -221,5 +221,8 @@ internal static class EnglishCore
         ("Gmail a refusé l’e-mail.", "Gmail rejected the email."),
         ("Utilisez un reset en réserve", "Use a reset credit"),
         ("{0} · {1}\nSemaine presque vide, et ce reset en réserve expire le {2:dd/MM à HH:mm}, avant la recharge : utilisez-le maintenant.", "{0} · {1}\nThe week is nearly empty and this reset credit expires on {2:dd/MM 'at' HH:mm}, before the refill: use it now."),
+        ("ntfy : HTTP {0}. Aucune réémission automatique.", "ntfy: HTTP {0}. No automatic resend."),
+        ("Accepté par ntfy ; réception sur le téléphone non confirmée.", "Accepted by ntfy; delivery to the phone not confirmed."),
+        ("Copie sur le téléphone.", "Copy to the phone."),
     ];
 }

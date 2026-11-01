@@ -118,6 +118,12 @@ try:
     check(result["result"]["status"] == "completed", "write-only credential stored without enabling channel")
     channels = a.tool("get_channels")
     check(key not in json.dumps(channels) and not channels["result"]["sendGrid"]["enabled"], "credential absent from readback; channel remains disabled")
+    topic = "codex-tracker-" + uuid.uuid4().hex[:20]
+    result = a.tool("configure_channel", requestId=str(uuid.uuid4()), expectedRevision=a.tool("get_status")["result"]["revision"],
+                    configuration={"provider": "ntfy", "ntfy": {"enabled": False, "server": "https://ntfy.sh", "topic": topic, "token": ""}})
+    check(result["result"]["status"] == "completed", "ntfy topic stored without enabling the phone channel")
+    channels = a.tool("get_channels")["result"]
+    check(topic not in json.dumps(channels) and channels["ntfy"]["hasTopic"] and not channels["ntfy"]["enabled"], "ntfy topic is write-only and the channel stays off")
     subprocess.run(base + ["--exit"], timeout=10, creationflags=subprocess.CREATE_NO_WINDOW, check=True)
     a.p.wait(timeout=15); b.p.wait(timeout=15)
     check(a.p.returncode == 0 and b.p.returncode == 0, "tracker shutdown releases both MCP processes for update")

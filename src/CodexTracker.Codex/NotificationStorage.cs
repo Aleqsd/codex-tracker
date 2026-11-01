@@ -8,9 +8,16 @@ namespace CodexTracker.Codex;
 
 public sealed record TwilioSettings(bool Enabled = false, string AccountSid = "", string KeySid = "", string Secret = "", string SmsFrom = "", string CallFrom = "", string To = "");
 public sealed record SendGridSettings(bool Enabled = false, string ApiKey = "", string From = "", string To = "");
-public sealed record NotificationSecrets(TwilioSettings Twilio, SendGridSettings SendGrid)
+/// <summary>Phone notifications through ntfy: free, no account; the topic name is the secret that lets a phone subscribe.</summary>
+public sealed record NtfySettings(bool Enabled = false, string Server = "https://ntfy.sh", string Topic = "", string Token = "")
 {
-    public static NotificationSecrets Empty => new(new(), new());
+    public static string NewTopic() => "codex-tracker-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(10)).ToLowerInvariant();
+}
+public sealed record NotificationSecrets(TwilioSettings Twilio, SendGridSettings SendGrid, NtfySettings? Ntfy = null)
+{
+    public static NotificationSecrets Empty => new(new(), new(), new());
+    /// <summary>The ntfy settings; files written before the phone channel have none.</summary>
+    [JsonIgnore] public NtfySettings Push => Ntfy ?? new();
 }
 
 public static class NotificationFiles
@@ -40,7 +47,8 @@ public sealed class NotificationSecretStore(string directory)
         {
             var value = JsonSerializer.Deserialize<NotificationSecrets>(bytes, NotificationFiles.Json);
             if (value?.Twilio is not { AccountSid: not null, KeySid: not null, Secret: not null, SmsFrom: not null, CallFrom: not null, To: not null }
-                || value.SendGrid is not { ApiKey: not null, From: not null, To: not null }) throw new InvalidDataException("Identifiants illisibles.");
+                || value.SendGrid is not { ApiKey: not null, From: not null, To: not null }
+                || value.Ntfy is { } ntfy && (ntfy.Server is null || ntfy.Topic is null || ntfy.Token is null)) throw new InvalidDataException("Identifiants illisibles.");
             return value;
         }
         finally { CryptographicOperations.ZeroMemory(bytes); }

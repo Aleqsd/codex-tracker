@@ -30,6 +30,8 @@ internal sealed record TrackerPreferences
     public bool ReserveAdviceNotifications { get; init; } = true;
     /// <summary>An email 24 hours before a reset credit expires, once Gmail sending is granted (asked with the Google connection).</summary>
     public bool ReserveMailAlerts { get; init; } = true;
+    /// <summary>Copy every Windows notification to the phone once ntfy is set up.</summary>
+    public bool PushMirror { get; init; } = true;
     /// <summary>Once Google Calendar is connected, every reset credit gets its expiry event automatically.</summary>
     public bool GoogleCalendarAutoAdd { get; init; } = true;
     /// <summary>"Ne plus proposer": no Google Calendar offer in notifications or on the dashboard.</summary>
@@ -135,7 +137,7 @@ internal sealed class PreferencesStore
     private static TrackerPreferences DisableNotifications(TrackerPreferences value) => value with
     {
         McpEnabled = false, Alert20 = false, Alert10 = false, Alert5 = false,
-        ResetNotifications = false, NewCreditNotifications = false, ReserveAdviceNotifications = false, ReserveMailAlerts = false, GoogleCalendarAutoAdd = false, ForecastNotifications = false, MonitorGlobalResets = false, ExpiryNotifications = false,
+        ResetNotifications = false, NewCreditNotifications = false, ReserveAdviceNotifications = false, ReserveMailAlerts = false, PushMirror = false, GoogleCalendarAutoAdd = false, ForecastNotifications = false, MonitorGlobalResets = false, ExpiryNotifications = false,
         ReminderRules = value.ReminderRules!.Select(rule => rule with { Enabled = false }).ToArray(),
         ResetAlerts = value.ResetAlerts.Select(alert => alert with { Enabled = false }).ToArray()
     };

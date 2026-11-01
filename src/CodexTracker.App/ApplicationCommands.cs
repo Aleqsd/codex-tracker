@@ -35,11 +35,13 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
     {
         if (expected is not null) CheckRevision(expected);
         if (value?.Twilio is not { AccountSid: not null, KeySid: not null, Secret: not null, SmsFrom: not null, CallFrom: not null, To: not null }
-            || value.SendGrid is not { ApiKey: not null, From: not null, To: not null }) throw new ArgumentException(Loc.T("Champs de connecteur manquants."));
-        if (new[] { value.Twilio.AccountSid, value.Twilio.KeySid, value.Twilio.Secret, value.Twilio.SmsFrom, value.Twilio.CallFrom, value.Twilio.To, value.SendGrid.ApiKey, value.SendGrid.From, value.SendGrid.To }.Any(s => s.Length > 4096))
+            || value.SendGrid is not { ApiKey: not null, From: not null, To: not null }
+            || value.Ntfy is { } ntfy && (ntfy.Server is null || ntfy.Topic is null || ntfy.Token is null)) throw new ArgumentException(Loc.T("Champs de connecteur manquants."));
+        if (new[] { value.Twilio.AccountSid, value.Twilio.KeySid, value.Twilio.Secret, value.Twilio.SmsFrom, value.Twilio.CallFrom, value.Twilio.To, value.SendGrid.ApiKey, value.SendGrid.From, value.SendGrid.To, value.Push.Server, value.Push.Topic, value.Push.Token }.Any(s => s.Length > 4096))
             throw new ArgumentException(Loc.T("Champ de connecteur trop long."));
         if (value.Twilio.Enabled && !NotificationProviders.Configured(ReminderChannel.Sms, value) && !NotificationProviders.Configured(ReminderChannel.Call, value)
-            || value.SendGrid.Enabled && !NotificationProviders.Configured(ReminderChannel.Email, value))
+            || value.SendGrid.Enabled && !NotificationProviders.Configured(ReminderChannel.Email, value)
+            || value.Push.Enabled && !NotificationProviders.Configured(ReminderChannel.Push, value))
             throw new ArgumentException(Loc.T("Configuration du canal incomplète."));
         secrets.Save(value); preferences.Touch();
     }

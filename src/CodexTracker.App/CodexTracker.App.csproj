@@ -17,6 +17,7 @@
     <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageReference Include="CommunityToolkit.WinUI.Notifications" Version="7.1.2" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <InternalsVisibleTo Include="CodexTracker.UiSmoke" />
     <Resource Include="Assets\App.ico" />
     <Resource Include="Assets\Providers\*.png" />

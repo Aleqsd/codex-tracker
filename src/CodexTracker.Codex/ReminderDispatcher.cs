@@ -9,7 +9,8 @@ public sealed class ReminderDispatcher(
     Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null,
     Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null, Func<bool>? newCreditNotifications = null,
     Func<bool>? reserveAdvice = null,
-    Func<ReminderOccurrence, CancellationToken, Task<DeliveryResult>>? gmail = null, Func<bool>? gmailReady = null, Func<bool>? reserveMail = null)
+    Func<ReminderOccurrence, CancellationToken, Task<DeliveryResult>>? gmail = null, Func<bool>? gmailReady = null, Func<bool>? reserveMail = null,
+    Func<bool>? pushMirror = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -80,6 +81,9 @@ public sealed class ReminderDispatcher(
                 {
                     var result = SendWindows(desktop);
                     foreach (var r in desktop) Put(r, result.Status, result.Detail);
+                    // The phone gets the same notification, whether or not Windows showed it (Do Not Disturb).
+                    var text = DesktopReminderText.For(desktop);
+                    await Mirror("reminders/" + Digest(desktop.Select(r => r.Key)), text.Title, text.Body, token);
                 }
             }
             if (now >= _nextPoll)
@@ -115,6 +119,33 @@ public sealed class ReminderDispatcher(
     /// <summary>Email goes through the user's Gmail when no SendGrid connector is configured and Gmail sending is granted.</summary>
     private bool ViaGmail(ReminderChannel channel, NotificationSecrets configuration) => channel == ReminderChannel.Email && gmail is not null &&
         gmailReady?.Invoke() == true && !NotificationProviders.Configured(ReminderChannel.Email, configuration);
+    /// <summary>
+    /// Copies a Windows notification to the phone (ntfy) when the copy is turned on: journaled before sending, once per key,
+    /// like every other delivery. Returns null when nothing was sent.
+    /// </summary>
+    public async Task<DeliveryResult?> MirrorAsync(string key, string title, string body, CancellationToken token = default)
+    {
+        await _gate.WaitAsync(token);
+        try { return await Mirror(key, title, body, token); }
+        finally { _gate.Release(); }
+    }
+    private async Task<DeliveryResult?> Mirror(string key, string title, string body, CancellationToken token)
+    {
+        if (pushMirror?.Invoke() != true) return null;
+        var configuration = secrets.Read();
+        if (!NotificationProviders.Configured(ReminderChannel.Push, configuration)) return null;
+        var id = "push/" + key;
+        if (journal.Entries.Any(d => d.Occurrence.Key == id)) return null;
+        var now = _clock.GetUtcNow();
+        var r = new ReminderOccurrence(id, Guid.Empty, title, ResetKind.Weekly, null, now, now, 0, ReminderChannel.Push);
+        var attempt = new ReminderDelivery(r, DeliveryStatus.Submitting, now, Loc.T("Copie sur le téléphone."), AttemptedAt: now);
+        journal.Put(attempt);
+        var result = await providers.SendPushAsync(configuration.Push, title, body, token);
+        journal.Put(attempt with { Status = result.Status, Detail = result.Detail, UpdatedAt = _clock.GetUtcNow() });
+        return result;
+    }
+    private static string Digest(IEnumerable<string> keys) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join("\n", keys))))[..24].ToLowerInvariant();
     private static bool Standalone(ReminderOccurrence r) => NewResetCredits.Is(r) || ReserveAdvice.Is(r);
     private void Put(ReminderOccurrence r, DeliveryStatus status, string text) => journal.Put(new(r, status, _clock.GetUtcNow(), text));
     private DeliveryResult SendWindows(IReadOnlyList<ReminderOccurrence> occurrences)

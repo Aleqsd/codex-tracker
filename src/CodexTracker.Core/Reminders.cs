@@ -1,6 +1,7 @@
 namespace CodexTracker.Core;
 
-public enum ReminderChannel { Windows, Sms, Call, Email }
+/// <summary>Push: the user's phone through ntfy.</summary>
+public enum ReminderChannel { Windows, Sms, Call, Email, Push }
 public enum DeliveryStatus { Deferred, Submitting, Shown, Accepted, Delivered, Completed, Failed, Unknown, Skipped, Cancelled }
 public sealed record ReminderRule(ResetKind Kind, bool Enabled, int[] LeadMinutes, ReminderChannel[] Channels, Guid[]? AccountIds = null);
 public sealed record PhonePolicy(int SmsPerDay = 5, int CallsPerDay = 1, bool QuietEnabled = true,

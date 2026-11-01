@@ -162,6 +162,10 @@ Les notifications Windows proposent **Ouvrir le suivi**, qui affiche directement
 
 **Tester une notification Windows**, dans **Rappels** ou **Canaux**, affiche son résultat sous le bouton et l’enregistre dans **Historique**. Si Windows signale une application en plein écran, une présentation, une session inactive ou des notifications désactivées, le test explique pourquoi il est ignoré. Quittez le mode concerné puis réessayez. **Réglages Windows ↗** ouvre la page des notifications sans modifier vos choix.
 
+**Mode Ne pas déranger** : Windows masque alors les notifications. Pour recevoir quand même celles du tracker : **Réglages Windows ↗ → Définir les notifications prioritaires → Ajouter des applications → Codex Tracker**. Le tracker ne modifie pas ce réglage lui-même.
+
+**Sur le téléphone, avec ntfy (gratuit, sans compte)** : **Canaux → Téléphone · ntfy**. Installez l’application ntfy (Android ou iPhone), scannez le code affiché, cochez **Activer les notifications sur le téléphone**, puis **Enregistrer** et **Envoyer une notification de test au téléphone**. Le sujet est généré au hasard : c’est lui qui permet de s’abonner, gardez-le secret. Par défaut, **chaque notification Windows est copiée sur le téléphone** (alertes de quota, rappels, resets, nouvelles réserves), une seule fois, même si Windows ne l’a pas affichée. La colonne **Téléphone** des règles de rappel permet aussi des rappels envoyés seulement au téléphone. Le serveur public ntfy.sh reçoit le texte des notifications (compte, échéance) ; un serveur ntfy personnel et son jeton d’accès se règlent sous **Sujet et serveur**.
+
 Une demande transmise à Windows ne confirme pas l’affichage d’une bannière. Si rien n’apparaît, vérifiez **Paramètres Windows → Système → Notifications**, notamment **Ne pas déranger** et ses règles automatiques. Les rappels planifiés temporairement bloqués par le plein écran ou une session inactive sont différés, puis réessayés uniquement tant que leur échéance est à venir. Un test manuel ignoré nécessite un nouveau clic.
 
 ![Réglages des rappels avec comptes fictifs](reminders.png)

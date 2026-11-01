@@ -55,6 +55,12 @@
           "ModelContextProtocol.Core": "[2.2.0]"
         }
       },
+      "QRCoder": {
+        "type": "Direct",
+        "requested": "[1.6.0, )",
+        "resolved": "1.6.0",
+        "contentHash": "XmPA81eo+oRxBuyVdswsSkTGTE1d3thfF11Z1PdD7oB56A6HU4G4AAOdySmGRMb/cljwlFTMWUtosGEnwpS6GA=="
+      },
       "Microsoft.Extensions.AI.Abstractions": {
         "type": "Transitive",
         "resolved": "10.8.3",
@@ -334,7 +340,7 @@
       "codextracker.codex": {
         "type": "Project",
         "dependencies": {
-          "CodexTracker.Core": "[0.9.22, )",
+          "CodexTracker.Core": "[0.9.37, )",
           "ZstdSharp.Port": "[0.8.8, )"
         }
       },
