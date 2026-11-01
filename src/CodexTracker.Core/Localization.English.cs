@@ -224,5 +224,7 @@ internal static class EnglishCore
         ("ntfy : HTTP {0}. Aucune réémission automatique.", "ntfy: HTTP {0}. No automatic resend."),
         ("Accepté par ntfy ; réception sur le téléphone non confirmée.", "Accepted by ntfy; delivery to the phone not confirmed."),
         ("Copie sur le téléphone.", "Copy to the phone."),
+        ("Codex Tracker · test", "Codex Tracker · test"),
+        ("Les notifications de Codex Tracker arriveront ici : alertes de quota, rappels et resets.", "Codex Tracker notifications will arrive here: quota alerts, reminders and resets."),
     ];
 }

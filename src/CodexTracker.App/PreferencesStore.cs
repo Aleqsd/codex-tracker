@@ -32,6 +32,10 @@ internal sealed record TrackerPreferences
     public bool ReserveMailAlerts { get; init; } = true;
     /// <summary>Copy every Windows notification to the phone once ntfy is set up.</summary>
     public bool PushMirror { get; init; } = true;
+    /// <summary>The pill above the clock while a quota in use is nearly empty or a reset credit expires within 24 hours.</summary>
+    public bool ScreenPill { get; init; } = true;
+    /// <summary>Pill situations hidden with "Masquer"; a new situation shows again.</summary>
+    public string[] PillHidden { get; init; } = [];
     /// <summary>Once Google Calendar is connected, every reset credit gets its expiry event automatically.</summary>
     public bool GoogleCalendarAutoAdd { get; init; } = true;
     /// <summary>"Ne plus proposer": no Google Calendar offer in notifications or on the dashboard.</summary>

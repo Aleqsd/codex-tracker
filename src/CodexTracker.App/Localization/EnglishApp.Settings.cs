@@ -404,5 +404,18 @@ internal static partial class EnglishApp
         ("Téléphone · ntfy, gratuit", "Phone · ntfy, free"),
         ("Téléphone (ntfy) · {0}\nServeur : {1}\nSujet : {2}\nVos notifications seront publiées sur ce sujet.", "Phone (ntfy) · {0}\nServer: {1}\nTopic: {2}\nYour notifications will be published on this topic."),
         ("Sujet et serveur", "Topic and server"),
+        ("Pastille Codex Tracker", "Codex Tracker pill"),
+        ("Ouvrir", "Open"),
+        ("Masquer", "Hide"),
+        ("Masquer jusqu’à la prochaine alerte", "Hide until the next alert"),
+        ("{0} · {1:0} %", "{0} · {1:0} %"),
+        ("{0} · {1:0} % · recharge {2}", "{0} · {1:0} % · refill {2}"),
+        ("Il reste {0:0} % {1}.", "{0:0} % left {1}."),
+        ("sur 5 heures", "over 5 hours"),
+        ("cette semaine", "this week"),
+        ("Un reset en réserve expire dans moins de 24 h : utilisez-le dans Codex avant qu’il soit perdu.", "A reset credit expires in less than 24 h: use it in Codex before it is lost."),
+        ("+{0} autre alerte", "+{0} more alert"),
+        ("Pastille à l’écran", "On-screen pill"),
+        ("Au-dessus de l’horloge, seulement quand un compte utilisé passe sous 10 % ou qu’un reset en réserve expire dans les 24 h. Visible même en mode Ne pas déranger ; « Masquer » la retire jusqu’à la prochaine alerte.", "Above the clock, only when an account in use drops below 10 % or a reset credit expires within 24 h. Visible even in Do Not Disturb mode; “Hide” removes it until the next alert."),
     ];
 }

@@ -34,11 +34,15 @@ internal sealed class TrayController : IDisposable
     private string _notificationPage = "Resets";
     private string? _notificationCalendar;
     private bool _notificationSuggestSync;
+    private readonly ScreenPillWindow _pill;
+    private const int ScreenPillHiddenLimit = 20;
 
     public TrayController(MainWindow window, ITrackerService service, PreferencesStore preferences, Func<Task> exit)
     {
         _window = window; _service = service; _exit = exit; _preferences = preferences;
         _peek = new TrayPeekWindow(_window.ShowPanel, SelectTrayQuota);
+        _pill = new ScreenPillWindow(page => { _window.ShowPanel(); _window.OpenPage(page); },
+            key => SavePreference(p => p with { PillHidden = [.. p.PillHidden.Where(k => k != key).TakeLast(ScreenPillHiddenLimit - 1), key] }));
         _tray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
         _toolTray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
         _desktop = new(ShowDesktop, () => !_disposed && !_suspended && _tray.Visible);
@@ -65,7 +69,7 @@ internal sealed class TrayController : IDisposable
         _hoverDelay.Tick += (_, _) => ShowPeek();
         _presence.Tick += (_, _) => CheckPeekPresence();
         _notifications.Tick += (_, _) => ShowNotifications();
-        _expiryTimer.Tick += async (_, _) => await CheckRemindersAsync();
+        _expiryTimer.Tick += async (_, _) => { UpdatePill(); await CheckRemindersAsync(); };
         _window.Reminders.ShowWindows = rows => _window.Dispatcher.CheckAccess()
             ? ShowReminders(rows) : _window.Dispatcher.Invoke(() => ShowReminders(rows));
         if (service is not DemoTrackerService) _expiryTimer.Start();
@@ -112,7 +116,7 @@ internal sealed class TrayController : IDisposable
         _suspended = true;
         _window.Reminders.Pause();
         HidePeek(); _tray.ContextMenuStrip?.Close(); _shellRecovery.Stop();
-        _notifications.Stop(); _pendingNotifications.Clear();
+        _notifications.Stop(); _pendingNotifications.Clear(); _pill.Hide();
     }
     internal void OnResume()
     {
@@ -138,6 +142,7 @@ internal sealed class TrayController : IDisposable
         }
         _toolTray.Visible = icons.Count > 1;
         _peek.Update(state, _preferences.Current);
+        UpdatePill();
         var menuKey = state.ActiveAccount?.Profile.Id + "/" + _preferences.Current.PrivacyMode + "/" + dark + "/" + _preferences.Current.TrayIconPerTool + "/" +
             string.Join("|", icons.Select(icon => icon.Account?.Profile.Id + ":" + icon.Window)) + "/" +
             string.Join("|", state.Accounts.Select(a => a.Profile.Id + ":" + a.IsActive + ":" + a.HasShortWindow + ":" + a.Profile.Email));
@@ -243,6 +248,24 @@ internal sealed class TrayController : IDisposable
             : Loc.F("{0} · {1}\nSemaine : {2}\nReset : {3}", account.Profile.ProviderName, name, quota, reset);
     }
     private void SelectTrayQuota(AccountProvider provider, ResetKind window) => Apply(() => _window.Commands.SetTrayQuota(provider, window));
+    /// <summary>The on-screen pill: real data only, never in the demonstration (its windows are tested off-screen).</summary>
+    private void UpdatePill()
+    {
+        if (_disposed || _suspended || _service is DemoTrackerService) return;
+        _pill.Update(_service.State, _preferences.Current, PreviewClock.UtcNow);
+    }
+    internal ScreenPillWindow Pill => _pill;
+    /// <summary>Demo capture of the pill: the active account is shown nearly empty, with and without its detail.</summary>
+    internal void SavePillScreenshot(string path, double dpi = 96)
+    {
+        var state = _service.State;
+        if (state.ActiveAccount is not { Snapshot: { } snapshot } active) return;
+        var low = snapshot with { Buckets = [.. snapshot.Buckets.Select(b => b with { Windows = [.. b.Windows.Select(w => w.IsWeekly ? w with { UsedPercent = 94 } : w)] })] };
+        state = state with { Accounts = [.. state.Accounts.Select(a => a == active ? a with { Snapshot = low } : a)] };
+        var preferences = _preferences.Current with { ScreenPill = true, PillHidden = [] };
+        _pill.SaveOffscreenScreenshot(state, preferences, PreviewClock.UtcNow, path, expanded: false, dpi);
+        _pill.SaveOffscreenScreenshot(state, preferences, PreviewClock.UtcNow, Path.ChangeExtension(path, null) + "-detail.png", expanded: true, dpi);
+    }
     private void SavePreference(Func<TrackerPreferences, TrackerPreferences> change) => Apply(() => _window.Commands.SavePreferences(change));
     private void Apply(Action change)
     {
@@ -377,7 +400,7 @@ internal sealed class TrayController : IDisposable
         _disposed = true; _service.Changed -= Changed; _service.Notification -= Notified;
         _window.Reminders.ShowWindows = null;
         _preferences.Changed -= PreferencesChanged; _window.Theme.Changed -= Changed;
-        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close();
+        _hoverDelay.Stop(); _presence.Stop(); _notifications.Stop(); _shellRecovery.Stop(); _expiryTimer.Stop(); _pendingNotifications.Clear(); _peek.Close(); _pill.Close();
         _tray.Visible = false; _toolTray.Visible = false; _tray.ContextMenuStrip?.Dispose(); _tray.Dispose(); _toolTray.Dispose(); _icon?.Dispose(); _toolIcon?.Dispose();
         _menuFont.Dispose();
     }

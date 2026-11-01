@@ -12,6 +12,7 @@ Codex Tracker reads the quota data that the Codex and Claude apps already store 
 - Notifications: before a reset, below 20/10/5 %, before running out, when a reset happened, when a new reset credit arrives, and advice to use a credit that would expire before the weekly refill.
 - Account switch advice: when the account in use has 10 % or less, alerts and the tray tooltip name the other account of the same tool with the most quota left (at least 30 % and 20 points more). It never switches accounts itself.
 - Google Calendar sync of reset credits (added automatically, removed once used) and Gmail email alerts the day before a credit expires.
+- On-screen pill above the clock, only while an account in use is at 10 % or less or a reset credit expires within 24 hours; visible in Do Not Disturb, hidden over full-screen apps, "Hide" until the next alert.
 - Free phone notifications through ntfy (no account): scan a QR code, and every Windows notification is copied to the phone, even when Windows is in Do Not Disturb.
 - Optional SMS, phone call and email reminders through the user's own Twilio or SendGrid account.
 - Local MCP server (`CodexTracker.exe --mcp`, off by default) with 22 tools so coding agents can read quotas, resets and history, change preferences and reminder rules, connect Google Calendar and send test notifications.

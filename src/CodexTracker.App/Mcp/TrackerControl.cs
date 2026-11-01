@@ -51,6 +51,8 @@ internal sealed class TrackerControl : IDisposable
             case "status": return new { revision, version = typeof(App).Assembly.GetName().Version?.ToString(), activeAccountId = state.ActiveAccount?.Profile.Id, activeAccountIds = state.ActiveAccounts.Select(a => a.Profile.Id),
                 suggestions = state.ActiveAccounts.Select(a => (Active: a, Best: AccountSuggestions.For(state, a, DateTimeOffset.UtcNow))).Where(p => p.Best is not null)
                     .Select(p => new { provider = p.Active.Profile.Provider.ToString(), fromAccountId = p.Active.Profile.Id, toAccountId = p.Best!.Account.Profile.Id, toAccount = p.Best.Account.Profile.Email, remaining = p.Best.Remaining, estimated = p.Best.Estimated }),
+                pill = _preferences.Current.ScreenPill ? ScreenPill.Current(state with { ManualCodexReset = _preferences.Current.ManualCodexReset }, DateTimeOffset.UtcNow, _preferences.Current.PillHidden)
+                    .Select(p => new { p.Key, kind = p.Kind.ToString(), accountId = p.Account.Profile.Id, window = p.Window.ToString(), p.Remaining, p.At }) : null,
                 manualCodexReset = state.ManualCodexReset, state.IsBusy, connections = Connections, reminderError = _window.Reminders.Error };
             case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, provider = a.Profile.Provider.ToString(), organization = a.Profile.OrganizationName, a.IsActive, a.IsActiveInCodex, a.IsActiveInClaudeCode, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", manualReset = state.ManualCodexReset?.Applies(a, ResetKind.Weekly, DateTimeOffset.UtcNow) == true, displayedWeeklyRemaining = QuotaPresentation.Remaining(state, a, ResetKind.Weekly, DateTimeOffset.UtcNow), snapshot = a.Snapshot }) };
             case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, provider = e.Account.Profile.Provider.ToString(), e.Kind, e.At, e.IsProjected, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }) };
@@ -244,16 +246,16 @@ internal sealed record ChannelChange(string Provider, TwilioSettings? Twilio = n
 /// <summary>General settings. The calendar, email and credit notice switches are optional: omitted, they keep their value.</summary>
 internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Alert20, bool Alert10, bool Alert5, bool ResetNotifications, bool HoverPreview, int RefreshMinutes, bool AdaptiveRefresh,
     bool? NewCreditNotifications = null, bool? ReserveAdviceNotifications = null, bool? ReserveMailAlerts = null, bool? GoogleCalendarAutoAdd = null, bool? CalendarSuggestionDismissed = null, bool? ForecastNotifications = null,
-    bool? PushMirror = null)
+    bool? PushMirror = null, bool? ScreenPill = null)
 {
     internal static General From(TrackerPreferences p) => new(p.ThemeMode, p.SortMode, p.Alert20, p.Alert10, p.Alert5, p.ResetNotifications, p.HoverPreview, p.RefreshMinutes, p.AdaptiveRefresh,
-        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications, p.PushMirror);
+        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications, p.PushMirror, p.ScreenPill);
     internal TrackerPreferences Apply(TrackerPreferences p) => p with
     {
         ThemeMode = ThemeMode, SortMode = SortMode, Alert20 = Alert20, Alert10 = Alert10, Alert5 = Alert5, ResetNotifications = ResetNotifications, HoverPreview = HoverPreview, RefreshMinutes = RefreshMinutes, AdaptiveRefresh = AdaptiveRefresh,
         NewCreditNotifications = NewCreditNotifications ?? p.NewCreditNotifications, ReserveAdviceNotifications = ReserveAdviceNotifications ?? p.ReserveAdviceNotifications,
         ReserveMailAlerts = ReserveMailAlerts ?? p.ReserveMailAlerts, GoogleCalendarAutoAdd = GoogleCalendarAutoAdd ?? p.GoogleCalendarAutoAdd,
         CalendarSuggestionDismissed = CalendarSuggestionDismissed ?? p.CalendarSuggestionDismissed, ForecastNotifications = ForecastNotifications ?? p.ForecastNotifications,
-        PushMirror = PushMirror ?? p.PushMirror
+        PushMirror = PushMirror ?? p.PushMirror, ScreenPill = ScreenPill ?? p.ScreenPill
     };
 }

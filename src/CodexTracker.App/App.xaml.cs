@@ -57,7 +57,7 @@ public partial class App : System.Windows.Application
         try
         {
             // Every demo capture shows final states: no half-filled gauge or fading panel.
-            if (new[] { "--screenshot", "--peek-screenshot", "--details-screenshot", "--settings-screenshot" }.Any(e.Args.Contains)) UiMotion.Suppressed = true;
+            if (new[] { "--screenshot", "--peek-screenshot", "--pill-screenshot", "--details-screenshot", "--settings-screenshot" }.Any(e.Args.Contains)) UiMotion.Suppressed = true;
             if (e.Args.Contains("--preview"))
             {
                 if (!IsDemo) throw new ArgumentException(Loc.T("Les aperçus nécessitent --demo."));
@@ -166,6 +166,12 @@ public partial class App : System.Windows.Application
                 int dpiArgument = Array.IndexOf(e.Args, "--dpi");
                 double dpi = dpiArgument >= 0 && dpiArgument + 1 < e.Args.Length && double.TryParse(e.Args[dpiArgument + 1], out var parsed) ? Math.Clamp(parsed, 96, 288) : 96;
                 _tray.SavePeekScreenshot(Path.GetFullPath(e.Args[peekArgument + 1]), dpi);
+            }
+            int pillArgument = Array.IndexOf(e.Args, "--pill-screenshot");
+            if (pillArgument >= 0 && pillArgument + 1 < e.Args.Length)
+            {
+                if (!IsDemo) throw new InvalidOperationException(Loc.F("{0} nécessite --demo.", "--pill-screenshot"));
+                _tray.SavePillScreenshot(Path.GetFullPath(e.Args[pillArgument + 1]));
             }
             foreach (var option in new[] { "--details-screenshot", "--settings-screenshot" })
             {

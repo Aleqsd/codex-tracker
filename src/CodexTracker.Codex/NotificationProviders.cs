@@ -38,7 +38,9 @@ public sealed class NotificationProviders(HttpClient http)
     public async Task<DeliveryResult> SendAsync(ReminderOccurrence occurrence, NotificationSecrets secrets, CancellationToken token)
     {
         if (!Configured(occurrence.Channel, secrets)) return new(DeliveryStatus.Failed, Loc.T("Canal désactivé ou configuration incomplète."));
-        if (occurrence.Channel == ReminderChannel.Push) return await SendPushAsync(secrets.Push, ReminderPlanner.Title(occurrence), ReminderPlanner.Body(occurrence), token);
+        if (occurrence.Channel == ReminderChannel.Push) return occurrence.Key.StartsWith("test/", StringComparison.Ordinal)
+            ? await SendPushAsync(secrets.Push, Loc.T("Codex Tracker · test"), Loc.T("Les notifications de Codex Tracker arriveront ici : alertes de quota, rappels et resets."), token)
+            : await SendPushAsync(secrets.Push, ReminderPlanner.Title(occurrence), ReminderPlanner.Body(occurrence), token);
         using var request = occurrence.Channel == ReminderChannel.Email ? Email(occurrence, secrets.SendGrid) : Telephone(occurrence, secrets.Twilio);
         try
         {

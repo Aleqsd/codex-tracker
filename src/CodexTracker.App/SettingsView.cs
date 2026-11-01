@@ -86,6 +86,8 @@ internal sealed class SettingsView : UserControl, IDisposable
             _languageHint.Visibility = _restart.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
         };
         Toggle(Loc.T("Aperçu au survol de l’icône"), Loc.T("Le quota et le prochain reset, sans ouvrir le panneau. Cliquez sur un quota pour l’afficher dans l’icône."), p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
+        Toggle(Loc.T("Pastille à l’écran"), Loc.T("Au-dessus de l’horloge, seulement quand un compte utilisé passe sous 10 % ou qu’un reset en réserve expire dans les 24 h. Visible même en mode Ne pas déranger ; « Masquer » la retire jusqu’à la prochaine alerte."),
+            p => p.ScreenPill, (p, value) => p with { ScreenPill = value });
         Toggle(Loc.T("Une icône par outil"), Loc.T("Codex et Claude Code ont chacun leur icône quand les deux sont utilisés. Windows peut ranger la nouvelle sous la flèche ^ : glissez-la à côté de l’autre."), p => p.TrayIconPerTool, (p, value) => p with { TrayIconPerTool = value });
         Section(Loc.T("Actualisation"));
         _refreshSelector = Choice(Loc.T("Compte actif"), "DropdownRefreshIcon", [new(1, Loc.T("Chaque minute")), new(2, Loc.T("Toutes les 2 min")), new(5, Loc.T("Toutes les 5 min"))], v => Save(p => p with { RefreshMinutes = v }));

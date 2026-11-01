@@ -20,7 +20,8 @@ internal sealed class ApplicationCommands(PreferencesStore preferences, Notifica
             throw new ArgumentException(Loc.T("Notifications de reset invalides."));
         if (!Enum.IsDefined(next.ThemeMode) || !Enum.IsDefined(next.SortMode) || next.RefreshMinutes is not (1 or 2 or 5) ||
             !Enum.IsDefined(next.TrayProvider) || next.TrayWindow is not (ResetKind.Weekly or ResetKind.Short) ||
-            next.TrayWindows is null || next.TrayWindows.Any(entry => !Enum.IsDefined(entry.Key) || entry.Value is not (ResetKind.Weekly or ResetKind.Short)))
+            next.TrayWindows is null || next.TrayWindows.Any(entry => !Enum.IsDefined(entry.Key) || entry.Value is not (ResetKind.Weekly or ResetKind.Short)) ||
+            next.PillHidden is null || next.PillHidden.Length > 50 || next.PillHidden.Any(k => k is null || k.Length > 200))
             throw new ArgumentException(Loc.T("Réglages invalides."));
         preferences.Update(_ => next);
     }
