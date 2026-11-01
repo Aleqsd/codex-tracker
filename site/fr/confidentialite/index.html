@@ -30,7 +30,7 @@
     <h2>Données utilisateur Google</h2>
     <p>La connexion à Google est facultative. Après votre accord sur la page Google, Codex Tracker obtient uniquement :</p>
     <ul>
-      <li><code>calendar.events</code> : créer, modifier et supprimer les événements qu’il ajoute pour vos resets en réserve. Il ne lit ni ne modifie vos autres événements.</li>
+      <li><code>calendar.events.owned</code> : créer, modifier et supprimer, dans votre propre agenda, les événements qu’il ajoute pour vos resets en réserve. Il ne lit ni ne modifie vos autres événements et n’accède pas aux agendas partagés avec vous.</li>
       <li><code>openid</code> et <code>email</code> : afficher le compte Google connecté.</li>
       <li><code>gmail.send</code>, seulement si vous activez les alertes e-mail : envoyer des rappels depuis votre Gmail vers votre propre adresse. Il ne peut ni lire, ni lister, ni modifier, ni supprimer un message.</li>
     </ul>

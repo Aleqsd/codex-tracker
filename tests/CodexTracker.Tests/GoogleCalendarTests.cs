@@ -34,7 +34,7 @@ public sealed class GoogleCalendarTests
         Assert.StartsWith("https://accounts.google.com/o/oauth2/v2/auth?", uri);
         Assert.Contains("code_challenge_method=S256", uri);
         Assert.Contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A50123%2F", uri);
-        Assert.Contains(Uri.EscapeDataString("https://www.googleapis.com/auth/calendar.events"), uri);
+        Assert.Contains(Uri.EscapeDataString("https://www.googleapis.com/auth/calendar.events.owned"), uri);
         Assert.DoesNotContain(Uri.EscapeDataString("https://www.googleapis.com/auth/calendar "), uri);
         Assert.DoesNotContain(verifier, uri);
     }

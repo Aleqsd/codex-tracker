@@ -117,7 +117,8 @@ public sealed record GoogleEvent(string Id, string Status, string? HtmlLink)
 /// </summary>
 public sealed class GoogleCalendarClient(HttpClient http)
 {
-    public const string Scope = "https://www.googleapis.com/auth/calendar.events openid email";
+    // Events on calendars the user owns only (narrower than calendar.events, which also covers shared calendars).
+    public const string Scope = "https://www.googleapis.com/auth/calendar.events.owned openid email";
     /// <summary>Send only: the tracker cannot read, list or delete mail.</summary>
     public const string MailScope = "https://www.googleapis.com/auth/gmail.send";
     private const string Events = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
