@@ -137,6 +137,13 @@ try {
             & gh release create "v$Version" --target $commit --latest --title "Codex Tracker $Version" --notes-file $notes $setup $zip "$zip.sha256"
         }
         $report.published = $true
+        # The site shows the latest published release: rebuild it from main now that this one exists.
+        if (Get-Command netlify -ErrorAction SilentlyContinue) {
+            $site = @{ site_id = '4614a772-0a46-40bd-a0d3-85f95dd514b7' } | ConvertTo-Json -Compress
+            & netlify api createSiteBuild --data $site *> $null
+            Write-Host ($LASTEXITCODE ? 'Site non reconstruit : relancer scripts/site.ps1 -Deploy.' : 'Site en reconstruction sur Netlify.') -ForegroundColor ($LASTEXITCODE ? 'Yellow' : 'Gray')
+            $global:LASTEXITCODE = 0
+        }
     }
     $report | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $root "artifacts/release-$Version.json") -Encoding utf8
     if ($UpdateThisPc) { Invoke-Step 'Mise à jour de ce PC' { & ./scripts/update-this-pc.ps1 -Version $Version } }

@@ -25,6 +25,16 @@ GROUPS = [
 
 
 def version():
+    """The latest published release, so download links never point to a version still being released."""
+    try:
+        request = urllib.request.Request("https://api.github.com/repos/Aleqsd/codex-tracker/releases/latest",
+                                         headers={"Accept": "application/vnd.github+json", "User-Agent": "codex-tracker-site"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            tag = json.load(response)["tag_name"]
+        if re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+            return tag[1:]
+    except Exception as error:  # Offline or rate limited: the version being developed.
+        print(f"Dernière release introuvable ({error}) : version de Directory.Build.props.")
     props = ET.parse(os.path.join(ROOT, "Directory.Build.props")).getroot()
     return next(e.text for e in props.iter("Version"))
 

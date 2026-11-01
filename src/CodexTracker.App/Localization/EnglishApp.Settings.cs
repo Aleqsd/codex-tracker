@@ -168,7 +168,6 @@ internal static partial class EnglishApp
         ("Activer ces rappels", "Enable these reminders"),
         ("Tous les comptes, actuels et futurs", "All accounts, current and future"),
         ("Comptes concernés", "Accounts included"),
-        ("SMS, appels et emails nécessitent un connecteur activé dans Canaux.", "SMS, calls and emails need a connector enabled in Channels."),
         ("Enregistrer ces rappels", "Save these reminders"),
         ("Règles modifiées ailleurs. Utilisez « Recharger la section » avant de réessayer.", "Rules changed elsewhere. Use “Reload section” before trying again."),
         ("Rappels enregistrés.", "Reminders saved."),
