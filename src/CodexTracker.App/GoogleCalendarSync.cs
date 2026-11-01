@@ -21,20 +21,29 @@ internal sealed class GoogleCalendarSync : IDisposable
     private GoogleCalendarSecrets _current = new();
     private DateTimeOffset _nextVerification, _retryAfter;
     private bool _disposed;
+    /// <summary>The demonstration shows a connected calendar with every fictional credit in it; nothing is sent.</summary>
+    private readonly bool _demo;
     internal event EventHandler? Changed;
     /// <summary>Last synchronization problem, without any token or address.</summary>
     internal string? Error { get; private set; }
+    /// <summary>The kind of the last synchronization problem, to offer its fix (enable the API, reconnect).</summary>
+    internal GoogleCalendarProblem? Problem { get; private set; }
+    /// <summary>Google Cloud project of the imported client, when its file named it.</summary>
+    internal string? ProjectId => _current.Client?.ProjectId;
     internal bool IsAvailable { get; }
-    internal bool IsConnected => _current.IsConnected;
-    internal bool HasClient => _current.Client is { IsValid: true };
-    internal string? Email => _current.Email;
+    internal bool DemoSetup { get; }
+    internal bool IsConnected => _demo || _current.IsConnected;
+    internal bool HasClient => _demo || _current.Client is { IsValid: true };
+    internal string? Email => _demo ? "alex@example.com" : _current.Email;
     internal bool IsConnecting { get; private set; }
 
     internal GoogleCalendarSync(string dataDirectory, bool demo, Action<Uri>? openBrowser = null)
     {
         _client = new(_http);
         _openBrowser = openBrowser ?? (uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }));
-        IsAvailable = !demo;
+        // --demo-calendar-setup previews the not-yet-connected screens; actions stay unavailable in the demo.
+        DemoSetup = demo && Environment.GetCommandLineArgs().Contains("--demo-calendar-setup");
+        IsAvailable = !demo; _demo = demo && !DemoSetup;
         try { _links = new(demo ? null : dataDirectory); }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
@@ -49,14 +58,59 @@ internal sealed class GoogleCalendarSync : IDisposable
     }
 
     internal static string Key(Guid accountId, string creditId, DateTimeOffset expiresAt) => CalendarExport.Identity(accountId, "credit", creditId, expiresAt);
-    internal CalendarLink? Link(string key) => _links.Get(key);
+    internal CalendarLink? Link(string key) => _demo
+        ? new(key, CalendarLinkSource.Google, CalendarLinkStatus.Confirmed, PreviewClock.UtcNow, PreviewClock.UtcNow, null, PreviewClock.UtcNow)
+        : _links.Get(key);
+
+    /// <summary>
+    /// The newest "Desktop app" client file in the Downloads folder (last 7 days), unless it is the one already imported:
+    /// the user only has to download it from Google Cloud.
+    /// </summary>
+    internal (string Path, DateTime Written)? FindClientFile()
+    {
+        if (!IsAvailable || DownloadsFolder() is not { } folder) return null;
+        try
+        {
+            foreach (var file in new DirectoryInfo(folder).EnumerateFiles("client_secret_*.json")
+                .Where(f => f.Length is > 0 and < 65_536 && f.LastWriteTime > DateTime.Now.AddDays(-7)).OrderByDescending(f => f.LastWriteTime).Take(5))
+            {
+                try
+                {
+                    var client = GoogleOAuthClient.Parse(File.ReadAllText(file.FullName));
+                    return client.SameAs(_current.Client) ? null : (file.FullName, file.LastWriteTime);
+                }
+                catch (ArgumentException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException) { }
+        return null;
+    }
+
+    /// <summary>Imports the file and opens the Google authorization at once: one click for the user.</summary>
+    internal async Task UseClientFileAsync(string path)
+    {
+        if (new FileInfo(path).Length > 65_536) throw new ArgumentException(Loc.T("Fichier client OAuth illisible."));
+        ImportClient(File.ReadAllText(path));
+        await ConnectAsync();
+    }
+
+    private static string? DownloadsFolder()
+    {
+        // The Downloads known folder can be moved (here often to another drive): ask Windows rather than guess.
+        var downloads = new Guid("374DE290-123F-4565-9164-39C4925E467B");
+        if (SHGetKnownFolderPath(downloads, 0, IntPtr.Zero, out var pointer) != 0) return null;
+        try { return System.Runtime.InteropServices.Marshal.PtrToStringUni(pointer); }
+        finally { System.Runtime.InteropServices.Marshal.FreeCoTaskMem(pointer); }
+    }
+    [System.Runtime.InteropServices.DllImport("shell32.dll")]
+    private static extern int SHGetKnownFolderPath([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPStruct)] Guid id, uint flags, IntPtr token, out IntPtr path);
 
     internal void ImportClient(string json)
     {
         Available();
         var client = GoogleOAuthClient.Parse(json);
         // A different client cannot use the previous refresh token.
-        Save(_current.Client == client ? _current : new(client));
+        Save(client.SameAs(_current.Client) ? _current with { Client = client } : new(client));
     }
 
     internal async Task ConnectAsync(CancellationToken token = default)
@@ -79,7 +133,7 @@ internal sealed class GoogleCalendarSync : IDisposable
             { throw new GoogleCalendarException(Loc.T("Connexion non terminée dans les 5 minutes. Réessayez.")); }
             var (refresh, email) = await _client.ExchangeAsync(client, code, verifier, receiver.RedirectUri, timeout.Token);
             Save(new(client, refresh, email));
-            Error = null; _retryAfter = default; _nextVerification = default;
+            Error = null; Problem = null; _retryAfter = default; _nextVerification = default;
         }
         finally { IsConnecting = false; Notify(); }
     }
@@ -88,12 +142,12 @@ internal sealed class GoogleCalendarSync : IDisposable
     {
         if (_current.RefreshToken is { } refresh) await _client.RevokeAsync(refresh, _lifetime.Token);
         if (_secrets is not null) Save(_current with { RefreshToken = null, Email = null });
-        Error = null; Notify();
+        Error = null; Problem = null; Notify();
     }
 
     internal void ForgetClient()
     {
-        _secrets?.Delete(); _current = new(); Error = null; Notify();
+        _secrets?.Delete(); _current = new(); Error = null; Problem = null; Notify();
     }
 
     /// <summary>Adds the credit's expiry, with reminders, to the primary Google calendar. Idempotent.</summary>
@@ -101,7 +155,8 @@ internal sealed class GoogleCalendarSync : IDisposable
     {
         Available();
         await _gate.WaitAsync(_lifetime.Token);
-        try { return await InsertAsync(entry); }
+        try { var link = await InsertAsync(entry); if (Error is not null) { Error = null; Problem = null; Notify(); } return link; }
+        catch (GoogleCalendarException ex) { Error = ex.Message; Problem = ex.Problem; Notify(); throw; }
         finally { _gate.Release(); }
     }
 
@@ -141,9 +196,14 @@ internal sealed class GoogleCalendarSync : IDisposable
                 }
                 _nextVerification = DateTimeOffset.UtcNow + Verification;
             }
-            if (Error is not null) { Error = null; Notify(); }
+            if (Error is not null) { Error = null; Problem = null; Notify(); }
         }
-        catch (GoogleCalendarException ex) { Error = ex.Message; _retryAfter = DateTimeOffset.UtcNow + Retry; Notify(); }
+        catch (GoogleCalendarException ex)
+        {
+            // A freshly enabled API usually answers within minutes: try again soon rather than in a quarter of an hour.
+            Error = ex.Message; Problem = ex.Problem;
+            _retryAfter = DateTimeOffset.UtcNow + (ex.Problem == GoogleCalendarProblem.ApiDisabled ? TimeSpan.FromMinutes(2) : Retry); Notify();
+        }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { Error = Loc.T("Impossible d’enregistrer le suivi des événements d’agenda."); _retryAfter = DateTimeOffset.UtcNow + Retry; Notify(); }

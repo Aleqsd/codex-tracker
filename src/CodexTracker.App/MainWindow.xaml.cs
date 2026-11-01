@@ -56,7 +56,7 @@ public partial class MainWindow : Window
         Commands = new(preferences, Reminders.Secrets);
         Calendar = new(preferences.DataDirectory, demo);
         Theme = new ThemeManager(preferences);
-        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast, InCalendar = key => Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed } };
+        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast, InCalendar = key => Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed }, CalendarConnected = () => Calendar.IsConnected || !Calendar.IsAvailable && !Calendar.DemoSetup };
         InitializeComponent();
         ShowVersion();
         CheckUpdateButton.IsEnabled = !_demo;
@@ -109,6 +109,8 @@ public partial class MainWindow : Window
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() => { UpdateModel(); _ = SyncCalendarAsync(); });
     private Task SyncCalendarAsync() => _canClose || _demo || _preferences.RecoveryRequired ? Task.CompletedTask
         : Calendar.SyncAsync(_service.State, _preferences.Current.GoogleCalendarAutoAdd, CalendarName);
+    /// <summary>Reset credits still held, as the events the calendar should contain.</summary>
+    internal IReadOnlyList<CalendarEntry> CalendarCredits() => GoogleCalendarSync.Credits(_service.State, PreviewClock.UtcNow, CalendarName).ToArray();
     private string CalendarName(AccountProfile profile) => PrivacyText.ContextualAccount(profile, _service.State, _preferences.Current);
     /// <summary>
     /// From a notification or the Resets tab: Google Calendar when connected, otherwise the prefilled event in the browser.
@@ -341,6 +343,8 @@ public partial class MainWindow : Window
         var editor = new AccountAppearanceWindow(this, _preferences, id, Theme, _service.State.Accounts.FirstOrDefault(a => a.Profile.Id == id)?.Profile.Email);
         editor.Show(); return editor;
     }
+    private void CalendarPromo_Click(object sender, RoutedEventArgs e) => OpenPage("Calendrier");
+    private void DismissCalendarPromo_Click(object sender, RoutedEventArgs e) => DismissNotice(sender, p => p with { CalendarSuggestionDismissed = true });
     private void Advice_Click(object sender, RoutedEventArgs e)
     {
         if (_model.AdviceAccountId is Guid id) OpenHistory(id);

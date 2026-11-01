@@ -117,13 +117,20 @@ Cliquez directement sur **l’avatar d’un compte** (ou ouvrez **··· → Nom
 
 **Ajouter une seule échéance → Ajouter ↗** utilise le [lien officiel Google d’événement prérempli](https://developers.google.com/workspace/calendar/api/concepts/inviting-attendees-to-events#provide_a_link_for_users_to_add_the_event). La date, le titre et la description sont transmis à Google au clic ; vérifiez l’événement et cliquez sur **Enregistrer** dans le navigateur. Si Google demande une connexion, connectez-vous puis relancez le bouton. Le tracker ne peut pas confirmer que l’événement a été enregistré : la réserve affiche alors **Ouvert dans Google Agenda · non vérifié**.
 
-### Google Agenda connecté (resets en réserve)
+### Google Agenda (resets en réserve)
 
-**Réglages → Calendrier → Google Agenda connecté** ajoute automatiquement l’expiration de chaque reset en réserve à votre agenda Google principal, avec des rappels Google **3 jours, 1 jour et 1 heure avant**. Configuration unique :
+**Réglages → Google Agenda** (juste après Général) ajoute automatiquement l’expiration de chaque reset en réserve à votre agenda Google principal, avec des rappels Google **3 jours, 1 jour et 1 heure avant**. Tant que Google n’est pas connecté, une bande **Ajoutez vos N resets en réserve à Google Agenda · Connecter** apparaît dans Comptes, et la notification d’un nouveau reset en réserve propose **Synchroniser l’agenda**, **Ajouter cet événement** et **Ne plus proposer** (les notifications Windows n’acceptent pas de case à cocher : ce bouton enregistre le choix, comme la croix de la bande).
 
-1. Dans [Google Cloud](https://console.cloud.google.com/apis/credentials), créez un projet, activez **Google Calendar API**, configurez l’écran de consentement puis **publiez-le** (« En production ») : en mode test, Google retire l’accès au bout de 7 jours.
-2. Créez un **ID client OAuth** de type **Application de bureau** et téléchargez son fichier JSON.
-3. **Importer le client OAuth…**, puis **Connecter Google Agenda** : la connexion s’ouvre dans le navigateur. Google peut signaler une application non validée : c’est votre propre client.
+Configuration unique, avec votre propre client Google ; chaque étape a son lien direct dans la page :
+
+1. Créer un projet Google Cloud.
+2. Activer **Google Calendar API**.
+3. Configurer l’écran de consentement (externe) puis le **publier** « En production » : en mode test, Google retire l’accès au bout de 7 jours. Google demande une page d’accueil et une politique de confidentialité : le dépôt GitHub et `docs/PRIVACY.md` conviennent.
+4. Créer un **ID client OAuth** de type **Application de bureau** et télécharger son JSON.
+
+Le tracker repère le fichier `client_secret_….json` dans votre dossier Téléchargements : **Utiliser et connecter** l’importe et ouvre l’autorisation Google dans le navigateur. Google peut signaler une application non validée : c’est votre propre client (**Paramètres avancés → Accéder à Codex Tracker**). Une fois connecté, la page liste les resets en réserve présents dans l’agenda, avec un lien vers chaque événement.
+
+En cas de refus, le message nomme la cause : API pas encore active (fréquent dans les minutes qui suivent son activation : nouvel essai automatique au bout de 2 minutes, avec un lien **Activer l’API Google Calendar ↗**) ou accès à l’agenda non coché lors de l’autorisation (reconnectez et cochez-le).
 
 L’accès demandé se limite aux événements (`calendar.events`). Le jeton est chiffré pour votre session Windows (DPAPI) et n’est jamais exposé au MCP. Chaque événement porte un identifiant dérivé du compte, du crédit et de son expiration : un ajout répété ne crée pas de doublon. **Ajouter automatiquement les resets en réserve** (activé par défaut) traite aussi les réserves déjà connues ; un événement supprimé dans Google n’est pas recréé, sauf clic explicite. La présence des événements est revérifiée toutes les 30 minutes. **Déconnecter** révoque l’accès ; les événements déjà créés restent dans Google.
 

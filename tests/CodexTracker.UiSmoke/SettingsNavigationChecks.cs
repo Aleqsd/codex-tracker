@@ -77,7 +77,7 @@ internal static class SettingsNavigationChecks
             window.SaveScreenshot(System.IO.Path.GetFullPath("artifacts/previews/profile-section-compact.png"), 96);
             var navigation = Tree(settings).OfType<Button>().Single(b => Equals(b.Content, "Général"));
             navigation.Focus(); navigation.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
-            Check(Keyboard.FocusedElement is Button next && Equals(next.Content, "Rappels"),
+            Check(Keyboard.FocusedElement is Button next && Equals(next.Content, "Google Agenda"),
                 "Keyboard navigation follows the settings sidebar order");
         }
         finally

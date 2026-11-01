@@ -102,6 +102,20 @@ internal sealed class SettingsView : UserControl, IDisposable
         claude.Children.Add(copyClaude);
         claude.Children.Insert(1, _claudeStatus);
         claude.Children.Add(Ui.Text(Loc.T("Dans ~/.claude/settings.json (ou CLAUDE_CONFIG_DIR) : fusionnez SessionStart avec vos hooks existants et ajoutez statusLine. Si vous avez déjà une barre de statut, conservez-la et appelez le collecteur depuis son script. Les quotas arrivent quand vous utilisez Claude Code ; les dates de relevé sont conservées."), 11, "MutedBrush"));
+        // The calendar synchronization comes right after the general settings: it is what keeps a reset from being lost.
+        Page("Calendrier", Loc.T("Google Agenda"), Loc.T("Synchronisation automatique, sans rien recopier."));
+        Section(null);
+        Row(new GoogleCalendarSettingsView(owner.Calendar, owner.CalendarCredits));
+        var autoAdd = Toggle(Loc.T("Ajouter automatiquement les resets en réserve"), Loc.T("Dès qu’un reset en réserve est connu, son expiration est ajoutée avec des rappels. Un événement supprimé dans Google n’est pas recréé."),
+            p => p.GoogleCalendarAutoAdd, (p, value) => p with { GoogleCalendarAutoAdd = value });
+        // Effective only once Google is connected: an active-looking switch would promise events that cannot exist yet.
+        void CalendarState() => autoAdd.IsEnabled = owner.Calendar.IsConnected && owner.Calendar.IsAvailable || owner.Calendar.IsConnected && demo;
+        CalendarState(); owner.Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(CalendarState);
+        Section(Loc.T("Autres agendas"));
+        var agenda = Block();
+        var calendar = new Button { Content = Loc.T("Exporter ou ajouter une échéance…"), HorizontalAlignment = HorizontalAlignment.Left };
+        calendar.Click += (_, _) => owner.OpenCalendar(); agenda.Children.Add(calendar);
+        var calendarHint = Ui.Text(Loc.T("Fichier .ics pour Outlook ou Apple Calendar, ou ajout ponctuel d’une échéance, sans connexion."), 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 9, 0, 0); agenda.Children.Add(calendarHint);
         Page("Rappels", Loc.T("Rappels"), Loc.T("Choisissez les échéances, les comptes et les canaux utiles."));
         Section(Loc.T("Échéances"));
         ReloadableSection(() => ReminderSettingsView.Rules(preferences, owner.TrackerService, _commands));
@@ -137,19 +151,6 @@ internal sealed class SettingsView : UserControl, IDisposable
         Page("Historique", Loc.T("Historique"), Loc.T("Le suivi local de vos rappels sur les 30 derniers jours."));
         Section(null);
         Row(ReminderSettingsView.History(owner.Reminders));
-        Page("Calendrier", Loc.T("Calendrier"), Loc.T("Retrouvez les échéances de vos comptes dans votre agenda."));
-        Section(Loc.T("Google Agenda"));
-        Row(new GoogleCalendarSettingsView(owner.Calendar));
-        var autoAdd = Toggle(Loc.T("Ajouter automatiquement les resets en réserve"), Loc.T("Dès qu’un reset en réserve est connu, son expiration est ajoutée avec des rappels. Un événement supprimé dans Google n’est pas recréé."),
-            p => p.GoogleCalendarAutoAdd, (p, value) => p with { GoogleCalendarAutoAdd = value });
-        // Effective only once Google is connected: an active-looking switch would promise events that cannot exist yet.
-        void CalendarState() => autoAdd.IsEnabled = owner.Calendar.IsConnected;
-        CalendarState(); owner.Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(CalendarState);
-        Section(Loc.T("Ajout ponctuel"));
-        var agenda = Block();
-        var calendar = new Button { Content = Loc.T("Ouvrir les options Google Agenda…"), HorizontalAlignment = HorizontalAlignment.Left };
-        calendar.Click += (_, _) => owner.OpenCalendar(); agenda.Children.Add(calendar);
-        var calendarHint = Ui.Text(Loc.T("Ajout direct d’une échéance ou import groupé. Export compatible avec les autres agendas."), 11, "MutedBrush"); calendarHint.Margin = new Thickness(0, 9, 0, 0); agenda.Children.Add(calendarHint);
         Page("Assistants", Loc.T("Assistants"), Loc.T("Pilotez le tracker depuis votre assistant de code."));
         Section(null);
         Row(Mcp.AssistantSettingsView.Create(owner, preferences, demo));

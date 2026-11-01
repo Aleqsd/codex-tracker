@@ -17,8 +17,10 @@ public sealed class GoogleCalendarTests
     [Fact]
     public void OnlyADesktopClientFileIsAccepted()
     {
-        var parsed = GoogleOAuthClient.Parse("{\"installed\":{\"client_id\":\"123-abc.apps.googleusercontent.com\",\"client_secret\":\"GOCSPX-fake_secret\",\"redirect_uris\":[\"http://localhost\"]}}");
-        Assert.Equal(Client, parsed);
+        var parsed = GoogleOAuthClient.Parse("{\"installed\":{\"client_id\":\"123-abc.apps.googleusercontent.com\",\"project_id\":\"codex-tracker-123\",\"client_secret\":\"GOCSPX-fake_secret\",\"redirect_uris\":[\"http://localhost\"]}}");
+        Assert.True(Client.SameAs(parsed));
+        Assert.Equal("codex-tracker-123", parsed.ProjectId);
+        Assert.Null(GoogleOAuthClient.Parse("{\"installed\":{\"client_id\":\"123-abc.apps.googleusercontent.com\",\"project_id\":\"../evil\",\"client_secret\":\"x\"}}").ProjectId);
         Assert.Throws<ArgumentException>(() => GoogleOAuthClient.Parse("{\"web\":{\"client_id\":\"123-abc.apps.googleusercontent.com\",\"client_secret\":\"x\"}}"));
         Assert.Throws<ArgumentException>(() => GoogleOAuthClient.Parse("{\"installed\":{\"client_id\":\"evil.example.test\",\"client_secret\":\"x\"}}"));
         Assert.Throws<ArgumentException>(() => GoogleOAuthClient.Parse("not json"));
@@ -108,6 +110,22 @@ public sealed class GoogleCalendarTests
         await Assert.ThrowsAsync<GoogleCalendarException>(() => client.InsertAsync(new(Client), Entry, CancellationToken.None));
     }
 
+    [Theory]
+    [InlineData("{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"accessNotConfigured\"}]}}", GoogleCalendarProblem.ApiDisabled, false)]
+    [InlineData("{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\",\"details\":[{\"reason\":\"SERVICE_DISABLED\"}]}}", GoogleCalendarProblem.ApiDisabled, false)]
+    [InlineData("{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}", GoogleCalendarProblem.MissingScope, true)]
+    [InlineData("{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}", GoogleCalendarProblem.Unavailable, false)]
+    [InlineData("not json", GoogleCalendarProblem.Reconnect, true)]
+    public async Task AGoogleRefusalNamesItsCauseAndItsFix(string body, GoogleCalendarProblem problem, bool reconnect)
+    {
+        var google = new FakeGoogle { Refusal = body };
+        var client = new GoogleCalendarClient(new HttpClient(google));
+        var error = await Assert.ThrowsAsync<GoogleCalendarException>(() => client.InsertAsync(Connected, Entry, CancellationToken.None));
+        Assert.Equal(problem, error.Problem);
+        Assert.Equal(reconnect, error.RequiresReconnect);
+        Assert.Empty(google.Events);
+    }
+
     [Fact]
     public async Task AnExpiredAccessTokenIsRefreshedOnce()
     {
@@ -144,7 +162,7 @@ public sealed class GoogleCalendarTests
     {
         public readonly Dictionary<string, string> Events = [];
         public readonly List<string> Bodies = [], Methods = [];
-        public int TokenRequests; public string? TokenError; public bool RejectFirstAccess;
+        public int TokenRequests; public string? TokenError, Refusal; public bool RejectFirstAccess;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(token);
@@ -159,6 +177,7 @@ public sealed class GoogleCalendarTests
             const string events = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
             Assert.StartsWith(events, url);
             if (RejectFirstAccess && request.Headers.Authorization?.Parameter == "access-1") return new(HttpStatusCode.Unauthorized);
+            if (Refusal is not null) return new(HttpStatusCode.Forbidden) { Content = new StringContent(Refusal, Encoding.UTF8, "application/json") };
             var id = url.Length > events.Length ? url[(events.Length + 1)..] : JsonDocument.Parse(body).RootElement.GetProperty("id").GetString()!;
             if (request.Method == HttpMethod.Post)
             {

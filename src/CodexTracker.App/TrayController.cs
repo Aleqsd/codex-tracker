@@ -33,6 +33,7 @@ internal sealed class TrayController : IDisposable
     private bool _disposed, _suspended;
     private string _notificationPage = "Resets";
     private string? _notificationCalendar;
+    private bool _notificationSuggestSync;
 
     public TrayController(MainWindow window, ITrackerService service, PreferencesStore preferences, Func<Task> exit)
     {
@@ -42,9 +43,12 @@ internal sealed class TrayController : IDisposable
         _toolTray = new Forms.NotifyIcon { Visible = false, Text = "Codex Tracker" };
         _desktop = new(ShowDesktop, () => !_disposed && !_suspended && _tray.Visible);
         if (service is not DemoTrackerService)
-            WindowsToasts.Listen((page, calendar) => _window.Dispatcher.InvokeAsync(async () =>
+            WindowsToasts.Listen((page, calendar, action) => _window.Dispatcher.InvokeAsync(async () =>
             {
                 if (_disposed) return;
+                // "Ne plus proposer" is a background action: it saves the choice without opening the window.
+                if (action == WindowsToasts.DismissSyncAction) { SavePreference(p => p with { CalendarSuggestionDismissed = true }); return; }
+                if (action == WindowsToasts.SyncAction) { _window.OpenPage("Calendrier"); return; }
                 _window.OpenPage(page);
                 if (calendar is not null) await _window.AddCreditToCalendarAsync(calendar);
             }));
@@ -313,7 +317,7 @@ internal sealed class TrayController : IDisposable
         var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current);
         var others = pending.Length - 1;
         if (others > 0) body += "\n" + (others == 1 ? Loc.T("1 autre événement dans le suivi.") : Loc.F("{0} autre événement dans le suivi.", others));
-        _notificationPage = latest.Kind == NotificationKind.Reset ? "Resets" : "Comptes"; _notificationCalendar = null;
+        _notificationPage = latest.Kind == NotificationKind.Reset ? "Resets" : "Comptes"; _notificationCalendar = null; _notificationSuggestSync = false;
         _desktop.Send(title, body);
     }
 
@@ -326,12 +330,12 @@ internal sealed class TrayController : IDisposable
     // Toasts carry an "open" action and a Windows-managed snooze; the classic balloon remains the fallback.
     private void ShowDesktop(string title, string body)
     {
-        try { WindowsToasts.Show(title, body, _notificationPage, _notificationCalendar); }
+        try { WindowsToasts.Show(title, body, _notificationPage, _notificationCalendar, _notificationSuggestSync); }
         catch (Exception) { _tray.ShowBalloonTip(8000, title, body, Forms.ToolTipIcon.Info); }
     }
     private DeliveryResult ShowReminders(IReadOnlyList<ReminderOccurrence> rows)
     {
-        _notificationPage = "Resets"; _notificationCalendar = null;
+        _notificationPage = "Resets"; _notificationCalendar = null; _notificationSuggestSync = false;
         if (rows.Count == 0) return new(DeliveryStatus.Failed, Loc.T("Aucun rappel à transmettre à Windows."));
         if (rows.Count == 1 && rows[0].Key.StartsWith("test/", StringComparison.Ordinal))
             return _desktop.Send("Codex Tracker · Test", Loc.T("Les alertes de quota et de reset apparaîtront ici. Cliquez pour ouvrir l’onglet Resets."));
@@ -342,7 +346,16 @@ internal sealed class TrayController : IDisposable
             _window.Calendar.Link(key) is not { Status: Codex.CalendarLinkStatus.Confirmed })
         {
             if (_window.Calendar.IsConnected && _preferences.Current.GoogleCalendarAutoAdd) body += "\n" + Loc.T("Ajout automatique dans Google Agenda, avec rappels avant expiration.");
-            else _notificationCalendar = key;
+            else
+            {
+                _notificationCalendar = key;
+                // Not connected yet: the notification itself offers the synchronization, until the user declines it.
+                if (!_window.Calendar.IsConnected && _window.Calendar.IsAvailable && !_preferences.Current.CalendarSuggestionDismissed)
+                {
+                    body += "\n" + Loc.T("Synchronisez Google Agenda : chaque reset en réserve y arrivera avec ses rappels.");
+                    _notificationSuggestSync = true;
+                }
+            }
         }
         return _desktop.Send(message.Title, body, deferWhenBusy: true);
     }

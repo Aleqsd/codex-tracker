@@ -10,7 +10,8 @@ using CodexTracker.Core;
 namespace CodexTracker.Codex;
 
 /// <summary>A "Desktop app" OAuth client created by the user in Google Cloud. Google does not treat its secret as confidential.</summary>
-public sealed record GoogleOAuthClient(string ClientId, string ClientSecret)
+/// <param name="ProjectId">Google Cloud project of the client, for direct links to its settings.</param>
+public sealed record GoogleOAuthClient(string ClientId, string ClientSecret, string? ProjectId = null)
 {
     /// <summary>Reads the JSON file downloaded from Google Cloud Console (Credentials → OAuth client → Desktop app).</summary>
     public static GoogleOAuthClient Parse(string json)
@@ -22,12 +23,16 @@ public sealed record GoogleOAuthClient(string ClientId, string ClientSecret)
                 throw new ArgumentException(Loc.T("Choisissez le fichier d’un client OAuth de type « Application de bureau »."));
             var id = installed.TryGetProperty("client_id", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString()! : "";
             var secret = installed.TryGetProperty("client_secret", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "";
-            var client = new GoogleOAuthClient(id.Trim(), secret.Trim());
+            var project = installed.TryGetProperty("project_id", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+            var client = new GoogleOAuthClient(id.Trim(), secret.Trim(),
+                project is { Length: > 0 and <= 64 } && project.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-') ? project : null);
             if (!client.IsValid) throw new ArgumentException(Loc.T("Fichier client OAuth incomplet."));
             return client;
         }
         catch (JsonException) { throw new ArgumentException(Loc.T("Fichier client OAuth illisible.")); }
     }
+    /// <summary>The same client, whatever the optional metadata read with it.</summary>
+    public bool SameAs(GoogleOAuthClient? other) => other is not null && other.ClientId == ClientId && other.ClientSecret == ClientSecret;
     [JsonIgnore] public bool IsValid => ClientId.EndsWith(".apps.googleusercontent.com", StringComparison.Ordinal) && ClientId.Length <= 256 &&
         ClientSecret.Length is > 0 and <= 256 && ClientId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '.' or '_') &&
         ClientSecret.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
@@ -90,9 +95,12 @@ public sealed class CalendarLinkStore
     }
 }
 
-public sealed class GoogleCalendarException(string message, bool reconnect = false) : Exception(message)
+public enum GoogleCalendarProblem { Other, Reconnect, ApiDisabled, MissingScope, Unavailable }
+
+public sealed class GoogleCalendarException(string message, bool reconnect = false, GoogleCalendarProblem problem = GoogleCalendarProblem.Other) : Exception(message)
 {
     public bool RequiresReconnect { get; } = reconnect;
+    public GoogleCalendarProblem Problem { get; } = reconnect && problem == GoogleCalendarProblem.Other ? GoogleCalendarProblem.Reconnect : problem;
 }
 
 public sealed record GoogleEvent(string Id, string Status, string? HtmlLink)
@@ -247,15 +255,43 @@ public sealed class GoogleCalendarClient(HttpClient http)
     private static async Task<GoogleEvent> ReadEventAsync(HttpResponseMessage response, CancellationToken token)
     {
         if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            // Google names the cause in its error body; each one has its own fix.
+            var reasons = await ReasonsAsync(response, token);
+            if (reasons.Overlaps(["accessNotConfigured", "SERVICE_DISABLED"]))
+                throw new GoogleCalendarException(Loc.T("L’API Google Calendar n’est pas encore active dans votre projet Google Cloud. Une API activée il y a moins de quelques minutes peut encore refuser : nouvel essai automatique dans 2 minutes."),
+                    problem: GoogleCalendarProblem.ApiDisabled);
+            if (reasons.Overlaps(["insufficientPermissions", "ACCESS_TOKEN_SCOPE_INSUFFICIENT"]))
+                throw new GoogleCalendarException(Loc.T("L’accès à l’agenda n’a pas été accordé. Reconnectez Google Agenda et cochez l’accès aux événements."), true, GoogleCalendarProblem.MissingScope);
+            if (reasons.Overlaps(["rateLimitExceeded", "userRateLimitExceeded", "RATE_LIMIT_EXCEEDED"]))
+                throw new GoogleCalendarException(Loc.T("Google Agenda est momentanément indisponible. Réessayez plus tard."), problem: GoogleCalendarProblem.Unavailable);
             throw new GoogleCalendarException(Loc.T("Google Agenda refuse l’accès. Reconnectez Google Agenda dans les réglages."), true);
+        }
         if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
-            throw new GoogleCalendarException(Loc.T("Google Agenda est momentanément indisponible. Réessayez plus tard."));
+            throw new GoogleCalendarException(Loc.T("Google Agenda est momentanément indisponible. Réessayez plus tard."), problem: GoogleCalendarProblem.Unavailable);
         using var json = await ReadJsonAsync(response, token);
         if (!response.IsSuccessStatusCode) throw new GoogleCalendarException(Loc.T("Google Agenda a refusé l’événement."));
         var root = json.RootElement;
         var link = String(root, "htmlLink");
         return new(String(root, "id") ?? throw new GoogleCalendarException(Loc.T("Réponse de Google inattendue.")), String(root, "status") ?? "confirmed",
             link is not null && link.StartsWith("https://www.google.com/calendar/", StringComparison.Ordinal) || link?.StartsWith("https://calendar.google.com/", StringComparison.Ordinal) == true ? link : null);
+    }
+
+    /// <summary>The machine-readable reasons of a Google error: "errors[].reason" (v3) and "details[].reason" (newer gateway).</summary>
+    private static async Task<HashSet<string>> ReasonsAsync(HttpResponseMessage response, CancellationToken token)
+    {
+        var reasons = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            using var json = await ReadJsonAsync(response, token);
+            if (!json.RootElement.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object) return reasons;
+            foreach (var list in new[] { "errors", "details" })
+                if (error.TryGetProperty(list, out var items) && items.ValueKind == JsonValueKind.Array)
+                    foreach (var item in items.EnumerateArray().Take(10))
+                        if (String(item, "reason") is { Length: <= 80 } reason) reasons.Add(reason);
+        }
+        catch (GoogleCalendarException) { }
+        return reasons;
     }
 
     private static async Task<JsonDocument> ReadJsonAsync(HttpResponseMessage response, CancellationToken token)

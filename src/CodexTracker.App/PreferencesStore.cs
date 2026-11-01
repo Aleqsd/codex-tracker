@@ -28,6 +28,8 @@ internal sealed record TrackerPreferences
     public bool NewCreditNotifications { get; init; } = true;
     /// <summary>Once Google Calendar is connected, every reset credit gets its expiry event automatically.</summary>
     public bool GoogleCalendarAutoAdd { get; init; } = true;
+    /// <summary>"Ne plus proposer": no Google Calendar offer in notifications or on the dashboard.</summary>
+    public bool CalendarSuggestionDismissed { get; init; }
     public bool ForecastNotifications { get; init; } = true;
     public bool MonitorGlobalResets { get; init; } = true;
     public ManualCodexReset? ManualCodexReset { get; init; }

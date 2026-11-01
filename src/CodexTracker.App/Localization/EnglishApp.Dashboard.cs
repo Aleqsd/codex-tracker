@@ -191,5 +191,14 @@ internal static partial class EnglishApp
         ("reset général annoncé, sources dans Resets", "general reset announced, sources in Resets"),
         ("probablement rechargé, à confirmer", "probably refilled, to confirm"),
         ("Projection", "Projection"),
+        ("Synchronisez Google Agenda : chaque reset en réserve y arrivera avec ses rappels.", "Sync Google Calendar: every reset credit will arrive there with its reminders."),
+        ("Ajoutez votre reset en réserve à Google Agenda", "Add your reset credit to Google Calendar"),
+        ("Ajoutez vos {0} resets en réserve à Google Agenda", "Add your {0} reset credits to Google Calendar"),
+        ("Synchroniser l’agenda", "Sync the calendar"),
+        ("Ajouter cet événement", "Add this event"),
+        ("Ne plus proposer", "Don’t suggest again"),
+        ("Chaque reset en réserve devient un événement à sa date d’expiration, avec des rappels Google 3 jours, 1 jour et 1 heure avant.", "Every reset credit becomes an event at its expiry date, with Google reminders 3 days, 1 day and 1 hour before."),
+        ("rappels avant expiration", "reminders before expiry"),
+        ("Ne plus proposer Google Agenda", "Don’t suggest Google Calendar again"),
     ];
 }

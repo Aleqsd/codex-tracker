@@ -211,5 +211,7 @@ internal static class EnglishCore
         ("Connexion annulée. Vous pouvez fermer cet onglet.", "Connection cancelled. You can close this tab."),
         ("Connexion à Google Agenda annulée.", "Google Calendar connection cancelled."),
         ("Google Agenda est connecté à Codex Tracker. Vous pouvez fermer cet onglet.", "Google Calendar is connected to Codex Tracker. You can close this tab."),
+        ("L’API Google Calendar n’est pas encore active dans votre projet Google Cloud. Une API activée il y a moins de quelques minutes peut encore refuser : nouvel essai automatique dans 2 minutes.", "The Google Calendar API is not active yet in your Google Cloud project. An API enabled a few minutes ago may still refuse: automatic retry in 2 minutes."),
+        ("L’accès à l’agenda n’a pas été accordé. Reconnectez Google Agenda et cochez l’accès aux événements.", "Calendar access was not granted. Reconnect Google Calendar and tick access to events."),
     ];
 }

@@ -347,6 +347,12 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsIdle => !_state.IsBusy;
     public bool IsBusy => _state.IsBusy;
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
+    /// <summary>Whether Google Calendar is connected; absent in isolated view-model tests.</summary>
+    internal Func<bool>? CalendarConnected { get; set; }
+    private int HeldCredits => _state.Accounts.Where(a => a.Profile.Provider == AccountProvider.Codex && a.Snapshot is { AvailableResetCredits: > 0 })
+        .Sum(a => (a.Snapshot!.ResetCredits ?? []).Count(c => c.ExpiresAt > PreviewClock.UtcNow));
+    public bool ShowCalendarPromo => CalendarConnected?.Invoke() == false && !_preferences.Current.CalendarSuggestionDismissed && HeldCredits > 0;
+    public string CalendarPromoText => HeldCredits == 1 ? Loc.T("Ajoutez votre reset en réserve à Google Agenda") : Loc.F("Ajoutez vos {0} resets en réserve à Google Agenda", HeldCredits);
 
     public Brush StatusBrush => ThemeManager.GetBrush(_state.IsBusy ? "WarningBrush" : _state.ActiveAccounts.Any(a => a.Error is not null) ? "DangerBrush"
         : _state.ActiveAccount?.Snapshot is not null ? "GoodBrush" : "MutedBrush");
