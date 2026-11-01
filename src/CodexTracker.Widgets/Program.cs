@@ -144,7 +144,7 @@ internal sealed class QuotaWidgetProvider : IWidgetProvider
         var active = Items(root["active"] ?? root["accounts"]);
         foreach (var item in active)
         {
-            item["ring"] = Ring.DataUri(Value(item), Bar(item) switch { "attention" => Ring.Attention, "warning" => Ring.Warning, _ => Ring.Accent });
+            item["ring"] = Ring.DataUri(Value(item), Color(item));
             item["reset"] ??= item["detail"]?.GetValue<string>() ?? "";
         }
         var tracked = Items(root["tracked"] ?? root["accounts"]);
@@ -154,12 +154,15 @@ internal sealed class QuotaWidgetProvider : IWidgetProvider
             item["fill"] = Math.Max(1, value ?? 0).ToString(CultureInfo.InvariantCulture);
             item["rest"] = Math.Max(1, 100 - (value ?? 0)).ToString(CultureInfo.InvariantCulture);
             item["bar"] = Bar(item);
+            item["gauge"] = Ring.Bar(value, Color(item));
             item["active"] ??= false;
         }
+        var week = (root["week"] as JsonArray ?? []).OfType<JsonObject>().Select(o => (JsonObject)o.DeepClone()).ToList();
+        foreach (var day in week) day["cell"] = Ring.Cell(day["level"] is JsonValue level && level.TryGetValue<int>(out var l) ? l : 0);
+        root["week"] = new JsonArray([.. week.Select(d => (JsonNode)d)]);
         root["active"] = new JsonArray([.. active.OrderBy(i => Value(i) ?? 101).Select(i => (JsonNode)i)]);
         root["tracked"] = new JsonArray([.. tracked.OrderBy(i => Value(i) ?? 101).Select(i => (JsonNode)i)]);
         root["first"] = root["active"]!.AsArray().FirstOrDefault()?.DeepClone() ?? new JsonObject();
-        root["week"] ??= new JsonArray();
         foreach (var name in new[] { "reserve", "reserves", "advice", "empty" }) root[name] ??= "";
         root["hasAdvice"] ??= false;
         root["refreshLabel"] ??= "↻";
@@ -175,6 +178,8 @@ internal sealed class QuotaWidgetProvider : IWidgetProvider
         var digits = new string((item["percent"]?.GetValue<string>() ?? "").TakeWhile(char.IsDigit).ToArray());
         return int.TryParse(digits, out var parsed) ? Math.Clamp(parsed, 0, 100) : null;
     }
+
+    private static System.Drawing.Color Color(JsonObject item) => Bar(item) switch { "attention" => Ring.Attention, "warning" => Ring.Warning, _ => Ring.Accent };
 
     private static string Bar(JsonObject item) => Value(item) is null ? "emphasis"
         : (item["color"]?.GetValue<string>() ?? "Default") switch { "Attention" => "attention", "Warning" => "warning", _ => "accent" };

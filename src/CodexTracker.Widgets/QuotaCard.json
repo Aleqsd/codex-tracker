@@ -6,19 +6,54 @@
     { "type": "TextBlock", "text": "${empty}", "wrap": true, "isSubtle": true, "$when": "${empty != ''}" },
 
     {
-      "type": "Container",
+      "type": "ColumnSet",
       "$when": "${$host.widgetSize == 'small' && count(active) > 0}",
+      "columns": [
+        {
+          "type": "Column", "width": "auto", "verticalContentAlignment": "Center",
+          "items": [ { "type": "Image", "url": "${first.ring}", "width": "64px", "height": "64px", "altText": "${first.percent}" } ]
+        },
+        {
+          "type": "Column", "width": "stretch", "verticalContentAlignment": "Center",
+          "items": [
+            { "type": "TextBlock", "text": "${first.percent}", "size": "ExtraLarge", "weight": "Bolder", "color": "${first.color}" },
+            { "type": "TextBlock", "text": "${first.provider}", "size": "Small", "weight": "Bolder", "spacing": "None", "maxLines": 1 },
+            { "type": "TextBlock", "text": "${first.reset}", "size": "Small", "isSubtle": true, "spacing": "None", "maxLines": 1 }
+          ]
+        }
+      ]
+    },
+    { "type": "TextBlock", "text": "${reserves}", "size": "Small", "color": "Accent", "spacing": "Small", "$when": "${$host.widgetSize == 'small' && reserves != ''}" },
+
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize != 'small' && next != null}",
+      "spacing": "None",
       "items": [
-        { "type": "Image", "url": "${first.ring}", "width": "92px", "height": "92px", "horizontalAlignment": "Center", "altText": "${first.percent}" },
-        { "type": "TextBlock", "text": "${first.percent}", "size": "Large", "weight": "Bolder", "color": "${first.color}", "horizontalAlignment": "Center", "spacing": "Small" },
-        { "type": "TextBlock", "text": "${first.provider} · ${first.reset}", "size": "Small", "isSubtle": true, "horizontalAlignment": "Center", "spacing": "None", "wrap": true },
-        { "type": "TextBlock", "text": "${reserves}", "size": "Small", "color": "Accent", "horizontalAlignment": "Center", "spacing": "Small", "$when": "${reserves != ''}" }
+        { "type": "TextBlock", "text": "${next.label}", "size": "Small", "isSubtle": true, "$when": "${$host.widgetSize == 'large'}" },
+        { "type": "TextBlock", "text": "${next.countdown}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None", "$when": "${$host.widgetSize == 'large'}" },
+        { "type": "TextBlock", "text": "${next.detail}", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true, "$when": "${$host.widgetSize == 'large'}" }
+      ]
+    },
+    {
+      "type": "ColumnSet",
+      "$when": "${$host.widgetSize == 'large'}",
+      "spacing": "Medium",
+      "columns": [
+        {
+          "type": "Column", "width": "stretch", "$data": "${week}", "spacing": "None",
+          "items": [
+            { "type": "TextBlock", "text": "${day}", "size": "Small", "horizontalAlignment": "Center", "isSubtle": "${level == 0}", "weight": "${if(level > 0, 'Bolder', 'Default')}" },
+            { "type": "Image", "url": "${cell}", "size": "Stretch", "spacing": "Small", "altText": "${day}" }
+          ]
+        }
       ]
     },
 
     {
       "type": "Container",
-      "$when": "${$host.widgetSize == 'medium'}",
+      "$when": "${$host.widgetSize != 'small'}",
+      "spacing": "Medium",
       "items": [
         {
           "type": "Container",
@@ -28,79 +63,21 @@
             {
               "type": "ColumnSet",
               "columns": [
-                {
-                  "type": "Column", "width": "stretch",
-                  "items": [ { "type": "TextBlock", "text": "${name} · ${provider}", "maxLines": 1, "size": "Small", "weight": "${if(active, 'Bolder', 'Default')}" } ]
-                },
-                {
-                  "type": "Column", "width": "auto",
-                  "items": [ { "type": "TextBlock", "text": "${percent}", "size": "Small", "weight": "Bolder", "color": "${color}" } ]
-                }
+                { "type": "Column", "width": "stretch", "items": [ { "type": "TextBlock", "text": "${name} · ${provider}", "maxLines": 1, "size": "Small", "weight": "${if(active, 'Bolder', 'Default')}" } ] },
+                { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "${percent}", "size": "Small", "weight": "Bolder", "color": "${color}" } ] }
               ]
             },
-            {
-              "type": "ColumnSet",
-              "spacing": "Small",
-              "columns": [
-                { "type": "Column", "width": "${fill}", "style": "${bar}", "minHeight": "4px", "items": [] },
-                { "type": "Column", "width": "${rest}", "style": "emphasis", "minHeight": "4px", "spacing": "None", "items": [] }
-              ]
-            }
+            { "type": "Image", "url": "${gauge}", "size": "Stretch", "spacing": "Small", "altText": "${percent}" }
           ]
         },
+        { "type": "TextBlock", "text": "${reserve}", "size": "Small", "color": "Accent", "spacing": "Medium", "wrap": true, "$when": "${$host.widgetSize == 'large' && reserve != ''}" },
         {
-          "type": "Container", "style": "accent", "spacing": "Medium", "$when": "${hasAdvice}",
-          "items": [ { "type": "TextBlock", "text": "${advice}", "wrap": true, "size": "Small", "weight": "Bolder" } ]
-        }
+          "type": "Container", "style": "emphasis", "spacing": "Medium", "$when": "${hasAdvice}",
+          "items": [ { "type": "TextBlock", "text": "${advice}", "wrap": true, "size": "Small", "weight": "Bolder", "color": "Accent" } ]
+        },
+        { "type": "TextBlock", "text": "${updated}", "isSubtle": true, "size": "Small", "spacing": "Small", "horizontalAlignment": "Right" }
       ]
-    },
-
-    {
-      "type": "Container",
-      "$when": "${$host.widgetSize == 'large'}",
-      "items": [
-        {
-          "type": "Container", "$when": "${next != null}",
-          "items": [
-            { "type": "TextBlock", "text": "${next.label}", "size": "Small", "isSubtle": true },
-            { "type": "TextBlock", "text": "${next.countdown}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None" },
-            { "type": "TextBlock", "text": "${next.detail}", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true }
-          ]
-        },
-        {
-          "type": "ColumnSet",
-          "spacing": "Medium",
-          "columns": [
-            {
-              "type": "Column", "width": "stretch", "$data": "${week}",
-              "items": [
-                { "type": "TextBlock", "text": "${day}", "size": "Small", "horizontalAlignment": "Center", "isSubtle": "${level == 0}", "weight": "${if(level > 0, 'Bolder', 'Default')}" },
-                { "type": "Container", "style": "${if(level > 0, 'accent', 'emphasis')}", "minHeight": "26px", "spacing": "Small", "items": [] }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "Container", "$data": "${active}", "spacing": "Small", "separator": true,
-          "items": [
-            {
-              "type": "ColumnSet",
-              "columns": [
-                { "type": "Column", "width": "stretch", "items": [ { "type": "TextBlock", "text": "${provider}", "size": "Small", "maxLines": 1 } ] },
-                { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "${percent} · ${reset}", "size": "Small", "color": "${color}" } ] }
-              ]
-            }
-          ]
-        },
-        { "type": "TextBlock", "text": "${reserve}", "size": "Small", "color": "Accent", "spacing": "Small", "wrap": true, "$when": "${reserve != ''}" },
-        {
-          "type": "Container", "style": "accent", "spacing": "Small", "$when": "${hasAdvice}",
-          "items": [ { "type": "TextBlock", "text": "${advice}", "wrap": true, "size": "Small", "weight": "Bolder" } ]
-        }
-      ]
-    },
-
-    { "type": "TextBlock", "text": "${updated}", "isSubtle": true, "size": "Small", "spacing": "Small", "horizontalAlignment": "Right", "$when": "${$host.widgetSize != 'small'}" }
+    }
   ],
   "actions": [
     { "type": "Action.Execute", "title": "${openLabel}", "verb": "open" },
