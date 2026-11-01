@@ -33,6 +33,22 @@ internal static class ProviderChecks
                     first.Text.Contains("\nSemaine : ") && second.Text.Contains("\nSemaine : 43% restant"), "One icon per tool shows each tool's own quota");
                 preferences.Update(p => p with { TrayIconPerTool = false }); await Task.Delay(30);
                 Check(first.Visible && !second.Visible, "Turning the option off removes the second icon");
+                // The right-click menu: a quota summary first, then grouped actions, Quit last; captured for review.
+                var menu = first.ContextMenuStrip!;
+                var labels = menu.Items.OfType<System.Windows.Forms.ToolStripMenuItem>().Where(i => !i.Enabled).Select(i => i.Text).ToArray();
+                Check(labels.Length == 2 && labels[0]!.StartsWith("Codex · ") && labels[1]!.StartsWith("Claude Code · ") &&
+                    menu.Items.OfType<System.Windows.Forms.ToolStripMenuItem>().First(i => i.Enabled).Text == "Ouvrir le suivi" &&
+                    menu.Items[^1].Text == "Quitter" && menu.Items[^2] is System.Windows.Forms.ToolStripSeparator,
+                    "The tray menu opens with the active quotas, then its actions, Quit set apart");
+                var spot = TestScreen.Area;
+                menu.Show(new System.Drawing.Point(spot.Left + 40, spot.Top + 40)); await Task.Delay(80);
+                using (var image = new System.Drawing.Bitmap(menu.Width, menu.Height))
+                {
+                    menu.DrawToBitmap(image, new System.Drawing.Rectangle(0, 0, menu.Width, menu.Height));
+                    Directory.CreateDirectory(Path.GetFullPath("artifacts/previews"));
+                    image.Save(Path.GetFullPath("artifacts/previews/tray-menu.png"), System.Drawing.Imaging.ImageFormat.Png);
+                }
+                menu.Close();
             }
             var dashboard = (DashboardViewModel)window.DataContext;
             window.UpdateLayout();

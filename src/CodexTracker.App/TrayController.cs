@@ -150,7 +150,8 @@ internal sealed class TrayController : IDisposable
             var left = QuotaPresentation.Remaining(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
             var reset = QuotaPresentation.ResetsAt(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
             var line = Loc.F("{0} · {1} semaine", active.Profile.ProviderName, Display.Percent(left)) + (reset is { } at ? " · " + Display.Countdown(at).ToLowerInvariant() : "");
-            menu.Items.Add(new Forms.ToolStripLabel(line) { ForeColor = dark ? Color.FromArgb(152, 155, 164) : Color.FromArgb(93, 97, 106), Padding = new Forms.Padding(6, 3, 6, 3) });
+            // A disabled item keeps the actions' text alignment; the renderer draws it in the muted colour.
+            menu.Items.Add(new Forms.ToolStripMenuItem(line) { Enabled = false });
         }
         if (state.ActiveAccounts.Count > 0) menu.Items.Add(new Forms.ToolStripSeparator());
         var open = new Forms.ToolStripMenuItem(Loc.T("Ouvrir le suivi"), null, (_, _) => _window.ShowPanel());
@@ -372,6 +373,11 @@ internal sealed class TrayController : IDisposable
             var smoothing = e.Graphics.SmoothingMode; e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using var brush = new SolidBrush(_dark ? Color.FromArgb(38, 40, 48) : Color.FromArgb(236, 238, 242));
             e.Graphics.FillPath(brush, path); e.Graphics.SmoothingMode = smoothing;
+        }
+        protected override void OnRenderItemText(Forms.ToolStripItemTextRenderEventArgs e)
+        {
+            if (!e.Item.Enabled) e.TextColor = _dark ? Color.FromArgb(152, 155, 164) : Color.FromArgb(93, 97, 106);
+            base.OnRenderItemText(e);
         }
         protected override void OnRenderSeparator(Forms.ToolStripSeparatorRenderEventArgs e)
         {

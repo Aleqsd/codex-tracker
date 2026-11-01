@@ -180,6 +180,7 @@ internal sealed class ResetsView : UserControl
         _nextBoundary = entries.Select(e => e.At)
             .Concat((_state.GlobalResetFeed?.Announcements ?? []).SelectMany(a => new DateTimeOffset?[] { a.ReportedAt.AddHours(5), a.ReportedAt.AddHours(24) }))
             .Where(at => at > now).Order().FirstOrDefault();
+        _summary.Visibility = _summary.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         UpdateTimes(now);
         if (animate) UiMotion.FadeIn(_timeline);
     }
@@ -325,9 +326,11 @@ internal sealed class ResetsView : UserControl
         }
         _timeline.Children.Add(Ui.Panel(strip, new Thickness(5)));
         var visible = days.Where(d => _day is null || d.Date == _day).SelectMany(d => d.Entries).ToArray();
-        _summary.Text = _day is null
+        var tally = _day is null
             ? visible.Length == 1 ? Loc.T("1 échéance cette semaine") : Loc.F("{0} échéances cette semaine", visible.Length)
             : visible.Length == 1 ? Loc.T("1 échéance ce jour") : Loc.F("{0} échéances ce jour", visible.Length);
+        range.Inlines.Add(new System.Windows.Documents.Run(" · " + tally) { FontWeight = FontWeights.Normal, Foreground = ThemeManager.GetBrush("MutedBrush") });
+        _summary.Text = "";
         AddDays(_timeline, visible, now);
         if (visible.Length == 0) _timeline.Children.Add(Empty(_day is null ? Loc.T("Aucune échéance connue cette semaine.") : Loc.T("Aucune échéance connue ce jour.")));
     }
