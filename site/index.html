@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Tracker – Codex &amp; Claude Code usage limits in your Windows taskbar</title>
+<meta name="description" content="Free Windows app that shows how much Codex and Claude Code usage you have left: 5-hour and weekly limits, exact reset times, banked reset credits, reminders and Google Calendar sync. Local, no account.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/">
+<link rel="alternate" hreflang="en" href="https://codex-tracker.zqsdev.com/">
+<link rel="alternate" hreflang="fr" href="https://codex-tracker.zqsdev.com/fr/">
+<link rel="alternate" hreflang="x-default" href="https://codex-tracker.zqsdev.com/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#101114">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/styles.css">
+<link rel="preload" href="/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Codex Tracker">
+<meta property="og:title" content="Codex Tracker – know how much Codex and Claude Code you have left">
+<meta property="og:description" content="Your 5-hour and weekly limits, the next reset time and a reminder at the right moment, in the Windows taskbar. Free and local.">
+<meta property="og:url" content="https://codex-tracker.zqsdev.com/">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/hero.png">
+<meta property="og:image:alt" content="Codex Tracker dashboard with demo accounts, weekly reset calendar and taskbar preview">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://codex-tracker.zqsdev.com/#app",
+      "name": "Codex Tracker",
+      "alternateName": ["Codex usage tracker", "Claude Code usage tracker"],
+      "description": "Windows taskbar app that tracks OpenAI Codex and Claude Code usage limits: 5-hour and weekly quotas, exact reset times, banked Codex reset credits with expiry, reminders (Windows, email, SMS, call), Google Calendar and Gmail alerts, and a local MCP server for coding assistants.",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Usage limit tracker",
+      "operatingSystem": "Windows 11 x64",
+      "softwareVersion": "{{VERSION}}",
+      "datePublished": "2026-09-20",
+      "dateModified": "{{DATE}}",
+      "inLanguage": ["en", "fr"],
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+      "downloadUrl": "https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe",
+      "installUrl": "https://github.com/Aleqsd/codex-tracker/releases/latest",
+      "codeRepository": "https://github.com/Aleqsd/codex-tracker",
+      "screenshot": ["https://codex-tracker.zqsdev.com/img/hero.png", "https://codex-tracker.zqsdev.com/img/dashboard.png", "https://codex-tracker.zqsdev.com/img/resets-week.png"],
+      "featureList": [
+        "Remaining Codex and Claude Code quota shown in the Windows taskbar icon",
+        "5-hour and weekly usage limits for every account",
+        "Exact reset time of each limit, as a list or a week view",
+        "Banked Codex reset credits with their expiry date",
+        "Notifications before a reset, below 20/10/5 %, and when a new reset credit arrives",
+        "Google Calendar sync and Gmail email alerts for expiring reset credits",
+        "Optional SMS, phone call and email reminders with your own Twilio or SendGrid account",
+        "Local MCP server so coding assistants can read quotas and change settings",
+        "No account, no server: data stays on the PC"
+      ],
+      "author": { "@id": "https://codex-tracker.zqsdev.com/#author" },
+      "publisher": { "@id": "https://codex-tracker.zqsdev.com/#author" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://codex-tracker.zqsdev.com/#author",
+      "name": "Alexandre Do-O Almeida",
+      "url": "https://github.com/Aleqsd"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://codex-tracker.zqsdev.com/#site",
+      "url": "https://codex-tracker.zqsdev.com/",
+      "name": "Codex Tracker",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "How do I see how much Codex usage I have left?", "acceptedAnswer": { "@type": "Answer", "text": "Install Codex Tracker on Windows and keep using Codex as usual. The tray icon shows the remaining percentage of the active account; hover it for the 5-hour and weekly limits and the next reset time." } },
+        { "@type": "Question", "name": "When does my Codex weekly limit reset?", "acceptedAnswer": { "@type": "Answer", "text": "Each Codex account has its own reset time. Codex Tracker reads it from Codex itself and shows the exact date and hour for every account, in a list or a week view, with an optional reminder." } },
+        { "@type": "Question", "name": "Does it work with Claude Code?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Claude desktop app is detected automatically. For Claude Code in a terminal, copy the status line setting offered in Settings → General → Claude Code." } },
+        { "@type": "Question", "name": "What are Codex reset credits?", "acceptedAnswer": { "@type": "Answer", "text": "Codex can grant banked reset credits that refill a limit on demand and expire after a while. Codex Tracker lists them with their expiry, notifies you when a new one arrives, can add it to Google Calendar and advises using one before it is wasted." } },
+        { "@type": "Question", "name": "Is Codex Tracker free and private?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is free and open source (MIT). There is no sign-up and no server: it reads the quotas Codex and Claude already know on your PC, never your conversations or passwords." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Main">
+      <a href="#features" class="hide-sm">Features</a>
+      <a href="#faq" class="hide-sm">FAQ</a>
+      <a href="https://github.com/Aleqsd/codex-tracker">GitHub</a>
+      <a href="/fr/" hreflang="fr" lang="fr">Français</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" style="border:0">
+      <span class="eyebrow">Free · Windows 11 · Codex &amp; Claude Code</span>
+      <h1>Always know how much Codex and Claude Code you have left</h1>
+      <p class="lead">Codex Tracker puts your 5-hour and weekly usage limits in the Windows taskbar, tells you exactly when each one resets, and reminds you at the right time. No account, no server, nothing to configure.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download for Windows</a>
+        <a class="button" href="https://github.com/Aleqsd/codex-tracker">View on GitHub</a>
+      </div>
+      <p class="meta">Version {{VERSION}} · Windows 11 x64 · English or French · MIT license</p>
+      <img class="shot" src="/img/hero.png" alt="Codex Tracker: dark dashboard, weekly reset calendar and taskbar preview, with demo accounts" width="1274" height="984" fetchpriority="high">
+    </section>
+
+    <section id="problem">
+      <h2>Codex and Claude Code limits, made visible</h2>
+      <p class="sub">OpenAI Codex and Anthropic’s Claude Code cap your usage twice: a limit over <strong>5 hours</strong> and another over <strong>the week</strong>. Once it runs out you wait for the refill, and neither tool tells you clearly where you stand across several accounts. Codex Tracker answers three questions at a glance.</p>
+      <div class="grid">
+        <div class="card"><h3>How much is left?</h3><p>The remaining percentage is drawn in the taskbar icon. Hover it for both limits of the active account.</p></div>
+        <div class="card"><h3>When does it reset?</h3><p>The exact reset time of every limit, for every account, as a list or on a week calendar.</p></div>
+        <div class="card"><h3>Which account should I use?</h3><p>All your Codex and Claude Code accounts side by side, personal and work, each with the date of its last reading.</p></div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Everything about your quotas, nothing else</h2>
+      <div class="split">
+        <div>
+          <h3>Your accounts at a glance</h3>
+          <p>A ring for the active account, a bar for the others, and the age of every reading. Inactive accounts keep their last value; once their reset time passes they show as “probably refilled”.</p>
+        </div>
+        <img src="/img/dashboard.png" alt="Dashboard with demo Codex and Claude Code accounts" loading="lazy" width="760" height="620">
+      </div>
+      <div class="split" style="margin-top:40px">
+        <img src="/img/resets-week.png" alt="Week view of upcoming resets and banked reset credits, demo accounts" loading="lazy" width="760" height="620">
+        <div>
+          <h3>Reset calendar and banked credits</h3>
+          <p>Upcoming resets day by day, plus your Codex reset credits with their expiry. Get notified when a new credit arrives, and advised to use one before it expires unused.</p>
+        </div>
+      </div>
+      <div class="split" style="margin-top:40px">
+        <div>
+          <h3>Google Calendar and Gmail, in one click</h3>
+          <p>Connect Google Calendar and every banked reset lands in your calendar with reminders, removed once you use it. An email from your own Gmail the day before a credit expires.</p>
+        </div>
+        <img src="/img/calendar.png" alt="Google Calendar settings in Codex Tracker, demo data" loading="lazy" width="870" height="900">
+      </div>
+      <div class="grid" style="margin-top:40px">
+        <div class="card"><h3>Reminders that fit</h3><p>Before a reset, below 20, 10 or 5 %, before running out, or when another account may have refilled. Windows notifications by default; SMS, call or email with your own Twilio or SendGrid account.</p></div>
+        <div class="card"><h3>For coding assistants</h3><p>A local MCP server, off by default, lets your coding agent read quotas, plan around resets and change settings, with local confirmation for anything external.</p></div>
+        <div class="card"><h3>Quiet and native</h3><p>Light or dark like Windows, English or French, starts with Windows, updates itself. Closing the window keeps it next to the clock.</p></div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Install in three steps</h2>
+      <ol class="steps">
+        <li><strong>Download and run</strong> the installer. No admin rights, nothing else to install.</li>
+        <li><strong>Use Codex or Claude Code as usual.</strong> The signed-in account appears by itself; other accounts are added when you open them.</li>
+        <li><strong>Keep the icon visible</strong> by dragging it out of the taskbar’s ^ overflow.</li>
+      </ol>
+      <p>Prefer no installer? A portable ZIP is on the <a href="https://github.com/Aleqsd/codex-tracker/releases">releases page</a>. The executables are not code-signed, so SmartScreen may warn on first launch.</p>
+    </section>
+
+    <section id="privacy">
+      <h2>Your data stays on your PC</h2>
+      <div class="grid">
+        <div class="card"><h3>No sign-up, no server</h3><p>Everything is stored locally. Optional secrets are encrypted with Windows DPAPI.</p></div>
+        <div class="card"><h3>No password asked</h3><p>It reads the quotas Codex and Claude already know. Never your conversations, never switches accounts for you.</p></div>
+        <div class="card"><h3>Few, chosen connections</h3><p>Update checks on GitHub and public reset announcements, both optional. Google only if you connect it.</p></div>
+      </div>
+      <p style="margin-top:20px"><a href="/privacy/">Read the privacy policy</a></p>
+    </section>
+
+    <section id="compare">
+      <h2>Why not just check the usage page?</h2>
+      <table class="compare">
+        <thead><tr><th></th><th>Codex Tracker</th><th>Built-in usage pages</th></tr></thead>
+        <tbody>
+          <tr><td>Always visible</td><td>Percentage in the taskbar</td><td>Open a page or run a command</td></tr>
+          <tr><td>Several accounts</td><td>Side by side, Codex and Claude Code</td><td>One signed-in account at a time</td></tr>
+          <tr><td>Reset reminders</td><td>Windows, Google Calendar, email, SMS</td><td>None</td></tr>
+          <tr><td>Banked reset credits</td><td>Expiry, alerts and “use it now” advice</td><td>Listed only</td></tr>
+          <tr><td>Agent access</td><td>Local MCP server</td><td>None</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2>Frequently asked questions</h2>
+      <details><summary>How do I see how much Codex usage I have left?</summary><p>Install Codex Tracker and keep using Codex as usual. The tray icon shows the remaining percentage of the active account; hover it for the 5-hour and weekly limits and the next reset time.</p></details>
+      <details><summary>When does my Codex weekly limit reset?</summary><p>Each account has its own reset time. Codex Tracker reads it from Codex and shows the exact date and hour for every account, with an optional reminder.</p></details>
+      <details><summary>Does it work with Claude Code?</summary><p>Yes. The Claude desktop app is detected automatically. For Claude Code in a terminal, copy the status line setting offered in Settings → General → Claude Code.</p></details>
+      <details><summary>What are Codex reset credits?</summary><p>Codex can grant banked reset credits that refill a limit on demand and expire after a while. Codex Tracker lists them with their expiry, notifies you when one arrives, adds it to Google Calendar and advises using it before it is wasted.</p></details>
+      <details><summary>Why is only the open account updated?</summary><p>The tracker reads the active account in Codex and in Claude. Other accounts keep their last dated reading until you open them again.</p></details>
+      <details><summary>Does it need to stay open?</summary><p>For reminders, yes: it sits quietly in the taskbar and can start with Windows. The PC must be on.</p></details>
+      <details><summary>Is it free?</summary><p>Yes, free and open source under the MIT license. Only optional SMS, calls and SendGrid emails go through your own provider accounts and their prices.</p></details>
+      <details><summary>Is it affiliated with OpenAI or Anthropic?</summary><p>No. Codex Tracker is an independent project. Codex and Claude are trademarks of their respective owners.</p></details>
+    </section>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span>
+    <span><a href="/privacy/">Privacy</a> · <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md">User guide (FR)</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a> · <a href="/fr/" hreflang="fr">Français</a></span>
+  </div>
+</footer>
+</body>
+</html>

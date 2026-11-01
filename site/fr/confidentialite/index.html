@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Politique de confidentialité – Codex Tracker</title>
+<meta name="description" content="Ce que Codex Tracker lit, enregistre et envoie, y compris les données Google Agenda et Gmail. Tout reste sur votre PC, sans serveur ni compte.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/fr/confidentialite/">
+<link rel="alternate" hreflang="en" href="https://codex-tracker.zqsdev.com/privacy/">
+<link rel="alternate" hreflang="fr" href="https://codex-tracker.zqsdev.com/fr/confidentialite/">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top">
+    <a class="brand" href="/fr/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Principal"><a href="/fr/">Accueil</a><a href="/privacy/" hreflang="en" lang="en">English</a></nav>
+  </header>
+  <main class="prose">
+    <h1 style="font-size:36px;margin-top:24px">Politique de confidentialité</h1>
+    <p>Mise à jour : {{DATE}}. Codex Tracker est une application Windows gratuite et open source publiée par Alexandre Do-O Almeida. Elle n’a ni serveur ni compte utilisateur : le développeur ne reçoit aucune de vos données.</p>
+
+    <h2>Données lues sur votre PC</h2>
+    <p>Pour afficher vos limites, Codex Tracker lit les informations de quota que Codex et Claude enregistrent déjà sur votre ordinateur : l’identité du compte sélectionné (adresse, offre, organisation), ses limites sur 5 heures et à la semaine, leurs heures de reset et les resets Codex en réserve. Il ne lit jamais vos conversations, votre code, vos mots de passe ni vos jetons, et ne change jamais de compte à votre place.</p>
+
+    <h2>Données enregistrées</h2>
+    <p>Comptes, historique, préférences et journaux de rappels restent dans votre profil Windows. Les secrets facultatifs (jeton Google, clés Twilio ou SendGrid) sont chiffrés avec DPAPI pour votre utilisateur Windows.</p>
+
+    <h2>Données utilisateur Google</h2>
+    <p>La connexion à Google est facultative. Après votre accord sur la page Google, Codex Tracker obtient uniquement :</p>
+    <ul>
+      <li><code>calendar.events</code> : créer, modifier et supprimer les événements qu’il ajoute pour vos resets en réserve. Il ne lit ni ne modifie vos autres événements.</li>
+      <li><code>openid</code> et <code>email</code> : afficher le compte Google connecté.</li>
+      <li><code>gmail.send</code>, seulement si vous activez les alertes e-mail : envoyer des rappels depuis votre Gmail vers votre propre adresse. Il ne peut ni lire, ni lister, ni modifier, ni supprimer un message.</li>
+    </ul>
+    <p>Ces données servent uniquement à ces fonctions sur votre PC. Elles ne sont jamais transmises au développeur ni à un tiers, jamais vendues, jamais utilisées pour la publicité ni pour entraîner un modèle d’IA. Aucune personne ne les lit. L’utilisation et le transfert par Codex Tracker des informations reçues des API Google respectent la <a href="https://developers.google.com/terms/api-services-user-data-policy">règle relative aux données utilisateur des services d’API Google</a>, y compris les exigences d’utilisation limitée.</p>
+    <p>Déconnectez-vous à tout moment dans <strong>Réglages → Google Agenda → Déconnecter</strong> (révocation et suppression du jeton) ou depuis les <a href="https://myaccount.google.com/permissions">autorisations de votre compte Google</a>.</p>
+
+    <h2>Connexions réseau</h2>
+    <ul>
+      <li>GitHub, pour les mises à jour (désactivable).</li>
+      <li>Annonces publiques de reset général, si activées.</li>
+      <li>API Google, seulement si vous connectez Google.</li>
+      <li>Twilio ou SendGrid, seulement avec votre propre compte.</li>
+    </ul>
+
+    <h2>Assistants de code (MCP)</h2>
+    <p>Le serveur MCP local est désactivé par défaut. Activé, les données demandées par votre assistant lui sont transmises et peuvent être traitées par son fournisseur.</p>
+
+    <h2>Contact</h2>
+    <p>Ouvrez une demande sur <a href="https://github.com/Aleqsd/codex-tracker/issues">GitHub</a>. Détail technique : <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/PRIVACY.md">notes de confidentialité</a>.</p>
+  </main>
+</div>
+<footer><div class="wrap narrow"><span>© 2026 Codex Tracker · Projet indépendant, non affilié à OpenAI, Anthropic ni Google</span><span><a href="/fr/">Accueil</a></span></div></footer>
+</body>
+</html>

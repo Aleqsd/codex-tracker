@@ -1,7 +1,7 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-Moves the repository to a new version: Directory.Build.props and the README download links, then restores.
+Moves the repository to a new version: Directory.Build.props and the README download links (French and English), then restores.
 .DESCRIPTION
 Commit the changed files together; a changed packages.lock.json means a real dependency change.
 #>
@@ -20,7 +20,7 @@ $props = Join-Path $root 'Directory.Build.props'
 [xml]$buildProperties = Get-Content -LiteralPath $props -Raw
 $previous = [string]$buildProperties.Project.PropertyGroup.Version
 if ($previous -eq $Version) { throw "La version est déjà $Version." }
-foreach ($file in @($props, (Join-Path $root 'README.md'))) {
+foreach ($file in @($props, (Join-Path $root 'README.md'), (Join-Path $root 'README.en.md'))) {
     $text = [IO.File]::ReadAllText($file)
     $updated = $text.Replace($previous, $Version)
     if ($updated -eq $text) { throw "Version $previous absente de $file." }

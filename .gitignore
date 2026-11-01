@@ -33,3 +33,5 @@ preferences.json.bak*
 preferences.json.corrupt-*
 snapshots.json.bak*
 snapshots.json.corrupt-*
+
+.netlify/

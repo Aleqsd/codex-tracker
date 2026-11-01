@@ -382,5 +382,9 @@ internal static partial class EnglishApp
         ("Conseiller d’utiliser une réserve", "Suggest using a reset credit"),
         ("Quand il reste moins de 15 % de la semaine et qu’un reset en réserve expire avant la recharge : une notification propose de l’utiliser maintenant, une fois par reset.", "When less than 15 % of the week is left and a reset credit expires before the refill: a notification suggests using it now, once per credit."),
         ("Réserve à utiliser avant {0}", "Reset credit to use before {0}"),
+        ("Déconnecter Google Agenda", "Disconnect Google Calendar"),
+        ("Importer un client Google", "Import a Google client"),
+        ("Synchroniser Google Agenda", "Sync Google Calendar"),
+        ("Ajouter un reset en réserve à Google Agenda", "Add a reset credit to Google Calendar"),
     ];
 }

@@ -26,12 +26,16 @@ Aucun runtime .NET séparé, compte supplémentaire ou serveur réseau n’est n
 - « Active les rappels Windows une heure avant les resets hebdomadaires. »
 - « Configure SendGrid sans activer les envois. »
 - « Demande un SMS de test et vérifie son statut après ma confirmation dans le tracker. »
+- « Connecte Google Agenda avec les e-mails, puis ajoute mes resets en réserve. »
+- « Envoie-moi un e-mail de test depuis Gmail. »
 
 ## Contrat des outils
 
-Lecture : `get_status`, `list_accounts`, `list_resets`, `get_notification_history`, `get_preferences`, `get_reminder_rules`, `get_channels`, `get_action_status`.
+Lecture : `get_status`, `list_accounts`, `list_resets`, `get_notification_history`, `get_preferences`, `get_reminder_rules`, `get_channels`, `get_action_status`, `get_google_calendar`.
 
-Actions : `refresh_active_account`, `open_page`, `update_preferences`, `update_phone_policy`, `update_reminder_rules`, `configure_channel`, `delete_credentials`, `test_notification`.
+Actions : `refresh_active_account`, `open_page`, `update_preferences`, `update_phone_policy`, `update_reminder_rules`, `configure_channel`, `delete_credentials`, `test_notification`, `connect_google_calendar`, `disconnect_google_calendar`, `import_google_client`, `sync_google_calendar`, `add_reserve_to_calendar`.
+
+Google Agenda et Gmail : `get_google_calendar` donne l’état de connexion, l’adresse, l’envoi d’e-mails, le problème éventuel et chaque reset en réserve avec le statut de son événement (`Confirmed`, `Opened`, `Deleted`, `Used`, `Missing`) et son lien Google ; aucun jeton n’est renvoyé. `connect_google_calendar` ouvre l’autorisation Google dans le navigateur de l’utilisateur (`mail: true` ajoute l’envoi d’e-mails) : rien n’est accordé avant son accord sur la page Google ; relire ensuite `get_google_calendar`. `test_notification` avec `Email` passe par Gmail, vers l’adresse de l’utilisateur et sans confirmation locale, quand l’envoi Gmail est accordé et SendGrid non configuré. `update_preferences` accepte en option `newCreditNotifications`, `reserveAdviceNotifications`, `reserveMailAlerts`, `googleCalendarAutoAdd`, `calendarSuggestionDismissed` et `forecastNotifications` ; omis, ils gardent leur valeur.
 
 Les mutations utilisent `expectedRevision`, obtenu par une lecture récente, et `requestId`, UUID conservé pour toute répétition de la même demande. Sur `revision_conflict`, relire et reconstruire l’action ; ne pas écraser aveuglément. Réutiliser un UUID avec des paramètres différents est refusé. Les réponses ont un objet `result` ou un code `error`.
 

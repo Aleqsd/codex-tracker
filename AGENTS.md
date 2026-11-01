@@ -23,6 +23,7 @@ Prérequis : Windows, SDK .NET 10, Python 3 pour le test du protocole.
 ./scripts/build-installer.ps1 -Version 0.9.2
 ./scripts/bump.ps1 -Version 0.9.19
 ./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
+./scripts/site.ps1 -Deploy
 ```
 
 Les scripts trouvent un SDK .NET 10 dans le PATH ou dans `%LOCALAPPDATA%\Microsoft\dotnet` (dotnet-install) ; `-Dotnet` en impose un autre, dev accepte aussi `-Python`. `bump.ps1` change la version et les liens du README, puis restaure : committer ensemble les fichiers modifiés. Les `packages.lock.json` sont identiques en compilation et en publication (`src/Directory.Build.props`) ; une différence signale un vrai changement de dépendances. Les artefacts restent sous `artifacts/`, ignoré par Git. Pas de CI distante : compilation, tests, paquets et Releases se font en local avec `scripts/release.ps1`. Tester le MCP sur l’exécutable **publié**, pas seulement avec un client simulé.
@@ -38,6 +39,7 @@ Les scripts trouvent un SDK .NET 10 dans le PATH ou dans `%LOCALAPPDATA%\Microso
 - Les fichiers de préférences ont un seul propriétaire : le processus WPF. Passer par les commandes communes et vérifier la révision pour les modifications MCP.
 - Conserver la charte de docs/DESIGN.md (neutres froids, accent indigo unique) et les ressources dynamiques. Pas de nouvelle couleur ni de framework UI sans besoin établi.
 - Préférer une modification ciblée ; ne pas entreprendre une migration MVVM générale pour ajouter un contrôle.
+- Toute fonctionnalité doit rester pilotable par un agent de code sans contrôle de l’écran : chaque réglage, connexion, action ou état visible dans l’interface a son outil MCP (`Mcp/McpHost.cs`, `Mcp/TrackerControl.cs`, `docs/MCP.md`, compteur de `scripts/test-mcp.py`) ou une option de ligne de commande. Seules les validations humaines voulues (confirmation locale, consentement Google) restent hors agent.
 
 ## Vérification proportionnée
 
@@ -47,4 +49,4 @@ Modifier une règle métier : tests de ses limites et erreurs. Modifier une comm
 
 ## Présentation publique
 
-README bref, orienté installation et usage ; détails dans docs/UTILISATION.md. Tour GIF rapide, exclusivement fictif ; `scripts/visuals.ps1` régénère hors écran le visuel principal, les captures du guide et le GIF (Pillow requis). Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.
+README bref, orienté installation et usage (français, avec `README.en.md` en anglais) ; détails dans docs/UTILISATION.md. Site public https://codex-tracker.zqsdev.com (sources `site/`, Netlify, DNS zqsdev.com chez Netlify) : accueil anglais et français, politique de confidentialité exigée par Google, données structurées, `llms.txt`, sitemap. `scripts/site.ps1 -Deploy` le reconstruit avec la version courante et le publie ; le relancer après chaque release. Garder les deux langues et les deux README alignés sur les fonctions réelles. Tour GIF rapide, exclusivement fictif ; `scripts/visuals.ps1` régénère hors écran le visuel principal, les captures du guide et le GIF (Pillow requis). Notes de release très courtes avec l’installateur recommandé en premier, le ZIP en option et uniquement le checksum ZIP nécessaire aux anciennes versions du moteur de mise à jour. Le checksum EXE reste dans les artefacts locaux. Ni signature de code ni WinGet : abandonnés.

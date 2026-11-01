@@ -61,6 +61,21 @@ internal sealed class TrackerControl : IDisposable
             case "refresh":
                 await _window.TrackerService.RefreshAsync(); return new { refreshed = true, revision = Revision, observedAt = _window.TrackerService.State.ActiveAccount?.Snapshot?.FetchedAt };
             case "show": _window.OpenPage(Read<PageQuery>(args).Page); return new { opened = true };
+            case "google":
+                var calendar = _window.Calendar;
+                return new
+                {
+                    revision, available = calendar.IsAvailable, connected = calendar.IsConnected, email = calendar.Email, canMail = calendar.CanMail,
+                    connecting = calendar.IsConnecting, ownClient = calendar.HasOwnClient, bundledClient = GoogleCalendarSync.Bundled is not null,
+                    problem = calendar.Problem?.ToString(), error = calendar.Error,
+                    autoAdd = _preferences.Current.GoogleCalendarAutoAdd, mailAlerts = _preferences.Current.ReserveMailAlerts,
+                    reserves = GoogleCalendarSync.HeldCredits(state, DateTimeOffset.UtcNow).Select(c => new
+                    {
+                        accountId = c.Value.AccountId, creditId = c.Value.CreditId,
+                        expiresAt = state.Accounts.FirstOrDefault(a => a.Profile.Id == c.Value.AccountId)?.Snapshot?.ResetCredits?.FirstOrDefault(x => x.Id == c.Value.CreditId)?.ExpiresAt,
+                        status = calendar.Link(c.Key)?.Status.ToString() ?? "Missing", link = calendar.Link(c.Key)?.HtmlLink
+                    }).OrderBy(r => r.expiresAt)
+                };
         }
         var request = Read<ChangeRequest>(args);
         request = request with { RequestId = Guid.ParseExact(request.RequestId, "D").ToString("D") };
@@ -113,10 +128,36 @@ internal sealed class TrackerControl : IDisposable
                 if (provider is not ("twilio" or "sendgrid")) throw new ArgumentException("Connecteur inconnu.");
                 run = () => { var secrets = _window.Reminders.Secrets.Read(); _commands.SaveSecrets(provider == "twilio" ? secrets with { Twilio = new() } : secrets with { SendGrid = new() }); return Task.FromResult("Identifiants supprimés ; canal désactivé."); };
                 summary = Loc.F("Supprimer les identifiants {0}", provider); break;
+            case "google_connect":
+                var mail = Read<GoogleConnectQuery>(request.Value).Mail;
+                if (!_window.Calendar.IsAvailable) throw new InvalidOperationException("Google Agenda indisponible dans cette instance.");
+                // The Google consent page is the confirmation: nothing is granted until the user accepts it there.
+                run = () => { _window.StartGoogleConnection(mail); return Task.FromResult("Autorisation ouverte dans le navigateur de l’utilisateur ; suivre avec get_google_calendar."); };
+                summary = Loc.T("Connecter Google Agenda"); break;
+            case "google_disconnect":
+                run = async () => { await _window.Calendar.DisconnectAsync(); return "Google Agenda déconnecté ; les événements créés restent dans Google."; };
+                summary = Loc.T("Déconnecter Google Agenda"); break;
+            case "google_import":
+                var file = Read<PathQuery>(request.Value).Path;
+                if (!File.Exists(file) || new FileInfo(file).Length > 65_536) throw new ArgumentException("Fichier client introuvable ou trop grand.");
+                run = () => { _window.Calendar.ImportClient(File.ReadAllText(file)); return Task.FromResult("Client Google importé ; appeler connect_google_calendar."); };
+                summary = Loc.T("Importer un client Google"); break;
+            case "google_sync":
+                run = async () => { await _window.SyncCalendarAsync(); return _window.Calendar.Error ?? "Synchronisation terminée."; };
+                summary = Loc.T("Synchroniser Google Agenda"); break;
+            case "google_add":
+                var credit = Read<CreditQuery>(request.Value);
+                var account = state.Accounts.FirstOrDefault(a => a.Profile.Id == credit.AccountId) ?? throw new ArgumentException("Compte inconnu.");
+                var expires = account.Snapshot?.ResetCredits?.FirstOrDefault(c => c.Id == credit.CreditId)?.ExpiresAt ?? throw new ArgumentException("Reset en réserve inconnu ou sans date.");
+                run = async () => { await _window.AddCreditToCalendarAsync(GoogleCalendarSync.Key(credit.AccountId, credit.CreditId, expires), throwErrors: true); return "Événement présent dans Google Agenda."; };
+                summary = Loc.T("Ajouter un reset en réserve à Google Agenda"); break;
             case "test":
                 var channel = Read<TestQuery>(request.Value).Channel;
                 if (!Enum.IsDefined(channel)) throw new ArgumentException("Canal inconnu.");
-                confirm = channel != ReminderChannel.Windows;
+                // An email from the user's Gmail to the same address costs nothing and reaches nobody else: no local confirmation.
+                var gmailToSelf = channel == ReminderChannel.Email && _window.Calendar.CanMail &&
+                    !NotificationProviders.Configured(ReminderChannel.Email, _window.Reminders.Secrets.Read());
+                confirm = channel != ReminderChannel.Windows && !gmailToSelf;
                 summary = Loc.F("Envoyer un test {0}. Les frais éventuels sont facturés par votre prestataire.", channel) + Destinations() + "\n" + Loc.T("Message : test de rappel Codex Tracker. Les limites et heures silencieuses restent appliquées.");
                 run = async () => { var result = await _window.Reminders.TestAsync(channel, () => !_disposed && _preferences.Current.McpEnabled && _commands.Revision == revision); return $"{result.Status} · {result.Detail}"; }; break;
             default: throw new ArgumentException("Commande inconnue.");
@@ -184,9 +225,21 @@ internal sealed record ActionQuery(string RequestId);
 internal sealed record PageQuery(string Page);
 internal sealed record ProviderQuery(string Provider);
 internal sealed record TestQuery(ReminderChannel Channel);
+internal sealed record GoogleConnectQuery(bool Mail);
+internal sealed record PathQuery(string Path);
+internal sealed record CreditQuery(Guid AccountId, string CreditId);
 internal sealed record ChannelChange(string Provider, TwilioSettings? Twilio = null, SendGridSettings? SendGrid = null);
-internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Alert20, bool Alert10, bool Alert5, bool ResetNotifications, bool HoverPreview, int RefreshMinutes, bool AdaptiveRefresh)
+/// <summary>General settings. The calendar, email and credit notice switches are optional: omitted, they keep their value.</summary>
+internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Alert20, bool Alert10, bool Alert5, bool ResetNotifications, bool HoverPreview, int RefreshMinutes, bool AdaptiveRefresh,
+    bool? NewCreditNotifications = null, bool? ReserveAdviceNotifications = null, bool? ReserveMailAlerts = null, bool? GoogleCalendarAutoAdd = null, bool? CalendarSuggestionDismissed = null, bool? ForecastNotifications = null)
 {
-    internal static General From(TrackerPreferences p) => new(p.ThemeMode, p.SortMode, p.Alert20, p.Alert10, p.Alert5, p.ResetNotifications, p.HoverPreview, p.RefreshMinutes, p.AdaptiveRefresh);
-    internal TrackerPreferences Apply(TrackerPreferences p) => p with { ThemeMode = ThemeMode, SortMode = SortMode, Alert20 = Alert20, Alert10 = Alert10, Alert5 = Alert5, ResetNotifications = ResetNotifications, HoverPreview = HoverPreview, RefreshMinutes = RefreshMinutes, AdaptiveRefresh = AdaptiveRefresh };
+    internal static General From(TrackerPreferences p) => new(p.ThemeMode, p.SortMode, p.Alert20, p.Alert10, p.Alert5, p.ResetNotifications, p.HoverPreview, p.RefreshMinutes, p.AdaptiveRefresh,
+        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications);
+    internal TrackerPreferences Apply(TrackerPreferences p) => p with
+    {
+        ThemeMode = ThemeMode, SortMode = SortMode, Alert20 = Alert20, Alert10 = Alert10, Alert5 = Alert5, ResetNotifications = ResetNotifications, HoverPreview = HoverPreview, RefreshMinutes = RefreshMinutes, AdaptiveRefresh = AdaptiveRefresh,
+        NewCreditNotifications = NewCreditNotifications ?? p.NewCreditNotifications, ReserveAdviceNotifications = ReserveAdviceNotifications ?? p.ReserveAdviceNotifications,
+        ReserveMailAlerts = ReserveMailAlerts ?? p.ReserveMailAlerts, GoogleCalendarAutoAdd = GoogleCalendarAutoAdd ?? p.GoogleCalendarAutoAdd,
+        CalendarSuggestionDismissed = CalendarSuggestionDismissed ?? p.CalendarSuggestionDismissed, ForecastNotifications = ForecastNotifications ?? p.ForecastNotifications
+    };
 }

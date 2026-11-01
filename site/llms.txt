@@ -1,0 +1,34 @@
+# Codex Tracker
+
+> Free, open-source Windows 11 taskbar app that shows how much OpenAI Codex and Claude Code usage you have left: the 5-hour and weekly usage limits of every account, the exact reset time of each limit, banked Codex reset credits with their expiry, and reminders before resets or when a credit is about to be wasted. Local only: no account, no server, no password. MIT license. Current version: {{VERSION}}.
+
+Codex Tracker reads the quota data that the Codex and Claude apps already store on the PC (it never reads conversations or tokens and never switches accounts). It is an independent project, not affiliated with OpenAI or Anthropic. Interface in English or French.
+
+## What it does
+
+- Taskbar icon with the remaining percentage of the active Codex or Claude Code account; hover preview with both limits and the next reset.
+- Dashboard of all Codex and Claude Code accounts (personal and work), each with the age of its last reading; inactive accounts past their reset show as "probably refilled".
+- Reset list and week calendar; banked Codex reset credits with expiry; manual declaration of a global Codex reset.
+- Notifications: before a reset, below 20/10/5 %, before running out, when a reset happened, when a new reset credit arrives, and advice to use a credit that would expire before the weekly refill.
+- Google Calendar sync of reset credits (added automatically, removed once used) and Gmail email alerts the day before a credit expires.
+- Optional SMS, phone call and email reminders through the user's own Twilio or SendGrid account.
+- Local MCP server (`CodexTracker.exe --mcp`, off by default) with 22 tools so coding agents can read quotas, resets and history, change preferences and reminder rules, connect Google Calendar and send test notifications.
+
+## Install
+
+- [Windows installer (latest)](https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe): no admin rights; updates itself.
+- [All releases, portable ZIP](https://github.com/Aleqsd/codex-tracker/releases)
+
+## Docs
+
+- [Home page](https://codex-tracker.zqsdev.com/)
+- [Source code and README (French)](https://github.com/Aleqsd/codex-tracker)
+- [User guide (French)](https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md)
+- [MCP server for coding assistants](https://github.com/Aleqsd/codex-tracker/blob/main/docs/MCP.md)
+- [Claude Code sources and limits](https://github.com/Aleqsd/codex-tracker/blob/main/docs/CLAUDE-CODE.md)
+- [Privacy policy](https://codex-tracker.zqsdev.com/privacy/)
+
+## Optional
+
+- [Architecture](https://github.com/Aleqsd/codex-tracker/blob/main/docs/ARCHITECTURE.md)
+- [French home page](https://codex-tracker.zqsdev.com/fr/)

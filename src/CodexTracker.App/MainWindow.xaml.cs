@@ -107,8 +107,14 @@ public partial class MainWindow : Window
         _settings?.RefreshHealth();
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() => { UpdateModel(); _ = SyncCalendarAsync(); });
-    private Task SyncCalendarAsync() => _canClose || _demo || _preferences.RecoveryRequired ? Task.CompletedTask
+    internal Task SyncCalendarAsync() => _canClose || _demo || _preferences.RecoveryRequired ? Task.CompletedTask
         : Calendar.SyncAsync(_service.State, _preferences.Current.GoogleCalendarAutoAdd, CalendarName);
+    /// <summary>Opens the Google consent in the browser (from the MCP); the outcome shows in the calendar state.</summary>
+    internal async void StartGoogleConnection(bool mail)
+    {
+        try { await Calendar.ConnectAsync(mail: mail); await SyncCalendarAsync(); }
+        catch (Exception error) when (error is Codex.GoogleCalendarException or InvalidOperationException or IOException or System.Net.Sockets.SocketException or System.ComponentModel.Win32Exception or OperationCanceledException) { }
+    }
     /// <summary>Reset credits still held, as the events the calendar should contain.</summary>
     internal IReadOnlyList<CalendarEntry> CalendarCredits() => GoogleCalendarSync.Credits(_service.State, PreviewClock.UtcNow, CalendarName).ToArray();
     private string CalendarName(AccountProfile profile) => PrivacyText.ContextualAccount(profile, _service.State, _preferences.Current);

@@ -64,7 +64,9 @@ class Client:
 try:
     a = Client()
     names = {t["name"] for t in a.rpc("tools/list", {})["tools"]}
-    check(len(names) == 16, "16 typed MCP tools discovered")
+    check(len(names) == 22, "22 typed MCP tools discovered")
+    google = a.tool("get_google_calendar")["result"]
+    check("connected" in google and "reserves" in google and "token" not in json.dumps(google).lower(), "Google calendar state readable without tokens")
     status = a.tool("get_status")["result"]
     check(bool(status["revision"]), "cold background startup responds with revision")
     check(len(a.tool("list_accounts")["result"]["accounts"]) > 0, "fictional accounts readable")
