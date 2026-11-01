@@ -417,5 +417,6 @@ internal static partial class EnglishApp
         ("+{0} autre alerte", "+{0} more alert"),
         ("Pastille à l’écran", "On-screen pill"),
         ("Au-dessus de l’horloge, seulement quand un compte utilisé passe sous 10 % ou qu’un reset en réserve expire dans les 24 h. Visible même en mode Ne pas déranger ; « Masquer » la retire jusqu’à la prochaine alerte.", "Above the clock, only when an account in use drops below 10 % or a reset credit expires within 24 h. Visible even in Do Not Disturb mode; “Hide” removes it until the next alert."),
+        ("Installée depuis le Microsoft Store : les mises à jour arrivent par le Store.", "Installed from the Microsoft Store: updates arrive through the Store."),
     ];
 }

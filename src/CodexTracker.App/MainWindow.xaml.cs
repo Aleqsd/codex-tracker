@@ -391,7 +391,7 @@ internal static class StartupSettings
     public static void SetEnabled(bool enabled)
     {
         using var key = Registry.CurrentUser.CreateSubKey(KeyPath);
-        if (enabled) key.SetValue(ValueName, $"\"{Environment.ProcessPath}\" --background");
+        if (enabled) key.SetValue(ValueName, $"\"{AppPackage.LaunchPath}\" --background");
         else key.DeleteValue(ValueName, false);
     }
 }

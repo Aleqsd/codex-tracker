@@ -12,13 +12,18 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<div class="wrap narrow">
-  <header class="top">
-    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
-    <nav class="top" aria-label="Main"><a href="/">Home</a><a href="/fr/confidentialite/" hreflang="fr" lang="fr">Français</a></nav>
-  </header>
-  <main class="prose">
-    <h1 style="font-size:36px;margin-top:24px">Privacy policy</h1>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap narrow site-header">
+  <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+  <nav class="links" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/guides/">Guides</a>
+    <a href="/fr/confidentialite/" hreflang="fr" lang="fr">Français</a>
+  </nav>
+</header>
+
+<main id="main" class="wrap narrow article prose">
+    <h1>Privacy policy</h1>
     <p>Last updated: {{DATE}}. Codex Tracker is a free, open-source Windows application published by Alexandre Do-O Almeida. It has no server and no user account: the developer receives none of your data.</p>
 
     <h2>Data read on your PC</h2>
@@ -43,6 +48,7 @@
       <li>Public reset announcements, if enabled (can be turned off).</li>
       <li>Google APIs, only if you connect Google.</li>
       <li>Twilio or SendGrid, only if you configure them with your own account for SMS, calls or emails.</li>
+      <li>This website uses Cloudflare Web Analytics to count visits: no cookie, no personal profile, nothing linked to the app.</li>
       <li>An ntfy server (ntfy.sh by default), only if you turn on phone notifications: it receives the notification text (account name, time) on a random topic you keep secret.</li>
     </ul>
 
@@ -52,7 +58,27 @@
     <h2>Contact</h2>
     <p>Questions or requests: open an issue on <a href="https://github.com/Aleqsd/codex-tracker/issues">GitHub</a>. The detailed technical description is in the repository’s <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/PRIVACY.md">privacy notes</a>.</p>
   </main>
-</div>
-<footer><div class="wrap narrow"><span>© 2026 Codex Tracker · Independent, not affiliated with OpenAI, Anthropic or Google</span><span><a href="/">Home</a></span></div></footer>
+
+<footer class="site-footer">
+  <div class="wrap narrow">
+    <div>
+      <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+      <p>Independent project, not affiliated with OpenAI, Anthropic or Google. Codex and Claude are trademarks of their respective owners.</p>
+      <p>© 2026 Codex Tracker. Open source, MIT license.</p>
+    </div>
+    <nav aria-label="Footer">
+      <ul>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/releases">Releases</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></li>
+        <li><a href="/guides/">Guides</a></li>
+        <li><a href="/install/">Install guide</a></li>
+        <li><a href="/privacy/">Privacy</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></li>
+        <li><a href="/fr/" hreflang="fr" lang="fr">Français</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
 </body>
 </html>

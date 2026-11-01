@@ -98,7 +98,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         var copyClaude = new Button { Content = Loc.T("Copier le réglage Claude Code"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 12), IsEnabled = !demo };
         copyClaude.Click += (_, _) =>
         {
-            try { System.Windows.Clipboard.SetText(Codex.ClaudeCodeObservations.Configuration(Environment.ProcessPath!)); copyClaude.Content = Loc.T("Réglage copié"); }
+            try { System.Windows.Clipboard.SetText(Codex.ClaudeCodeObservations.Configuration(AppPackage.LaunchPath)); copyClaude.Content = Loc.T("Réglage copié"); }
             catch (Exception) { ShowError(Loc.T("Le presse-papiers est indisponible. Réessayez.")); }
         };
         claude.Children.Add(copyClaude);
@@ -167,11 +167,11 @@ internal sealed class SettingsView : UserControl, IDisposable
         Section(Loc.T("Mises à jour"));
         var version = Ui.Text(_updates.CurrentVersion, 13); version.FontWeight = FontWeights.Medium;
         Row(Labelled(Loc.T("Version installée"), version));
-        Toggle(Loc.T("Télécharger automatiquement les mises à jour"), Loc.T("Recherche au démarrage puis toutes les 15 minutes sur GitHub. Le suivi continue pendant le téléchargement."),
+        var autoDownload = Toggle(Loc.T("Télécharger automatiquement les mises à jour"), Loc.T("Recherche au démarrage puis toutes les 15 minutes sur GitHub. Le suivi continue pendant le téléchargement."),
             p => p.DownloadUpdatesAutomatically, (p, value) => p with { DownloadUpdatesAutomatically = value });
-        Toggle(Loc.T("Installer au prochain démarrage du tracker"), Loc.T("Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation."),
+        var autoInstall = Toggle(Loc.T("Installer au prochain démarrage du tracker"), Loc.T("Installe une version déjà téléchargée et vérifiée. Aucune fermeture automatique pendant votre utilisation."),
             p => p.InstallUpdatesAtStartup, (p, value) => p with { InstallUpdatesAtStartup = value });
-        Toggle(Loc.T("Recevoir aussi les préversions"), Loc.T("Désactivé : versions stables uniquement. Activez pour essayer les versions bêta avant leur validation complète."),
+        var prereleases = Toggle(Loc.T("Recevoir aussi les préversions"), Loc.T("Désactivé : versions stables uniquement. Activez pour essayer les versions bêta avant leur validation complète."),
             p => p.IncludePrereleaseUpdates, (p, value) => p with { IncludePrereleaseUpdates = value });
         var lastUpdate = demo ? null : updates.ReadLastResult();
         var status = Block();
@@ -188,6 +188,13 @@ internal sealed class SettingsView : UserControl, IDisposable
             catch (Exception error) { ShowError(error.Message); }
         };
         status.Children.Add(releases);
+        if (AppPackage.IsPackaged)
+        {
+            // The Store installs its own updates: no download, installation or prerelease choice here.
+            foreach (var toggle in new[] { autoDownload, autoInstall, prereleases }) if (toggle.Parent is FrameworkElement row) row.Visibility = Visibility.Collapsed;
+            _updateStatus.Text = Loc.T("Installée depuis le Microsoft Store : les mises à jour arrivent par le Store.");
+            _check.Visibility = Visibility.Collapsed; _automaticStatus.Visibility = Visibility.Collapsed;
+        }
         if (!demo && updates.ReadLatestCheck() is { } cached)
         {
             ShowCheckResult(cached);
@@ -341,7 +348,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         if (_closed) return;
         if (_demo) { _claudeStatus.Visibility = Visibility.Collapsed; return; }
         var location = Codex.ClaudeCodeLocation.Resolve(Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR"), Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-        var status = new Codex.ClaudeCodeObservations(_preferences.DataDirectory, location).ReadStatus(Environment.ProcessPath!);
+        var status = new Codex.ClaudeCodeObservations(_preferences.DataDirectory, location).ReadStatus(AppPackage.LaunchPath);
         var stale = status.LastReading is { } last && DateTimeOffset.UtcNow - last > TimeSpan.FromDays(7);
         _claudeStatus.Text = status.LastReading is { } reading
             ? Loc.F("Relevés du terminal actifs · dernier le {0}", reading.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Loc.Culture)) +

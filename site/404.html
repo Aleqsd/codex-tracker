@@ -9,12 +9,14 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<div class="wrap narrow">
-  <main class="hero">
-    <h1>Page not found</h1>
-    <p class="lead">This page does not exist. Page introuvable.</p>
-    <div class="actions"><a class="button primary" href="/">Codex Tracker</a><a class="button" href="/fr/">Version française</a></div>
-  </main>
-</div>
+<header class="wrap narrow site-header">
+  <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+</header>
+<main class="wrap narrow lost">
+  <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50" fill="none" stroke-width="10"/><text x="60" y="61" text-anchor="middle" dominant-baseline="central">--</text></svg>
+  <h1>Page not found</h1>
+  <p class="lead">This page does not exist. <span lang="fr">Page introuvable.</span></p>
+  <div class="actions"><a class="btn btn-primary" href="/">Codex Tracker</a><a class="btn" href="/fr/" hreflang="fr" lang="fr">Version française</a><a class="btn" href="/guides/">Guides</a></div>
+</main>
 </body>
 </html>

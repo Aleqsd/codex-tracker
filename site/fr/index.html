@@ -47,24 +47,138 @@
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Windows 11 x64",
       "softwareVersion": "{{VERSION}}",
-      "inLanguage": ["fr", "en"],
+      "inLanguage": [
+        "fr",
+        "en"
+      ],
       "isAccessibleForFree": true,
       "license": "https://opensource.org/licenses/MIT",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
       "downloadUrl": "https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe",
       "codeRepository": "https://github.com/Aleqsd/codex-tracker",
       "screenshot": "https://codex-tracker.zqsdev.com/img/hero.png",
-      "author": { "@type": "Person", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" }
+      "author": {
+        "@id": "https://codex-tracker.zqsdev.com/#author"
+      },
+      "url": "https://codex-tracker.zqsdev.com/",
+      "sameAs": [
+        "https://github.com/Aleqsd/codex-tracker"
+      ],
+      "publisher": {
+        "@id": "https://codex-tracker.zqsdev.com/#org"
+      }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://codex-tracker.zqsdev.com/#org",
+      "name": "Codex Tracker",
+      "url": "https://codex-tracker.zqsdev.com/",
+      "logo": "https://codex-tracker.zqsdev.com/icon.png",
+      "sameAs": [
+        "https://github.com/Aleqsd/codex-tracker"
+      ],
+      "founder": {
+        "@id": "https://codex-tracker.zqsdev.com/#author"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://codex-tracker.zqsdev.com/#author",
+      "name": "Alexandre Do-O Almeida",
+      "url": "https://github.com/Aleqsd",
+      "sameAs": [
+        "https://github.com/Aleqsd"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://codex-tracker.zqsdev.com/#site",
+      "url": "https://codex-tracker.zqsdev.com/",
+      "name": "Codex Tracker",
+      "inLanguage": [
+        "en",
+        "fr",
+        "es",
+        "de",
+        "pt-BR",
+        "ja"
+      ],
+      "publisher": {
+        "@id": "https://codex-tracker.zqsdev.com/#org"
+      }
     },
     {
       "@type": "FAQPage",
       "inLanguage": "fr",
       "mainEntity": [
-        { "@type": "Question", "name": "Comment savoir combien il me reste de Codex ?", "acceptedAnswer": { "@type": "Answer", "text": "Installez Codex Tracker et utilisez Codex comme d’habitude. L’icône de la barre des tâches affiche le pourcentage restant du compte actif ; survolez-la pour les limites sur 5 heures et à la semaine et l’heure du prochain reset." } },
-        { "@type": "Question", "name": "Quand se recharge mon quota hebdomadaire Codex ?", "acceptedAnswer": { "@type": "Answer", "text": "Chaque compte a sa propre heure de reset. Codex Tracker la lit dans Codex et affiche la date et l’heure exactes pour chaque compte, avec un rappel si vous le souhaitez." } },
-        { "@type": "Question", "name": "Est-ce compatible avec Claude Code ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. L’application Claude est détectée automatiquement. Pour Claude Code dans le terminal, copiez le réglage proposé dans Réglages → Général → Claude Code." } },
-        { "@type": "Question", "name": "Qu’est-ce qu’un reset en réserve Codex ?", "acceptedAnswer": { "@type": "Answer", "text": "Codex peut accorder des resets en réserve qui rechargent une limite à la demande et expirent après un temps. Codex Tracker les liste avec leur expiration, vous prévient à leur arrivée, les ajoute à Google Agenda et conseille de les utiliser avant qu’ils soient perdus." } },
-        { "@type": "Question", "name": "Codex Tracker est-il gratuit et privé ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, gratuit et open source (MIT). Pas d’inscription ni de serveur : il lit les quotas que Codex et Claude connaissent déjà sur votre PC, jamais vos conversations ni vos mots de passe." } }
+        {
+          "@type": "Question",
+          "name": "Comment savoir combien il me reste de Codex ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Installez Codex Tracker et utilisez Codex comme d’habitude. L’icône de la barre des tâches affiche le pourcentage restant du compte actif ; survolez-la pour les limites sur 5 heures et à la semaine et l’heure du prochain reset."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quand se recharge mon quota hebdomadaire Codex ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Chaque compte a sa propre heure de reset. Codex Tracker la lit dans Codex et affiche la date et l’heure exactes pour chaque compte, avec un rappel si vous le souhaitez."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Est-ce compatible avec Claude Code ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui. L’application Claude est détectée automatiquement. Pour Claude Code dans le terminal, copiez le réglage proposé dans Réglages → Général → Claude Code."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Qu’est-ce qu’un reset en réserve Codex ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Codex peut accorder des resets en réserve qui rechargent une limite à la demande et expirent après un temps. Codex Tracker les liste avec leur expiration, vous prévient à leur arrivée, les ajoute à Google Agenda et conseille de les utiliser avant qu’ils soient perdus."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Pourquoi seul le compte ouvert est-il mis à jour ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Le tracker lit le compte actif dans Codex et dans Claude. Les autres comptes gardent leur dernier relevé daté jusqu’à ce que vous les rouvriez."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Faut-il laisser l’application ouverte ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Pour les rappels, oui : elle reste discrète dans la barre des tâches et peut démarrer avec Windows. Le PC doit être allumé."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Codex Tracker est-il gratuit et privé ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui, gratuit et open source (MIT). Pas d’inscription ni de serveur : il lit les quotas que Codex et Claude connaissent déjà sur votre PC, jamais vos conversations ni vos mots de passe. Seuls les SMS, appels et e-mails SendGrid facultatifs passent par vos propres comptes, à leurs tarifs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Est-ce affilié à OpenAI ou Anthropic ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Non, c’est un projet indépendant. Codex et Claude sont des marques de leurs propriétaires respectifs."
+          }
+        }
       ]
     }
   ]
@@ -72,102 +186,398 @@
 </script>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="brand" href="/fr/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
-    <nav class="top" aria-label="Principal">
-      <a href="#fonctions" class="hide-sm">Fonctions</a>
-      <a href="#faq" class="hide-sm">Questions</a>
-      <a href="https://github.com/Aleqsd/codex-tracker" class="hide-sm">GitHub</a>
-      <a href="/" hreflang="en" lang="en" title="English">EN</a>
-      <a href="/fr/" hreflang="fr" lang="fr" aria-current="page" title="Français">FR</a>
-      <a href="/es/" hreflang="es" lang="es" title="Español">ES</a>
-      <a href="/de/" hreflang="de" lang="de" title="Deutsch">DE</a>
-      <a href="/pt/" hreflang="pt-BR" lang="pt-BR" title="Português">PT</a>
-      <a href="/ja/" hreflang="ja" lang="ja" title="日本語">JA</a>
-    </nav>
-  </header>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="wrap site-header">
+  <a class="brand" href="/fr/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+  <nav class="links" aria-label="Principal">
+    <a class="opt" href="/install/" hreflang="en">Installer</a>
+    <a class="opt" href="#features">Fonctions</a>
+    <a class="opt" href="#faq">Questions</a>
+    <a class="opt" href="/guides/" hreflang="en">Guides (EN)</a>
+    <a class="opt" href="https://github.com/Aleqsd/codex-tracker">GitHub</a>
+  </nav>
+  <nav class="langs" aria-label="Langue">
+    <a href="/" hreflang="en" lang="en" title="English">EN</a>
+    <a href="/fr/" hreflang="fr" lang="fr" title="Français" aria-current="page">FR</a>
+    <a href="/es/" hreflang="es" lang="es" title="Español">ES</a>
+    <a href="/de/" hreflang="de" lang="de" title="Deutsch">DE</a>
+    <a href="/pt/" hreflang="pt-BR" lang="pt-BR" title="Português">PT</a>
+    <a href="/ja/" hreflang="ja" lang="ja" title="日本語">JA</a>
+  </nav>
+</header>
 
-  <main>
-    <section class="hero" style="border:0">
-      <span class="eyebrow">Gratuit · Windows 11 · Codex et Claude Code</span>
-      <h1>Sachez toujours combien il vous reste de Codex et de Claude Code</h1>
-      <p class="lead">Codex Tracker affiche vos limites sur 5 heures et à la semaine dans la barre des tâches Windows, l’heure exacte de chaque recharge, et vous prévient au bon moment. Sans compte, sans serveur, sans rien configurer.</p>
-      <div class="actions">
-        <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Télécharger pour Windows</a>
-        <a class="button" href="https://github.com/Aleqsd/codex-tracker">Voir sur GitHub</a>
+<main id="main">
+  <section class="hero" aria-labelledby="title">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="kicker"><img src="/icon.png" alt="" width="22" height="22">Codex Tracker pour Windows 11</p>
+        <h1 id="title">Sachez toujours combien il vous reste de Codex et de Claude Code</h1>
+        <p class="lead">Codex Tracker affiche vos limites sur 5 heures et à la semaine dans la barre des tâches Windows, l’heure exacte de chaque recharge, et vous prévient au bon moment. Sans compte, sans serveur, sans rien configurer.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>Télécharger pour Windows</a>
+          <a class="btn" href="https://github.com/Aleqsd/codex-tracker">Voir sur GitHub</a>
+        </div>
+        <p class="ask-line">Ou laissez Codex l’installer pour vous. <a href="#install">Voir comment</a></p>
+        <ul class="facts">
+          <li>Version {{VERSION}}</li>
+          <li>Windows 11 x64</li>
+          <li>Français ou English</li>
+          <li>Licence MIT</li>
+          <li>Gratuit</li>
+        </ul>
       </div>
-      <p class="meta">Version {{VERSION}} · Windows 11 x64 · Français ou English · Licence MIT</p>
-      <img class="shot" src="/img/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges et aperçu de la barre des tâches, comptes fictifs" width="1274" height="984" fetchpriority="high">
-    </section>
+      <div class="stage" role="img" aria-label="Exemple avec un compte fictif : l’aperçu de Codex Tracker au-dessus de la barre des tâches Windows, 72 % du quota de la semaine et 41 % du quota sur 5 heures restants, reset semaine jeudi à 14:00.">
+        <div class="flyout mock" aria-hidden="true">
+          <div class="flyout-title">Compte actif dans Codex</div>
+          <div class="flyout-account"><span>alex@example.com</span><span class="chip">Plus</span></div>
+          <div class="rings"><div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="43" fill="none" stroke-width="8"/><circle class="arc" cx="50" cy="50" r="43" fill="none" stroke-width="8" pathLength="100" stroke-dasharray="72 100"/></svg><b>72%</b><span>Semaine</span></div><div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="43" fill="none" stroke-width="8"/><circle class="arc" cx="50" cy="50" r="43" fill="none" stroke-width="8" pathLength="100" stroke-dasharray="41 100"/></svg><b>41%</b><span>5 heures</span></div></div>
+          <dl>
+            <div><dt>Reset semaine</dt><dd>jeu. 14:00<small>dans 2 j 14 h</small></dd></div>
+            <div><dt>Reset 5 h</dt><dd>16:40<small>dans 2 h 14 min</small></dd></div>
+            <div><dt>Resets en réserve</dt><dd>3</dd></div>
+          </dl>
+          <div class="fake-btn">Ouvrir le suivi</div>
+        </div>
+      </div>
+    </div>
+    <div class="taskbar" aria-hidden="true">
+      <div class="wrap">
+        <div class="tb-apps"><span class="tb-app start"><svg viewBox="0 0 20 20"><rect x="1" y="1" width="8.5" height="8.5" rx="1.5"/><rect x="10.5" y="1" width="8.5" height="8.5" rx="1.5"/><rect x="1" y="10.5" width="8.5" height="8.5" rx="1.5"/><rect x="10.5" y="10.5" width="8.5" height="8.5" rx="1.5"/></svg></span><span class="tb-app"><i></i></span><span class="tb-app open"><i></i></span><span class="tb-app open"><i></i></span><span class="tb-app"><i></i></span></div>
+        <div class="tb-tray">
+          <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></span>
+          <span class="tb-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><text x="16" y="14" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-size="16" font-weight="500" font-family="Roboto, sans-serif">72</text><path class="track" d="M6 26.5h20" stroke-width="2.5" stroke-linecap="round"/><path class="arc" d="M6 26.5h14.4" stroke-width="2.5" stroke-linecap="round"/></svg></span>
+          <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 6.2a9.5 9.5 0 0 1 13 0M3.8 8.6a6.2 6.2 0 0 1 8.4 0M6.1 11a3 3 0 0 1 3.8 0"/><circle cx="8" cy="13.2" r=".6" fill="currentColor"/></svg></span>
+          <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2 6h2.5L8 3v10L4.5 10H2z"/><path d="M10.5 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6.2 6.2 0 0 1 0 9"/></svg></span>
+          <span class="tb-clock">14:26<br>01/11/2026</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <section>
-      <h2>Les limites de Codex et Claude Code, enfin visibles</h2>
-      <p class="sub">OpenAI Codex et Claude Code limitent votre usage deux fois : sur <strong>5 heures</strong> et sur <strong>la semaine</strong>. Une fois épuisé, il faut attendre la recharge, et rien ne vous dit clairement où vous en êtes sur plusieurs comptes. Codex Tracker répond à trois questions d’un coup d’œil.</p>
-      <div class="grid">
-        <div class="card"><h3>Combien il me reste ?</h3><p>Le pourcentage s’affiche dans l’icône de la barre des tâches. Survolez-la pour les deux limites du compte actif.</p></div>
-        <div class="card"><h3>Quand ça se recharge ?</h3><p>L’heure exacte de chaque recharge, pour chaque compte, en liste ou sur la semaine.</p></div>
-        <div class="card"><h3>Quel compte utiliser ?</h3><p>Tous vos comptes Codex et Claude Code côte à côte, personnels comme professionnels, avec la date de leur dernier relevé.</p></div>
+  <section class="section" id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="install-title">L’installation la plus simple : demandez à Codex</h2>
+        <p class="sub">Trois façons d’installer, toutes gratuites. La plus rapide : laisser votre assistant de code s’en charger.</p>
       </div>
-    </section>
+      <div class="options">
+        <div class="option rec">
+          <div class="option-text"><div class="option-head"><h3>Demander à Codex</h3><span class="chip accent">Conseillé</span></div><p>Collez cette demande dans Codex, Claude Code ou tout autre assistant de code. Il suit le guide d’installation et met tout en place.</p></div>
+          <div class="option-action"><pre class="copy"><code>Installe Codex Tracker sur ce PC en suivant <span class="u">https://codex-tracker.zqsdev.com/install/</span></code></pre><p class="hint">Cliquez sur la ligne pour la sélectionner, puis copiez-la.</p></div>
+        </div>
+        <div class="option">
+          <div class="option-text"><div class="option-head"><h3>Une ligne PowerShell</h3></div><p>Vous préférez le terminal ? Une seule ligne installe la dernière version.</p></div>
+          <div class="option-action"><pre class="copy"><code>irm https://codex-tracker.zqsdev.com/install.ps1 | iex</code></pre><p class="hint">Cliquez sur la ligne pour la sélectionner, puis copiez-la.</p></div>
+        </div>
+        <div class="option">
+          <div class="option-text"><div class="option-head"><h3>Télécharger l’installateur</h3></div><p>La méthode classique : téléchargez-le et lancez-le. Pas de droits administrateur, rien d’autre à installer.</p></div>
+          <div class="option-action"><a class="btn btn-primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>Télécharger pour Windows</a><p class="hint">Version portable ZIP sur la <a href="https://github.com/Aleqsd/codex-tracker/releases">page des versions</a>. Les exécutables ne sont pas signés : SmartScreen peut avertir au premier lancement.</p></div>
+        </div>
+      </div>
+      <div class="after">
+        <h3>Ensuite</h3>
+        <ul class="ticks">
+          <li>Utilisez Codex ou Claude Code comme d’habitude. Le compte connecté apparaît tout seul ; vos autres comptes s’ajoutent quand vous les ouvrez.</li>
+          <li>Gardez l’icône visible en la glissant depuis la flèche ^ de la barre des tâches.</li>
+        </ul>
+        <p class="more"><a href="/install/" hreflang="en">Lire le guide d’installation (en anglais)</a></p>
+      </div>
+    </div>
+  </section>
 
-    <section id="fonctions">
-      <h2>Tout sur vos quotas, rien d’autre</h2>
-      <div class="split">
-        <div><h3>Vos comptes d’un coup d’œil</h3><p>Un anneau pour le compte actif, une barre pour les autres et l’ancienneté de chaque relevé. Après leur heure de recharge, les comptes inactifs s’affichent « probablement rechargés ».</p></div>
-        <img src="/img/dashboard.png" alt="Tableau de bord avec comptes Codex et Claude Code fictifs" loading="lazy" width="760" height="620">
-      </div>
-      <div class="split" style="margin-top:40px">
-        <img src="/img/resets-week.png" alt="Semaine des recharges et resets en réserve, comptes fictifs" loading="lazy" width="760" height="620">
-        <div><h3>Calendrier des recharges et resets en réserve</h3><p>Les prochaines recharges jour par jour, et vos resets Codex en réserve avec leur expiration. Une notification à l’arrivée d’un nouveau reset, et un conseil pour l’utiliser avant qu’il expire.</p></div>
-      </div>
-      <div class="split" style="margin-top:40px">
-        <div><h3>Google Agenda et Gmail en un clic</h3><p>Connectez Google Agenda : chaque reset en réserve y arrive avec ses rappels, et disparaît une fois utilisé. Un e-mail depuis votre Gmail la veille de son expiration.</p></div>
-        <img src="/img/calendar.png" alt="Réglages Google Agenda de Codex Tracker, données fictives" loading="lazy" width="870" height="900">
-      </div>
-      <div class="grid" style="margin-top:40px">
-        <div class="card"><h3>Des rappels utiles</h3><p>Avant une recharge, sous 20, 10 ou 5 %, avant d’être à court ou quand un autre compte peut s’être rechargé. Presque à court ? Il indique le compte à prendre. Notifications Windows, copiées gratuitement sur votre téléphone avec ntfy, et une pastille au-dessus de l’horloge quand vous êtes presque à court, même en mode Ne pas déranger ; SMS, appel ou e-mail avec votre compte Twilio ou SendGrid.</p></div>
-        <div class="card"><h3>Pour les assistants de code</h3><p>Un serveur MCP local, désactivé par défaut, permet à votre agent de lire les quotas, planifier autour des resets et changer les réglages, avec confirmation locale pour tout envoi externe. Les mêmes commandes existent en ligne de commande : <code>CodexTracker.exe --cli list_resets</code>.</p></div>
-        <div class="card"><h3>Discret et natif</h3><p>Clair ou sombre comme Windows, français ou anglais, démarre avec Windows, se met à jour seul.</p></div>
-      </div>
-    </section>
+  <section class="section" id="showcase" aria-labelledby="showcase-title">
+    <div class="wrap">
+      <h2 id="showcase-title" class="sr">Codex Tracker en images</h2>
+      <figure class="showcase">
+        <img src="/img/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges et aperçu de la barre des tâches, comptes fictifs" width="1274" height="984" loading="lazy" decoding="async">
+        <figcaption>L’application réelle, avec des comptes fictifs : tableau de bord, semaine des recharges et aperçu de la barre des tâches.</figcaption>
+      </figure>
+    </div>
+  </section>
 
-    <section>
-      <h2>Installer en trois étapes</h2>
-      <ol class="steps">
-        <li><strong>Téléchargez et lancez</strong> l’installateur. Pas de droits administrateur.</li>
-        <li><strong>Utilisez Codex ou Claude Code comme d’habitude.</strong> Le compte connecté apparaît tout seul.</li>
-        <li><strong>Gardez l’icône visible</strong> en la glissant depuis la flèche ^ de la barre des tâches.</li>
-      </ol>
-      <p>Version portable ZIP sur la <a href="https://github.com/Aleqsd/codex-tracker/releases">page des versions</a>. Les exécutables ne sont pas signés : SmartScreen peut avertir au premier lancement.</p>
-    </section>
-
-    <section>
-      <h2>Vos données restent chez vous</h2>
-      <div class="grid">
-        <div class="card"><h3>Ni inscription ni serveur</h3><p>Tout est enregistré sur votre PC ; les secrets facultatifs sont chiffrés avec DPAPI.</p></div>
-        <div class="card"><h3>Aucun mot de passe demandé</h3><p>Il lit les quotas que Codex et Claude connaissent déjà, jamais vos conversations.</p></div>
-        <div class="card"><h3>Peu de connexions, et choisies</h3><p>Mises à jour sur GitHub et annonces publiques de reset, facultatives. Google seulement si vous le connectez.</p></div>
+  <section class="section" id="problem" aria-labelledby="problem-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="problem-title">Les limites de Codex et Claude Code, enfin visibles</h2>
+        <p class="sub">OpenAI Codex et Claude Code limitent votre usage deux fois : sur <strong>5 heures</strong> et sur <strong>la semaine</strong>. Une fois épuisé, il faut attendre la recharge, et rien ne vous dit clairement où vous en êtes sur plusieurs comptes. Codex Tracker répond à trois questions d’un coup d’œil.</p>
       </div>
-      <p style="margin-top:20px"><a href="/fr/confidentialite/">Politique de confidentialité</a></p>
-    </section>
+      <div class="readouts">
+        <div class="readout">
+          <div class="gauge" aria-hidden="true">
+            <div class="big">72<small>%</small></div>
+            <div class="gauge-note"><span class="tray-mini"><svg viewBox="0 0 32 32" aria-hidden="true"><text x="16" y="14" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-size="16" font-weight="500" font-family="Roboto, sans-serif">72</text><path class="track" d="M6 26.5h20" stroke-width="2.5" stroke-linecap="round"/><path class="arc" d="M6 26.5h14.4" stroke-width="2.5" stroke-linecap="round"/></svg></span>restants cette semaine, dans la barre des tâches</div>
+          </div>
+          <h3>Combien il me reste ?</h3>
+          <p>Le pourcentage s’affiche dans l’icône de la barre des tâches. Survolez-la pour les deux limites du compte actif.</p>
+        </div>
+        <div class="readout">
+          <div class="gauge" aria-hidden="true">
+            <div class="big"><span class="day">jeu.</span>14:00</div>
+            <div class="week"><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+            <div class="gauge-note">Reset semaine dans 2 j 14 h</div>
+          </div>
+          <h3>Quand ça se recharge ?</h3>
+          <p>L’heure exacte de chaque recharge, pour chaque compte, en liste ou sur la semaine.</p>
+        </div>
+        <div class="readout">
+          <div class="gauge" aria-hidden="true">
+            <div class="accts">
+              <div class="acct best"><span>projets@example.com</span><b>93%</b><div class="bar"><i style="width:93%"></i></div></div>
+              <div class="acct"><span>alex@example.com</span><b>72%</b><div class="bar"><i style="width:72%"></i></div></div>
+              <div class="acct low"><span>work@example.com</span><b>6%</b><div class="bar"><i style="width:6%"></i></div></div>
+            </div>
+          </div>
+          <h3>Quel compte utiliser ?</h3>
+          <p>Tous vos comptes Codex et Claude Code côte à côte, personnels comme professionnels, avec la date de leur dernier relevé.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <section id="faq" class="faq">
-      <h2>Questions fréquentes</h2>
-      <details><summary>Comment savoir combien il me reste de Codex ?</summary><p>Installez Codex Tracker et utilisez Codex comme d’habitude. L’icône affiche le pourcentage restant du compte actif ; survolez-la pour les deux limites et l’heure du prochain reset.</p></details>
-      <details><summary>Quand se recharge mon quota hebdomadaire Codex ?</summary><p>Chaque compte a sa propre heure de reset. Codex Tracker la lit dans Codex et l’affiche pour chaque compte, avec un rappel si vous le souhaitez.</p></details>
-      <details><summary>Est-ce compatible avec Claude Code ?</summary><p>Oui. L’application Claude est détectée automatiquement ; pour le terminal, copiez le réglage proposé dans Réglages → Général → Claude Code.</p></details>
-      <details><summary>Qu’est-ce qu’un reset en réserve ?</summary><p>Codex peut accorder des resets en réserve qui rechargent une limite à la demande et expirent après un temps. Codex Tracker les suit, les ajoute à Google Agenda et conseille de les utiliser avant qu’ils soient perdus.</p></details>
-      <details><summary>Faut-il laisser l’application ouverte ?</summary><p>Pour les rappels, oui : elle reste discrète dans la barre des tâches et peut démarrer avec Windows.</p></details>
-      <details><summary>C’est payant ?</summary><p>Non, gratuit et open source (MIT). Seuls les SMS, appels et e-mails SendGrid facultatifs passent par vos propres comptes.</p></details>
-      <details><summary>Est-ce affilié à OpenAI ou Anthropic ?</summary><p>Non, c’est un projet indépendant. Codex et Claude sont des marques de leurs propriétaires respectifs.</p></details>
-    </section>
-  </main>
-</div>
-<footer>
+  <section class="section" id="tour" aria-labelledby="tour-title">
+    <div class="wrap tour">
+      <div class="section-head">
+        <h2 id="tour-title">Un tour rapide</h2>
+        <p class="sub">Comptes, semaine des recharges, rappels, thème clair et assistants, en douze secondes. Uniquement des comptes fictifs.</p>
+      </div>
+      <figure class="tour-frame">
+        <img src="/img/tour.gif" alt="Tour animé de Codex Tracker : comptes, semaine, recharges, rappels, thème clair et assistants, avec des comptes fictifs" width="760" height="660" loading="lazy" decoding="async">
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="features-title">Tout sur vos quotas, rien d’autre</h2>
+      </div>
+      <div class="feature">
+        <div class="feature-media"><img src="/img/dashboard.png" alt="Tableau de bord avec comptes Codex et Claude Code fictifs" loading="lazy" decoding="async" width="760" height="620"></div>
+        <div class="feature-text">
+          <h3>Vos comptes d’un coup d’œil</h3>
+          <p>Un anneau pour le compte actif, une barre pour les autres et l’ancienneté de chaque relevé. Les comptes inactifs gardent leur dernière valeur ; après leur heure de recharge, ils s’affichent « probablement rechargés ».</p>
+        </div>
+      </div>
+      <div class="pair">
+        <div class="plate"><div class="plate-media"><img src="/img/advice.png" alt="Tableau de bord indiquant un autre compte fictif à vérifier dans Codex" loading="lazy" decoding="async" width="760" height="620"></div><h3>Le compte à prendre, indiqué</h3><p>Quand le compte utilisé est à 10 % ou moins, les alertes et l’infobulle de l’icône nomment un autre compte du même outil avec au moins 30 % et 20 points de plus. Il ne change jamais de compte à votre place.</p></div>
+        <div class="plate"><div class="plate-media"><img src="/img/history.png" alt="Détails d’un compte fictif : quota de la semaine, resets en réserve, courbe du quota restant et estimation" loading="lazy" decoding="async" width="691" height="745"></div><h3>Détails et historique</h3><p>Chaque compte conserve jusqu’à 90 jours de relevés locaux. Retrouvez son quota restant sur 24 heures ou 7 jours, ses resets en réserve, sa période d’abonnement et une estimation prudente de son épuisement au rythme récent.</p></div>
+      </div>
+      <div class="feature flip" id="credits">
+        <div class="feature-media"><img src="/img/resets-week.png" alt="Semaine des recharges et resets en réserve, comptes fictifs" loading="lazy" decoding="async" width="760" height="620"></div>
+        <div class="feature-text">
+          <h3>Calendrier des recharges et resets en réserve</h3>
+          <p>Les prochaines recharges jour par jour, et vos resets Codex en réserve avec leur expiration. Une notification à l’arrivée d’un nouveau reset, et un conseil pour l’utiliser avant qu’il expire.</p>
+        </div>
+      </div>
+      <div class="pair">
+        <div class="plate"><div class="plate-media"><img src="/img/calendar.png" alt="Réglages Google Agenda de Codex Tracker, données fictives" loading="lazy" decoding="async" width="870" height="900"></div><h3>Google Agenda et Gmail en un clic</h3><p>Connectez Google Agenda : chaque reset en réserve y arrive avec ses rappels, et disparaît une fois utilisé. Un e-mail depuis votre Gmail la veille de son expiration.</p></div>
+        <div class="plate"><div class="plate-media"><img src="/img/tray-minimal.png" alt="Icône de la barre des tâches rendue de 16 à 32 pixels pour plusieurs valeurs, sur fond sombre et clair" loading="lazy" decoding="async" width="680" height="600"></div><h3>Lisible à toutes les tailles</h3><p>Le pourcentage et sa fine jauge sont dessinés à la taille exacte, au pixel près, de l’icône de votre barre des tâches, en clair comme en sombre. Survolez-la pour un aperçu, et cliquez sur un quota pour l’afficher dans l’icône. Vous utilisez les deux outils ? Une icône par outil.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="reminders" aria-labelledby="reminders-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="reminders-title">Des rappels là où vous les verrez</h2>
+        <p class="sub">Notifications Windows par défaut. Ajoutez votre téléphone, une pastille au-dessus de l’horloge, ou des SMS et appels si vous le souhaitez.</p>
+        <ul class="triggers" aria-label="Quand il vous prévient">
+          <li>Avant une recharge</li>
+          <li>Sous 20, 10 ou 5 %</li>
+          <li>Avant d’être à court</li>
+          <li>Quand un autre compte peut s’être rechargé</li>
+          <li>À l’arrivée d’un nouveau reset en réserve</li>
+        </ul>
+      </div>
+      <div class="surfaces">
+        <div class="surface">
+          <div class="scene" aria-hidden="true">
+            <div class="toast mock">
+              <div class="toast-app"><img src="/icon.png" alt="" width="16" height="16">Codex Tracker</div>
+              <b>Reset semaine dans 1 heure</b><span>alex@example.com, Codex, jeu. 14:00</span>
+            </div>
+          </div>
+          <h3>Notifications Windows</h3>
+          <p>Activées par défaut. Activez la cloche à côté d’une heure de reset pour être prévenu au moment choisi.</p>
+        </div>
+        <div class="surface">
+          <div class="scene" aria-hidden="true">
+            <div class="phone mock">
+              <div class="phone-time">13:00</div>
+              <div class="phone-dnd">dimanche 1 novembre</div>
+              <div class="phone-note"><small><span>ntfy</span><span>maintenant</span></small><b>Codex Tracker</b><span>work@example.com : il reste 10 % cette semaine</span></div>
+            </div>
+          </div>
+          <h3>Sur votre téléphone, gratuitement, avec ntfy</h3>
+          <p>Scannez un code QR avec l’application ntfy, sans compte. Chaque notification Windows est copiée sur votre téléphone, même en mode Ne pas déranger.</p>
+        </div>
+        <div class="surface">
+          <div class="scene" aria-hidden="true">
+            <div class="pill mock">
+              <div class="pill-head">work@example.com · Codex</div>
+              <p>Il reste 6 % cette semaine.</p>
+              <p class="advice">Passez sur projets@example.com : il lui reste 93 %.</p>
+              <div class="pill-actions"><span>Ouvrir</span><span>Masquer</span></div>
+              <div class="pill-foot"><span class="dot"></span>Codex, 6 %, recharge mer. 02:26</div>
+            </div>
+          </div>
+          <h3>Une pastille au-dessus de l’horloge</h3>
+          <p>Seulement quand un compte utilisé est à 10 % ou moins, ou qu’un reset en réserve expire dans les 24 heures. Elle reste visible en mode Ne pas déranger, se cache au-dessus d’une application en plein écran et indique le compte à prendre.</p>
+        </div>
+        <div class="surface">
+          <div class="scene" aria-hidden="true">
+            <div class="sms mock">
+              <div class="bubble"><small>SMS</small>work@example.com est à 5 % cette semaine.</div>
+              <div class="bubble mail"><small>E-mail</small>Un reset Codex en réserve expire demain.</div>
+            </div>
+          </div>
+          <h3>SMS, appel ou e-mail</h3>
+          <p>Facultatifs, avec votre propre compte Twilio ou SendGrid. Chaque service vous facture directement, à ses tarifs.</p>
+        </div>
+      </div>
+      <div class="duo">
+        <figure><img src="/img/reminders.png" alt="Réglages des rappels avec données fictives : reset hebdomadaire, reset 5 heures, expiration de réserve et seuils de quota" loading="lazy" decoding="async" width="760" height="620"><figcaption>Réglages → Rappels</figcaption></figure>
+        <figure><img src="/img/channels.png" alt="Réglages des canaux avec données fictives : test de notification Windows, Twilio et SendGrid" loading="lazy" decoding="async" width="760" height="620"><figcaption>Réglages → Canaux</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="agents" aria-labelledby="agents-title">
+    <div class="wrap agents">
+      <div>
+        <h2 id="agents-title">Pour les assistants de code</h2>
+        <p class="sub">Un serveur MCP local, désactivé par défaut, permet à votre agent de lire les quotas, planifier autour des resets et changer les réglages, avec confirmation locale pour tout envoi externe. Les mêmes commandes existent en ligne de commande, avec une sortie JSON.</p>
+        <ul class="prompts" aria-label="Exemples de demandes">
+          <li>Quels comptes ont encore du quota hebdomadaire ? Précise l’ancienneté des données.</li>
+          <li>Quels resets arrivent dans les trois prochains jours ?</li>
+          <li>Active les rappels Windows une heure avant les resets hebdomadaires.</li>
+        </ul>
+        <figure class="agents-shot"><img src="/img/assistants.png" alt="Réglages Assistants : accès MCP désactivé par défaut, avec un bouton pour copier la configuration" loading="lazy" decoding="async" width="760" height="620"><figcaption>Réglages → Assistants</figcaption></figure>
+      </div>
+      <div class="console">
+        <div class="console-bar" aria-hidden="true"><i></i><i></i><i></i><span>Codex Tracker</span></div>
+        <h3>Configuration du client MCP</h3>
+        <pre><code>{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"codex_tracker"</span>: {
+      <span class="k">"command"</span>: "C:\\Users\\Example\\AppData\\Local\\Programs\\CodexTracker\\CodexTracker.exe",
+      <span class="k">"args"</span>: ["--mcp"]
+    }
+  }
+}</code></pre>
+        <p>Réglages → Assistants copie cette configuration avec le chemin réel.</p>
+        <h3>Ligne de commande</h3>
+        <pre><code><span class="p">&gt; </span>CodexTracker.exe --cli list_resets
+<span class="p">&gt; </span>CodexTracker.exe --cli get_status
+<span class="p">&gt; </span>CodexTracker.exe --cli help</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="privacy" aria-labelledby="privacy-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="privacy-title">Vos données restent chez vous</h2>
+      </div>
+      <div class="pledges">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><h3>Ni inscription ni serveur</h3><p>Tout est enregistré sur votre PC. Les secrets facultatifs sont chiffrés avec DPAPI de Windows.</p></div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M3 3l18 18"/></svg><h3>Aucun mot de passe demandé</h3><p>Il lit les quotas que Codex et Claude connaissent déjà. Jamais vos conversations, et il ne change jamais de compte à votre place.</p></div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/></svg><h3>Peu de connexions, et choisies</h3><p>Mises à jour sur GitHub et annonces publiques de reset, facultatives toutes les deux. Google seulement si vous le connectez.</p></div>
+      </div>
+      <p class="more"><a href="/fr/confidentialite/">Lire la politique de confidentialité</a></p>
+    </div>
+  </section>
+
+  <section class="section" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="compare-title">Pourquoi ne pas simplement ouvrir la page d’usage ?</h2>
+      </div>
+      <div class="compare-wrap">
+        <table class="compare">
+          <thead><tr><td></td><th scope="col" class="us">Codex Tracker</th><th scope="col">Pages d’usage intégrées</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Toujours visible</th><td class="us" data-label="Codex Tracker">Pourcentage dans la barre des tâches</td><td data-label="Pages d’usage intégrées">Ouvrir une page ou lancer une commande</td></tr>
+            <tr><th scope="row">Plusieurs comptes</th><td class="us" data-label="Codex Tracker">Côte à côte, Codex et Claude Code</td><td data-label="Pages d’usage intégrées">Un seul compte connecté à la fois</td></tr>
+            <tr><th scope="row">Rappels de reset</th><td class="us" data-label="Codex Tracker">Windows, téléphone, Google Agenda, e-mail, SMS</td><td data-label="Pages d’usage intégrées">Aucun</td></tr>
+            <tr><th scope="row">Resets en réserve</th><td class="us" data-label="Codex Tracker">Expiration, alertes et conseil « utilisez-le maintenant »</td><td data-label="Pages d’usage intégrées">Simplement listés</td></tr>
+            <tr><th scope="row">Accès pour les agents</th><td class="us" data-label="Codex Tracker">Serveur MCP local et ligne de commande</td><td data-label="Pages d’usage intégrées">Aucun</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-layout">
+      <div class="section-head">
+        <h2 id="faq-title">Questions fréquentes</h2>
+        <p class="sub">Autre chose ? <a href="https://github.com/Aleqsd/codex-tracker/issues">Posez la question sur GitHub</a>.</p>
+      </div>
+      <div class="faq-list">
+        <details><summary>Comment savoir combien il me reste de Codex ?</summary><p>Installez Codex Tracker et utilisez Codex comme d’habitude. L’icône de la barre des tâches affiche le pourcentage restant du compte actif ; survolez-la pour les limites sur 5 heures et à la semaine et l’heure du prochain reset.</p></details>
+        <details><summary>Quand se recharge mon quota hebdomadaire Codex ?</summary><p>Chaque compte a sa propre heure de reset. Codex Tracker la lit dans Codex et affiche la date et l’heure exactes pour chaque compte, avec un rappel si vous le souhaitez.</p></details>
+        <details><summary>Est-ce compatible avec Claude Code ?</summary><p>Oui. L’application Claude est détectée automatiquement. Pour Claude Code dans le terminal, copiez le réglage proposé dans Réglages → Général → Claude Code.</p></details>
+        <details><summary>Qu’est-ce qu’un reset en réserve Codex ?</summary><p>Codex peut accorder des resets en réserve qui rechargent une limite à la demande et expirent après un temps. Codex Tracker les liste avec leur expiration, vous prévient à leur arrivée, les ajoute à Google Agenda et conseille de les utiliser avant qu’ils soient perdus.</p></details>
+        <details><summary>Pourquoi seul le compte ouvert est-il mis à jour ?</summary><p>Le tracker lit le compte actif dans Codex et dans Claude. Les autres comptes gardent leur dernier relevé daté jusqu’à ce que vous les rouvriez.</p></details>
+        <details><summary>Faut-il laisser l’application ouverte ?</summary><p>Pour les rappels, oui : elle reste discrète dans la barre des tâches et peut démarrer avec Windows. Le PC doit être allumé.</p></details>
+        <details><summary>Codex Tracker est-il gratuit et privé ?</summary><p>Oui, gratuit et open source (MIT). Pas d’inscription ni de serveur : il lit les quotas que Codex et Claude connaissent déjà sur votre PC, jamais vos conversations ni vos mots de passe. Seuls les SMS, appels et e-mails SendGrid facultatifs passent par vos propres comptes, à leurs tarifs.</p></details>
+        <details><summary>Est-ce affilié à OpenAI ou Anthropic ?</summary><p>Non, c’est un projet indépendant. Codex et Claude sont des marques de leurs propriétaires respectifs.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="guides" aria-labelledby="guides-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="guides-title">Comprendre les limites</h2>
+        <p class="sub">Comment fonctionne chaque limite, où voir ce qu’il reste et que faire une fois à court, vérifié dans la documentation officielle d’OpenAI et d’Anthropic. Guides en anglais.</p>
+      </div>
+      <ul class="guide-links">
+        <li><a href="/guides/codex-usage-limits/" hreflang="en"><h3>Limites d’usage de Codex</h3><p>Les fenêtres de 5 heures et de la semaine, comment voir ce qu’il reste et quand ça se recharge.</p><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a></li>
+        <li><a href="/guides/claude-code-usage-limits/" hreflang="en"><h3>Limites d’usage de Claude Code</h3><p>Les limites de session et de la semaine sur Pro et Max, et comment les surveiller.</p><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a></li>
+        <li><a href="/guides/codex-reset-credits/" hreflang="en"><h3>Resets Codex en réserve</h3><p>Ce que sont les resets en réserve, quand ils expirent et quand en utiliser un.</p><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <div class="final">
+        <div>
+          <h2 id="download-title">Gardez vos limites sous les yeux</h2>
+          <p class="sub">Gratuit pour Windows 11, en français ou en anglais, licence MIT. Sans compte ni serveur. Clair ou sombre comme Windows, démarre avec Windows et se met à jour seul.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>Télécharger pour Windows</a>
+            <a class="btn" href="https://github.com/Aleqsd/codex-tracker/releases">Toutes les versions</a>
+          </div>
+        </div>
+        <svg class="final-ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50" fill="none" stroke-width="10"/><circle class="arc" cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="72 100" transform="rotate(-90 60 60)"/><text x="60" y="61" text-anchor="middle" dominant-baseline="central">72%</text></svg>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
   <div class="wrap">
-    <span>© 2026 Codex Tracker · MIT · Projet indépendant, non affilié à OpenAI ni à Anthropic</span>
-    <span><a href="/fr/confidentialite/">Confidentialité</a> · <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md">Guide d’utilisation</a> · <a href="/guides/" hreflang="en">Guides (anglais)</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a> · <a href="/" hreflang="en">English</a></span>
+    <div>
+      <a class="brand" href="/fr/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+      <p>Projet indépendant, non affilié à OpenAI ni à Anthropic. Codex et Claude sont des marques de leurs propriétaires respectifs.</p>
+      <p>© 2026 Codex Tracker. Open source, licence MIT.</p>
+    </div>
+    <nav aria-label="Pied de page">
+      <ul>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Télécharger</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/releases">Versions</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></li>
+        <li><a href="/guides/" hreflang="en">Guides (anglais)</a></li>
+        <li><a href="/install/" hreflang="en">Guide d’installation (EN)</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md">Guide d’utilisation</a></li>
+        <li><a href="/fr/confidentialite/">Confidentialité</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></li>
+        <li><a href="/" hreflang="en" lang="en">English</a></li>
+      </ul>
+    </nav>
   </div>
 </footer>
 </body>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install Codex Tracker – ask Codex, or run one command</title>
+<meta name="description" content="Install Codex Tracker on Windows 11 in seconds: ask Codex (or any coding agent) to do it, run one PowerShell line, or download the installer. No admin rights, checked download.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/install/">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#101114">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="stylesheet" href="/styles.css">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Codex Tracker">
+<meta property="og:title" content="Install Codex Tracker – just ask Codex">
+<meta property="og:description" content="Paste one sentence into Codex and it installs Codex Tracker for you. Or run one PowerShell line.">
+<meta property="og:url" content="https://codex-tracker.zqsdev.com/install/">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HowTo",
+      "name": "Install Codex Tracker on Windows 11",
+      "description": "Install Codex Tracker by asking a coding agent such as Codex, or by running one PowerShell command.",
+      "totalTime": "PT1M",
+      "tool": [{ "@type": "HowToTool", "name": "Windows 11 (64-bit)" }],
+      "step": [
+        { "@type": "HowToStep", "name": "Ask Codex", "text": "Paste into Codex: Install Codex Tracker on this PC by following https://codex-tracker.zqsdev.com/install/" },
+        { "@type": "HowToStep", "name": "Or run one command", "text": "In PowerShell: irm https://codex-tracker.zqsdev.com/install.ps1 | iex" },
+        { "@type": "HowToStep", "name": "Keep the icon visible", "text": "Drag the Codex Tracker icon out of the taskbar's ^ overflow so its percentage stays visible." }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Codex Tracker", "item": "https://codex-tracker.zqsdev.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Install", "item": "https://codex-tracker.zqsdev.com/install/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top">
+    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Main"><a href="/">Home</a><a href="/guides/">Guides</a><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></nav>
+  </header>
+  <main class="prose">
+    <p><a href="/">Codex Tracker</a> › Install</p>
+    <h1>Install Codex Tracker</h1>
+    <p class="lead">The simplest way: ask your coding agent. Codex Tracker installs for the current Windows user in under a minute, with no admin rights.</p>
+
+    <h2 id="ask-codex">1. Ask Codex (recommended)</h2>
+    <p>Paste this sentence into Codex, Claude Code or any coding agent that can run commands on your PC:</p>
+    <pre><code>Install Codex Tracker on this PC by following https://codex-tracker.zqsdev.com/install/</code></pre>
+    <p>The agent reads this page, runs the installer command below and tells you when the icon is next to the clock. It may ask you to approve the command first.</p>
+
+    <h2 id="powershell">2. Or run one command</h2>
+    <p>In PowerShell (Windows 11, 64-bit):</p>
+    <pre><code>irm https://codex-tracker.zqsdev.com/install.ps1 | iex</code></pre>
+    <p>It downloads the latest release from GitHub, checks its SHA-256, installs it for your user only and starts it. <a href="/install.ps1">Read the script</a> before running it if you like.</p>
+
+    <h2 id="download">3. Or download the installer</h2>
+    <p><a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download Codex Tracker {{VERSION}}</a></p>
+    <p>A portable ZIP is on the <a href="https://github.com/Aleqsd/codex-tracker/releases">releases page</a>. The executables are not code-signed, so SmartScreen may warn on first launch: choose “More info → Run anyway”.</p>
+
+    <h2 id="after">After installing</h2>
+    <ul>
+      <li>Keep using Codex or Claude Code as usual: the signed-in account appears by itself.</li>
+      <li>Drag the icon out of the taskbar’s ^ overflow to keep the percentage visible.</li>
+      <li>Updates install themselves.</li>
+    </ul>
+
+    <section id="agents" aria-labelledby="agents-title">
+      <h2 id="agents-title">For AI coding agents</h2>
+      <p>You were asked to install Codex Tracker for the user. Follow these steps exactly and report the result.</p>
+      <ol>
+        <li>Check the machine runs Windows 11, 64-bit. Codex Tracker does not run on macOS or Linux; say so and stop.</li>
+        <li>Run, in a shell with network access (ask the user for approval if your sandbox requires it):
+          <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://codex-tracker.zqsdev.com/install.ps1 | iex"</code></pre>
+        </li>
+        <li>The command prints <code>Codex Tracker: version X installed and running</code> (or that it is already installed). Report the version to the user and tell them to drag the icon out of the taskbar’s ^ overflow.</li>
+        <li>Optional, only if the user wants their agent to read quotas: ask them to turn on <strong>Settings → Assistants</strong> in Codex Tracker (off by default; you cannot do it for them). Then register the MCP server, for example:
+          <pre><code>codex mcp add codex-tracker -- "%LOCALAPPDATA%\Programs\CodexTracker\CodexTracker.exe" --mcp
+claude mcp add codex-tracker -- "%LOCALAPPDATA%\Programs\CodexTracker\CodexTracker.exe" --mcp</code></pre>
+          The same commands also work without MCP: <code>"%LOCALAPPDATA%\Programs\CodexTracker\CodexTracker.exe" --cli help</code> (JSON output).</li>
+        <li>Do not change Codex or Claude settings, accounts or sessions. Codex Tracker only reads the quota data they already store.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+<footer><div class="wrap narrow"><span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span><span><a href="/privacy/">Privacy</a> · <a href="/">Home</a></span></div></footer>
+</body>
+</html>

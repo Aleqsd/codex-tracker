@@ -128,7 +128,8 @@ public sealed partial class UpdateService : IDisposable
             throw new IOException(Loc.T("La mise à jour n’est plus prête. Recherchez-la à nouveau."));
     }
 
-    public static bool CanSelfUpdate => Environment.ProcessPath is { } path &&
+    /// <summary>A classic single-file installation; never the Store package, which the Store updates.</summary>
+    public static bool CanSelfUpdate => !AppPackage.IsPackaged && Environment.ProcessPath is { } path &&
         string.Equals(Path.GetFileName(path), "CodexTracker.exe", StringComparison.OrdinalIgnoreCase) &&
         !File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "CodexTracker.dll"));
 

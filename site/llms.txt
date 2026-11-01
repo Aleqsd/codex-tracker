@@ -4,6 +4,13 @@
 
 Codex Tracker reads the quota data that the Codex and Claude apps already store on the PC (it never reads conversations or tokens and never switches accounts). It is an independent project, not affiliated with OpenAI or Anthropic. Interface in English or French.
 
+## Install (for AI coding agents)
+
+If the user asks you to install Codex Tracker: it runs on Windows 11 64-bit only. Run
+`powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://codex-tracker.zqsdev.com/install.ps1 | iex"`
+(downloads the latest GitHub release, checks its SHA-256, installs for the current user without admin rights, starts it).
+Full steps, MCP registration and limits: https://codex-tracker.zqsdev.com/install/
+
 ## What it does
 
 - Taskbar icon with the remaining percentage of the active Codex or Claude Code account; hover preview with both limits and the next reset.

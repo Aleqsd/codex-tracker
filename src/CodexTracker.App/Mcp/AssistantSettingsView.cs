@@ -20,7 +20,7 @@ internal static class AssistantSettingsView
         toggle.Click += (_, _) => { try { owner.Commands.SavePreferences(p => p with { McpEnabled = toggle.IsChecked == true }); Sync(); } catch { state.Text = Loc.T("Enregistrement impossible."); } };
         copy.Click += (_, _) =>
         {
-            try { System.Windows.Clipboard.SetText(JsonSerializer.Serialize(new { mcpServers = new { codex_tracker = new { command = Environment.ProcessPath, args = new[] { "--mcp" } } } }, new JsonSerializerOptions { WriteIndented = true })); state.Text = Loc.T("Configuration copiée."); }
+            try { System.Windows.Clipboard.SetText(JsonSerializer.Serialize(new { mcpServers = new { codex_tracker = new { command = AppPackage.LaunchPath, args = new[] { "--mcp" } } } }, new JsonSerializerOptions { WriteIndented = true })); state.Text = Loc.T("Configuration copiée."); }
             catch { state.Text = Loc.T("Presse-papiers indisponible."); }
         };
         timer.Tick += (_, _) => Sync(); panel.Loaded += (_, _) => { Sync(); timer.Start(); }; panel.Unloaded += (_, _) => timer.Stop(); Sync();

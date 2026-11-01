@@ -16,7 +16,11 @@ import xml.etree.ElementTree as ET
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIGIN = "https://codex-tracker.zqsdev.com"
 OUT = os.path.join(ROOT, "artifacts", "site")
-IMAGES = ["hero", "dashboard", "resets-week", "calendar", "social-preview"]
+# Cloudflare Web Analytics: no cookie, no personal data; the token only identifies the site (it is public in every page).
+ANALYTICS = ("<script defer src=\"https://static.cloudflareinsights.com/beacon.min.js\" "
+             "data-cf-beacon='{\"token\": \"4cd5319e0190490894e7c0748ee1495f\"}'></script>")
+IMAGES = ["hero.png", "dashboard.png", "resets-week.png", "calendar.png", "social-preview.png", "advice.png", "history.png",
+          "reminders.png", "channels.png", "assistants.png", "tray-minimal.png", "tour.gif"]
 # Translations of one page share their hreflang alternates; any other page is listed on its own.
 GROUPS = [
     {"en": "/", "fr": "/fr/", "es": "/es/", "de": "/de/", "pt-BR": "/pt/", "ja": "/ja/"},
@@ -49,11 +53,14 @@ def build():
                 path = os.path.join(folder, name)
                 with open(path, encoding="utf-8", newline="") as f:
                     text = f.read()
+                text = text.replace("{{VERSION}}", ver).replace("{{DATE}}", date)
+                if name.endswith(".html") and "</body>" in text:
+                    text = text.replace("</body>", ANALYTICS + "\n</body>", 1)
                 with open(path, "w", encoding="utf-8", newline="") as f:
-                    f.write(text.replace("{{VERSION}}", ver).replace("{{DATE}}", date))
+                    f.write(text)
     os.makedirs(os.path.join(OUT, "img"), exist_ok=True)
     for name in IMAGES:
-        shutil.copy(os.path.join(ROOT, "docs", name + ".png"), os.path.join(OUT, "img"))
+        shutil.copy(os.path.join(ROOT, "docs", name), os.path.join(OUT, "img"))
     fonts = os.path.join(ROOT, "src", "CodexTracker.App", "Assets", "Fonts")
     os.makedirs(os.path.join(OUT, "fonts"), exist_ok=True)
     for name in os.listdir(fonts):

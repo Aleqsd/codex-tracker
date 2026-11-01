@@ -21,17 +21,6 @@
 <meta property="og:image:alt" content="Codex Tracker dashboard with demo accounts, weekly reset calendar and taskbar preview">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<style>
-  .crumbs { font-size: 14px; color: var(--subtle); margin: 8px 0 0; }
-  .crumbs a { color: var(--muted); }
-  .prose h1 { font-size: clamp(30px, 4.6vw, 40px); margin: 18px 0 16px; max-width: none; }
-  .guides { grid-template-columns: 1fr; margin: 28px 0; }
-  .guides h2 { font-size: 21px; margin: 0 0 6px; }
-  .guides h2 a { text-decoration: none; }
-  .cta { margin: 36px 0 8px; }
-  .cta h2 { margin-top: 0; }
-  .cta p { margin: 0 0 16px; }
-</style>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -64,42 +53,64 @@
 </script>
 </head>
 <body>
-<div class="wrap narrow">
-  <header class="top">
-    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
-    <nav class="top" aria-label="Main"><a href="/">Home</a><a href="/guides/">Guides</a><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></nav>
-  </header>
-  <main class="prose">
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › Guides</nav>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap narrow site-header">
+  <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+  <nav class="links" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/install/">Install</a>
+    <a href="/guides/">Guides</a>
+    <a href="https://github.com/Aleqsd/codex-tracker">GitHub</a>
+  </nav>
+</header>
+
+<main id="main" class="wrap narrow article prose">
+    <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li aria-current="page">Guides</li></ol></nav>
     <h1>Codex and Claude Code usage limit guides</h1>
     <p>OpenAI Codex and Anthropic’s Claude Code both cap usage over a few hours and over the week. These guides explain how each limit works, where to see what is left and when it resets, and what to do when you run out. Each one is checked against the official OpenAI or Anthropic documentation and links to it.</p>
 
-    <div class="grid guides">
-      <div class="card">
+    <ul class="guide-cards">
+      <li>
         <h2><a href="/guides/codex-usage-limits/">Codex usage limits: 5-hour and weekly limits explained</a></h2>
         <p>The Codex allowances on each ChatGPT plan, how to check remaining usage and the reset time, and your options when you hit the limit.</p>
-      </div>
-      <div class="card">
+      </li>
+      <li>
         <h2><a href="/guides/claude-code-usage-limits/">Claude Code usage limits: 5-hour and weekly limits</a></h2>
         <p>The five-hour session limit and weekly limit on Pro, Max and Ultra, when they reset, and how to check them with <code>/usage</code> or the status line.</p>
-      </div>
-      <div class="card">
+      </li>
+      <li>
         <h2><a href="/guides/codex-reset-credits/">Codex reset credits: how banked resets work</a></h2>
         <p>What a banked Codex reset restores, when it expires, how to redeem it and when using one is worth it.</p>
-      </div>
-    </div>
+      </li>
+    </ul>
 
-    <div class="card cta">
+    <div class="cta">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50" fill="none" stroke-width="10"/><circle class="arc" cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="72 100" transform="rotate(-90 60 60)"/><text x="60" y="61" text-anchor="middle" dominant-baseline="central">72%</text></svg>
       <h2>Codex Tracker</h2>
       <p>A free, open-source Windows 11 app that shows your Codex and Claude Code limits in the taskbar, with every reset time and reminders. Independent, not affiliated with OpenAI or Anthropic.</p>
-      <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download Codex Tracker {{VERSION}}</a>
+      <a class="btn btn-primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>Download Codex Tracker {{VERSION}}</a>
     </div>
   </main>
-</div>
-<footer>
-  <div class="wrap">
-    <span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span>
-    <span><a href="/guides/">Guides</a> · <a href="/privacy/">Privacy</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></span>
+
+<footer class="site-footer">
+  <div class="wrap narrow">
+    <div>
+      <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+      <p>Independent project, not affiliated with OpenAI or Anthropic. Codex and Claude are trademarks of their respective owners.</p>
+      <p>© 2026 Codex Tracker. Open source, MIT license.</p>
+    </div>
+    <nav aria-label="Footer">
+      <ul>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/releases">Releases</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></li>
+        <li><a href="/guides/">Guides</a></li>
+        <li><a href="/install/">Install guide</a></li>
+        <li><a href="/privacy/">Privacy</a></li>
+        <li><a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></li>
+        <li><a href="/fr/" hreflang="fr" lang="fr">Français</a></li>
+      </ul>
+    </nav>
   </div>
 </footer>
 </body>
