@@ -7,6 +7,9 @@ Without -Publish, builds and verifies the artifacts under artifacts/ only.
 -Publish requires a clean tree, the commit pushed to origin/main, README links to this version
 and a notes file holding only the feature bullets: download links and the ZIP checksum are added here.
 Refuses to start while Final Fantasy XIV runs: the WPF suite activates real windows.
+-Quick skips the checks that the changes since the last release tag cannot affect: the WPF suite unless a view,
+the tray or XAML changed, the Claude collectors unless the Codex project changed, the MCP start delay unless Mcp/ changed.
+A change to the site, docs or scripts alone needs no release: scripts/site.ps1 -Deploy.
 The installer lifecycle needs a disposable Windows profile and is not run on this PC (docs/PUBLISHED-UPDATE-TEST.md).
 #>
 [CmdletBinding()]
@@ -19,6 +22,7 @@ param(
     [switch]$Publish,
     [string]$NotesPath,
     [switch]$UpdateThisPc,
+    [switch]$Quick,
     # Screen for the real WPF test windows: right (default), left, primary or DISPLAYn.
     [ValidatePattern('^(right|left|primary|DISPLAY\d+)$')]
     [string]$TestScreen
@@ -65,6 +69,22 @@ if ($Publish) {
         throw "README.md ne pointe pas encore vers v$Version."
     }
 }
+# -Quick: what changed since the last published tag decides which slow checks still run.
+$changed = @()
+$runUi = $runCollectors = $runStartDelay = $true
+if ($Quick) {
+    & git -C $root fetch --tags --quiet origin 2>$null
+    $lastTag = (& git -C $root describe --tags --abbrev=0 --match 'v*' HEAD~1 2>$null)
+    if ($LASTEXITCODE -or -not $lastTag) { Write-Host 'Aucun tag précédent : contrôles complets.' -ForegroundColor Yellow }
+    else {
+        $changed = @(Get-Git @('diff', '--name-only', $lastTag, 'HEAD'))
+        $runUi = [bool]($changed | Where-Object { $_ -match '^(src/CodexTracker\.App/.*(\.xaml|View[^/]*\.cs|Tray[^/]*\.cs|Ui[^/]*\.cs|Window[^/]*\.cs|Theme[^/]*\.cs)|tests/CodexTracker\.UiSmoke/)' })
+        $runCollectors = [bool]($changed | Where-Object { $_ -match '^(src/CodexTracker\.Codex/|scripts/test-claude\.py)' })
+        $runStartDelay = [bool]($changed | Where-Object { $_ -match '^(src/CodexTracker\.App/(Mcp/|EntryPoint\.cs)|scripts/test-mcp-startup\.ps1)' })
+        Write-Host ("Rapide depuis {0} : WPF {1}, collecteurs Claude {2}, délai MCP {3}." -f $lastTag,
+            ($runUi ? 'oui' : 'non'), ($runCollectors ? 'oui' : 'non'), ($runStartDelay ? 'oui' : 'non')) -ForegroundColor Yellow
+    }
+}
 # Restores rewrite lock files with SDK-specific sections; put back only those that were clean beforehand.
 $cleanLocks = @(Get-Git @('ls-files', '--', '*packages.lock.json') | Where-Object { -not (Get-Git @('status', '--porcelain', '--', $_)) })
 
@@ -85,7 +105,7 @@ try {
     }
     Invoke-Step 'Compilation' { & $Dotnet build CodexTracker.slnx -c Release --no-restore }
     Invoke-Step 'Tests métier' { & $Dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj -c Release --no-build }
-    Invoke-Step 'Suite WPF (données fictives)' { & $Dotnet run --project tests/CodexTracker.UiSmoke/CodexTracker.UiSmoke.csproj -c Release --no-build }
+    if ($runUi) { Invoke-Step 'Suite WPF (données fictives)' { & $Dotnet run --project tests/CodexTracker.UiSmoke/CodexTracker.UiSmoke.csproj -c Release --no-build } }
     Invoke-Step 'ZIP portable' { & ./scripts/publish.ps1 -Version $Version -Dotnet $Dotnet }
     Invoke-Step 'Installateur' { & ./scripts/build-installer.ps1 -Version $Version -InstallCompiler:$InstallCompiler }
     $setup = Join-Path $root "artifacts/CodexTracker-$Version-Setup.exe"
@@ -99,11 +119,12 @@ try {
     }
     $exe = Join-Path $root "artifacts/publish/$Version/CodexTracker.exe"
     Invoke-Step "MCP stdio sur l’exécutable publié" { & $Python scripts/test-mcp.py $exe }
-    Invoke-Step 'Collecteurs Claude Code publiés' { & $Python scripts/test-claude.py $exe }
-    Invoke-Step 'Délai de démarrage MCP' { & ./scripts/test-mcp-startup.ps1 -ExecutablePath $exe }
+    if ($runCollectors) { Invoke-Step 'Collecteurs Claude Code publiés' { & $Python scripts/test-claude.py $exe } }
+    if ($runStartDelay) { Invoke-Step 'Délai de démarrage MCP' { & ./scripts/test-mcp-startup.ps1 -ExecutablePath $exe } }
     $report = [ordered]@{ version = $Version; commit = $commit; uncommittedChanges = $uncommitted; builtAt = [DateTimeOffset]::UtcNow.ToString('o')
         durationSeconds = [int]$watch.Elapsed.TotalSeconds; sha256 = $hashes; published = $false
-        installerLifecycle = 'not run: requires a disposable Windows profile' }
+        installerLifecycle = 'not run: requires a disposable Windows profile'
+        skipped = @(if (-not $runUi) { 'wpf' }; if (-not $runCollectors) { 'claude-collectors' }; if (-not $runStartDelay) { 'mcp-start-delay' }) }
 
     if ($Publish) {
         $notes = Join-Path $root "artifacts/release-notes-$Version.md"
