@@ -1,10 +1,10 @@
 # Piloter le tracker avec un assistant
 
-1. Installer Codex Tracker 0.7.0 ou ultérieur.
+1. Installer la dernière version de Codex Tracker.
 2. Ouvrir **Réglages → Assistants**, puis activer l’accès MCP.
 3. Copier la configuration et l’ajouter au client MCP de votre assistant.
 
-Le bouton copie le chemin réel de l’exécutable, avec l’argument `--mcp`. Exemple fictif :
+Le bouton copie le chemin réel de l’exécutable, avec l’argument `--mcp` ; dans l’édition Microsoft Store, ce chemin est l’alias stable `%LOCALAPPDATA%\Microsoft\WindowsApps\codex-tracker.exe`. Exemple fictif :
 
 ```json
 {
@@ -46,13 +46,15 @@ Mêmes noms et paramètres que les outils MCP, en `clé=valeur` (valeurs `true`,
 
 Lecture : `get_status`, `list_accounts`, `list_resets`, `get_notification_history`, `get_preferences`, `get_reminder_rules`, `get_channels`, `get_action_status`, `get_google_calendar`.
 
-Actions : `refresh_active_account`, `open_page`, `update_preferences`, `update_phone_policy`, `update_reminder_rules`, `configure_channel`, `delete_credentials`, `test_notification`, `connect_google_calendar`, `disconnect_google_calendar`, `import_google_client`, `sync_google_calendar`, `add_reserve_to_calendar`.
+Actions : `refresh_active_account`, `open_page`, `update_preferences`, `update_phone_policy`, `update_reminder_rules`, `configure_channel`, `delete_credentials`, `test_notification`, `connect_google_calendar`, `disconnect_google_calendar`, `import_google_client`, `sync_google_calendar`, `add_reserve_to_calendar`, `set_tray_quota`, `set_start_with_windows`, `declare_codex_reset`, `set_reset_alert`, `rename_account`, `remove_account`.
+
+Interface et comptes : `update_preferences` couvre aussi la langue, l’icône par outil, la surveillance des annonces publiques, la pastille et les réglages de mise à jour (champs facultatifs, omis = inchangés) ; `get_preferences` renvoie en plus `startWithWindows`, `trayQuota`, `accountNames` et `resetAlerts`. `declare_codex_reset` prend une date passée (ou `null` pour annuler) ; `set_reset_alert` reprend `accountId`, `kind` et `at` exacts lus dans `list_resets` ; `remove_account` refuse le compte actif et demande toujours une confirmation dans le tracker. Restent dans l’interface : la photo d’un compte et l’export ou l’import de profil, qui portent sur des fichiers choisis par l’utilisateur.
 
 Google Agenda et Gmail : `get_google_calendar` donne l’état de connexion, l’adresse, l’envoi d’e-mails, le problème éventuel et chaque reset en réserve avec le statut de son événement (`Confirmed`, `Opened`, `Deleted`, `Used`, `Missing`) et son lien Google ; aucun jeton n’est renvoyé. `connect_google_calendar` ouvre l’autorisation Google dans le navigateur de l’utilisateur (`mail: true` ajoute l’envoi d’e-mails) : rien n’est accordé avant son accord sur la page Google ; relire ensuite `get_google_calendar`. `test_notification` avec `Email` passe par Gmail, vers l’adresse de l’utilisateur et sans confirmation locale, quand l’envoi Gmail est accordé et SendGrid non configuré. Téléphone : `configure_channel` avec `provider: "ntfy"` et `ntfy: { enabled, server, topic, token }` (sujet de 12 à 64 caractères, serveur https) ; l’activation demande une confirmation locale, le test (`test_notification` avec `Push`) non. `get_channels` ne renvoie ni le sujet ni le jeton. `get_status` liste aussi les situations de la pastille (`pill`) ; `update_preferences` accepte `screenPill` pour l’activer ou la couper, et `pushMirror` (copie de chaque notification Windows sur le téléphone). `update_preferences` accepte aussi en option `newCreditNotifications`, `reserveAdviceNotifications`, `reserveMailAlerts`, `googleCalendarAutoAdd`, `calendarSuggestionDismissed` et `forecastNotifications` ; omis, ils gardent leur valeur.
 
 Les mutations utilisent `expectedRevision`, obtenu par une lecture récente, et `requestId`, UUID conservé pour toute répétition de la même demande. Sur `revision_conflict`, relire et reconstruire l’action ; ne pas écraser aveuglément. Réutiliser un UUID avec des paramètres différents est refusé. Les réponses ont un objet `result` ou un code `error`.
 
-Les réglages généraux, règles et connecteurs sont remplacés explicitement ; récupérer l’état avant modification. Pour `configure_channel`, fournir seulement `twilio` ou `sendGrid`, avec `provider` correspondant. Omettre `enabled` le laisse à `false`. Les clés existantes ne sont jamais renvoyées : pour remplacer une configuration complète, fournir les identifiants nécessaires ou utiliser le formulaire local.
+Les réglages généraux, règles et connecteurs sont remplacés explicitement ; récupérer l’état avant modification. Pour `configure_channel`, fournir un seul de `twilio`, `sendGrid` ou `ntfy`, avec le `provider` correspondant. Omettre `enabled` le laisse à `false`. Les clés existantes ne sont jamais renvoyées : pour remplacer une configuration complète, fournir les identifiants nécessaires ou utiliser le formulaire local.
 
 ## Confidentialité et confirmations
 
@@ -66,4 +68,4 @@ Les données retournées sont transmises au client assistant et peuvent être tr
 
 Après une mise à jour ou la fermeture du tracker, reconnecter le serveur depuis le client assistant. Un nouveau processus MCP redémarrera le tracker si nécessaire.
 
-Le code courant distingue un échec de démarrage d’une fermeture normale : si le tracker ne termine pas sa connexion en 20 secondes, le pont sort avec le code 1 et explique sur la sortie d’erreur qu’il faut ouvrir le tracker puis reconnecter le client. Sa sortie standard reste réservée au protocole. Ce correctif est postérieur à la 0.9.2 publiée. `scripts/test-mcp-startup.ps1 -ExecutablePath <exe-publié>` le vérifie avec un canal de démonstration volontairement bloqué, sans lire de comptes ni modifier les réglages réels.
+Depuis la 0.9.3, le pont distingue un échec de démarrage d’une fermeture normale : si le tracker ne termine pas sa connexion en 20 secondes, le pont sort avec le code 1 et explique sur la sortie d’erreur qu’il faut ouvrir le tracker puis reconnecter le client. Sa sortie standard reste réservée au protocole. `scripts/test-mcp-startup.ps1 -ExecutablePath <exe-publié>` le vérifie avec un canal de démonstration volontairement bloqué, sans lire de comptes ni modifier les réglages réels.

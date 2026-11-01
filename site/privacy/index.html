@@ -27,10 +27,10 @@
     <p>Last updated: {{DATE}}. Codex Tracker is a free, open-source Windows application published by Alexandre Do-O Almeida. It has no server and no user account: the developer receives none of your data.</p>
 
     <h2>Data read on your PC</h2>
-    <p>To show your usage limits, Codex Tracker reads the quota information that Codex and Claude already store on your computer: the selected account’s identity (email, plan, organization) and its 5-hour and weekly limits, reset times and Codex reset credits. It never reads your conversations, code, passwords or authentication tokens, and never switches account or signs in for you.</p>
+    <p>To show your usage limits, Codex Tracker reads the quota information that Codex and Claude already store on your computer: the selected account’s identity (email, plan, organization) and its 5-hour and weekly limits, reset times and Codex reset credits. It never reads your conversations or code, never asks for a password, and never switches account or signs in for you. To read the active Codex account’s quota, it passes the current Codex access token, in memory only, to the Codex command-line tool installed on your PC, which asks OpenAI. It never stores this token or sends it anywhere else, and never uses Claude tokens.</p>
 
     <h2>Data stored</h2>
-    <p>Accounts, quota history, preferences and reminder journals are stored only in your Windows user profile. Optional secrets (Google refresh token, Twilio or SendGrid keys) are encrypted with Windows DPAPI for your Windows user. Uninstalling the app and deleting its folder removes them.</p>
+    <p>Accounts, quota history, preferences and reminder journals are stored only in your Windows user profile. Optional secrets (Google refresh token, ntfy topic, Twilio or SendGrid keys) are encrypted with Windows DPAPI for your Windows user. Uninstalling the app and deleting its folder removes them.</p>
 
     <h2>Google user data</h2>
     <p>Connecting Google is optional. When you click <strong>Connect Google Calendar</strong>, Google asks for your consent, and Codex Tracker requests only:</p>

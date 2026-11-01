@@ -1,6 +1,6 @@
 # Essai entre deux Releases publiques
 
-Cette recette vérifie une mise à niveau avec les exécutables publiés, sans compilation de remplacement ni API simulée. Elle accepte une source numérique depuis 0.8.4 et une cible strictement plus récente. Les preuves historiques **0.8.4 → 0.9.0** sont conservées dans VALIDATION.md ; modifier les versions ne constitue pas une nouvelle validation. Elle ne remplace pas un essai sur un autre PC physique.
+Cette recette vérifie une mise à niveau avec les exécutables publiés, sans compilation de remplacement ni API simulée. Elle accepte une source numérique depuis 0.8.4 et une cible strictement plus récente. Les preuves historiques **0.8.4 → 0.9.0** sont conservées dans [VALIDATION.md](VALIDATION.md) ; modifier les versions ne constitue pas une nouvelle validation. Elle ne remplace pas un essai sur un autre PC physique.
 
 ## Environnement obligatoire
 
@@ -20,11 +20,11 @@ Dans le profil de test uniquement :
 
 ```powershell
 ./scripts/test-published-update.ps1 -Run -DedicatedTestProfile `
-    -SourceVersion 0.9.1 -TargetVersion 0.9.2 -InstallMode Startup `
+    -SourceVersion 0.9.39 -TargetVersion 0.9.40 -InstallMode Startup `
     -ReportPath artifacts/published-update/result.json
 ```
 
-Pour le chemin du bouton, utiliser `-InstallMode Button` **dans un second environnement vierge**. Le script invoque le bouton WPF avec UI Automation ; il ne contourne pas le moteur de mise à jour. Aucun SMS, appel ou email n’est configuré ou envoyé. Les alertes Windows et rappels sont désactivés dans les préférences fictives.
+Sans `-SourceVersion` ni `-TargetVersion`, le script reprend la paire historique 0.9.1 → 0.9.2 : indiquer deux versions publiées récentes. Pour le chemin du bouton, utiliser `-InstallMode Button` **dans un second environnement vierge**. Le script invoque le bouton WPF avec UI Automation ; il ne contourne pas le moteur de mise à jour. Aucun SMS, appel ou email n’est configuré ou envoyé. Les alertes Windows et rappels sont désactivés dans les préférences fictives.
 
 Une cible déclarée préversion par GitHub exige `-IncludePrereleases`. Depuis la source 0.9.0, ce choix est appliqué aux préférences fictives et le script observe les vrais fichiers du canal stable ou préversion. Une version antérieure ne sait pas filtrer les canaux : son essai ne valide donc pas ce filtrage. Pour la future 1.0 stable, omettre l’option et indiquer les versions publiques voulues.
 

@@ -64,7 +64,7 @@ class Client:
 try:
     a = Client()
     names = {t["name"] for t in a.rpc("tools/list", {})["tools"]}
-    check(len(names) == 22, "22 typed MCP tools discovered")
+    check(len(names) == 28, "28 typed MCP tools discovered")
     google = a.tool("get_google_calendar")["result"]
     check("connected" in google and "reserves" in google and "token" not in json.dumps(google).lower(), "Google calendar state readable without tokens")
     status = a.tool("get_status")["result"]
@@ -80,6 +80,15 @@ try:
     check(code == 0 and json.loads(out)["result"]["status"] in ("completed", "pending"), "CLI change fetches the revision itself")
     code, out = cli("open_page", "page=Nope")
     check(code == 1 and "error" in json.loads(out), "CLI reports refusals with exit code 1")
+    accounts = a.tool("list_accounts")["result"]["accounts"]
+    inactive = next(x for x in accounts if not x["isActive"])
+    code, out = cli("rename_account", f"accountId={inactive['id']}", "name=Studio")
+    check(code == 0 and json.loads(out)["result"]["status"] == "completed", "CLI renames an account")
+    check(a.tool("get_preferences")["result"]["accountNames"].get(inactive["id"]) == "Studio", "account name readable back")
+    code, out = cli("set_tray_quota", "provider=Codex", "window=Short")
+    check(code == 0 and a.tool("get_preferences")["result"]["trayQuota"]["window"] == "Short", "tray quota chosen by command")
+    code, out = cli("remove_account", f"accountId={accounts[0]['id'] if accounts[0]['isActive'] else inactive['id']}")
+    check(code == 1 or json.loads(out)["result"]["status"] == "pending", "account removal is refused for the active account or waits for local confirmation")
     code, out = cli("unknown_command")
     check(code == 2, "CLI rejects unknown commands with exit code 2")
     check(len(a.tool("list_accounts")["result"]["accounts"]) > 0, "fictional accounts readable")

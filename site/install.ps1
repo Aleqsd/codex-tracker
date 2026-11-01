@@ -22,7 +22,6 @@ if (Test-Path $installed) {
 }
 
 $setup = $release.assets | Where-Object name -eq "CodexTracker-$version-Setup.exe"
-$sum = $release.assets | Where-Object name -eq "CodexTracker-$version-Setup.exe.sha256"
 if (-not $setup) { throw "No installer found in release $version." }
 $folder = Join-Path ([IO.Path]::GetTempPath()) ("codex-tracker-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $folder | Out-Null
@@ -30,9 +29,8 @@ try {
     $file = Join-Path $folder $setup.name
     Say "downloading $version..."
     Invoke-WebRequest $setup.browser_download_url -OutFile $file -UseBasicParsing
-    # GitHub computes each release asset's SHA-256 on upload; a .sha256 file is the fallback.
+    # GitHub computes each release asset's SHA-256 on upload.
     $expected = if ($setup.digest -match '^sha256:([0-9a-f]{64})$') { $Matches[1] }
-        elseif ($sum) { ((Invoke-RestMethod $sum.browser_download_url -Headers @{ 'User-Agent' = 'codex-tracker-install' }) -split '\s+')[0].ToLowerInvariant() }
     if (-not $expected) { throw 'No published SHA-256 for this installer: nothing was installed.' }
     $actual = (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($expected -ne $actual) { throw 'The download does not match the published SHA-256: nothing was installed.' }

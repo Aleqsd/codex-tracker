@@ -10,6 +10,14 @@
 
 ## À chaque version
 
+`scripts/release.ps1 -Publish` construit automatiquement le MSIX de la version. `scripts/build-msix.ps1` lit l’identité dans `%USERPROFILE%\.codex-tracker\store-identity.json` (hors dépôt) :
+
+```json
+{ "IdentityName": "<Name>", "Publisher": "<CN=...>", "PublisherDisplayName": "<nom affiché>" }
+```
+
+Appel manuel toujours possible avec ces valeurs en paramètres :
+
 ```powershell
 ./scripts/build-msix.ps1 -IdentityName '<Name>' -Publisher '<CN=...>' -PublisherDisplayName '<nom affiché>'
 ```
@@ -20,7 +28,7 @@ Envoyer `artifacts/CodexTracker-<version>.msix` dans **Packages** d’une nouvel
 
 - **Catégorie** : Outils de développement. **Prix** : gratuit. **Âge** : questionnaire IARC, aucun contenu sensible.
 - **Politique de confidentialité** : https://codex-tracker.zqsdev.com/privacy/ ; **site** : https://codex-tracker.zqsdev.com ; **support** : https://github.com/Aleqsd/codex-tracker/issues.
-- **Captures** (1366 × 768 ou plus, données fictives) : `docs/hero.png`, `docs/dashboard.png`, `docs/resets-week.png`, `docs/reminders.png`, `docs/calendar.png`, `docs/pill.png` ; régénérées par `scripts/visuals.ps1`.
+- **Captures** (1366 × 768 ou plus, données fictives) : à faire. Les images de `docs/` sont plus petites ; rendre des captures dédiées, par exemple `--demo --preview` à 144 ou 192 DPI, puis les recadrer.
 - **Mots-clés** : Codex, Claude Code, usage limit, quota, rate limit, reset, taskbar, MCP.
 
 **Description (en-US)**

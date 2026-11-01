@@ -3,7 +3,7 @@
 Le tracker peut signaler qu’un compte inactif est **probablement à 100 %** après une annonce publique de remise à zéro. Cela ne confirme jamais le quota réel d’un compte : il faut l’ouvrir dans Codex pour recevoir un nouveau relevé.
 
 - Vérification au démarrage puis toutes les **15 minutes** ; nouvel essai après 30 minutes en cas d’échec.
-- Notification Windows regroupée, dédupliquée dans le journal local. Elle suit **Prévenir après un reset**. Aucun nouveau SMS, appel ou email pour ces annonces.
+- Notification Windows regroupée, dédupliquée dans le journal local. Elle suit **Prévenir après un reset** et, si la copie est activée, arrive aussi sur le téléphone via ntfy. Aucun nouveau SMS, appel ou email pour ces annonces.
 - Estimation hebdomadaire limitée à **24 heures** après le message d’achèvement, et à 5 heures pour la fenêtre courte. Une nouvelle observation ou l’activation du compte dans Codex la retire immédiatement.
 - Les comptes Free ne sont pas concernés par une annonce réservée aux abonnements payants. Offre inconnue, fenêtre manquante, observation vieille de plus de 30 jours ou abonnement connu comme terminé : aucune estimation.
 - Les observations antérieures à l’annonce initiale sont seules admissibles. Un relevé reçu pendant le déploiement reste prioritaire.
@@ -22,7 +22,7 @@ Le tracker relit le texte original via **publish.x.com/oembed**, vérifie l’UR
 
 Seules quelques formulations explicites en anglais, nommant Codex, l’achèvement et les utilisateurs concernés, sont reconnues automatiquement. Une promesse, un crédit en réserve, une restriction ou une portée ambiguë ne suffisent pas. Une correction explicite ultérieure présente dans l’index suspend l’estimation. Ce mécanisme n’est pas un flux officiel exhaustif : omission, suppression, changement de formulation ou panne d’une source peuvent empêcher la détection.
 
-X oEmbed ne prouve pas le lien entre deux messages. Une confirmation vague ne récupère donc jamais automatiquement la portée d’un autre post proche. La version 0.9.5 contient une seule association relue ensemble : l’[annonce pour les utilisateurs payants du 26 septembre 2026](https://x.com/thsottiaux/status/2103637477760311522) et sa [confirmation d’achèvement](https://x.com/thsottiaux/status/2103911959544610829). Les deux originaux doivent rester vérifiables. Une future paire ambiguë nécessitera une nouvelle revue et une mise à jour ; les annonces autonomes reconnues sont détectées sans mise à jour.
+X oEmbed ne prouve pas le lien entre deux messages. Une confirmation vague ne récupère donc jamais automatiquement la portée d’un autre post proche. Le code contient (depuis la 0.9.5) une seule association relue ensemble : l’[annonce pour les utilisateurs payants du 26 septembre 2026](https://x.com/thsottiaux/status/2103637477760311522) et sa [confirmation d’achèvement](https://x.com/thsottiaux/status/2103911959544610829). Les deux originaux doivent rester vérifiables. Une future paire ambiguë nécessitera une nouvelle revue et une mise à jour ; les annonces autonomes reconnues sont détectées sans mise à jour.
 
 ## Données conservées
 

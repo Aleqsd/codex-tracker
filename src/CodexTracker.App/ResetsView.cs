@@ -441,8 +441,8 @@ internal sealed class ResetsView : UserControl
                 Loc.T("Événement prérempli ouvert dans le navigateur. Son enregistrement n’est vérifiable qu’avec Google Agenda connecté.")),
             Codex.CalendarLinkStatus.Deleted => (Loc.T("Supprimé de Google Agenda"), "WarningBrush",
                 Loc.T("L’événement n’existe plus dans Google Agenda ; il ne sera pas recréé automatiquement.")),
-            _ when !_calendar!.IsConnected => (status.Text, "MutedBrush", Loc.T("Connectez Google Agenda dans Réglages → Calendrier pour l’ajouter automatiquement.")),
-            _ => (Loc.T("Pas dans l’agenda"), "MutedBrush", _calendar!.IsConnected ? Loc.T("Pas encore ajouté à Google Agenda.") : Loc.T("Connectez Google Agenda dans Réglages → Calendrier pour l’ajouter automatiquement."))
+            _ when !_calendar!.IsConnected => (status.Text, "MutedBrush", Loc.T("Connectez Google Agenda dans Réglages → Google Agenda pour l’ajouter automatiquement.")),
+            _ => (Loc.T("Pas dans l’agenda"), "MutedBrush", _calendar!.IsConnected ? Loc.T("Pas encore ajouté à Google Agenda.") : Loc.T("Connectez Google Agenda dans Réglages → Google Agenda pour l’ajouter automatiquement."))
         };
         status.Text = text; status.SetResourceReference(TextBlock.ForegroundProperty, brush); status.ToolTip = hint; status.Tag = "CalendarStatus";
         ToolTipService.SetShowDuration(status, 60000);

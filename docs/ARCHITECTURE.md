@@ -2,7 +2,7 @@
 
 ## Flux principal
 
-Codex → collecteur passif → `TrackerState` → fenêtre et icône. Les données connues restent disponibles lorsque Codex est fermé ou qu’un relevé échoue.
+Codex et Claude Code → collecteurs passifs → `TrackerState` → fenêtre et icône. Les données connues restent disponibles lorsque l’outil est fermé ou qu’un relevé échoue.
 
 Le processus WPF possède les préférences, les identifiants DPAPI et le moteur de rappels. `ApplicationCommands` porte la validation et la révision partagées ; une modification des préférences ou des connecteurs change cette révision. Les formulaires ouverts refusent d’écraser une configuration modifiée ailleurs.
 
@@ -10,14 +10,18 @@ Assistant → MCP stdio → canal Windows privé → commandes du processus WPF.
 
 Le pont se connecte dès son démarrage, même si aucun outil n’est utilisé. La fermeture du tracker ferme les canaux et les processus MCP ; le client assistant doit alors se reconnecter. Le remplacement de l’exécutable attend au maximum dix secondes sa libération et abandonne sans remplacement si un verrou subsiste.
 
-Le repli des échéances courtes Claude (`ClaudeCodeNativeResetReader`) lit les annotations de quotas des erreurs du Code intégré. L’association Desktop compte/organisation/session et une version 2.1.x à partir de 2.1.293 sont obligatoires (2.1.293 et 2.1.295 écrivent ces annotations avec le même code ; une nouvelle version mineure ou majeure reste inconnue) ; le texte des messages est sauté. Ce collecteur ajoute seulement une échéance exacte encore valable, sans modifier l’heure d’observation des pourcentages. Les appels restent passifs, bornés et annulables ; aucune fenêtre ni CLI fournisseur n’est démarrée.
+Le repli des échéances courtes Claude (`ClaudeCodeNativeResetReader`) lit les annotations de quotas des erreurs du Code intégré. L’association Desktop compte/organisation/session et une version 2.1.x à partir de 2.1.293 sont obligatoires (2.1.293 et 2.1.295 écrivent ces annotations avec le même code ; une nouvelle version mineure ou majeure reste inconnue) ; le texte des messages est sauté. Ce collecteur ajoute seulement une échéance exacte encore valable, sans modifier l’heure d’observation des pourcentages. Lectures bornées à 16 sessions récentes par racine, 512 dossiers de projet, 512 Kio de fin de fichier et 64 Kio par enregistrement ; liens et écritures incomplètes restent indisponibles. Les appels restent passifs, bornés et annulables ; aucune fenêtre ni CLI fournisseur n’est démarrée.
 
 ## Ajouter un réglage
 
 1. Définir sa valeur par défaut et sa normalisation dans les préférences. Ne jamais modifier les valeurs existantes au chargement sans migration explicite.
 2. Ajouter sa validation à `ApplicationCommands` et utiliser celle-ci depuis le contrôle WPF.
-3. S’il est pilotable, étendre le DTO MCP explicite : ne pas exposer l’objet de préférences complet, qui contient aussi des chemins privés et des états internes.
+3. Le rendre pilotable par les assistants (obligatoire) : champ nullable du DTO `General` (`Mcp/TrackerControl.cs`, omis = inchangé) ou outil dédié dans `McpHost`, entrée de la table de `Mcp/Cli.cs`, compteur d’outils de `scripts/test-mcp.py` et [MCP.md](MCP.md). Ne jamais exposer l’objet de préférences complet, qui contient aussi des chemins privés et des états internes.
 4. Tester l’ancienne configuration, la valeur invalide et une modification concurrente.
+
+## Ligne de commande
+
+`--cli` (`Mcp/Cli.cs`) expose les mêmes outils que le MCP par le même canal local (`LocalClient`), avec un délai de 60 secondes et une sortie JSON. Codes de sortie : 0 succès, 1 erreur ou refus, 2 commande ou arguments invalides. Pour une modification, la révision est lue si `expectedRevision` manque et un `requestId` est généré. Usage : [MCP.md](MCP.md#ligne-de-commande).
 
 ## Ajouter une vue
 
@@ -43,6 +47,18 @@ Le journal des rappels conserve 30 jours et les clés nécessaires aux échéanc
 
 Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte Codex, ni exécuter des commandes arbitraires, ni éditer des fichiers. La modification du code se fait dans le dépôt avec les outils habituels de l’assistant.
 
+## Langues
+
+Le français est la source et le repli : `Loc.T` traduit un texte, `Loc.F` un modèle à paramètres. Les entrées anglaises sont dans `App/Localization/EnglishApp.*.cs` et `Core/Localization.English.cs`. `LocalizationTests` refuse un texte marqué sans entrée anglaise, un paramètre perdu et une entrée orpheline ou enregistrée deux fois. La langue s’applique au démarrage ; `--language en|fr` la force pour un aperçu.
+
+## Édition Microsoft Store
+
+`AppPackage.IsPackaged` détecte le paquet MSIX ; `AppPackage.LaunchPath` donne alors l’alias stable `%LOCALAPPDATA%\Microsoft\WindowsApps\codex-tracker.exe` pour le démarrage avec Windows, la configuration MCP, le réglage Claude Code et les liens de comptes. `UpdateService.CanSelfUpdate` est faux : pas de mise à jour intégrée, réglages correspondants masqués. `scripts/build-msix.ps1` produit un paquet full trust avec la virtualisation des écritures fichier et registre désactivée, pour partager `%LOCALAPPDATA%\CodexTracker` avec l’édition classique. Voir [STORE.md](STORE.md).
+
+## Site public et publication
+
+`site/` contient le site https://codex-tracker.zqsdev.com ; `scripts/build-site.py` le construit (version de la dernière Release publiée, Cloudflare Web Analytics sans cookie) et Netlify le reconstruit à chaque push sur `main` (`netlify.toml`). Compilation, tests, paquets et Releases : voir [AGENTS.md](../AGENTS.md) et `scripts/release.ps1`.
+
 ## Nouveaux resets en réserve et Google Agenda
 
 `NewResetCredits.Due` produit une occurrence Windows `credit-new/{identité agenda}` à délai zéro pour chaque crédit Codex reçu depuis moins de 7 jours et non expiré (`NewCreditNotifications`). Le dispatcher la journalise comme les autres ; elle partage l’`EventKey` des rappels d’expiration du crédit mais n’entre pas dans le choix du délai le plus urgent, afin de ne jamais les remplacer. `QuotaAlertEvaluator` annonce une nouvelle période même après démarrage, veille ou relevés espacés si le reset date de moins de 24 h ; hors observation continue, la date serveur doit avancer d’au moins une heure.
@@ -65,7 +81,7 @@ E-mails Gmail : la connexion peut demander `gmail.send` (`GoogleCalendarSecrets.
 
 ## Mises à jour préparées (0.8.2)
 
-`AutomaticUpdater`, possédé par la fenêtre principale, recherche après 15 secondes puis toutes les 15 minutes après un contrôle réussi. Il respecte le cache HTTP et les limites GitHub ; un téléchargement interrompu est retenté après 15 minutes. Aucun ordonnanceur dans les fenêtres de réglages ou les ponts MCP. Le mode démo et les exécutables de développement ne démarrent pas ce moteur.
+`AutomaticUpdater`, possédé par la fenêtre principale, recherche après 15 secondes puis toutes les 15 minutes après un contrôle réussi. Il respecte le cache HTTP et les limites GitHub ; un téléchargement interrompu est retenté après 15 minutes. Aucun ordonnanceur dans les fenêtres de réglages ou les ponts MCP. Le mode démo et les exécutables de développement ne démarrent pas ce moteur, ni l’édition Store (`UpdateService.CanSelfUpdate`).
 
 `UpdateService.CheckChanged` signale chaque contrôle réseau terminé, y compris une réponse HTTP 304 ou un échec. `ReadLatestCheck` expose le résultat du canal actuel ; les résultats d’un ancien canal sont ignorés. Les réglages affichent la date du dernier contrôle, l’état du téléchargement et la prochaine échéance de l’ordonnanceur. La limite de cinq minutes des contrôles manuels reste distincte de la recherche automatique.
 

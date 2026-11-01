@@ -3,9 +3,9 @@
 .SYNOPSIS
 Regenerates the README and guide images from the fictional demo.
 .DESCRIPTION
-Every view, the tray preview and the details window are rendered off-screen by the demo build: no screen
+Every view, the tray preview, the on-screen pill and the details window are rendered off-screen by the demo build: no screen
 capture, no window shown, no real account. showcase.py composes docs/hero.png and refreshes the guide captures;
-tour.py rebuilds docs/tour.gif. Requires Python 3 with Pillow.
+tour.py rebuilds docs/tour.gif; docs/pill.png and docs/social-preview.png follow. Requires Python 3 with Pillow.
 #>
 [CmdletBinding()]
 param(
@@ -33,7 +33,7 @@ foreach ($theme in 'dark', 'light') {
         $file = Join-Path $out "$view-$theme-normal-96.png"
         Invoke-Render $file @('--preview', $file, '--view', $view, '--theme', $theme, '--size', 'normal', '--dpi', '96')
     }
-    foreach ($capture in 'peek', 'details') {
+    foreach ($capture in 'peek', 'pill', 'details') {
         $file = Join-Path $out "$capture-$theme.png"
         Invoke-Render $file @('--theme', $theme, "--$capture-screenshot", $file, '--smoke-test')
     }
@@ -42,3 +42,7 @@ foreach ($theme in 'dark', 'light') {
 if ($LASTEXITCODE) { throw 'Composition des visuels échouée.' }
 & $Python (Join-Path $PSScriptRoot 'tour.py')
 if ($LASTEXITCODE) { throw 'Tour GIF échoué.' }
+# The pill expanded (dark) illustrates the guide; the social preview reuses the new hero.
+Copy-Item (Join-Path $out 'pill-dark-detail.png') (Join-Path $root 'docs/pill.png') -Force
+& $Python (Join-Path $PSScriptRoot 'social-preview.py')
+if ($LASTEXITCODE) { throw 'Image de partage échouée.' }

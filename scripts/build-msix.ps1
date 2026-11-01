@@ -4,8 +4,9 @@
 Packages the published build as an MSIX for the Microsoft Store (artifacts/CodexTracker-<version>.msix).
 .DESCRIPTION
 The Store signs the package itself: no certificate is needed. -IdentityName and -Publisher must be the values that
-Partner Center shows under Product identity (Package/Identity/Name and Package/Identity/Publisher); the defaults only
-let the package be built and inspected locally. The package is full trust, with file and registry write virtualization
+Partner Center shows under Product identity (Package/Identity/Name and Package/Identity/Publisher). Without parameters
+they come from %USERPROFILE%\.codex-tracker\store-identity.json ({"IdentityName", "Publisher", "PublisherDisplayName"},
+outside the repo); otherwise local placeholders only let the package be built and inspected. The package is full trust, with file and registry write virtualization
 disabled so that it keeps the classic installation's data in %LOCALAPPDATA%\CodexTracker, and declares the
 `codex-tracker.exe` execution alias used for startup, MCP and Claude Code (AppPackage.LaunchPath).
 Requires the Windows SDK (makeappx.exe).
@@ -19,6 +20,13 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$identityFile = Join-Path $HOME '.codex-tracker/store-identity.json'
+if (Test-Path $identityFile) {
+    $identity = Get-Content -LiteralPath $identityFile -Raw | ConvertFrom-Json
+    if (-not $PSBoundParameters.ContainsKey('IdentityName') -and $identity.IdentityName) { $IdentityName = $identity.IdentityName }
+    if (-not $PSBoundParameters.ContainsKey('Publisher') -and $identity.Publisher) { $Publisher = $identity.Publisher }
+    if (-not $PSBoundParameters.ContainsKey('PublisherDisplayName') -and $identity.PublisherDisplayName) { $PublisherDisplayName = $identity.PublisherDisplayName }
+}
 if (-not $Version) { [xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props') -Raw; $Version = [string]$props.Project.PropertyGroup.Version }
 if ($Version -notmatch '^(\d+)\.(\d+)\.(\d+)$') { throw "Version stable attendue (x.y.z), reçu $Version." }
 $packageVersion = "$Version.0" # The Store requires a zero revision.

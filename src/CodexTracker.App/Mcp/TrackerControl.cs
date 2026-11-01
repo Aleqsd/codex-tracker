@@ -15,11 +15,12 @@ internal sealed class TrackerControl : IDisposable
     private readonly System.Windows.Threading.DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private string _accountIds = "";
     private bool _disposed;
+    private readonly bool _demo;
     internal int Connections { get; set; }
     internal static readonly JsonSerializerOptions Json = new(NotificationFiles.Json) { WriteIndented = false, TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(), UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
     internal TrackerControl(MainWindow window, bool demo)
     {
-        _window = window; _preferences = window.Preferences; _commands = window.Commands;
+        _window = window; _preferences = window.Preferences; _commands = window.Commands; _demo = demo;
         _actions = new(demo ? null : _preferences.DataDirectory);
         _accountIds = string.Join(",", _window.TrackerService.State.Accounts.Select(a => a.Profile.Id).Order());
         _preferences.Changed += Changed;
@@ -57,7 +58,11 @@ internal sealed class TrackerControl : IDisposable
             case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, provider = a.Profile.Provider.ToString(), organization = a.Profile.OrganizationName, a.IsActive, a.IsActiveInCodex, a.IsActiveInClaudeCode, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", manualReset = state.ManualCodexReset?.Applies(a, ResetKind.Weekly, DateTimeOffset.UtcNow) == true, displayedWeeklyRemaining = QuotaPresentation.Remaining(state, a, ResetKind.Weekly, DateTimeOffset.UtcNow), snapshot = a.Snapshot }) };
             case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, provider = e.Account.Profile.Provider.ToString(), e.Kind, e.At, e.IsProjected, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }) };
             case "history": return new { revision, entries = _window.Reminders.History.OrderByDescending(h => h.UpdatedAt).Take(200).ToArray() };
-            case "preferences": return new { revision, settings = General.From(_preferences.Current), phone = _preferences.Current.PhonePolicy };
+            case "preferences": return new { revision, settings = General.From(_preferences.Current), phone = _preferences.Current.PhonePolicy,
+                startWithWindows = !_demo && StartupSettings.IsEnabled,
+                trayQuota = new { provider = _preferences.Current.TrayProvider.ToString(), window = _preferences.Current.TrayWindow.ToString(), perTool = _preferences.Current.TrayWindows },
+                accountNames = _preferences.Current.Appearances.Where(a => a.Value.Name is not null).ToDictionary(a => a.Key, a => a.Value.Name),
+                resetAlerts = _preferences.Current.ResetAlerts };
             case "rules": return new { revision, rules = _preferences.Current.ReminderRules };
             case "channels":
                 var s = _window.Reminders.Secrets.Read();
@@ -100,6 +105,7 @@ internal sealed class TrackerControl : IDisposable
         {
             case "set_preferences":
                 var p = Read<General>(request.Value);
+                if (p.Language is { } language && !Enum.IsDefined(language)) throw new ArgumentException("Langue inconnue.");
                 var candidate = p.Apply(_preferences.Current);
                 ApplicationCommands.ValidatePhone(candidate.PhonePolicy);
                 run = () => { _commands.SavePreferences(p.Apply); return Task.FromResult("Réglages enregistrés."); };
@@ -164,6 +170,48 @@ internal sealed class TrackerControl : IDisposable
                 var expires = account.Snapshot?.ResetCredits?.FirstOrDefault(c => c.Id == credit.CreditId)?.ExpiresAt ?? throw new ArgumentException("Reset en réserve inconnu ou sans date.");
                 run = async () => { await _window.AddCreditToCalendarAsync(GoogleCalendarSync.Key(credit.AccountId, credit.CreditId, expires), throwErrors: true); return "Événement présent dans Google Agenda."; };
                 summary = Loc.T("Ajouter un reset en réserve à Google Agenda"); break;
+            case "set_tray_quota":
+                var tray = Read<TrayQuotaQuery>(request.Value);
+                if (!Enum.IsDefined(tray.Provider) || tray.Window is not (ResetKind.Weekly or ResetKind.Short)) throw new ArgumentException("Outil ou fenêtre inconnus.");
+                run = () => { _commands.SetTrayQuota(tray.Provider, tray.Window); return Task.FromResult("Quota de l’icône enregistré."); };
+                summary = Loc.T("Choisir le quota affiché dans l’icône"); break;
+            case "set_startup":
+                var startup = Read<EnabledQuery>(request.Value).Enabled;
+                run = () => { if (!_demo) StartupSettings.SetEnabled(startup); return Task.FromResult(startup ? "Démarrage avec Windows activé." : "Démarrage avec Windows désactivé."); };
+                summary = Loc.T("Démarrer avec Windows"); break;
+            case "declare_reset":
+                var declared = Read<DeclareQuery>(request.Value).At;
+                run = () => { _commands.DeclareCodexReset(declared, DateTimeOffset.UtcNow, revision); return Task.FromResult(declared is null ? "Reset déclaré annulé." : "Reset général Codex déclaré ; un nouveau relevé reste prioritaire."); };
+                summary = Loc.T("Déclarer un reset général Codex"); break;
+            case "set_reset_alert":
+                var bell = Read<ResetAlertQuery>(request.Value);
+                run = () => { _commands.SetResetAlert(state, bell.AccountId, bell.Kind, bell.At, bell.Enabled, DateTimeOffset.UtcNow, revision); return Task.FromResult(bell.Enabled ? "Notification de reset activée." : "Notification de reset retirée."); };
+                summary = Loc.T("Notification d’un reset"); break;
+            case "rename_account":
+                var naming = Read<AccountNameQuery>(request.Value);
+                if (!state.Accounts.Any(a => a.Profile.Id == naming.AccountId)) throw new ArgumentException("Compte inconnu.");
+                var name = string.IsNullOrWhiteSpace(naming.Name) ? null : naming.Name.Trim();
+                if (name is { Length: > 60 }) throw new ArgumentException("Nom trop long (60 caractères au plus).");
+                run = () =>
+                {
+                    _commands.SavePreferences(pref =>
+                    {
+                        var appearances = new Dictionary<Guid, AccountAppearance>(pref.Appearances);
+                        var current = appearances.GetValueOrDefault(naming.AccountId) ?? new();
+                        appearances[naming.AccountId] = current with { Name = name };
+                        return pref with { Appearances = appearances };
+                    });
+                    return Task.FromResult(name is null ? "Nom d’affichage retiré." : "Nom d’affichage enregistré.");
+                };
+                summary = Loc.T("Renommer un compte"); break;
+            case "remove_account":
+                var removed = Read<AccountQuery>(request.Value).AccountId;
+                var target = state.Accounts.FirstOrDefault(a => a.Profile.Id == removed) ?? throw new ArgumentException("Compte inconnu.");
+                if (target.IsActive) throw new ArgumentException("Le compte actif ne peut pas être retiré.");
+                // Removing an account deletes its local history: always confirmed in the tracker.
+                confirm = true;
+                summary = Loc.F("Retirer le compte {0} ({1}) et son historique local du tracker ?", target.Profile.Email, target.Profile.ProviderName);
+                run = async () => { await _window.TrackerService.RemoveAccountAsync(removed); return "Compte retiré du tracker."; }; break;
             case "test":
                 var channel = Read<TestQuery>(request.Value).Channel;
                 if (!Enum.IsDefined(channel)) throw new ArgumentException("Canal inconnu.");
@@ -242,20 +290,31 @@ internal sealed record TestQuery(ReminderChannel Channel);
 internal sealed record GoogleConnectQuery(bool Mail);
 internal sealed record PathQuery(string Path);
 internal sealed record CreditQuery(Guid AccountId, string CreditId);
+internal sealed record TrayQuotaQuery(AccountProvider Provider, ResetKind Window);
+internal sealed record EnabledQuery(bool Enabled);
+internal sealed record DeclareQuery(DateTimeOffset? At);
+internal sealed record ResetAlertQuery(Guid AccountId, ResetKind Kind, DateTimeOffset At, bool Enabled);
+internal sealed record AccountNameQuery(Guid AccountId, string? Name);
+internal sealed record AccountQuery(Guid AccountId);
 internal sealed record ChannelChange(string Provider, TwilioSettings? Twilio = null, SendGridSettings? SendGrid = null, NtfySettings? Ntfy = null);
 /// <summary>General settings. The calendar, email and credit notice switches are optional: omitted, they keep their value.</summary>
 internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Alert20, bool Alert10, bool Alert5, bool ResetNotifications, bool HoverPreview, int RefreshMinutes, bool AdaptiveRefresh,
     bool? NewCreditNotifications = null, bool? ReserveAdviceNotifications = null, bool? ReserveMailAlerts = null, bool? GoogleCalendarAutoAdd = null, bool? CalendarSuggestionDismissed = null, bool? ForecastNotifications = null,
-    bool? PushMirror = null, bool? ScreenPill = null)
+    bool? PushMirror = null, bool? ScreenPill = null, AppLanguage? Language = null, bool? TrayIconPerTool = null, bool? MonitorGlobalResets = null,
+    bool? DownloadUpdatesAutomatically = null, bool? InstallUpdatesAtStartup = null, bool? IncludePrereleaseUpdates = null)
 {
     internal static General From(TrackerPreferences p) => new(p.ThemeMode, p.SortMode, p.Alert20, p.Alert10, p.Alert5, p.ResetNotifications, p.HoverPreview, p.RefreshMinutes, p.AdaptiveRefresh,
-        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications, p.PushMirror, p.ScreenPill);
+        p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications, p.PushMirror, p.ScreenPill,
+        p.Language, p.TrayIconPerTool, p.MonitorGlobalResets, p.DownloadUpdatesAutomatically, p.InstallUpdatesAtStartup, p.IncludePrereleaseUpdates);
     internal TrackerPreferences Apply(TrackerPreferences p) => p with
     {
         ThemeMode = ThemeMode, SortMode = SortMode, Alert20 = Alert20, Alert10 = Alert10, Alert5 = Alert5, ResetNotifications = ResetNotifications, HoverPreview = HoverPreview, RefreshMinutes = RefreshMinutes, AdaptiveRefresh = AdaptiveRefresh,
         NewCreditNotifications = NewCreditNotifications ?? p.NewCreditNotifications, ReserveAdviceNotifications = ReserveAdviceNotifications ?? p.ReserveAdviceNotifications,
         ReserveMailAlerts = ReserveMailAlerts ?? p.ReserveMailAlerts, GoogleCalendarAutoAdd = GoogleCalendarAutoAdd ?? p.GoogleCalendarAutoAdd,
         CalendarSuggestionDismissed = CalendarSuggestionDismissed ?? p.CalendarSuggestionDismissed, ForecastNotifications = ForecastNotifications ?? p.ForecastNotifications,
-        PushMirror = PushMirror ?? p.PushMirror, ScreenPill = ScreenPill ?? p.ScreenPill
+        PushMirror = PushMirror ?? p.PushMirror, ScreenPill = ScreenPill ?? p.ScreenPill,
+        Language = Language ?? p.Language, TrayIconPerTool = TrayIconPerTool ?? p.TrayIconPerTool, MonitorGlobalResets = MonitorGlobalResets ?? p.MonitorGlobalResets,
+        DownloadUpdatesAutomatically = DownloadUpdatesAutomatically ?? p.DownloadUpdatesAutomatically, InstallUpdatesAtStartup = InstallUpdatesAtStartup ?? p.InstallUpdatesAtStartup,
+        IncludePrereleaseUpdates = IncludePrereleaseUpdates ?? p.IncludePrereleaseUpdates
     };
 }

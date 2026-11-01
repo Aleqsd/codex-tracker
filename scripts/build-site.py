@@ -1,6 +1,6 @@
 """Builds the public site into artifacts/site (local or on Netlify, Linux or Windows, standard library only).
 
-Injects the version from Directory.Build.props and today's date, copies the demo screenshots from docs/ and the
+Injects the latest published release version (Directory.Build.props when GitHub is unreachable) and today's date, copies the demo screenshots from docs/ and the
 embedded Roboto fonts, then writes robots.txt and sitemap.xml. With --indexnow (or on a Netlify production build)
 it notifies IndexNow (Bing, Yandex, Seznam, Naver) of the main pages.
 """

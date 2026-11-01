@@ -38,6 +38,12 @@ internal static class Cli
         ["import_google_client"] = new("google_import", "", "path=<fichier.json>"),
         ["sync_google_calendar"] = new("google_sync", "", ""),
         ["add_reserve_to_calendar"] = new("google_add", "", "accountId=<guid> creditId=<id>"),
+        ["set_tray_quota"] = new("set_tray_quota", "", "provider=Codex|ClaudeCode window=Weekly|Short"),
+        ["set_start_with_windows"] = new("set_startup", "", "enabled=true|false"),
+        ["declare_codex_reset"] = new("declare_reset", "", "at=<date ISO passée>|null"),
+        ["set_reset_alert"] = new("set_reset_alert", "", "accountId=<guid> kind=Weekly|Short at=<date> enabled=true|false"),
+        ["rename_account"] = new("rename_account", "", "accountId=<guid> name=<nom>"),
+        ["remove_account"] = new("remove_account", "", "accountId=<guid> (confirmation dans le tracker)"),
     };
 
     internal static IReadOnlyCollection<string> Names => Commands.Keys;

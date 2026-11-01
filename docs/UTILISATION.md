@@ -1,6 +1,6 @@
 # Guide d’utilisation
 
-Vos quotas Codex, directement dans la barre des tâches Windows.
+Vos quotas Codex et Claude Code, directement dans la barre des tâches Windows.
 
 L’icône affiche le **pourcentage restant avec une fine jauge horizontale, sur fond transparent** : la semaine Codex par défaut. Survolez-la pour un aperçu, avec une section par compte actif quand Codex et Claude Code sont utilisés ensemble ; cliquez sur un quota de l’aperçu (semaine ou 5 heures, Codex ou Claude Code) pour l’afficher dans l’icône, sans quitter l’application en cours. Le même choix existe au clavier dans le menu de l’icône, sous **Quota dans l’icône**. **Réglages → Général → Une icône par outil** (ou le même menu) affiche une icône Codex et une icône Claude Code quand les deux sont utilisés, chacune avec son propre choix semaine ou 5 heures ; Windows peut ranger la nouvelle sous la flèche **^** : glissez-la à côté de l’autre. Cliquez sur l’icône pour retrouver vos comptes dans un panneau compact. Les comptes Codex Pro n’affichent que la semaine, sans quota de 5 heures. Les dates précises, réserves, périodes d’abonnement et graphiques restent accessibles dans les détails.
 
@@ -14,28 +14,28 @@ L’assistant suit le thème clair ou sombre de Windows, avec un accueil personn
 
 1. Téléchargez `CodexTracker-…-Setup.exe` depuis les [Releases](https://github.com/Aleqsd/codex-tracker/releases).
 2. Lancez l’installateur : il installe l’application pour votre utilisateur, sans droits administrateur, et crée son raccourci. La désinstallation depuis les paramètres Windows conserve vos données de suivi.
-3. Utilisez normalement Codex : le tracker détecte son compte ouvert. Chaque autre compte est ajouté automatiquement lorsque vous l’ouvrez dans Codex.
+3. Utilisez normalement Codex ou Claude Code : le tracker détecte le compte ouvert. Chaque autre compte est ajouté automatiquement lorsque vous l’ouvrez dans son outil.
 4. Dans les paramètres Windows de la barre des tâches, rendez l’icône Codex Tracker visible dans la barre d’état.
 
-Windows 11 x64 et une installation de Codex avec sa CLI `codex` sont nécessaires. Le runtime .NET est inclus. Le démarrage avec Windows est facultatif, depuis les réglages du tracker.
+Windows 11 x64 et Codex (avec sa CLI `codex`) ou Claude Code / l’application Claude sont nécessaires. Le runtime .NET est inclus. Le démarrage avec Windows est facultatif, depuis les réglages du tracker.
 
 Une version portable ZIP est également disponible : extrayez-la dans un dossier permanent puis lancez `CodexTracker.exe`.
 
 Par défaut, le tracker recherche une nouvelle version 15 secondes après son démarrage puis toutes les 15 minutes après un contrôle réussi, et la télécharge en arrière-plan. Les délais imposés par GitHub sont respectés ; un échec de connexion déclenche des essais espacés. Quand elle est vérifiée, un bandeau propose **Mettre à jour et relancer**. Si vous ne cliquez pas, la version préparée est installée au prochain démarrage du tracker, sans devoir la télécharger à nouveau. Le démarrage avec Windows reste un réglage séparé.
 
-**Réglages → Application** affiche le dernier contrôle, même sans nouvelle version, et la prochaine recherche automatique. Le bouton de recherche manuelle peut redevenir disponible avant cette échéance ; il respecte un délai minimal de cinq minutes après un contrôle réussi.
+**Réglages → Application** affiche le dernier contrôle, même sans nouvelle version, et la prochaine recherche automatique. Le résultat est conservé localement avec sa date ; un ancien résultat reste présenté comme un cache, sans annoncer que l’application est à jour. Le bouton de recherche manuelle attend au moins cinq minutes après un contrôle réussi ; un délai imposé par GitHub reste respecté, même après redémarrage. Le lien **Voir les versions sur GitHub** permet de consulter la Release manuellement.
 
 Dans **Réglages → Application**, vous pouvez désactiver séparément le téléchargement automatique et l’installation au démarrage, ou rechercher manuellement une version, aussi avec la petite flèche ⟳ à côté du numéro de version, en bas à droite de la fenêtre : « À jour » s’affiche quelques secondes, ou la nouvelle version se télécharge et le bandeau habituel propose de l’installer. Le téléchargement utilise le dépôt public et vérifie l’empreinte SHA-256. L’installation conserve une copie de secours jusqu’au démarrage réussi de la nouvelle version. Elle préserve vos comptes et réglages, ferme proprement les connexions MCP du tracker et ne ferme pas Codex. Après un échec, aucune boucle de réinstallation : la version précédente reste accessible et un nouvel essai nécessite un clic. Le démarrage à la demande d’un assistant MCP reporte l’installation automatique.
 
 À partir de la 0.9, seules les **versions stables** sont recherchées par défaut. Activez **Recevoir aussi les préversions** pour les prochaines bêtas. Revenir au canal stable écarte une préversion déjà téléchargée ; elle ne s’installe pas au démarrage. Les préparations d’avant la 0.9 dont le statut bêta était inconnu doivent être retéléchargées.
 
-Le résultat de la recherche est conservé localement avec sa date. Les vérifications simultanées sont regroupées, et le bouton attend au moins cinq minutes après une vérification réussie. Si GitHub limite les requêtes, le tracker respecte le délai annoncé, même après redémarrage ; une erreur réseau déclenche aussi un délai progressif. Un ancien résultat reste explicitement présenté comme un cache, sans annoncer que l’application est à jour. Le lien **Voir les versions sur GitHub** reste accessible pour consulter la Release manuellement.
+**Édition Microsoft Store** : les mises à jour passent par le Store ; les réglages correspondants sont masqués.
 
 ## Assistants de code et MCP
 
-Dans **Réglages → Assistants**, activez le MCP puis copiez sa configuration dans votre client assistant. Le même exécutable démarre en mode `--mcp`, sans console ni serveur réseau. Il peut démarrer le tracker en arrière-plan, consulter les comptes et échéances, modifier les réglages et gérer les rappels.
+Dans **Réglages → Assistants**, activez le MCP puis copiez sa configuration dans votre client assistant. Le même exécutable démarre en mode `--mcp`, sans console ni serveur réseau. Il peut démarrer le tracker en arrière-plan, consulter les comptes et échéances, modifier les réglages et gérer les rappels. Les mêmes commandes existent en ligne de commande : `CodexTracker.exe --cli help`.
 
-Les clés Twilio/SendGrid sont accessibles en écriture seule. Les tests externes et les nouveaux envois nécessitent une confirmation locale ; enregistrer une clé n’envoie rien. Les données demandées sont transmises à votre client assistant. Voir le [guide MCP](MCP.md).
+Les clés Twilio/SendGrid et le sujet ntfy sont accessibles en écriture seule. Les tests externes et les nouveaux envois nécessitent une confirmation locale ; enregistrer une clé n’envoie rien. Les données demandées sont transmises à votre client assistant. Voir le [guide MCP](MCP.md).
 
 Pour modifier le code : [consignes pour assistants](../AGENTS.md), [architecture](ARCHITECTURE.md), [design](DESIGN.md). `scripts/dev.ps1` regroupe compilation, tests et aperçus avec données fictives.
 
@@ -61,13 +61,13 @@ Les derniers quotas du cache local de l’application Claude sont lus automatiqu
 
 Si un reset général Codex a été effectué, cliquez sur l’icône d’horloge à côté de l’en-tête **Codex** de la liste des comptes (ou dans le menu **…** de Resets). Choisissez un raccourci (**À l’instant**, **Il y a 30 min**…) ou un jour des huit derniers et une heure locale ; la fenêtre résume l’instant choisi et le nombre de comptes Codex concernés. **Déclarer le reset** applique **100 % · déclaré** aux fenêtres de 5 heures et de la semaine de tous les comptes Codex sans relevé plus récent, y compris le compte actif. Claude Code, les réserves et les historiques mesurés restent conservés.
 
-La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). En attendant, le prochain reset de ces comptes est estimé à l’heure déclarée plus une fenêtre (≈, « estimé ») ; il ne déclenche ni rappel ni export et ne peut pas recevoir de notification. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées. La croix de l’encart (dans Comptes ou Resets) masque les deux encarts seulement : la déclaration reste appliquée et modifiable depuis **Reset général…** ; une nouvelle déclaration le réaffiche.
+La déclaration est locale et persiste après redémarrage. Elle ne provoque aucun reset chez OpenAI. Le survol donne son heure et le dernier quota mesuré. Un relevé postérieur reprend automatiquement la priorité pour son compte ; la déclaration expire après une fenêtre complète (5 h / 7 jours). En attendant, le prochain reset de ces comptes est estimé à l’heure déclarée plus une fenêtre (≈, « estimé ») ; il ne déclenche ni rappel ni export et ne peut pas recevoir de notification. **Modifier… → Annuler la déclaration** restaure l’affichage des données mesurées. La croix de l’encart (dans Comptes ou Resets) masque les deux encarts seulement : la déclaration reste appliquée et modifiable depuis l’icône d’horloge ou **Déclarer un reset général Codex…** ; une nouvelle déclaration le réaffiche.
 
 ## Lire le tableau de bord
 
 **Compte inactif après un reset :** un encart indique les comptes probablement rechargés. La semaine affiche **≈100 % — estimé** ; le survol conserve le quota réellement mesuré et les dates exactes. L’estimation suppose que le compte n’a pas été utilisé ailleurs. Elle disparaît dès un nouveau relevé ou au plus tard après une fenêtre complète (7 jours pour la semaine, 5 heures pour le quota court) ; aucune date suivante n’est inventée. La croix masque l’encart jusqu’au prochain reset passé ; les comptes gardent leur mention **≈100 %**.
 
-**Réglages → Rappels → Prévenir après un reset** annonce « Quota rechargé » quand un relevé montre une nouvelle période (semaine ou 5 heures), y compris au premier relevé après démarrage, veille ou une actualisation espacée, si le reset date de moins de 24 heures. Une seule notification par période ; une date de reset qui ne fait que varier de quelques secondes ne compte pas. Ce réglage commande aussi les notifications Windows des comptes inactifs. Vérification chaque minute, après collecte et à la reprise : une alerte par compte, fenêtre et échéance, groupée si plusieurs resets arrivent ensemble. Après interruption, seules les échéances des dernières 24 heures encore estimables sont annoncées. Les SMS, appels et emails ne sont pas utilisés pour ces estimations. Windows reste maître de l’affichage, notamment en mode Ne pas déranger.
+**Réglages → Rappels → Prévenir après un reset** annonce « Quota rechargé » quand un relevé montre une nouvelle période (semaine ou 5 heures), y compris au premier relevé après démarrage, veille ou une actualisation espacée, si le reset date de moins de 24 heures. Une seule notification par période ; une date de reset qui ne fait que varier de quelques secondes ne compte pas. Ce réglage commande aussi les notifications Windows des comptes inactifs. Vérification chaque minute, après collecte et à la reprise : une alerte par compte, fenêtre et échéance, groupée si plusieurs resets arrivent ensemble. Après interruption, seules les échéances des dernières 24 heures encore estimables sont annoncées. Les SMS, appels et emails ne sont pas utilisés pour ces estimations ; la copie sur le téléphone (ntfy), si elle est activée, relaie ces notifications. Windows reste maître de l’affichage, notamment en mode Ne pas déranger.
 
 - La vue principale présente le compte actif puis une ligne par compte. Le compte actif reste automatiquement en tête ; les autres gardent un ordre stable. Le bouton **…** ouvre les détails et l’historique.
 - Les thèmes clair et sombre suivent Windows, avec un choix manuel dans les réglages. Le dessin de l’icône s’adapte également au thème.
@@ -83,7 +83,7 @@ Le bouton **flèche vers le coin**, juste à gauche de **—**, masque la fenêt
 
 Le pied de fenêtre affiche **Dernière mise à jour : HH:mm:ss**, à partir du dernier relevé réussi du compte actif. La date apparaît aussi si le relevé précède aujourd’hui ; le survol donne la date complète et le fuseau. Un échec conserve cette heure et indique l’échec du dernier essai. Pour actualiser, utilisez le bouton à droite de **Comptes** ou F5.
 
-L’onglet **Réglages**, à côté de **Comptes** et **Resets**, contient sept rubriques : **Général**, **Rappels**, **Canaux**, **Historique**, **Calendrier**, **Assistants** et **Application**. La section sélectionnée et les saisies restent présentes lorsque vous changez d’onglet. Les menus « Icône et libellé » associent une icône discrète à chaque réglage, affichent une coche sur la valeur choisie et restent utilisables au clavier.
+L’onglet **Réglages**, à côté de **Comptes** et **Resets**, contient sept rubriques : **Général**, **Google Agenda**, **Rappels**, **Canaux**, **Historique**, **Assistants** et **Application**. La section sélectionnée et les saisies restent présentes lorsque vous changez d’onglet. Les menus « Icône et libellé » associent une icône discrète à chaque réglage, affichent une coche sur la valeur choisie et restent utilisables au clavier.
 
 ![Réglages avec données fictives](settings.png)
 
@@ -113,7 +113,7 @@ Le menu **… → Google Agenda ↗** ouvre les options d’import pour le compt
 
 Cliquez directement sur **l’avatar d’un compte** (ou ouvrez **··· → Nom et avatar…**) pour choisir un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. Les photos importées conservent leur transparence sur un fond neutre adapté au thème, sans initiales derrière l’image. Sans photo, un cercle coloré affiche les initiales du nom ou de l’adresse, avec une couleur stable par compte. Cliquez aussi sur cet avatar dans la fenêtre de personnalisation pour choisir une image. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Les noms et les photos restent visibles. Le bouton de confidentialité et la sélection manuelle du compte de l’icône ont été retirés ; les anciens réglages correspondants sont ignorés.
 
-**Réglages → Calendrier → Ouvrir les options Google Agenda…** présente un bouton principal **Importer dans Google Agenda**. Il prépare automatiquement un fichier `.ics` dans les données locales du tracker, ouvre la page d’import et affiche son chemin avec **Copier le chemin**. Dans Google, sélectionnez le fichier, choisissez l’agenda et confirmez **Importer**, conformément à [l’aide Google](https://support.google.com/calendar/answer/37118?hl=fr). Les clics répétés réutilisent le même fichier tant que les échéances n’ont pas changé. Les fichiers préparés restent sous `%LOCALAPPDATA%\CodexTracker\calendar-exports` ; le tracker ne les téléverse pas lui-même.
+**Réglages → Google Agenda → Autres agendas → Exporter ou ajouter une échéance…** présente un bouton principal **Importer dans Google Agenda**. Il prépare automatiquement un fichier `.ics` dans les données locales du tracker, ouvre la page d’import et affiche son chemin avec **Copier le chemin**. Dans Google, sélectionnez le fichier, choisissez l’agenda et confirmez **Importer**, conformément à [l’aide Google](https://support.google.com/calendar/answer/37118?hl=fr). Les clics répétés réutilisent le même fichier tant que les échéances n’ont pas changé. Les fichiers préparés restent sous `%LOCALAPPDATA%\CodexTracker\calendar-exports` ; le tracker ne les téléverse pas lui-même.
 
 **Ajouter une seule échéance → Ajouter ↗** utilise le [lien officiel Google d’événement prérempli](https://developers.google.com/workspace/calendar/api/concepts/inviting-attendees-to-events#provide_a_link_for_users_to_add_the_event). La date, le titre et la description sont transmis à Google au clic ; vérifiez l’événement et cliquez sur **Enregistrer** dans le navigateur. Si Google demande une connexion, connectez-vous puis relancez le bouton. Le tracker ne peut pas confirmer que l’événement a été enregistré : la réserve affiche alors **Ouvert dans Google Agenda · non vérifié**.
 
@@ -154,8 +154,6 @@ La ligne **Projection** du compte actif donne un seul verdict, dans une seule co
 
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
 
-**Quel compte prendre ensuite ?** Quand le compte utilisé n’a plus que 10 % ou moins (semaine ou 5 heures), l’alerte de quota, l’alerte de rythme et l’infobulle de l’icône nomment l’autre compte du même outil qui en garde le plus : au moins 30 % et 20 points de plus. Un compte dont l’heure de recharge est passée compte comme plein mais « à confirmer », après les quotas mesurés. Le tracker ne change jamais de compte lui-même ; le MCP et `--cli get_status` donnent la même suggestion (`suggestions`).
-
 ### Rappels locaux et connecteurs facultatifs
 
 Les notifications Windows proposent **Ouvrir le suivi**, qui affiche directement Comptes ou Resets, et **Rappeler** dans 15 minutes, 1 heure ou 4 heures. Le rappel est géré par Windows lui-même, même si le tracker est fermé entre-temps. Si Windows refuse ce format, une bulle classique s’affiche à la place.
@@ -168,7 +166,7 @@ Les notifications Windows proposent **Ouvrir le suivi**, qui affiche directement
 
 <p align="center"><img src="pill.png" alt="Pastille dépliée au survol : compte presque vide, compte conseillé, boutons Ouvrir et Masquer, données fictives" width="320"></p>
 
-**Sur le téléphone, avec ntfy (gratuit, sans compte)** : **Canaux → Téléphone · ntfy**. Installez l’application ntfy (Android ou iPhone), scannez le code affiché, cochez **Activer les notifications sur le téléphone**, puis **Enregistrer** et **Envoyer une notification de test au téléphone**. Le sujet est généré au hasard : c’est lui qui permet de s’abonner, gardez-le secret. Par défaut, **chaque notification Windows est copiée sur le téléphone** (alertes de quota, rappels, resets, nouvelles réserves), une seule fois, même si Windows ne l’a pas affichée. La colonne **Téléphone** des règles de rappel permet aussi des rappels envoyés seulement au téléphone. Le serveur public ntfy.sh reçoit le texte des notifications (compte, échéance) ; un serveur ntfy personnel et son jeton d’accès se règlent sous **Sujet et serveur**.
+**Sur le téléphone, avec ntfy (gratuit, sans compte)** : **Canaux → Téléphone · ntfy**. Installez l’application ntfy (Android ou iPhone), scannez le code affiché, cochez **Activer les notifications sur le téléphone**, puis **Enregistrer** et **Envoyer une notification de test au téléphone**. Le sujet est généré au hasard : c’est lui qui permet de s’abonner, gardez-le secret. Par défaut, **chaque notification Windows est copiée sur le téléphone** (alertes de quota, rappels, « Quota rechargé » de **Prévenir après un reset**, annonces de resets généraux, nouvelles réserves), une seule fois, même si Windows ne l’a pas affichée. La colonne **Téléphone** des règles de rappel permet aussi des rappels envoyés seulement au téléphone. Le serveur public ntfy.sh reçoit le texte des notifications (compte, échéance) ; un serveur ntfy personnel et son jeton d’accès se règlent sous **Sujet et serveur**.
 
 Une demande transmise à Windows ne confirme pas l’affichage d’une bannière. Si rien n’apparaît, vérifiez **Paramètres Windows → Système → Notifications**, notamment **Ne pas déranger** et ses règles automatiques. Les rappels planifiés temporairement bloqués par le plein écran ou une session inactive sont différés, puis réessayés uniquement tant que leur échéance est à venir. Un test manuel ignoré nécessite un nouveau clic.
 
@@ -184,19 +182,21 @@ L’agenda regroupe les échéances par date : jour à gauche, type et compte au
 
 Le moteur vérifie les dates chaque minute, après actualisation et au retour de veille. **Le tracker doit être ouvert et le PC éveillé** : aucun serveur ne travaille lorsque le PC est éteint. À la reprise, seul le rappel franchi le plus urgent par événement et canal est envoyé, si l’échéance est encore future. Les réserves sans date ou sans compteur positif ne déclenchent rien. Un ancien relevé peut produire un rappel daté, sans confirmer la disponibilité réelle du reset dans Codex.
 
-**Réglages → Canaux** contient trois possibilités indépendantes :
+Cinq canaux indépendants ; les quatre premiers se règlent dans **Réglages → Canaux**, l’e-mail Gmail dans **Réglages → Google Agenda** :
 
 | Canal | Configuration |
 | --- | --- |
 | Windows | Disponible immédiatement, bouton de test ; les réglages de concentration de Windows s’appliquent |
+| Téléphone · ntfy | Gratuit, sans compte : code QR à scanner, sujet secret de 12 à 64 caractères, serveur https (ntfy.sh par défaut) |
 | SMS / appels Twilio | Votre Account SID, API Key SID et secret, un expéditeur autorisé pour chaque canal utilisé et votre numéro destinataire au format international |
 | Email SendGrid | Votre clé API avec la permission Mail Send, votre expéditeur vérifié et votre adresse destinataire |
+| E-mail Gmail | Connexion Google avec l’envoi d’e-mails, vers votre propre adresse ; SendGrid reste prioritaire s’il est configuré |
 
 Tous les connecteurs externes sont **désactivés par défaut**. Enregistrer les identifiants ne lance aucun test ; sélectionnez aussi le canal dans vos règles de rappel. Les boutons de test envoient seulement après un clic explicite, avec facturation éventuelle sur votre propre compte. Aucun compte, numéro ou abonnement n’est acheté par le tracker. La démonstration et les tests automatisés ne peuvent pas envoyer de vrais messages.
 
 Les clés sont chiffrées avec **Windows DPAPI**, pour l’utilisateur courant, dans `notification-secrets.dpapi`. Elles ne sont pas exportées ni inscrites dans les journaux. Le bouton de suppression efface les identifiants du connecteur et le désactive ; les rappels Windows continuent. Chaque ordinateur possède sa propre configuration. Ne partagez pas le dossier de données privées.
 
-Les requêtes partent directement en HTTPS vers Twilio ou SendGrid, sans relais ni webhook. Seuls le destinataire et le contenu nécessaire au rappel sont transmis au prestataire sélectionné. Les SMS tiennent dans un segment ; les appels lisent un court message français, sans enregistrement et avec une durée maximale de 60 secondes. Les numéros d’expéditeur doivent être autorisés par Twilio pour l’usage et le pays concernés. [Configuration Twilio](https://www.twilio.com/docs/usage/requests-to-twilio), [identité d’expéditeur SendGrid](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/sender-identity).
+Les requêtes partent directement en HTTPS vers Twilio, SendGrid, ntfy ou Gmail, sans relais ni webhook. Seuls le destinataire et le contenu nécessaire au rappel sont transmis au prestataire sélectionné. Les SMS tiennent dans un segment ; les appels lisent un court message français, sans enregistrement et avec une durée maximale de 60 secondes. Les numéros d’expéditeur doivent être autorisés par Twilio pour l’usage et le pays concernés. [Configuration Twilio](https://www.twilio.com/docs/usage/requests-to-twilio), [identité d’expéditeur SendGrid](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/sender-identity).
 
 SendGrid possède sa propre clé et sa propre facturation. Consultez les [tarifs SendGrid](https://www.twilio.com/en-us/products/email-api/pricing) avant activation ; ce connecteur est surtout pratique si vous avez déjà un compte.
 
@@ -204,11 +204,15 @@ Les limites téléphoniques initiales sont **5 SMS et 1 appel par jour**, avec s
 
 **Réglages → Historique** conserve 30 jours de résultats : transmis à Windows, accepté, livré selon Twilio, appel terminé, différé, annulé, échec ou résultat inconnu. Un email accepté par SendGrid n’est pas présenté comme livré ; un appel terminé ne prouve pas que le message a été écouté. Les statuts Twilio sont consultés pendant 24 h maximum, tant que l’application fonctionne. Une coupure réseau laissant le résultat incertain ne déclenche aucune réémission automatique. Le journal est écrit avant envoi pour éviter les doublons après redémarrage ; s’il est illisible, les rappels sont suspendus et l’historique l’indique.
 
-## Aide au choix du compte
+## Quel compte prendre ensuite ?
 
-Une suggestion discrète apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails ; sa croix la masque jusqu’au prochain relevé à vérifier. Le changement de compte se fait toujours dans Codex.
+Le tracker ne change jamais de compte lui-même ; deux aides nomment un autre compte, à ouvrir dans son outil.
 
-Le conseil exige les deux quotas et leurs dates de reset (la semaine seule pour Codex Pro, qui n’a pas de quota de 5 heures), un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes et les resets déjà atteints. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée.
+**Alertes, infobulle et pastille** (Codex et Claude Code) : quand le compte utilisé n’a plus que 10 % ou moins (semaine ou 5 heures), l’alerte de quota, l’alerte de rythme, l’infobulle de l’icône et la pastille nomment l’autre compte du même outil qui en garde le plus : au moins 30 % et 20 points de plus. Un compte dont l’heure de recharge est passée compte comme plein mais « à confirmer », après les quotas mesurés. Le MCP et `--cli get_status` donnent la même suggestion (`suggestions`).
+
+**Suggestion sous le compte actif** (Codex seulement) : un encart discret apparaît sous le compte actif uniquement lorsqu’un de ses quotas est à 20 % ou moins et qu’un autre compte possède un relevé admissible. Elle indique **À vérifier dans Codex**, l’ancienneté du relevé et un bouton **Voir** ouvrant ses détails ; sa croix la masque jusqu’au prochain relevé à vérifier.
+
+Ce conseil exige les deux quotas et leurs dates de reset (la semaine seule pour Codex Pro, qui n’a pas de quota de 5 heures), un relevé actif datant d’au plus cinq minutes et un relevé inactif datant d’au plus deux heures. Il écarte les erreurs, les données incohérentes, les resets déjà atteints et un reset déclaré. Parmi les comptes admissibles, il privilégie le relevé le plus récent. Il ne compare pas les capacités absolues de Free, Plus et Pro à partir de leurs pourcentages et ne suppose jamais qu’un compte a été rechargé. En l’absence de données suffisantes, aucune suggestion n’est affichée.
 
 ## Données locales
 
@@ -220,7 +224,7 @@ Les préférences, profils et relevés disposent d’une copie locale `.bak` d�
 
 Le message **« échec de lecture des quotas »** concerne le relevé du compte actif, pas l’installation d’une mise à jour du tracker. Survolez-le pour connaître la cause ; le dernier relevé et sa date restent affichés. Si Windows refuse de lancer une copie de Codex, le tracker essaie les autres copies natives déjà installées, sans élévation ni modification des autorisations. Si aucune ne démarre, ouvrez ou mettez à jour Codex, puis actualisez les quotas.
 
-**Changer de PC : Réglages → Application → Profil.** **Exporter le profil…** enregistre un fichier `.codextracker` chiffré par un mot de passe (AES-256-GCM, au moins 8 caractères, enregistré nulle part) : comptes, derniers relevés avec leur date d’origine, historiques, réglages, rappels, noms et avatars. **Importer un profil…** sur l’autre PC ajoute les comptes et unit les historiques sans rien supprimer ; un relevé plus récent sur ce PC est conservé. Les réglages, rappels, noms et avatars du fichier remplacent ceux du PC. Restent sur chaque PC : les clés des canaux SMS, appel et email (chiffrées pour cette session Windows), l’accès des assistants MCP, le journal d’envoi des rappels et les relevés Claude Code en attente. Un mot de passe perdu rend le fichier illisible.
+**Changer de PC : Réglages → Application → Profil.** **Exporter le profil…** enregistre un fichier `.codextracker` chiffré par un mot de passe (AES-256-GCM, au moins 8 caractères, enregistré nulle part) : comptes, derniers relevés avec leur date d’origine, historiques, réglages, rappels, noms et avatars. **Importer un profil…** sur l’autre PC ajoute les comptes et unit les historiques sans rien supprimer ; un relevé plus récent sur ce PC est conservé. Les réglages, rappels, noms et avatars du fichier remplacent ceux du PC. Restent sur chaque PC : les clés des canaux SMS, appel et email (chiffrées pour cette session Windows), le canal téléphone ntfy, la connexion Google Agenda/Gmail, l’accès des assistants MCP, le journal d’envoi des rappels, les cloches des resets, un reset Codex déclaré et les relevés Claude Code en attente. Un mot de passe perdu rend le fichier illisible.
 
 Pour demander de l’aide, **Réglages → Application → Préparer un diagnostic** montre le texte exact avant copie. Ce rapport contient les versions, états techniques et dates de vérification, sans compte, quota, chemin personnel ni secret. Il n’envoie rien automatiquement.
 
@@ -228,27 +232,14 @@ L’application ne possède pas de serveur de synchronisation et n’envoie pas 
 
 Pour préconfigurer localement une première installation, créez `%LOCALAPPDATA%\CodexTracker\initial-accounts.json` avec un tableau d’adresses, par exemple `["demo@example.test"]`. Ce fichier est facultatif, lu uniquement si les réglages n’existent pas encore, et doit rester hors du dépôt. Ces comptes restent « À détecter » jusqu’à leur ouverture dans Codex.
 
-## Développer
+## Options de ligne de commande
 
-Installez le SDK .NET 10 puis, sous Windows :
+- `CodexTracker.exe --exit` quitte l’instance en cours ; `--demo --exit` ferme le mode démonstration.
+- `--demo` ouvre des comptes fictifs, séparés de vos données ; `--language en` ou `fr` force la langue de cette session.
+- `--cli help` liste les commandes des assistants (voir le [guide MCP](MCP.md)).
+- Captures avec comptes fictifs uniquement : `--demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test` (quitte après la capture), ainsi que `--peek-screenshot`, `--pill-screenshot`, `--details-screenshot` et `--settings-screenshot`.
 
-```powershell
-dotnet restore CodexTracker.slnx
-dotnet build CodexTracker.slnx
-dotnet test tests/CodexTracker.Tests/CodexTracker.Tests.csproj
-dotnet run --project src/CodexTracker.App -- --demo
-./scripts/publish.ps1
-./scripts/build-installer.ps1 -InstallCompiler
-./scripts/release.ps1 -Publish -NotesPath notes.md -UpdateThisPc
-```
-
-Les scripts de publication et de création de l’installateur utilisent par défaut la version de `Directory.Build.props` ; `-Version` permet de la préciser explicitement. Le dernier script peut installer le compilateur Inno Setup officiel pour l’utilisateur courant, après vérification de sa signature. `scripts/bump.ps1 -Version x.y.z` prépare une version (propriétés et liens du README, puis restauration). Il n’y a pas de CI distante. `scripts/release.ps1` enchaîne en local la compilation, les tests métier et WPF, le ZIP autonome, l’installateur, leurs SHA-256 et les tests stdio de l’exécutable publié. Avec `-Publish`, il exige un arbre propre poussé sur `main`, crée la Release GitHub (notes : puces de nouveautés ; liens et checksum ZIP ajoutés) ; `-UpdateThisPc` installe ensuite cette Release sur le poste par le moteur de mise à jour et vérifie la conservation des comptes. Il refuse de démarrer pendant Final Fantasy XIV. Le cycle complet de l’installateur exige un profil Windows jetable (voir [PUBLISHED-UPDATE-TEST.md](PUBLISHED-UPDATE-TEST.md)).
-
-La solution sépare `Core` (modèle et quotas), `Codex` (observation et protocole en lecture seule) et `App` (WPF et zone de notification). Les tests utilisent des sessions fictives et ne modifient jamais votre connexion Codex. Ils couvrent les réponses de quotas, valeurs absentes, dates et changements d’heure, changements de fichiers, isolation des comptes et réponses réseau tardives. Les contrôles réels et leurs limites sont détaillés dans [VALIDATION.md](VALIDATION.md).
-
-Pour quitter une instance existante avant une mise à jour : `CodexTracker.exe --exit`. Le mode démonstration se ferme séparément avec `CodexTracker.exe --demo --exit`.
-
-Les captures automatisées sont réservées aux comptes fictifs : `CodexTracker.exe --demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test`. Les options `--demo-advice`, `--theme light`, `--peek-screenshot`, `--details-screenshot` et `--settings-screenshot` permettent de contrôler les autres états sans exporter les comptes réels.
+Pour modifier le code : [AGENTS.md](../AGENTS.md) et [architecture](ARCHITECTURE.md).
 
 ## Références
 

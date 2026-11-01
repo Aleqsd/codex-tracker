@@ -122,7 +122,7 @@ internal static partial class EnglishApp
         ("L’événement n’existe plus dans Google Agenda ; il ne sera pas recréé automatiquement.", "The event no longer exists in Google Calendar; it will not be created again automatically."),
         ("Pas dans l’agenda", "Not in the calendar"),
         ("Pas encore ajouté à Google Agenda.", "Not added to Google Calendar yet."),
-        ("Connectez Google Agenda dans Réglages → Calendrier pour l’ajouter automatiquement.", "Connect Google Calendar in Settings → Calendar to add it automatically."),
+        ("Connectez Google Agenda dans Réglages → Google Agenda pour l’ajouter automatiquement.", "Connect Google Calendar in Settings → Google Calendar to add it automatically."),
         ("Ouvrir l’événement dans Google Agenda", "Open the event in Google Calendar"),
         ("Ajouter à nouveau à Google Agenda", "Add to Google Calendar again"),
         ("Ajouter à Google Agenda", "Add to Google Calendar"),

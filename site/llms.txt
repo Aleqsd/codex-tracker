@@ -2,7 +2,7 @@
 
 > Free, open-source Windows 11 taskbar app that shows how much OpenAI Codex and Claude Code usage you have left: the 5-hour and weekly usage limits of every account, the exact reset time of each limit, banked Codex reset credits with their expiry, and reminders before resets or when a credit is about to be wasted. Local only: no account, no server, no password. MIT license. Current version: {{VERSION}}.
 
-Codex Tracker reads the quota data that the Codex and Claude apps already store on the PC (it never reads conversations or tokens and never switches accounts). It is an independent project, not affiliated with OpenAI or Anthropic. Interface in English or French.
+Codex Tracker reads the quota data that the Codex and Claude apps already store on the PC. It never reads conversations or code and never switches accounts. To read the active Codex account's quota it passes the current Codex access token, in memory only, to the installed Codex CLI; it never stores or sends tokens elsewhere and never uses Claude tokens. It is an independent project, not affiliated with OpenAI or Anthropic. Interface in English or French.
 
 ## Install (for AI coding agents)
 
@@ -22,7 +22,7 @@ Full steps, MCP registration and limits: https://codex-tracker.zqsdev.com/instal
 - On-screen pill above the clock, only while an account in use is at 10 % or less or a reset credit expires within 24 hours; visible in Do Not Disturb, hidden over full-screen apps, "Hide" until the next alert.
 - Free phone notifications through ntfy (no account): scan a QR code, and every Windows notification is copied to the phone, even when Windows is in Do Not Disturb.
 - Optional SMS, phone call and email reminders through the user's own Twilio or SendGrid account.
-- Local MCP server (`CodexTracker.exe --mcp`, off by default) with 22 tools so coding agents can read quotas, resets and history, change preferences and reminder rules, connect Google Calendar and send test notifications.
+- Local MCP server (`CodexTracker.exe --mcp`, off by default) so coding agents can read quotas, resets and history, change preferences and reminder rules, connect Google Calendar and send test notifications.
 - Command line with the same commands and JSON output: `CodexTracker.exe --cli list_resets`, `--cli get_status`, `--cli help`.
 
 ## Install

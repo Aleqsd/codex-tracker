@@ -4,7 +4,8 @@
 Writes the winget manifests of a published release into artifacts/winget, validates them, and with -Submit updates the
 pull request in microsoft/winget-pkgs (branch of the Aleqsd/winget-pkgs fork) through the GitHub API.
 .DESCRIPTION
-The installer hash comes from the published .sha256 file of the release. -Submit replaces the manifests of the branch
+The installer hash is the SHA-256 that GitHub computes for the release asset (local artifacts/ as a fallback).
+-Submit replaces the manifests of the branch
 with this version's, so the open pull request always proposes the latest release. Needs gh (gh auth login).
 #>
 [CmdletBinding()]
@@ -20,7 +21,8 @@ $root = Split-Path -Parent $PSScriptRoot
 if (-not $Version) { [xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props') -Raw; $Version = [string]$props.Project.PropertyGroup.Version }
 $schema = '1.28.0'
 $download = "https://github.com/Aleqsd/codex-tracker/releases/download/v$Version"
-$hash = ((gh release download "v$Version" --repo Aleqsd/codex-tracker --pattern "CodexTracker-$Version-Setup.exe.sha256" --output - 2>$null) -split '\s+')[0]
+$digest = gh api "repos/Aleqsd/codex-tracker/releases/tags/v$Version" --jq ".assets[] | select(.name == \"CodexTracker-$Version-Setup.exe\") | .digest" 2>$null
+$hash = if ($digest -match '^sha256:([0-9a-f]{64})$') { $Matches[1] }
 if (-not $hash) {
     $local = Join-Path $root "artifacts/CodexTracker-$Version-Setup.exe.sha256"
     if (-not (Test-Path $local)) { throw "Empreinte de l’installateur $Version introuvable (release publiée ou artifacts/)." }

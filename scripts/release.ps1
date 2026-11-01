@@ -9,7 +9,9 @@ and a notes file holding only the feature bullets: download links and the ZIP ch
 Refuses to start while Final Fantasy XIV runs: the WPF suite activates real windows.
 -Quick skips the checks that the changes since the last release tag cannot affect: the WPF suite unless a view,
 the tray or XAML changed, the Claude collectors unless the Codex project changed, the MCP start delay unless Mcp/ changed.
-A change to the site, docs or scripts alone needs no release: scripts/site.ps1 -Deploy.
+A change to the site, docs or scripts alone needs no release: Netlify rebuilds the site on push.
+After publishing, the winget manifests (artifacts/winget) and the Store package (artifacts/*.msix) of the version are
+prepared; submitting them stays explicit (scripts/winget.ps1 -Submit, Partner Center).
 The installer lifecycle needs a disposable Windows profile and is not run on this PC (docs/PUBLISHED-UPDATE-TEST.md).
 #>
 [CmdletBinding()]
@@ -146,6 +148,14 @@ try {
         }
     }
     $report | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $root "artifacts/release-$Version.json") -Encoding utf8
+    if ($Publish) {
+        # Distribution files for this version; a failure here never undoes the published release.
+        try { & ./scripts/winget.ps1 -Version $Version | Out-Null; Write-Host "Manifestes winget $Version prêts." -ForegroundColor Gray }
+        catch { Write-Host "Manifestes winget non préparés : $($_.Exception.Message)" -ForegroundColor Yellow }
+        try { & ./scripts/build-msix.ps1 -Version $Version | Out-Null; Write-Host "Paquet Store $Version prêt." -ForegroundColor Gray }
+        catch { Write-Host "Paquet Store non préparé : $($_.Exception.Message)" -ForegroundColor Yellow }
+        $global:LASTEXITCODE = 0
+    }
     if ($UpdateThisPc) { Invoke-Step 'Mise à jour de ce PC' { & ./scripts/update-this-pc.ps1 -Version $Version } }
     Write-Host "Release $Version prête en $([int]$watch.Elapsed.TotalMinutes) min : $setup" -ForegroundColor Green
 } finally {

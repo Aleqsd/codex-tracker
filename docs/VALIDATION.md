@@ -1,3 +1,7 @@
+# Historique de validation (figé)
+
+Historique figé jusqu’à la 0.9.18, conservé tel quel ; ses liens vers d’anciennes exécutions GitHub Actions peuvent ne plus répondre. La validation actuelle de chaque version est `scripts/release.ps1` (voir [AGENTS.md](../AGENTS.md)).
+
 # Versions 0.9.14 à 0.9.18 — validation locale
 
 Les 0.9.14 à 0.9.17 ont été construites par la CI Windows de l’époque (tests métier, suite WPF, MCP publié et cycle de l’installateur), puis installées sur le poste par le moteur de mise à jour, comptes conservés. La CI GitHub Actions a ensuite été retirée : la 0.9.18 (`d79ae19`) est la première Release produite par `scripts/release.ps1` — 551 tests métier, 322 contrôles WPF, ZIP, Setup et SHA-256, 14 contrôles MCP stdio et 21 contrôles des collecteurs Claude Code sur l’exécutable publié, délai de démarrage MCP — puis installée par `scripts/update-this-pc.ps1` : quatre comptes conservés, `DisplayVersion` Windows identique à l’EXE. Le cycle de l’installateur en profil vierge n’a pas été rejoué depuis le retrait de la CI ; il attend Windows Sandbox. Les fenêtres WPF de test s’ouvrent sur l’écran secondaire choisi, jamais pendant Final Fantasy XIV.

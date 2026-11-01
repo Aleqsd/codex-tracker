@@ -11,6 +11,8 @@ Le client « Codex Tracker » (projet Google Cloud `codex-tracker-513408`) deman
 
 ## Reste à faire
 
+État au 01/11/2026.
+
 1. **Logo** 120 × 120 px (icône de l’application), facultatif mais conseillé.
 2. **Vidéo de démonstration** non répertoriée sur YouTube (2–4 min, en anglais ou sous-titrée) :
    - montrer la barre d’adresse de la page de consentement avec le `client_id` du client publié ;
