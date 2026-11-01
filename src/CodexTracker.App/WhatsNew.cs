@@ -14,6 +14,7 @@ internal static class WhatsNew
 {
     internal static IReadOnlyList<WhatsNewItem> Items() =>
     [
+        new("0.9.44", Loc.T("Interface en espagnol, allemand, portugais et japonais"), "Général"),
         new("0.9.42", Loc.T("Rappels de recharge seulement quand ils sont utiles"), "Général"),
         new("0.9.42", Loc.T("Signaler un problème en un clic, diagnostic compris"), "Application"),
         new("0.9.42", Loc.T("Ce panneau des nouveautés après chaque mise à jour")),

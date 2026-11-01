@@ -102,6 +102,10 @@ $manifest = @"
   <Resources>
     <Resource Language="en-US" />
     <Resource Language="fr-FR" />
+    <Resource Language="es-ES" />
+    <Resource Language="de-DE" />
+    <Resource Language="pt-BR" />
+    <Resource Language="ja-JP" />
   </Resources>
   <Applications>
     <Application Id="CodexTracker" Executable="CodexTracker.exe" EntryPoint="Windows.FullTrustApplication">

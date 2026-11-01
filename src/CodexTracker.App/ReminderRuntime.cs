@@ -45,7 +45,7 @@ internal sealed class ReminderRuntime : IDisposable
     }
     internal Task<DeliveryResult> TestAsync(ReminderChannel channel, Func<bool>? stillAuthorized = null)
     {
-        if (_demo) return Task.FromResult(new DeliveryResult(DeliveryStatus.Skipped, Loc.T("Tests d’envoi désactivés dans la démonstration.")));
+        if (_demo && !(channel == ReminderChannel.Email && GoogleCalendarSync.LiveDemo)) return Task.FromResult(new DeliveryResult(DeliveryStatus.Skipped, Loc.T("Tests d’envoi désactivés dans la démonstration.")));
         if (_dispatcher is null) return Task.FromResult(new DeliveryResult(DeliveryStatus.Failed, Error ?? Loc.T("Le moteur de rappels est indisponible.")));
         if (_paused || _lifetime.IsCancellationRequested) return Task.FromResult(new DeliveryResult(DeliveryStatus.Skipped, Loc.T("Le tracker est suspendu ou en cours de fermeture. Réessayez après sa reprise.")));
         return _dispatcher.TestAsync(channel, _lifetime.Token, stillAuthorized);

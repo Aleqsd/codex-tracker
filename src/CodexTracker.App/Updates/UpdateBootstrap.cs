@@ -9,7 +9,7 @@ using CodexTracker.Core;
 namespace CodexTracker.App.Updates;
 
 internal sealed record UpdateManifest(string Target, string StagedExecutable, string OldHash, string NewHash, int ParentId, long ParentStartedUtcTicks, bool RelaunchInBackground = true,
-    bool English = false);
+    bool English = false, string? Language = null);
 
 public static class UpdateBootstrap
 {
@@ -25,7 +25,8 @@ public static class UpdateBootstrap
             if (new FileInfo(manifestPath).Length > 8192) throw new InvalidDataException(Loc.T("Le manifeste de mise à jour est invalide."));
             var manifest = JsonSerializer.Deserialize<UpdateManifest>(await File.ReadAllTextAsync(manifestPath)) ?? throw new InvalidDataException();
             // The helper runs before preferences are read: the manifest carries the language of the app being updated.
-            if (manifest.English) { Loc.Register(EnglishApp.All); Loc.Use(AppLanguage.English); }
+            if (Loc.FromCode(manifest.Language) is { } language) AppLocalization.Apply(language);
+            else if (manifest.English) AppLocalization.Apply(AppLanguage.English);
             if (!string.Equals(Path.GetFullPath(manifest.StagedExecutable), Path.Combine(stage, "payload", "CodexTracker.exe"), StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException(Loc.T("Fichier de mise à jour invalide."));
             using var parent = Process.GetProcessById(manifest.ParentId);

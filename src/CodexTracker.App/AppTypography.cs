@@ -11,7 +11,7 @@ namespace CodexTracker.App;
 internal static class AppTypography
 {
     private static readonly string ResourceRoot = $"pack://application:,,,/{typeof(AppTypography).Assembly.GetName().Name};component/Assets/Fonts/";
-    internal static readonly FontFamily Family = new(new Uri("pack://application:,,,/"), $"/{typeof(AppTypography).Assembly.GetName().Name};component/Assets/Fonts/#Roboto");
+    internal static readonly FontFamily Family = new(new Uri("pack://application:,,,/"), $"/{typeof(AppTypography).Assembly.GetName().Name};component/Assets/Fonts/#Roboto, Yu Gothic UI, Meiryo UI, Segoe UI");
     internal static readonly Typeface TrayTypeface = new(Family, FontStyles.Normal, FontWeights.Medium, FontStretches.Normal);
 
     // ToolStrip uses GDI, whereas WPF resolves the embedded font directly.

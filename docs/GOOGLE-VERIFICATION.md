@@ -20,7 +20,7 @@ Le client « Codex Tracker » (projet Google Cloud `codex-tracker-513408`) deman
    - le reset en réserve ajouté, puis l’événement ouvert dans Google Agenda ;
    - **Envoyer un e-mail de test** et l’e-mail reçu dans Gmail ;
    - **Déconnecter** pour montrer la révocation.
-   Utiliser des données fictives quand c’est possible (`--demo` ne contacte pas Google : la vidéo doit montrer une vraie connexion).
+   `scripts/record-google-demo.ps1` compile avec le client publié, enregistre l’écran principal (ffmpeg) et ouvre `--demo --demo-live-google` en anglais : comptes fictifs, vraie connexion Google gardée dans le dossier temporaire de la démo, rien d’ajouté automatiquement. Suivre la liste de plans affichée, puis Entrée ; la vidéo arrive dans `artifacts/google-verification/`. Supprimer ensuite l’événement de test dans Google Agenda.
 3. **Justifications** (déjà saisies, à reprendre si Google demande des précisions) :
    - `calendar.events.owned` : « Codex Tracker is a Windows desktop app that tracks Codex usage limits. When the user connects Google Calendar, it creates one event in the user’s primary calendar per banked Codex reset credit, at its expiry time and with reminders, and deletes that event when the credit is used. It never reads or changes other events. We use calendar.events.owned instead of calendar.events because the app only writes to the user’s own primary calendar; read-only scopes cannot create events. »
    - `gmail.send` : « Optional email alerts: the day before a reset credit expires, the app sends one reminder email from the user’s Gmail address to that same address. It never reads, lists or deletes messages. »

@@ -49,7 +49,7 @@ Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte
 
 ## Langues
 
-Le français est la source et le repli : `Loc.T` traduit un texte, `Loc.F` un modèle à paramètres. Les entrées anglaises sont dans `App/Localization/EnglishApp.*.cs` et `Core/Localization.English.cs`. `LocalizationTests` refuse un texte marqué sans entrée anglaise, un paramètre perdu et une entrée orpheline ou enregistrée deux fois. La langue s’applique au démarrage ; `--language en|fr` la force pour un aperçu.
+Le français est la source et le repli : `Loc.T` traduit un texte, `Loc.F` un modèle à paramètres. Les entrées anglaises sont dans `App/Localization/EnglishApp.*.cs` et `Core/Localization.English.cs` ; l’espagnol, l’allemand, le portugais (Brésil) et le japonais sont des tables JSON incorporées (`App/Localization/Translations/<code>.json`, texte français → traduction), chargées par `AppLocalization` pour la seule langue utilisée. Repli : langue choisie, puis anglais, puis français. `LocalizationTests` refuse un texte marqué sans entrée anglaise, une langue incomplète ou orpheline, un paramètre perdu ou un modèle qui ne se formate pas. La police Roboto se complète de Yu Gothic UI pour le japonais. La langue s’applique au démarrage ; `--language fr|en|es|de|pt|ja` la force pour un aperçu.
 
 ## Édition Microsoft Store
 

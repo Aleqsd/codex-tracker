@@ -52,8 +52,15 @@ internal sealed class GoogleCalendarSync : IDisposable
     internal string? Email => _demo ? "alex@example.com" : _current.Email;
     internal bool IsConnecting { get; private set; }
 
+    /// <summary>
+    /// --demo --demo-live-google: fictional accounts with a real Google connection, kept in the demo's temporary folder.
+    /// Used to record the Google verification video without showing real accounts; nothing is added automatically.
+    /// </summary>
+    internal static bool LiveDemo { get; } = Environment.GetCommandLineArgs().Contains("--demo") && Environment.GetCommandLineArgs().Contains("--demo-live-google");
+
     internal GoogleCalendarSync(string dataDirectory, bool demo, Action<Uri>? openBrowser = null)
     {
+        if (LiveDemo) demo = false;
         _client = new(_http);
         _openBrowser = openBrowser ?? (uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }));
         // --demo-calendar-setup previews the not-yet-connected screens; actions stay unavailable in the demo.

@@ -109,7 +109,7 @@ Le menu **… → Google Agenda ↗** ouvre les options d’import pour le compt
 
 ## Personnalisation et calendrier
 
-**Langue** : **Réglages → Général → Apparence → Langue** propose **Comme Windows** (par défaut), **Français** ou **English**. Le changement s’applique au démarrage suivant ; **Redémarrer maintenant** relance le tracker sans perdre le suivi. Les dates suivent la langue choisie. Les réponses du MCP aux assistants restent en français.
+**Langue** : **Réglages → Général → Apparence → Langue** propose **Comme Windows** (par défaut), **Français**, **English**, **Español**, **Deutsch**, **Português (Brasil)** ou **日本語**. Le changement s’applique au démarrage suivant ; **Redémarrer maintenant** relance le tracker sans perdre le suivi. Les dates suivent la langue choisie. Les réponses du MCP aux assistants restent en français.
 
 Cliquez directement sur **l’avatar d’un compte** (ou ouvrez **··· → Nom et avatar…**) pour choisir un nom court et une image PNG ou JPEG locale (8 Mo et 40 mégapixels maximum). L’image est recadrée au centre et copiée dans les données locales du tracker ; déplacer l’original ne change pas l’avatar. Les photos importées conservent leur transparence sur un fond neutre adapté au thème, sans initiales derrière l’image. Sans photo, un cercle coloré affiche les initiales du nom ou de l’adresse, avec une couleur stable par compte. Cliquez aussi sur cet avatar dans la fenêtre de personnalisation pour choisir une image. **Utiliser les initiales** retire la photo, et un nom vide rétablit l’adresse. Fermer la fenêtre abandonne les modifications non enregistrées. Les noms et les photos restent visibles. Le bouton de confidentialité et la sélection manuelle du compte de l’icône ont été retirés ; les anciens réglages correspondants sont ignorés.
 
@@ -241,7 +241,7 @@ Pour préconfigurer localement une première installation, créez `%LOCALAPPDATA
 ## Options de ligne de commande
 
 - `CodexTracker.exe --exit` quitte l’instance en cours ; `--demo --exit` ferme le mode démonstration.
-- `--demo` ouvre des comptes fictifs, séparés de vos données ; `--language en` ou `fr` force la langue de cette session.
+- `--demo` ouvre des comptes fictifs, séparés de vos données ; `--language fr|en|es|de|pt|ja` force la langue de cette session.
 - `--cli help` liste les commandes des assistants (voir le [guide MCP](MCP.md)).
 - Captures avec comptes fictifs uniquement : `--demo --theme dark --screenshot dashboard.png --dpi 144 --smoke-test` (quitte après la capture), ainsi que `--peek-screenshot`, `--pill-screenshot`, `--details-screenshot` et `--settings-screenshot`.
 

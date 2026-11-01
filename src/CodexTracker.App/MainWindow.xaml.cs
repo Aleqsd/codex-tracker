@@ -94,7 +94,7 @@ public partial class MainWindow : Window
     {
         await _service.InitializeAsync(_lifetime.Token);
         UpdateModel(); _clockTimer.Start();
-        if (!_demo) { _calendarTimer.Start(); _ = SyncCalendarAsync(); }
+        if (!_demo || GoogleCalendarSync.LiveDemo) { _calendarTimer.Start(); _ = SyncCalendarAsync(); }
         if (_automaticUpdates is not null)
         {
             _automaticUpdates.SetEnabled(_preferences.Current.DownloadUpdatesAutomatically);
@@ -113,7 +113,7 @@ public partial class MainWindow : Window
         _settings?.RefreshHealth();
     }
     private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() => { UpdateModel(); _ = SyncCalendarAsync(); });
-    internal Task SyncCalendarAsync() => _canClose || _demo || _preferences.RecoveryRequired ? Task.CompletedTask
+    internal Task SyncCalendarAsync() => _canClose || _demo && !GoogleCalendarSync.LiveDemo || _preferences.RecoveryRequired ? Task.CompletedTask
         : Calendar.SyncAsync(_service.State, _preferences.Current.GoogleCalendarAutoAdd, CalendarName);
     /// <summary>Opens the Google consent in the browser (from the MCP); the outcome shows in the calendar state.</summary>
     internal async void StartGoogleConnection(bool mail)

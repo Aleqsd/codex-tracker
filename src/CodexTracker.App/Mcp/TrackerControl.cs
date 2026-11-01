@@ -74,7 +74,7 @@ internal sealed class TrackerControl : IDisposable
                 accountNames = _preferences.Current.Appearances.Where(a => a.Value.Name is not null).ToDictionary(a => a.Key, a => a.Value.Name),
                 resetAlerts = _preferences.Current.ResetAlerts, pillHidden = _preferences.Current.PillHidden,
                 avatars = _preferences.Current.Appearances.Where(a => a.Value.AvatarFile is not null).Select(a => a.Key),
-                languagePendingRestart = (Loc.Resolve(_preferences.Current.Language) == AppLanguage.English) != Loc.IsEnglish,
+                languagePendingRestart = Loc.Resolve(_preferences.Current.Language) != Loc.Current,
                 sortMode = "reserved: no effect" };
             case "rules": return new { revision, rules = _preferences.Current.ReminderRules };
             case "channels":

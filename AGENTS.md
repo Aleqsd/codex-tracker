@@ -1,6 +1,6 @@
 # Travailler sur Codex Tracker
 
-Application Windows 11 .NET 10 / WPF, interface française (anglais disponible). Lire README.md, docs/ARCHITECTURE.md et docs/DESIGN.md avant une modification transversale ; docs/UTILISATION.md décrit chaque fonction côté utilisateur.
+Application Windows 11 .NET 10 / WPF, interface française (anglais, espagnol, allemand, portugais et japonais disponibles). Lire README.md, docs/ARCHITECTURE.md et docs/DESIGN.md avant une modification transversale ; docs/UTILISATION.md décrit chaque fonction côté utilisateur.
 
 ## Carte du projet
 
@@ -58,7 +58,7 @@ Toute fonctionnalité doit rester pilotable par un agent de code sans contrôle 
 
 Ne jamais lancer les tests UI locaux, aperçus ou automatisations qui activent une fenêtre pendant que Final Fantasy XIV tourne (`ffxiv_dx11.exe` ou `ffxiv.exe`) : ils peuvent faire quitter le plein écran du jeu. Vérifier les processus en lecture seule avant ces actions ; reporter le contrôle local après la session de jeu. Ne pas fermer/minimiser le jeu. Les compilations et tests métier sans interface restent possibles. Les fenêtres de la suite WPF s’ouvrent sur l’écran à droite du principal s’il existe (`-TestScreen right|left|primary|DISPLAYn` ou `CODEX_TRACKER_TEST_SCREEN`) ; elles prennent tout de même le focus, et une perte de focus pendant la suite peut faire échouer un test de liste déroulante : relancer avant de chercher un bug.
 
-Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition, côté MCP et `--cli`. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Toute chaîne d’interface passe par `Loc.T`/`Loc.F` avec sa traduction anglaise ; un test refuse les traductions orphelines. Modifier le site : `scripts/site.ps1 -Draft`, puis contrôle bureau et 375 px, clair et sombre.
+Modifier une règle métier : tests de ses limites et erreurs. Modifier une commande : tester concurrence, refus et répétition, côté MCP et `--cli`. Modifier une vue : aperçu clair/sombre et compact, puis navigation clavier. Toute chaîne d’interface passe par `Loc.T`/`Loc.F` avec sa traduction anglaise (`EnglishApp.*.cs`) et ses traductions dans `App/Localization/Translations/{es,de,pt,ja}.json` ; un test refuse un texte non traduit, un paramètre perdu et une traduction orpheline. Modifier le site : `scripts/site.ps1 -Draft`, puis contrôle bureau et 375 px, clair et sombre.
 
 ## Présentation publique et distribution
 

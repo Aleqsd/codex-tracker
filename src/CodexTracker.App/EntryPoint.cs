@@ -70,5 +70,5 @@ internal static class EntryPoint
     /// For the storage errors only, which end the process before the preferences can be trusted:
     /// the Windows language stands in for the saved choice. Normal starts apply the preference in App.
     /// </summary>
-    private static void UseWindowsLanguage() { Loc.Register(EnglishApp.All); Loc.Use(AppLanguage.System); }
+    private static void UseWindowsLanguage() => AppLocalization.Apply(AppLanguage.System);
 }

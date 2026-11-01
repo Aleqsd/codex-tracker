@@ -28,7 +28,8 @@ Envoyer `artifacts/CodexTracker-<version>.msix` dans **Packages** d’une nouvel
 
 - **Catégorie** : Outils de développement. **Prix** : gratuit. **Âge** : questionnaire IARC, aucun contenu sensible.
 - **Politique de confidentialité** : https://codex-tracker.zqsdev.com/privacy/ ; **site** : https://codex-tracker.zqsdev.com ; **support** : https://github.com/Aleqsd/codex-tracker/issues.
-- **Captures** (1366 × 768 ou plus, données fictives) : à faire. Les images de `docs/` sont plus petites ; rendre des captures dédiées, par exemple `--demo --preview` à 144 ou 192 DPI, puis les recadrer.
+- **Captures** : `python scripts/store-screenshots.py` rend hors écran six captures 1920 × 1080 par langue (fr, en, es, de, pt, ja), données fictives, dans `artifacts/store/<langue>/` ; envoyer celles de la langue de chaque fiche, dans l’ordre des numéros.
+- **Langues de fiche** : le paquet déclare en-US, fr-FR, es-ES, de-DE, pt-BR et ja-JP ; une fiche par langue (descriptions ci-dessous).
 - **Mots-clés** : Codex, Claude Code, usage limit, quota, rate limit, reset, taskbar, MCP.
 
 **Description (en-US)**
@@ -54,6 +55,54 @@ Envoyer `artifacts/CodexTracker-<version>.msix` dans **Packages** d’une nouvel
 > • Un serveur MCP local et une ligne de commande pour les assistants de code
 >
 > Tout reste sur votre PC : ni compte, ni serveur, ni mot de passe. Le tracker lit les quotas que Codex et Claude conservent déjà, jamais vos conversations. Projet indépendant, non affilié à OpenAI ni à Anthropic.
+
+**Description (es-ES)**
+
+> Sabe siempre cuánto te queda de OpenAI Codex y Claude Code. Codex Tracker muestra tus límites de 5 horas y semanales en la barra de tareas de Windows, te dice exactamente cuándo se recarga cada uno y te avisa en el momento justo.
+>
+> • Todas tus cuentas de Codex y Claude Code lado a lado, con la antigüedad de cada medición
+> • Hora exacta de cada recarga, vista semanal y reinicios en reserva de Codex con su caducidad
+> • Recordatorios en Windows, en el móvil con ntfy (incluso en No molestar), por Gmail y en Google Calendar
+> • Una pastilla en pantalla cuando una cuenta se agota, con la cuenta a la que cambiar
+> • Un servidor MCP local y una línea de comandos para los agentes de código
+>
+> Todo se queda en tu PC: sin cuenta, sin servidor, sin contraseña. Lee los datos de cuota que Codex y Claude ya guardan, nunca tus conversaciones. Proyecto independiente, sin relación con OpenAI ni Anthropic.
+
+**Description (de-DE)**
+
+> Wisse immer, wie viel OpenAI Codex und Claude Code dir noch bleibt. Codex Tracker zeigt deine 5-Stunden- und Wochenlimits in der Windows-Taskleiste, sagt dir genau, wann jedes aufgefüllt wird, und erinnert dich im richtigen Moment.
+>
+> • Alle Codex- und Claude-Code-Konten nebeneinander, mit dem Alter jeder Messung
+> • Genaue Auffüllzeiten, Wochenansicht und Codex-Reserve-Resets mit Ablaufdatum
+> • Erinnerungen unter Windows, auf dem Handy mit ntfy (auch bei Nicht stören), per Gmail und im Google Kalender
+> • Ein Hinweis auf dem Bildschirm, wenn ein Konto knapp wird, mit dem Konto, zu dem du wechseln kannst
+> • Ein lokaler MCP-Server und eine Kommandozeile für Coding-Agents
+>
+> Alles bleibt auf deinem PC: kein Konto, kein Server, kein Passwort. Gelesen werden nur die Kontingentdaten, die Codex und Claude bereits speichern, nie deine Unterhaltungen. Unabhängiges Projekt, nicht mit OpenAI oder Anthropic verbunden.
+
+**Description (pt-BR)**
+
+> Saiba sempre quanto ainda resta do OpenAI Codex e do Claude Code. O Codex Tracker mostra seus limites de 5 horas e semanais na barra de tarefas do Windows, diz exatamente quando cada um recarrega e avisa você na hora certa.
+>
+> • Todas as suas contas do Codex e do Claude Code lado a lado, com a idade de cada leitura
+> • Horário exato das recargas, visão da semana e resets em reserva do Codex com a expiração
+> • Lembretes no Windows, no celular com ntfy (mesmo em Não incomodar), por Gmail e no Google Agenda
+> • Uma pílula na tela quando uma conta está acabando, com a conta para a qual trocar
+> • Um servidor MCP local e uma linha de comando para agentes de código
+>
+> Tudo fica no seu PC: sem conta, sem servidor, sem senha. Ele lê os dados de cota que o Codex e o Claude já guardam, nunca suas conversas. Projeto independente, sem afiliação com a OpenAI ou a Anthropic.
+
+**Description (ja-JP)**
+
+> OpenAI CodexとClaude Codeの残りを、いつでも把握。Codex Trackerは5時間枠と週間枠をWindowsのタスクバーに表示し、それぞれの回復時刻を正確に示して、ちょうどよいタイミングで通知します。
+>
+> • CodexとClaude Codeの全アカウントを並べて表示、各測定の経過時間つき
+> • 正確な回復時刻、週間ビュー、Codexの予備リセットとその期限
+> • Windows、ntfyでスマートフォン（応答不可でも）、Gmail、Googleカレンダーでリマインダー
+> • アカウントの残りが少なくなると画面上にバッジを表示し、切り替え先を提案
+> • コーディングエージェント向けのローカルMCPサーバーとコマンドライン
+>
+> すべてPC内で完結：アカウント、サーバー、パスワードは不要。CodexとClaudeがすでに保存している利用枠のデータだけを読み取り、会話は読みません。OpenAIおよびAnthropicとは無関係の独立したプロジェクトです。
 
 ## Notes pour la certification
 

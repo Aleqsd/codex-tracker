@@ -160,7 +160,7 @@ public sealed partial class UpdateService : IDisposable
             File.Copy(target, helper, false);
             using var current = Process.GetCurrentProcess();
             var manifest = new UpdateManifest(target, executable, await UpdatePackage.HashAsync(target, cancellationToken),
-                prepared.ExecutableHash, Environment.ProcessId, current.StartTime.ToUniversalTime().Ticks, background, Loc.IsEnglish);
+                prepared.ExecutableHash, Environment.ProcessId, current.StartTime.ToUniversalTime().Ticks, background, Loc.IsEnglish, Loc.Code);
             var manifestPath = Path.Combine(stage, "update.json");
             await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest), cancellationToken);
             var info = new ProcessStartInfo(helper) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = stage };

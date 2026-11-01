@@ -71,12 +71,14 @@ public partial class App : System.Windows.Application
             // The language is applied before any window exists; changing it takes effect at the next start.
             int languageArgument = Array.IndexOf(e.Args, "--language");
             var language = languageArgument >= 0 && languageArgument + 1 < e.Args.Length
-                ? e.Args[languageArgument + 1] == "en" ? AppLanguage.English : AppLanguage.French
+                ? Loc.FromCode(e.Args[languageArgument + 1]) ?? AppLanguage.French
                 : e.Args.Contains("--preview") ? AppLanguage.French : preferences.Current.Language;
-            Loc.Register(EnglishApp.All); Loc.Use(language);
+            AppLocalization.Apply(language);
             // Display formatting passes Loc.Culture explicitly: a culture set in this async method would not outlive its flow.
             System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = Loc.Culture;
             if (IsDemo && demoInstance >= 0) preferences.Update(p => p with { McpEnabled = true });
+            // The verification recording adds one credit by hand rather than every fictional credit to a real calendar.
+            if (IsDemo && GoogleCalendarSync.LiveDemo) preferences.Update(p => p with { GoogleCalendarAutoAdd = false });
             var updates = new UpdateService();
             updates.SetIncludePrereleases(preferences.Current.IncludePrereleaseUpdates);
             if (!IsDemo)
@@ -173,7 +175,9 @@ public partial class App : System.Windows.Application
             if (pillArgument >= 0 && pillArgument + 1 < e.Args.Length)
             {
                 if (!IsDemo) throw new InvalidOperationException(Loc.F("{0} nécessite --demo.", "--pill-screenshot"));
-                _tray.SavePillScreenshot(Path.GetFullPath(e.Args[pillArgument + 1]));
+                int dpiArgument = Array.IndexOf(e.Args, "--dpi");
+                double dpi = dpiArgument >= 0 && dpiArgument + 1 < e.Args.Length && double.TryParse(e.Args[dpiArgument + 1], out var parsed) ? Math.Clamp(parsed, 96, 288) : 96;
+                _tray.SavePillScreenshot(Path.GetFullPath(e.Args[pillArgument + 1]), dpi);
             }
             foreach (var option in new[] { "--details-screenshot", "--settings-screenshot" })
             {

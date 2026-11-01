@@ -209,6 +209,7 @@ internal static partial class EnglishApp
         ("Découvrir", "See what's new"),
         ("Voir les nouveautés", "See what's new"),
         ("Masquer les nouveautés", "Hide what's new"),
+        ("Interface en espagnol, allemand, portugais et japonais", "Interface in Spanish, German, Portuguese and Japanese"),
         ("Rappels de recharge seulement quand ils sont utiles", "Refill reminders only when they are useful"),
         ("Signaler un problème en un clic, diagnostic compris", "Report a problem in one click, diagnostic included"),
         ("Ce panneau des nouveautés après chaque mise à jour", "This what's new panel after each update"),

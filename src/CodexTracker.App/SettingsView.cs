@@ -67,7 +67,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         _themeSelector = new ComboBox { Tag = FindResource("DropdownThemeIcon"), ItemsSource = new[] { new ThemeChoice(AppThemeMode.System, Loc.T("Comme Windows")), new ThemeChoice(AppThemeMode.Light, Loc.T("Clair")), new ThemeChoice(AppThemeMode.Dark, Loc.T("Sombre")) }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         Row(Labelled(Loc.T("Thème"), _themeSelector));
         _themeSelector.SelectionChanged += (_, _) => { if (!_syncing && _themeSelector.SelectedValue is ThemeMode mode) Save(p => p with { ThemeMode = mode }); };
-        _languageSelector = new ComboBox { Tag = FindResource("SettingsGeneralIcon"), ItemsSource = new[] { new LanguageChoice(AppLanguage.System, Loc.T("Comme Windows")), new LanguageChoice(AppLanguage.French, "Français"), new LanguageChoice(AppLanguage.English, "English") }, DisplayMemberPath = "Label", SelectedValuePath = "Value" };
+        _languageSelector = new ComboBox { Tag = FindResource("SettingsGeneralIcon"), ItemsSource = new[] { new LanguageChoice(AppLanguage.System, Loc.T("Comme Windows")) }.Concat(Loc.Languages.Select(l => new LanguageChoice(l.Language, l.Name))).ToArray(), DisplayMemberPath = "Label", SelectedValuePath = "Value" };
         var language = new StackPanel(); language.Children.Add(Labelled(Loc.T("Langue"), _languageSelector));
         _languageHint = Ui.Text(Loc.T("Appliquée au prochain démarrage du tracker."), 11, "MutedBrush"); _languageHint.Margin = new Thickness(0, 6, 0, 0); _languageHint.Visibility = Visibility.Collapsed; language.Children.Add(_languageHint);
         _restart = new Button { Content = Loc.T("Redémarrer maintenant"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 0), Visibility = Visibility.Collapsed, IsEnabled = !demo };
@@ -82,7 +82,7 @@ internal sealed class SettingsView : UserControl, IDisposable
         {
             if (_syncing || _languageSelector.SelectedValue is not AppLanguage chosen) return;
             Save(p => p with { Language = chosen });
-            var pending = Loc.Resolve(chosen) == AppLanguage.English != Loc.IsEnglish;
+            var pending = Loc.Resolve(chosen) != Loc.Current;
             _languageHint.Visibility = _restart.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
         };
         Toggle(Loc.T("Aperçu au survol de l’icône"), Loc.T("Le quota et le prochain reset, sans ouvrir le panneau. Cliquez sur un quota pour l’afficher dans l’icône."), p => p.HoverPreview, (p, value) => p with { HoverPreview = value });
