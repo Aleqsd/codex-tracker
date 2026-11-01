@@ -24,4 +24,8 @@
     <ProjectReference Include="..\CodexTracker.Core\CodexTracker.Core.csproj" />
     <ProjectReference Include="..\CodexTracker.Codex\CodexTracker.Codex.csproj" />
   </ItemGroup>
+  <!-- The maintainer's "Desktop app" OAuth client, read from a private file at publication: never committed. -->
+  <ItemGroup Condition="'$(GoogleOAuthClientFile)' != '' and Exists('$(GoogleOAuthClientFile)')">
+    <EmbeddedResource Include="$(GoogleOAuthClientFile)" LogicalName="CodexTracker.GoogleClient.json" />
+  </ItemGroup>
 </Project>

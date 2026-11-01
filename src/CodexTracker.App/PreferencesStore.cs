@@ -26,6 +26,10 @@ internal sealed record TrackerPreferences
     public bool ResetNotifications { get; init; } = true;
     /// <summary>A Windows notification when Codex grants a new reset credit.</summary>
     public bool NewCreditNotifications { get; init; } = true;
+    /// <summary>A Windows notification when a nearly empty week makes a soon-expiring credit worth using now.</summary>
+    public bool ReserveAdviceNotifications { get; init; } = true;
+    /// <summary>An email 24 hours before a reset credit expires, once Gmail sending is granted (asked with the Google connection).</summary>
+    public bool ReserveMailAlerts { get; init; } = true;
     /// <summary>Once Google Calendar is connected, every reset credit gets its expiry event automatically.</summary>
     public bool GoogleCalendarAutoAdd { get; init; } = true;
     /// <summary>"Ne plus proposer": no Google Calendar offer in notifications or on the dashboard.</summary>
@@ -131,7 +135,7 @@ internal sealed class PreferencesStore
     private static TrackerPreferences DisableNotifications(TrackerPreferences value) => value with
     {
         McpEnabled = false, Alert20 = false, Alert10 = false, Alert5 = false,
-        ResetNotifications = false, NewCreditNotifications = false, GoogleCalendarAutoAdd = false, ForecastNotifications = false, MonitorGlobalResets = false, ExpiryNotifications = false,
+        ResetNotifications = false, NewCreditNotifications = false, ReserveAdviceNotifications = false, ReserveMailAlerts = false, GoogleCalendarAutoAdd = false, ForecastNotifications = false, MonitorGlobalResets = false, ExpiryNotifications = false,
         ReminderRules = value.ReminderRules!.Select(rule => rule with { Enabled = false }).ToArray(),
         ResetAlerts = value.ResetAlerts.Select(alert => alert with { Enabled = false }).ToArray()
     };

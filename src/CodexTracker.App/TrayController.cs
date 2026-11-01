@@ -200,13 +200,21 @@ internal sealed class TrayController : IDisposable
         string number = remaining is null ? "--" : ((int)Math.Floor(Math.Clamp(remaining.Value, 0, 100))).ToString();
         var color = remaining is null ? Color.FromArgb(140, 140, 140) : remaining > 20 ? (dark ? Color.FromArgb(240, 240, 236) : Color.FromArgb(40, 40, 40)) : remaining >= 10 ? (dark ? Color.FromArgb(199, 170, 117) : Color.FromArgb(147, 103, 30)) : (dark ? Color.FromArgb(207, 142, 142) : Color.FromArgb(178, 68, 68));
         var tool = account?.Profile.Provider;
-        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}/{tool}";
+        // Codex credits only: the dot sits on the Codex icon, or on the single icon whatever it draws.
+        var expiring = tool == AccountProvider.Codex || tray == _tray && !_toolTray.Visible ? ExpiringCredit(state) : null;
+        string key = $"{number}/{color.ToArgb()}/{dark}/{iconSize}/{tool}/{expiring is not null}";
         if (iconKey != key)
         {
-            var old = icon; icon = TrayIconRenderer.Render(number, color, dark, iconSize, tool); tray.Icon = icon; old?.Dispose(); iconKey = key;
+            var old = icon; icon = TrayIconRenderer.Render(number, color, dark, iconSize, tool, expiring is not null); tray.Icon = icon; old?.Dispose(); iconKey = key;
         }
+        if (expiring is { } at) text += "\n" + Loc.F("Réserve à utiliser avant {0}", Display.ResetHour(at).ToLowerInvariant());
         tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
     }
+    /// <summary>The earliest reset credit expiring within 24 hours, among the credits still held.</summary>
+    private static DateTimeOffset? ExpiringCredit(TrackerState state) => state.Accounts
+        .Where(a => a.Profile.Provider == AccountProvider.Codex && a.Snapshot is { AvailableResetCredits: > 0 })
+        .SelectMany(a => a.Snapshot!.ResetCredits ?? []).Select(c => c.ExpiresAt)
+        .Where(at => at > PreviewClock.UtcNow && at - PreviewClock.UtcNow <= TimeSpan.FromDays(1)).Min();
     /// <summary>The single icon while Codex and Claude Code are both in use: its quota first, one short line each, within the 127-character limit.</summary>
     private static string Summary(TrackerState state, AccountState account, ResetKind window) =>
         string.Join("\n", state.ActiveAccounts.OrderBy(active => active != account).Select(active =>

@@ -33,7 +33,22 @@ internal sealed class GoogleCalendarSync : IDisposable
     internal bool IsAvailable { get; }
     internal bool DemoSetup { get; }
     internal bool IsConnected => _demo || _current.IsConnected;
-    internal bool HasClient => _demo || _current.Client is { IsValid: true };
+    internal bool HasClient => _demo || _current.Client is { IsValid: true } || Bundled is not null;
+    /// <summary>The client published with the tracker, when the release embeds one: no Google Cloud setup at all.</summary>
+    internal static GoogleOAuthClient? Bundled { get; } = ReadBundled();
+    /// <summary>The user imported their own client instead of the bundled one.</summary>
+    internal bool HasOwnClient => _current.Client is { IsValid: true } && !_current.Client.SameAs(Bundled);
+    private static GoogleOAuthClient? ReadBundled()
+    {
+        try
+        {
+            using var stream = typeof(GoogleCalendarSync).Assembly.GetManifestResourceStream("CodexTracker.GoogleClient.json");
+            if (stream is null) return null;
+            using var reader = new StreamReader(stream);
+            return GoogleOAuthClient.Parse(reader.ReadToEnd());
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException) { return null; }
+    }
     internal string? Email => _demo ? "alex@example.com" : _current.Email;
     internal bool IsConnecting { get; private set; }
 
@@ -113,10 +128,14 @@ internal sealed class GoogleCalendarSync : IDisposable
         Save(client.SameAs(_current.Client) ? _current with { Client = client } : new(client));
     }
 
-    internal async Task ConnectAsync(CancellationToken token = default)
+    /// <summary>Gmail sending was granted: email alerts go from the connected account to itself.</summary>
+    internal bool CanMail => !_demo && _current.IsConnected && _current.CanMail;
+
+    /// <param name="mail">Also asks to send email (alerts from the user's Gmail to themselves).</param>
+    internal async Task ConnectAsync(CancellationToken token = default, bool mail = false)
     {
         Available();
-        if (_current.Client is not { IsValid: true } client) throw new InvalidOperationException(Loc.T("Importez d’abord le fichier du client OAuth Google."));
+        if ((_current.Client is { IsValid: true } own ? own : Bundled) is not { } client) throw new InvalidOperationException(Loc.T("Importez d’abord le fichier du client OAuth Google."));
         if (IsConnecting) return;
         IsConnecting = true; Notify();
         try
@@ -126,13 +145,13 @@ internal sealed class GoogleCalendarSync : IDisposable
             using var receiver = new GoogleLoopbackReceiver();
             var verifier = GoogleCalendarClient.RandomToken() + GoogleCalendarClient.RandomToken();
             var state = GoogleCalendarClient.RandomToken();
-            _openBrowser(GoogleCalendarClient.AuthorizationUri(client, receiver.RedirectUri, GoogleCalendarClient.Challenge(verifier), state));
+            _openBrowser(GoogleCalendarClient.AuthorizationUri(client, receiver.RedirectUri, GoogleCalendarClient.Challenge(verifier), state, mail));
             string code;
             try { code = await receiver.ReceiveCodeAsync(state, timeout.Token); }
             catch (OperationCanceledException) when (!token.IsCancellationRequested && !_lifetime.IsCancellationRequested)
             { throw new GoogleCalendarException(Loc.T("Connexion non terminée dans les 5 minutes. Réessayez.")); }
-            var (refresh, email) = await _client.ExchangeAsync(client, code, verifier, receiver.RedirectUri, timeout.Token);
-            Save(new(client, refresh, email));
+            var (refresh, email, canMail) = await _client.ExchangeAsync(client, code, verifier, receiver.RedirectUri, timeout.Token);
+            Save(new(client, refresh, email, canMail));
             Error = null; Problem = null; _retryAfter = default; _nextVerification = default;
         }
         finally { IsConnecting = false; Notify(); }
@@ -147,6 +166,7 @@ internal sealed class GoogleCalendarSync : IDisposable
 
     internal void ForgetClient()
     {
+        // Back to the bundled client, when there is one: the next connection needs no file.
         _secrets?.Delete(); _current = new(); Error = null; Problem = null; Notify();
     }
 
@@ -158,6 +178,25 @@ internal sealed class GoogleCalendarSync : IDisposable
         try { var link = await InsertAsync(entry); if (Error is not null) { Error = null; Problem = null; Notify(); } return link; }
         catch (GoogleCalendarException ex) { Error = ex.Message; Problem = ex.Problem; Notify(); throw; }
         finally { _gate.Release(); }
+    }
+
+    /// <summary>One reminder as an email to the connected address. Called by the reminder dispatcher, which journals it first.</summary>
+    internal async Task<DeliveryResult> SendMailAsync(ReminderOccurrence reminder, CancellationToken token)
+    {
+        if (!CanMail || _current.Email is not { } to) return new(DeliveryStatus.Failed, Loc.T("Les e-mails Gmail ne sont pas activés."));
+        var body = ReminderPlanner.Body(reminder) + "\n\n" + Loc.T("Envoyé par Codex Tracker depuis votre compte Gmail, à vous-même. Désactivez ces e-mails dans Réglages → Google Agenda.");
+        var subject = reminder.Key.StartsWith("test/", StringComparison.Ordinal) ? Loc.T("Codex Tracker · e-mail de test") : "Codex Tracker · " + ReminderPlanner.Title(reminder);
+        try
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _lifetime.Token);
+            await _client.SendMailAsync(_current, to, subject, body, linked.Token);
+            return new(DeliveryStatus.Delivered, Loc.F("Envoyé depuis Gmail à {0}.", to));
+        }
+        catch (GoogleCalendarException ex)
+        {
+            if (ex.Problem == GoogleCalendarProblem.MissingScope) Save(_current with { CanMail = false });
+            return new(DeliveryStatus.Failed, ex.Message);
+        }
     }
 
     /// <summary>Opens the prefilled event: the user saves it in Google. The status stays "not verified".</summary>
@@ -182,9 +221,20 @@ internal sealed class GoogleCalendarSync : IDisposable
         {
             var now = DateTimeOffset.UtcNow;
             _links.Prune(now);
+            var held = HeldCredits(state, now);
+            // Older links learn which account and credit they belong to.
+            foreach (var link in _links.Links.Values.Where(l => l.AccountId is null && held.ContainsKey(l.Key)).ToArray())
+                _links.Put(link with { AccountId = held[link.Key].AccountId, CreditId = held[link.Key].CreditId });
             if (autoAdd)
                 foreach (var entry in Credits(state, now, name).Where(e => _links.Get(CalendarExport.Key(e)) is null).Take(10))
-                    await InsertAsync(entry);
+                    await InsertAsync(entry, held.GetValueOrDefault(CalendarExport.Key(entry)));
+            // A spent credit leaves its account: its event and reminders would only mislead.
+            foreach (var link in _links.Links.Values.Where(l => Spent(l, state, now)).Take(10).ToArray())
+            {
+                await _client.DeleteAsync(_current, link.Key, _lifetime.Token);
+                _links.Put(link with { Status = CalendarLinkStatus.Used, UpdatedAt = DateTimeOffset.UtcNow });
+                Notify();
+            }
             if (now >= _nextVerification)
             {
                 foreach (var link in _links.Links.Values.Where(l => l is { Source: CalendarLinkSource.Google, Status: CalendarLinkStatus.Confirmed } && l.At > now).Take(25).ToArray())
@@ -210,17 +260,33 @@ internal sealed class GoogleCalendarSync : IDisposable
         finally { _gate.Release(); }
     }
 
+    /// <summary>Calendar identity of each credit still held and not expired, with its account and credit.</summary>
+    internal static Dictionary<string, (Guid AccountId, string CreditId)> HeldCredits(TrackerState state, DateTimeOffset now) => state.Accounts
+        .Where(a => a.Profile.Provider == AccountProvider.Codex && a.Snapshot is { AvailableResetCredits: > 0 })
+        .SelectMany(a => (a.Snapshot!.ResetCredits ?? []).Where(c => c.ExpiresAt > now).Select(c => (Key: Key(a.Profile.Id, c.Id, c.ExpiresAt!.Value), Account: a.Profile.Id, Credit: c.Id)))
+        .GroupBy(c => c.Key).ToDictionary(g => g.Key, g => (g.First().Account, g.First().Credit));
+
+    /// <summary>
+    /// The credit is gone from a complete list observed after the event was created: spent (or withdrawn).
+    /// An older, partial or missing reading proves nothing and keeps the event.
+    /// </summary>
+    internal static bool Spent(CalendarLink link, TrackerState state, DateTimeOffset now) =>
+        link is { Source: CalendarLinkSource.Google, Status: CalendarLinkStatus.Confirmed, AccountId: { } accountId, CreditId: { } creditId } && link.At > now &&
+        state.Accounts.FirstOrDefault(a => a.Profile.Id == accountId)?.Snapshot is { AvailableResetCredits: int count, ResetCredits: { } credits } snapshot &&
+        snapshot.FetchedAt > link.UpdatedAt && credits.Count >= count && credits.All(c => c.Id != creditId);
+
     /// <summary>Credits still held at the last observation and not expired, as calendar entries.</summary>
     internal static IEnumerable<CalendarEntry> Credits(TrackerState state, DateTimeOffset now, Func<AccountProfile, string> name) => state.Accounts
         .Where(a => a.Profile.Provider == AccountProvider.Codex)
         .SelectMany(a => (a.Snapshot?.ResetCredits ?? []).Select(c => CalendarExport.CreditEntry(a, c.Id, now, name)))
         .OfType<CalendarEntry>();
 
-    private async Task<CalendarLink> InsertAsync(CalendarEntry entry)
+    private async Task<CalendarLink> InsertAsync(CalendarEntry entry, (Guid AccountId, string CreditId) owner = default)
     {
         var created = await _client.InsertAsync(_current, entry, _lifetime.Token);
         var link = new CalendarLink(CalendarExport.Key(entry), CalendarLinkSource.Google,
-            created.IsCancelled ? CalendarLinkStatus.Deleted : CalendarLinkStatus.Confirmed, entry.StartsAt, DateTimeOffset.UtcNow, created.HtmlLink, DateTimeOffset.UtcNow);
+            created.IsCancelled ? CalendarLinkStatus.Deleted : CalendarLinkStatus.Confirmed, entry.StartsAt, DateTimeOffset.UtcNow, created.HtmlLink, DateTimeOffset.UtcNow,
+            owner.AccountId == Guid.Empty ? null : owner.AccountId, owner.CreditId);
         _links.Put(link); Notify();
         return link;
     }

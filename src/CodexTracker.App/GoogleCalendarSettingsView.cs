@@ -17,6 +17,9 @@ internal sealed class GoogleCalendarSettingsView : StackPanel
     private static readonly Uri NewClient = new("https://console.cloud.google.com/auth/clients/create");
     private readonly GoogleCalendarSync _calendar;
     private readonly Func<IReadOnlyList<CalendarEntry>> _credits;
+    private readonly Func<bool> _wantsMail;
+    private readonly Func<Task<DeliveryResult>>? _testMail;
+    private string? _mailStatus;
     private readonly Border _state = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 2, 9, 3), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _stateText = new() { FontSize = 11, FontWeight = FontWeights.Medium };
     private readonly StackPanel _body = new();
@@ -28,9 +31,11 @@ internal sealed class GoogleCalendarSettingsView : StackPanel
     private string? _actionError;
 
     /// <param name="credits">Reset credits still held, as calendar entries: the ones the calendar should contain.</param>
-    internal GoogleCalendarSettingsView(GoogleCalendarSync calendar, Func<IReadOnlyList<CalendarEntry>> credits)
+    /// <param name="wantsMail">Whether the connection also asks to send email alerts (preference, on by default).</param>
+    /// <param name="testMail">Sends a test email through the reminder dispatcher.</param>
+    internal GoogleCalendarSettingsView(GoogleCalendarSync calendar, Func<IReadOnlyList<CalendarEntry>> credits, Func<bool>? wantsMail = null, Func<Task<DeliveryResult>>? testMail = null)
     {
-        _calendar = calendar; _credits = credits;
+        _calendar = calendar; _credits = credits; _wantsMail = wantsMail ?? (() => false); _testMail = testMail;
         var hero = new Grid();
         hero.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); hero.ColumnDefinitions.Add(new ColumnDefinition()); hero.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var badge = new Border { Width = 40, Height = 40, CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Top };
@@ -85,9 +90,10 @@ internal sealed class GoogleCalendarSettingsView : StackPanel
         if (_calendar.HasClient)
         {
             var actions = Row();
-            Button(actions, Loc.T("Connecter Google Agenda"), () => _calendar.ConnectAsync(), primary: true);
-            Button(actions, Loc.T("Changer de client…"), Import);
-            Button(actions, Loc.T("Supprimer le client"), () => { _calendar.ForgetClient(); return Task.CompletedTask; });
+            Button(actions, Loc.T("Connecter Google Agenda"), () => _calendar.ConnectAsync(mail: _wantsMail()), primary: true);
+            // With the published client, nothing to set up; one's own client stays possible.
+            Button(actions, _calendar.HasOwnClient ? Loc.T("Changer de client…") : Loc.T("Utiliser mon propre client…"), Import);
+            if (_calendar.HasOwnClient) Button(actions, Loc.T("Supprimer le client"), () => { _calendar.ForgetClient(); return Task.CompletedTask; });
             Hint(Loc.T("S’ouvre dans votre navigateur : choisissez votre compte et autorisez l’accès aux événements."));
             return;
         }
@@ -149,10 +155,35 @@ internal sealed class GoogleCalendarSettingsView : StackPanel
             _body.Children.Add(row);
         }
         if (credits.Length > 6) Hint(Loc.F("et {0} autres, dans Resets.", credits.Length - 6));
+        Mail();
         var actions = Row(); actions.Margin = new Thickness(0, 14, 0, 0);
         var disconnect = Button(actions, Loc.T("Déconnecter"), async () => await _calendar.DisconnectAsync());
         disconnect.IsEnabled = _calendar.IsAvailable;
         disconnect.ToolTip = Loc.T("Révoque l’accès du tracker ; les événements déjà créés restent dans Google Agenda.");
+    }
+
+    /// <summary>Email alerts from the same Google connection: on, or one click (a new consent) to turn them on.</summary>
+    private void Mail()
+    {
+        var title = Ui.Text(Loc.T("Alertes e-mail"), 12); title.FontWeight = FontWeights.Medium; title.Margin = new Thickness(0, 16, 0, 4); _body.Children.Add(title);
+        if (_calendar.CanMail)
+        {
+            var on = Ui.Text(_wantsMail() ? Loc.F("Un e-mail à {0} la veille de l’expiration d’un reset en réserve, envoyé depuis votre Gmail.", _calendar.Email)
+                : Loc.T("Envoi autorisé ; l’alerte de la veille est désactivée ci-dessous."), 12, "MutedBrush");
+            _body.Children.Add(on);
+            if (_testMail is not null)
+            {
+                var actions = Row(); actions.Margin = new Thickness(0, 8, 0, 0);
+                Button(actions, Loc.T("Envoyer un e-mail de test"), async () => { var result = await _testMail(); _mailStatus = result.Detail; });
+            }
+            if (_mailStatus is not null) Hint(_mailStatus);
+            return;
+        }
+        _body.Children.Add(Ui.Text(Loc.T("Recevez aussi un e-mail la veille de l’expiration d’un reset en réserve, depuis votre Gmail vers vous-même. Le tracker ne peut ni lire ni supprimer vos e-mails."), 12, "MutedBrush"));
+        var enable = Row(); enable.Margin = new Thickness(0, 8, 0, 0);
+        var button = Button(enable, Loc.T("Activer les e-mails"), () => _calendar.ConnectAsync(mail: true), primary: true);
+        button.IsEnabled = _calendar.IsAvailable;
+        button.ToolTip = Loc.T("Google redemande votre accord : cochez l’envoi d’e-mails en plus de l’agenda.");
     }
 
     private void State(string text, string background, string foreground)

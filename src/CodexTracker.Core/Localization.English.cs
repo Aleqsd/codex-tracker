@@ -213,5 +213,13 @@ internal static class EnglishCore
         ("Google Agenda est connecté à Codex Tracker. Vous pouvez fermer cet onglet.", "Google Calendar is connected to Codex Tracker. You can close this tab."),
         ("L’API Google Calendar n’est pas encore active dans votre projet Google Cloud. Une API activée il y a moins de quelques minutes peut encore refuser : nouvel essai automatique dans 2 minutes.", "The Google Calendar API is not active yet in your Google Cloud project. An API enabled a few minutes ago may still refuse: automatic retry in 2 minutes."),
         ("L’accès à l’agenda n’a pas été accordé. Reconnectez Google Agenda et cochez l’accès aux événements.", "Calendar access was not granted. Reconnect Google Calendar and tick access to events."),
+        ("L’envoi d’e-mails n’est pas autorisé. Activez les e-mails dans Réglages → Google Agenda.", "Sending email is not allowed. Turn on emails in Settings → Google Calendar."),
+        ("Adresse e-mail du compte Google invalide. Reconnectez Google Agenda.", "Invalid Google account address. Reconnect Google Calendar."),
+        ("L’API Gmail n’est pas active dans le projet Google Cloud du client. Une API activée il y a quelques minutes peut encore refuser.", "The Gmail API is not active in the client’s Google Cloud project. An API enabled a few minutes ago may still refuse."),
+        ("L’envoi d’e-mails n’a pas été accordé. Activez les e-mails dans Réglages → Google Agenda.", "Sending email was not granted. Turn on emails in Settings → Google Calendar."),
+        ("Gmail est momentanément indisponible. Réessayez plus tard.", "Gmail is temporarily unavailable. Try again later."),
+        ("Gmail a refusé l’e-mail.", "Gmail rejected the email."),
+        ("Utilisez un reset en réserve", "Use a reset credit"),
+        ("{0} · {1}\nSemaine presque vide, et ce reset en réserve expire le {2:dd/MM à HH:mm}, avant la recharge : utilisez-le maintenant.", "{0} · {1}\nThe week is nearly empty and this reset credit expires on {2:dd/MM 'at' HH:mm}, before the refill: use it now."),
     ];
 }

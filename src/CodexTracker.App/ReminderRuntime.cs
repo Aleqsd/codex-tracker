@@ -15,7 +15,7 @@ internal sealed class ReminderRuntime : IDisposable
     internal string? Error { get; private set; }
     internal IReadOnlyList<ReminderDelivery> History => _dispatcher?.History ?? [];
     internal Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult>? ShowWindows { get; set; }
-    internal ReminderRuntime(ITrackerService service, PreferencesStore preferences, bool demo)
+    internal ReminderRuntime(ITrackerService service, PreferencesStore preferences, bool demo, GoogleCalendarSync? google = null)
     {
         _demo = demo; Secrets = new(preferences.DataDirectory);
         try
@@ -26,7 +26,10 @@ internal sealed class ReminderRuntime : IDisposable
                     ?? new(DeliveryStatus.Failed, Loc.T("Le canal de notification Windows n’est pas disponible. Rouvrez le tracker puis réessayez.")),
                 expectedResetNotifications: () => preferences.Current.ResetNotifications,
                 resetAlerts: () => preferences.Current.ResetAlerts,
-                newCreditNotifications: () => preferences.Current.NewCreditNotifications);
+                newCreditNotifications: () => preferences.Current.NewCreditNotifications,
+                reserveAdvice: () => preferences.Current.ReserveAdviceNotifications,
+                gmail: google is null ? null : (reminder, token) => google.SendMailAsync(reminder, token), gmailReady: () => google?.CanMail == true,
+                reserveMail: () => preferences.Current.ReserveMailAlerts);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException)
         { Error = Loc.T("Le journal des rappels est illisible. Les envois sont suspendus pour éviter les doublons."); }

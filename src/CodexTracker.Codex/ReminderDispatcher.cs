@@ -7,7 +7,9 @@ public sealed class ReminderDispatcher(
     Func<TrackerState> state, Func<ReminderRule[]> rules, Func<PhonePolicy> phone,
     Func<IReadOnlyDictionary<string, DateTimeOffset>> legacySent,
     Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null,
-    Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null, Func<bool>? newCreditNotifications = null)
+    Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null, Func<bool>? newCreditNotifications = null,
+    Func<bool>? reserveAdvice = null,
+    Func<ReminderOccurrence, CancellationToken, Task<DeliveryResult>>? gmail = null, Func<bool>? gmailReady = null, Func<bool>? reserveMail = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -29,13 +31,13 @@ public sealed class ReminderDispatcher(
             var desktop = new List<ReminderOccurrence>();
             foreach (var group in due.GroupBy(ReminderPlanner.EventKey))
             {
-                // A new-credit notice shares its credit's expiry but never replaces its expiry reminders.
-                var urgent = group.Where(r => !NewResetCredits.Is(r)).Select(r => r.LeadMinutes).DefaultIfEmpty(0).Min();
+                // Credit notices (new, use now) share the credit's expiry but never replace its expiry reminders.
+                var urgent = group.Where(r => !Standalone(r)).Select(r => r.LeadMinutes).DefaultIfEmpty(0).Min();
                 foreach (var r in group)
                 {
                     token.ThrowIfCancellationRequested();
                     if (journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status != DeliveryStatus.Deferred)) continue;
-                    if (NewResetCredits.Is(r))
+                    if (Standalone(r))
                     {
                         if (Due(_clock.GetUtcNow()).Any(x => x.Key == r.Key)) desktop.Add(r);
                         continue;
@@ -54,7 +56,8 @@ public sealed class ReminderDispatcher(
                         desktop.Add(r); continue;
                     }
                     var configuration = secrets.Read();
-                    if (!NotificationProviders.Configured(r.Channel, configuration)) { Put(r, DeliveryStatus.Cancelled, Loc.T("Canal désactivé ou configuration incomplète.")); continue; }
+                    var viaGmail = ViaGmail(r.Channel, configuration);
+                    if (!viaGmail && !NotificationProviders.Configured(r.Channel, configuration)) { Put(r, DeliveryStatus.Cancelled, Loc.T("Canal désactivé ou configuration incomplète.")); continue; }
                     if (r.Channel is ReminderChannel.Sms or ReminderChannel.Call)
                     {
                         if (ReminderPlanner.IsQuiet(_clock.GetUtcNow(), phone())) { Defer(r, Loc.T("Heures silencieuses.")); continue; }
@@ -62,7 +65,7 @@ public sealed class ReminderDispatcher(
                     }
                     var attempt = new ReminderDelivery(r, DeliveryStatus.Submitting, _clock.GetUtcNow(), Loc.T("Envoi en cours."), AttemptedAt: _clock.GetUtcNow());
                     journal.Put(attempt);
-                    var result = await providers.SendAsync(r, configuration, token);
+                    var result = viaGmail ? await gmail!(r, token) : await providers.SendAsync(r, configuration, token);
                     journal.Put(attempt with { Status = result.Status, Detail = result.Detail, ProviderId = result.ProviderId, UpdatedAt = _clock.GetUtcNow() });
                 }
             }
@@ -103,8 +106,16 @@ public sealed class ReminderDispatcher(
             .Concat(expectedResetNotifications?.Invoke() == true ? ExpectedReset.Due(current, now)
                 .Where(r => !requested.Any(a => ReminderPlanner.EventKey(a) == ReminderPlanner.EventKey(r))) : [])
             .Concat(newCreditNotifications?.Invoke() == true ? NewResetCredits.Due(current, now) : [])
+            .Concat(reserveAdvice?.Invoke() == true ? ReserveAdvice.Due(current, now) : [])
+            // The default email alert: a day before a credit would be lost, once Gmail sending is granted.
+            .Concat(reserveMail?.Invoke() == true && gmailReady?.Invoke() == true ? ReminderPlanner.Due(current, [ReserveMailRule], now) : [])
             .ToArray();
     }
+    public static readonly ReminderRule ReserveMailRule = new(ResetKind.Reserve, true, [1440], [ReminderChannel.Email]);
+    /// <summary>Email goes through the user's Gmail when no SendGrid connector is configured and Gmail sending is granted.</summary>
+    private bool ViaGmail(ReminderChannel channel, NotificationSecrets configuration) => channel == ReminderChannel.Email && gmail is not null &&
+        gmailReady?.Invoke() == true && !NotificationProviders.Configured(ReminderChannel.Email, configuration);
+    private static bool Standalone(ReminderOccurrence r) => NewResetCredits.Is(r) || ReserveAdvice.Is(r);
     private void Put(ReminderOccurrence r, DeliveryStatus status, string text) => journal.Put(new(r, status, _clock.GetUtcNow(), text));
     private DeliveryResult SendWindows(IReadOnlyList<ReminderOccurrence> occurrences)
     {
@@ -122,13 +133,15 @@ public sealed class ReminderDispatcher(
         {
             if (stillAuthorized is not null && !stillAuthorized()) return new(DeliveryStatus.Skipped, Loc.T("Configuration modifiée pendant l’attente ; test annulé."));
             var now = _clock.GetUtcNow();
-            if (channel != ReminderChannel.Windows && !NotificationProviders.Configured(channel, secrets.Read())) return new(DeliveryStatus.Failed, Loc.T("Enregistrez et activez d’abord le connecteur."));
+            var viaGmail = ViaGmail(channel, secrets.Read());
+            if (channel != ReminderChannel.Windows && !viaGmail && !NotificationProviders.Configured(channel, secrets.Read())) return new(DeliveryStatus.Failed, Loc.T("Enregistrez et activez d’abord le connecteur."));
             if (channel is ReminderChannel.Sms or ReminderChannel.Call && (ReminderPlanner.IsQuiet(now, phone()) || ReminderPlanner.AtDailyLimit(channel, now, phone(), journal.Entries)))
                 return new(DeliveryStatus.Skipped, Loc.T("Test bloqué par les heures silencieuses ou la limite quotidienne."));
             var r = new ReminderOccurrence("test/" + Guid.NewGuid(), Guid.Empty, Loc.T("Test de notification"), ResetKind.Weekly, null, now.AddHours(1), now, 60, channel);
             var attempt = new ReminderDelivery(r, DeliveryStatus.Submitting, now, Loc.T("Test demandé manuellement."), AttemptedAt: now, IsTest: true); journal.Put(attempt);
             DeliveryResult result;
             if (channel == ReminderChannel.Windows) result = SendWindows([r]);
+            else if (viaGmail) result = await gmail!(r, token);
             else result = await providers.SendAsync(r, secrets.Read(), token);
             journal.Put(attempt with { Status = result.Status, Detail = result.Detail, ProviderId = result.ProviderId, UpdatedAt = _clock.GetUtcNow() });
             return result;

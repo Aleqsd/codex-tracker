@@ -1,7 +1,9 @@
 param(
     [ValidatePattern('^\d+\.\d+\.\d+([-.][a-zA-Z0-9.-]+)?$')]
     [string]$Version,
-    [string]$Dotnet
+    [string]$Dotnet,
+    # "Desktop app" OAuth client JSON embedded for one-click Google Calendar; private, never committed.
+    [string]$GoogleClient = (Join-Path $HOME '.codex-tracker\google-oauth-client.json')
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Dotnet) { $Dotnet = & (Join-Path $PSScriptRoot 'find-dotnet.ps1') }
@@ -15,7 +17,16 @@ if (-not $PSBoundParameters.ContainsKey('Version')) {
     $Version = $declaredVersion
 }
 $publishRoot = Join-Path $repoRoot "artifacts/publish/$Version"
-& $Dotnet publish (Join-Path $repoRoot 'src/CodexTracker.App/CodexTracker.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -p:Version=$Version -o $publishRoot
+$clientArguments = @()
+if ($GoogleClient -and (Test-Path -LiteralPath $GoogleClient)) {
+    $client = Get-Content -LiteralPath $GoogleClient -Raw | ConvertFrom-Json
+    if (-not $client.installed.client_id) { throw "Client Google invalide : $GoogleClient (type « Application de bureau » attendu)." }
+    $clientArguments = @("-p:GoogleOAuthClientFile=$((Resolve-Path -LiteralPath $GoogleClient).Path)")
+    Write-Host "Client Google Agenda intégré : projet $($client.installed.project_id)."
+} else {
+    Write-Host "Aucun client Google Agenda intégré ($GoogleClient absent) : chaque utilisateur importera le sien." -ForegroundColor Yellow
+}
+& $Dotnet publish (Join-Path $repoRoot 'src/CodexTracker.App/CodexTracker.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -p:Version=$Version @clientArguments -o $publishRoot
 if ($LASTEXITCODE -ne 0) { throw 'La publication .NET a échoué.' }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'AGENTS.md'), (Join-Path $repoRoot 'LICENSE'), (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $publishRoot
 New-Item -ItemType Directory -Path (Join-Path $publishRoot 'docs') -Force | Out-Null

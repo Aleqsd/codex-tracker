@@ -19,16 +19,17 @@ internal static class TrayIconRenderer
     /// <summary>Official Claude orange, kept for its spark as for the provider icons.</summary>
     internal static readonly Color ClaudeOrange = Color.FromArgb(217, 119, 87);
 
-    internal static Icon Render(string number, Color color, bool dark, int pixelSize, AccountProvider? provider = null)
+    internal static Icon Render(string number, Color color, bool dark, int pixelSize, AccountProvider? provider = null, bool alert = false)
     {
-        using var bitmap = RenderBitmap(number, color, dark, pixelSize, provider);
+        using var bitmap = RenderBitmap(number, color, dark, pixelSize, provider, alert);
         IntPtr handle = bitmap.GetHicon();
         try { using var unmanaged = Icon.FromHandle(handle); return (Icon)unmanaged.Clone(); }
         finally { DestroyIcon(handle); }
     }
 
     /// <param name="provider">Tool whose quota is drawn: its sign starts the gauge (› Codex, orange spark Claude Code).</param>
-    internal static Bitmap RenderBitmap(string number, Color color, bool dark, int pixelSize, AccountProvider? provider = null)
+    /// <param name="alert">A warning dot in the top-right corner: a reset credit expires within 24 hours.</param>
+    internal static Bitmap RenderBitmap(string number, Color color, bool dark, int pixelSize, AccountProvider? provider = null, bool alert = false)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(pixelSize, 16);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(pixelSize, 256);
@@ -79,6 +80,17 @@ internal static class TrayIconRenderer
                 graphics.FillRectangle(track, barX, barY, barWidth, barHeight);
                 int filled = (int)Math.Round(barWidth * remaining / 100d);
                 if (filled > 0) graphics.FillRectangle(progress, barX, barY, filled, barHeight);
+            }
+            if (alert)
+            {
+                // A transparent ring keeps the dot readable over the digits.
+                int dot = Math.Max(4, (int)Math.Round(pixelSize * .3)), ring = Math.Max(1, pixelSize / 16);
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                using (var clear = new SolidBrush(Color.Transparent)) graphics.FillEllipse(clear, pixelSize - dot - ring, -ring, dot + 2 * ring, dot + 2 * ring);
+                graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                using var warning = new SolidBrush(dark ? Color.FromArgb(232, 182, 95) : Color.FromArgb(196, 122, 14));
+                graphics.FillEllipse(warning, pixelSize - dot, 0, dot, dot);
             }
             return bitmap;
         }

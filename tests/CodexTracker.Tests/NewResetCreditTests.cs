@@ -68,6 +68,31 @@ public sealed class NewResetCreditTests
         Assert.Equal(2, desktop.Count);
     }
 
+    [Fact]
+    public async Task ADayBeforeACreditIsLostAnEmailGoesThroughGmailOnce()
+    {
+        using var directory = new TestDirectory();
+        using var http = new HttpClient(new Refuse());
+        var clock = new Clock { Now = Now };
+        var mails = new List<ReminderOccurrence>();
+        var granted = true;
+        // Granted 20 days ago, expires in 20 hours: inside the default 24-hour email alert.
+        var state = State(Credit("old", TimeSpan.FromDays(20), TimeSpan.FromHours(20)));
+        ReminderDispatcher Create() => new(new ReminderJournal(directory.Root), new NotificationSecretStore(directory.Root), new(http), () => state, () => [],
+            () => new(), () => new Dictionary<string, DateTimeOffset>(), _ => new(DeliveryStatus.Accepted, "ok"), clock,
+            gmail: (r, _) => { mails.Add(r); return Task.FromResult(new DeliveryResult(DeliveryStatus.Delivered, "sent")); }, gmailReady: () => granted, reserveMail: () => true);
+        await Create().TickAsync();
+        var mail = Assert.Single(mails);
+        Assert.Equal(ReminderChannel.Email, mail.Channel); Assert.Equal(1440, mail.LeadMinutes); Assert.Equal("old", mail.CreditId);
+        await Create().TickAsync();
+        Assert.Single(mails);
+        // Without Gmail sending granted, nothing is planned or journaled for email.
+        granted = false; state = State(Credit("other", TimeSpan.FromDays(10), TimeSpan.FromHours(5)));
+        var dispatcher = Create(); await dispatcher.TickAsync();
+        Assert.Single(mails);
+        Assert.DoesNotContain(dispatcher.History, d => d.Occurrence.CreditId == "other" && d.Occurrence.Channel == ReminderChannel.Email);
+    }
+
     private sealed class Clock : TimeProvider { public DateTimeOffset Now { get; set; } public override DateTimeOffset GetUtcNow() => Now; }
     private sealed class Refuse : HttpMessageHandler
     {

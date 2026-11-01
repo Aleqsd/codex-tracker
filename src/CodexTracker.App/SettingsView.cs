@@ -105,7 +105,9 @@ internal sealed class SettingsView : UserControl, IDisposable
         // The calendar synchronization comes right after the general settings: it is what keeps a reset from being lost.
         Page("Calendrier", Loc.T("Google Agenda"), Loc.T("Synchronisation automatique, sans rien recopier."));
         Section(null);
-        Row(new GoogleCalendarSettingsView(owner.Calendar, owner.CalendarCredits));
+        Row(new GoogleCalendarSettingsView(owner.Calendar, owner.CalendarCredits, () => preferences.Current.ReserveMailAlerts, () => owner.Reminders.TestAsync(ReminderChannel.Email)));
+        var mailAlert = Toggle(Loc.T("E-mail la veille de l’expiration d’un reset en réserve"), Loc.T("Activé par défaut. Envoyé depuis votre Gmail, à vous-même, une fois par reset en réserve."),
+            p => p.ReserveMailAlerts, (p, value) => p with { ReserveMailAlerts = value });
         var autoAdd = Toggle(Loc.T("Ajouter automatiquement les resets en réserve"), Loc.T("Dès qu’un reset en réserve est connu, son expiration est ajoutée avec des rappels. Un événement supprimé dans Google n’est pas recréé."),
             p => p.GoogleCalendarAutoAdd, (p, value) => p with { GoogleCalendarAutoAdd = value });
         // Effective only once Google is connected: an active-looking switch would promise events that cannot exist yet.
@@ -129,6 +131,8 @@ internal sealed class SettingsView : UserControl, IDisposable
         Toggle(Loc.T("Prévenir avant l’épuisement"), Loc.T("Si le rythme observé vide un quota avant sa recharge, une notification arrive environ une heure avant. Une fois par période, sans estimation si la consommation est irrégulière."),
             p => p.ForecastNotifications, (p, value) => p with { ForecastNotifications = value });
         Row(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
+        Toggle(Loc.T("Conseiller d’utiliser une réserve"), Loc.T("Quand il reste moins de 15 % de la semaine et qu’un reset en réserve expire avant la recharge : une notification propose de l’utiliser maintenant, une fois par reset."),
+            p => p.ReserveAdviceNotifications, (p, value) => p with { ReserveAdviceNotifications = value });
         Toggle(Loc.T("Prévenir d’un nouveau reset en réserve"), Loc.T("Notification Windows quand Codex accorde un reset en réserve, avec son expiration et l’ajout à Google Agenda. Reçu il y a moins de 7 jours, une seule fois."),
             p => p.NewCreditNotifications, (p, value) => p with { NewCreditNotifications = value });
         Toggle(Loc.T("Prévenir après un reset"), Loc.T("Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille."), p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });

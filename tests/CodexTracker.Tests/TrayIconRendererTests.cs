@@ -9,6 +9,21 @@ namespace CodexTracker.Tests;
 public sealed class TrayIconRendererTests
 {
     [Theory]
+    [InlineData(16, true)]
+    [InlineData(32, false)]
+    public void AnExpiringCreditAddsAWarningDotInTheTopRightCornerOnly(int size, bool dark) => OnSta(() =>
+    {
+        using var plain = TrayIconRenderer.RenderBitmap("100", Color.White, dark, size, AccountProvider.Codex);
+        using var alert = TrayIconRenderer.RenderBitmap("100", Color.White, dark, size, AccountProvider.Codex, alert: true);
+        int dot = Math.Max(4, (int)Math.Round(size * .3));
+        var centre = alert.GetPixel(size - dot / 2 - 1, dot / 2);
+        Assert.True(centre.A > 200 && centre.R > centre.B + 60, $"Orange dot expected at {size} px, got {centre}");
+        // The gauge and the bottom-left sign stay identical.
+        for (int y = size / 2; y < size; y++)
+        for (int x = 0; x < size; x++) Assert.Equal(plain.GetPixel(x, y), alert.GetPixel(x, y));
+    });
+
+    [Theory]
     [InlineData(16)]
     [InlineData(20)] // 125% Windows scaling
     [InlineData(24)]

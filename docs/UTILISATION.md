@@ -121,7 +121,7 @@ Cliquez directement sur **l’avatar d’un compte** (ou ouvrez **··· → Nom
 
 **Réglages → Google Agenda** (juste après Général) ajoute automatiquement l’expiration de chaque reset en réserve à votre agenda Google principal, avec des rappels Google **3 jours, 1 jour et 1 heure avant**. Tant que Google n’est pas connecté, une bande **Ajoutez vos N resets en réserve à Google Agenda · Connecter** apparaît dans Comptes, et la notification d’un nouveau reset en réserve propose **Synchroniser l’agenda**, **Ajouter cet événement** et **Ne plus proposer** (les notifications Windows n’acceptent pas de case à cocher : ce bouton enregistre le choix, comme la croix de la bande).
 
-Configuration unique, avec votre propre client Google ; chaque étape a son lien direct dans la page :
+Les versions publiées embarquent le client Google « Codex Tracker » : **Connecter Google Agenda** ouvre directement l’autorisation, sans rien configurer. Google signale une application non validée : **Paramètres avancés → Accéder à Codex Tracker**. Pour utiliser votre propre client Google (ou dans une copie compilée sans lui), **Utiliser mon propre client…** puis la configuration unique ci-dessous ; chaque étape a son lien direct dans la page :
 
 1. Créer un projet Google Cloud.
 2. Activer **Google Calendar API**.
@@ -129,6 +129,10 @@ Configuration unique, avec votre propre client Google ; chaque étape a son lien
 4. Créer un **ID client OAuth** de type **Application de bureau** et télécharger son JSON.
 
 Le tracker repère le fichier `client_secret_….json` dans votre dossier Téléchargements : **Utiliser et connecter** l’importe et ouvre l’autorisation Google dans le navigateur. Google peut signaler une application non validée : c’est votre propre client (**Paramètres avancés → Accéder à Codex Tracker**). Une fois connecté, la page liste les resets en réserve présents dans l’agenda, avec un lien vers chaque événement.
+
+**Alertes e-mail** : la même connexion peut aussi envoyer des e-mails depuis votre Gmail, à vous-même (autorisation « envoyer des e-mails » uniquement : le tracker ne peut ni lire ni supprimer votre courrier). Par défaut, un e-mail part **la veille de l’expiration** de chaque reset en réserve ; **Envoyer un e-mail de test** vérifie l’envoi, et le réglage **E-mail la veille de l’expiration d’un reset en réserve** le coupe. Si un connecteur SendGrid est configuré, il reste prioritaire pour le canal Email.
+
+Quand un reset en réserve est **utilisé**, un relevé récent du compte le montre disparu : le tracker supprime alors l’événement qu’il avait créé, et ses rappels. Un relevé partiel ou plus ancien que l’événement ne supprime rien.
 
 En cas de refus, le message nomme la cause : API pas encore active (fréquent dans les minutes qui suivent son activation : nouvel essai automatique au bout de 2 minutes, avec un lien **Activer l’API Google Calendar ↗**) ou accès à l’agenda non coché lors de l’autorisation (reconnectez et cochez-le).
 
@@ -159,6 +163,8 @@ Les notifications Windows proposent **Ouvrir le suivi**, qui affiche directement
 Une demande transmise à Windows ne confirme pas l’affichage d’une bannière. Si rien n’apparaît, vérifiez **Paramètres Windows → Système → Notifications**, notamment **Ne pas déranger** et ses règles automatiques. Les rappels planifiés temporairement bloqués par le plein écran ou une session inactive sont différés, puis réessayés uniquement tant que leur échéance est à venir. Un test manuel ignoré nécessite un nouveau clic.
 
 ![Réglages des rappels avec comptes fictifs](reminders.png)
+
+**Réglages → Rappels → Conseiller d’utiliser une réserve** (activé par défaut) : quand il reste moins de 15 % de la semaine sur un compte Codex relevé depuis moins de 12 heures, et qu’un reset en réserve expire avant le prochain reset hebdomadaire, une notification propose de l’utiliser maintenant, une seule fois par reset. Tant qu’une réserve expire dans les 24 heures, l’icône de la barre d’état porte un point orange, et son infobulle donne l’échéance.
 
 **Réglages → Rappels → Prévenir d’un nouveau reset en réserve** (activé par défaut) affiche une notification Windows quand Codex accorde un reset en réserve, avec sa date d’expiration : une seule fois par crédit, s’il a été reçu il y a moins de 7 jours (un compte inactif est vu à sa prochaine collecte). Sans ajout automatique, la notification propose **Ajouter à Google Agenda**. Elle ne remplace pas les rappels d’expiration.
 

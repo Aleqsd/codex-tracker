@@ -52,9 +52,9 @@ public partial class MainWindow : Window
         _service = service; _preferences = preferences; _updates = updates; _demo = demo;
         _updates.SetIncludePrereleases(preferences.Current.IncludePrereleaseUpdates);
         if (!demo && UpdateService.CanSelfUpdate) _automaticUpdates = new(updates);
-        Reminders = new(service, preferences, demo);
-        Commands = new(preferences, Reminders.Secrets);
         Calendar = new(preferences.DataDirectory, demo);
+        Reminders = new(service, preferences, demo, Calendar);
+        Commands = new(preferences, Reminders.Secrets);
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast, InCalendar = key => Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed }, CalendarConnected = () => Calendar.IsConnected || !Calendar.IsAvailable && !Calendar.DemoSetup };
         InitializeComponent();

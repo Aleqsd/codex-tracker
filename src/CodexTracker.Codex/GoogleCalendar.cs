@@ -38,7 +38,8 @@ public sealed record GoogleOAuthClient(string ClientId, string ClientSecret, str
         ClientSecret.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
 }
 
-public sealed record GoogleCalendarSecrets(GoogleOAuthClient? Client = null, string? RefreshToken = null, string? Email = null)
+/// <param name="CanMail">Google granted "send email on your behalf": alerts can go from the user's Gmail to the same address.</param>
+public sealed record GoogleCalendarSecrets(GoogleOAuthClient? Client = null, string? RefreshToken = null, string? Email = null, bool CanMail = false)
 {
     [JsonIgnore] public bool IsConnected => Client is { IsValid: true } && !string.IsNullOrEmpty(RefreshToken);
 }
@@ -65,9 +66,11 @@ public sealed class GoogleCalendarSecretStore(string directory)
 
 public enum CalendarLinkSource { Google, Browser }
 /// <summary>Confirmed: present in Google. Opened: prefilled in the browser, saving not verifiable. Deleted: removed in Google.</summary>
-public enum CalendarLinkStatus { Confirmed, Opened, Deleted }
+/// <summary>Used: the credit left the account (spent), its event was removed from Google by the tracker.</summary>
+public enum CalendarLinkStatus { Confirmed, Opened, Deleted, Used }
+/// <param name="AccountId">Account and credit behind the event, to notice when the credit is spent. Absent on links from 0.9.31–0.9.33 until filled in.</param>
 public sealed record CalendarLink(string Key, CalendarLinkSource Source, CalendarLinkStatus Status, DateTimeOffset At,
-    DateTimeOffset UpdatedAt, string? HtmlLink = null, DateTimeOffset? VerifiedAt = null);
+    DateTimeOffset UpdatedAt, string? HtmlLink = null, DateTimeOffset? VerifiedAt = null, Guid? AccountId = null, string? CreditId = null);
 
 /// <summary>Which calendar event each credit has, keyed by its calendar identity. Owned by the WPF process.</summary>
 public sealed class CalendarLinkStore
@@ -115,6 +118,8 @@ public sealed record GoogleEvent(string Id, string Status, string? HtmlLink)
 public sealed class GoogleCalendarClient(HttpClient http)
 {
     public const string Scope = "https://www.googleapis.com/auth/calendar.events openid email";
+    /// <summary>Send only: the tracker cannot read, list or delete mail.</summary>
+    public const string MailScope = "https://www.googleapis.com/auth/gmail.send";
     private const string Events = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
     /// <summary>Popups 3 days, 1 day and 1 hour before the credit expires.</summary>
     public static readonly int[] ReminderMinutes = [4320, 1440, 60];
@@ -124,16 +129,16 @@ public sealed class GoogleCalendarClient(HttpClient http)
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false, UseDefaultCredentials = false })
     { Timeout = TimeSpan.FromSeconds(20) };
 
-    public static Uri AuthorizationUri(GoogleOAuthClient client, Uri redirect, string challenge, string state) => new(
+    public static Uri AuthorizationUri(GoogleOAuthClient client, Uri redirect, string challenge, string state, bool mail = false) => new(
         "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&access_type=offline&prompt=consent&include_granted_scopes=true" +
         "&client_id=" + Uri.EscapeDataString(client.ClientId) + "&redirect_uri=" + Uri.EscapeDataString(redirect.AbsoluteUri) +
-        "&scope=" + Uri.EscapeDataString(Scope) + "&code_challenge=" + challenge + "&code_challenge_method=S256&state=" + state);
+        "&scope=" + Uri.EscapeDataString(mail ? Scope + " " + MailScope : Scope) + "&code_challenge=" + challenge + "&code_challenge_method=S256&state=" + state);
 
     public static string Challenge(string verifier) => Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
     public static string RandomToken() => Base64Url(RandomNumberGenerator.GetBytes(32));
 
-    /// <summary>Returns the refresh token and the account address (from the id token returned by Google over TLS).</summary>
-    public async Task<(string RefreshToken, string? Email)> ExchangeAsync(GoogleOAuthClient client, string code, string verifier, Uri redirect, CancellationToken token)
+    /// <summary>Returns the refresh token, the account address (from the id token returned by Google over TLS) and whether sending mail was granted.</summary>
+    public async Task<(string RefreshToken, string? Email, bool CanMail)> ExchangeAsync(GoogleOAuthClient client, string code, string verifier, Uri redirect, CancellationToken token)
     {
         using var json = await TokenAsync(new Dictionary<string, string>
         {
@@ -142,7 +147,8 @@ public sealed class GoogleCalendarClient(HttpClient http)
         }, token);
         var refresh = String(json.RootElement, "refresh_token") ?? throw new GoogleCalendarException(Loc.T("Google n’a pas accordé d’accès durable. Réessayez la connexion."));
         Remember(client, json.RootElement);
-        return (refresh, Email(String(json.RootElement, "id_token")));
+        var granted = (String(json.RootElement, "scope") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return (refresh, Email(String(json.RootElement, "id_token")), granted.Contains(MailScope));
     }
 
     public async Task<GoogleEvent> InsertAsync(GoogleCalendarSecrets secrets, CalendarEntry entry, CancellationToken token)
@@ -165,6 +171,43 @@ public sealed class GoogleCalendarClient(HttpClient http)
         using var response = await SendAsync(secrets, HttpMethod.Get, Events + "/" + id, null, token);
         if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) return null;
         return await ReadEventAsync(response, token);
+    }
+
+    /// <summary>
+    /// Sends a plain-text message from the connected Gmail account to <paramref name="to"/> (the same account).
+    /// Returns Gmail's message id; Google accepted the message, delivery is Gmail's own.
+    /// </summary>
+    public async Task<string> SendMailAsync(GoogleCalendarSecrets secrets, string to, string subject, string body, CancellationToken token)
+    {
+        if (!secrets.CanMail) throw new GoogleCalendarException(Loc.T("L’envoi d’e-mails n’est pas autorisé. Activez les e-mails dans Réglages → Google Agenda."), true, GoogleCalendarProblem.MissingScope);
+        if (to.Length is 0 or > 320 || to.IndexOfAny(['\r', '\n', ',', ';', '<', '>']) >= 0 || !to.Contains('@'))
+            throw new GoogleCalendarException(Loc.T("Adresse e-mail du compte Google invalide. Reconnectez Google Agenda."), true);
+        static string Encoded(string text) => "=?UTF-8?B?" + Convert.ToBase64String(Encoding.UTF8.GetBytes(text)) + "?=";
+        var content = Convert.ToBase64String(Encoding.UTF8.GetBytes(body.Replace("\r\n", "\n").Replace("\n", "\r\n")), Base64FormattingOptions.InsertLineBreaks);
+        var message = "To: " + to + "\r\nSubject: " + Encoded(subject.Replace("\r", " ").Replace("\n", " ")) +
+            "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" + content;
+        var json = JsonSerializer.Serialize(new Dictionary<string, string> { ["raw"] = Base64Url(Encoding.UTF8.GetBytes(message)) });
+        using var response = await SendAsync(secrets, HttpMethod.Post, "https://gmail.googleapis.com/gmail/v1/users/me/messages/send", json, token);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            var reasons = await ReasonsAsync(response, token);
+            if (reasons.Overlaps(["accessNotConfigured", "SERVICE_DISABLED"]))
+                throw new GoogleCalendarException(Loc.T("L’API Gmail n’est pas active dans le projet Google Cloud du client. Une API activée il y a quelques minutes peut encore refuser."), problem: GoogleCalendarProblem.ApiDisabled);
+            throw new GoogleCalendarException(Loc.T("L’envoi d’e-mails n’a pas été accordé. Activez les e-mails dans Réglages → Google Agenda."), true, GoogleCalendarProblem.MissingScope);
+        }
+        if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
+            throw new GoogleCalendarException(Loc.T("Gmail est momentanément indisponible. Réessayez plus tard."), problem: GoogleCalendarProblem.Unavailable);
+        using var sent = await ReadJsonAsync(response, token);
+        if (!response.IsSuccessStatusCode) throw new GoogleCalendarException(Loc.T("Gmail a refusé l’e-mail."));
+        return String(sent.RootElement, "id") ?? "";
+    }
+
+    /// <summary>Removes an event this app created; an event already gone counts as removed.</summary>
+    public async Task DeleteAsync(GoogleCalendarSecrets secrets, string id, CancellationToken token)
+    {
+        using var response = await SendAsync(secrets, HttpMethod.Delete, Events + "/" + id, null, token);
+        if (response.IsSuccessStatusCode || response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) return;
+        _ = await ReadEventAsync(response, token);
     }
 
     /// <summary>Best effort: the local token is deleted whatever Google answers.</summary>

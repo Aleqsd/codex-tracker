@@ -127,6 +127,46 @@ public sealed class GoogleCalendarTests
     }
 
     [Fact]
+    public async Task MailGoesFromTheAccountToItselfAsEncodedPlainText()
+    {
+        var google = new FakeGoogle();
+        var client = new GoogleCalendarClient(new HttpClient(google));
+        var mailer = Connected with { CanMail = true };
+        Assert.Equal("m1", await client.SendMailAsync(mailer, "demo@example.test", "Réserve à utiliser", "Ligne 1\nLigne é", CancellationToken.None));
+        var message = Assert.Single(google.Mails);
+        Assert.StartsWith("To: demo@example.test\r\nSubject: =?UTF-8?B?", message);
+        Assert.Contains("Content-Type: text/plain; charset=UTF-8", message);
+        var encoded = message[(message.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4)..];
+        Assert.Equal("Ligne 1\r\nLigne é", Encoding.UTF8.GetString(Convert.FromBase64String(encoded.Replace("\r\n", ""))));
+        // Never without the granted scope, never to an injected header.
+        await Assert.ThrowsAsync<GoogleCalendarException>(() => client.SendMailAsync(Connected, "demo@example.test", "s", "b", CancellationToken.None));
+        await Assert.ThrowsAsync<GoogleCalendarException>(() => client.SendMailAsync(mailer, "a@example.test\r\nBcc: x@example.test", "s", "b", CancellationToken.None));
+        google.Refusal = "{\"error\":{\"errors\":[{\"reason\":\"accessNotConfigured\"}]}}";
+        Assert.Equal(GoogleCalendarProblem.ApiDisabled, (await Assert.ThrowsAsync<GoogleCalendarException>(() => client.SendMailAsync(mailer, "demo@example.test", "s", "b", CancellationToken.None))).Problem);
+        Assert.Single(google.Mails);
+    }
+
+    [Fact]
+    public void TheMailScopeIsAskedOnlyWhenWanted()
+    {
+        var plain = GoogleCalendarClient.AuthorizationUri(Client, new("http://127.0.0.1:1/"), "c", "s").AbsoluteUri;
+        var mail = GoogleCalendarClient.AuthorizationUri(Client, new("http://127.0.0.1:1/"), "c", "s", mail: true).AbsoluteUri;
+        Assert.DoesNotContain(Uri.EscapeDataString(GoogleCalendarClient.MailScope), plain);
+        Assert.Contains(Uri.EscapeDataString(GoogleCalendarClient.MailScope), mail);
+    }
+
+    [Fact]
+    public async Task DeletingRemovesTheEventAndToleratesOneAlreadyGone()
+    {
+        var google = new FakeGoogle();
+        var client = new GoogleCalendarClient(new HttpClient(google));
+        await client.InsertAsync(Connected, Entry, CancellationToken.None);
+        await client.DeleteAsync(Connected, CalendarExport.Key(Entry), CancellationToken.None);
+        Assert.Empty(google.Events);
+        await client.DeleteAsync(Connected, CalendarExport.Key(Entry), CancellationToken.None);
+    }
+
+    [Fact]
     public async Task AnExpiredAccessTokenIsRefreshedOnce()
     {
         var google = new FakeGoogle { RejectFirstAccess = true };
@@ -161,7 +201,7 @@ public sealed class GoogleCalendarTests
     private sealed class FakeGoogle : HttpMessageHandler
     {
         public readonly Dictionary<string, string> Events = [];
-        public readonly List<string> Bodies = [], Methods = [];
+        public readonly List<string> Bodies = [], Methods = [], Mails = [];
         public int TokenRequests; public string? TokenError, Refusal; public bool RejectFirstAccess;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
@@ -174,6 +214,13 @@ public sealed class GoogleCalendarTests
                 return TokenError is null ? Json(HttpStatusCode.OK, new { access_token = "access-" + TokenRequests, expires_in = 3600 })
                     : Json(HttpStatusCode.BadRequest, new { error = TokenError });
             }
+            if (url == "https://gmail.googleapis.com/gmail/v1/users/me/messages/send")
+            {
+                if (Refusal is not null) return new(HttpStatusCode.Forbidden) { Content = new StringContent(Refusal, Encoding.UTF8, "application/json") };
+                var raw = JsonDocument.Parse(body).RootElement.GetProperty("raw").GetString()!.Replace('-', '+').Replace('_', '/');
+                Mails.Add(Encoding.UTF8.GetString(Convert.FromBase64String(raw.PadRight(raw.Length + (4 - raw.Length % 4) % 4, '='))));
+                return Json(HttpStatusCode.OK, new { id = "m" + Mails.Count });
+            }
             const string events = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
             Assert.StartsWith(events, url);
             if (RejectFirstAccess && request.Headers.Authorization?.Parameter == "access-1") return new(HttpStatusCode.Unauthorized);
@@ -185,6 +232,7 @@ public sealed class GoogleCalendarTests
                 Events[id] = "confirmed";
             }
             else if (request.Method == HttpMethod.Put) Events[id] = JsonDocument.Parse(body).RootElement.GetProperty("status").GetString()!;
+            else if (request.Method == HttpMethod.Delete) { if (!Events.Remove(id)) return Json(HttpStatusCode.Gone, new { error = new { code = 410 } }); return new(HttpStatusCode.NoContent); }
             else if (!Events.ContainsKey(id)) return Json(HttpStatusCode.NotFound, new { error = new { code = 404 } });
             return Json(HttpStatusCode.OK, new { id, status = Events[id], htmlLink = "https://www.google.com/calendar/event?eid=" + id });
         }
