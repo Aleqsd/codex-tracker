@@ -115,6 +115,8 @@ internal sealed class SettingsView : UserControl, IDisposable
         Toggle(Loc.T("Prévenir avant l’épuisement"), Loc.T("Si le rythme observé vide un quota avant sa recharge, une notification arrive environ une heure avant. Une fois par période, sans estimation si la consommation est irrégulière."),
             p => p.ForecastNotifications, (p, value) => p with { ForecastNotifications = value });
         Row(ReminderSettingsView.WindowsTest(owner.Reminders, demo));
+        Toggle(Loc.T("Prévenir d’un nouveau reset en réserve"), Loc.T("Notification Windows quand Codex accorde un reset en réserve, avec son expiration et l’ajout à Google Agenda. Reçu il y a moins de 7 jours, une seule fois."),
+            p => p.NewCreditNotifications, (p, value) => p with { NewCreditNotifications = value });
         Toggle(Loc.T("Prévenir après un reset"), Loc.T("Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille."), p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Section(Loc.T("Annonces de resets généraux"));
         Toggle(Loc.T("Vérifier les annonces publiques"), Loc.T("Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables."), p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
@@ -136,7 +138,11 @@ internal sealed class SettingsView : UserControl, IDisposable
         Section(null);
         Row(ReminderSettingsView.History(owner.Reminders));
         Page("Calendrier", Loc.T("Calendrier"), Loc.T("Retrouvez les échéances de vos comptes dans votre agenda."));
-        Section(null);
+        Section(Loc.T("Google Agenda connecté"));
+        Row(new GoogleCalendarSettingsView(owner.Calendar));
+        Toggle(Loc.T("Ajouter automatiquement les resets en réserve"), Loc.T("Dès qu’un reset en réserve est connu, son expiration est ajoutée avec des rappels. Un événement supprimé dans Google n’est pas recréé."),
+            p => p.GoogleCalendarAutoAdd, (p, value) => p with { GoogleCalendarAutoAdd = value });
+        Section(Loc.T("Ajout ponctuel"));
         var agenda = Block();
         var calendar = new Button { Content = Loc.T("Ouvrir les options Google Agenda…"), HorizontalAlignment = HorizontalAlignment.Left };
         calendar.Click += (_, _) => owner.OpenCalendar(); agenda.Children.Add(calendar);

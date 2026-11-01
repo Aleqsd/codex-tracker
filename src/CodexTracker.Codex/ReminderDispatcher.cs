@@ -7,7 +7,7 @@ public sealed class ReminderDispatcher(
     Func<TrackerState> state, Func<ReminderRule[]> rules, Func<PhonePolicy> phone,
     Func<IReadOnlyDictionary<string, DateTimeOffset>> legacySent,
     Func<IReadOnlyList<ReminderOccurrence>, DeliveryResult> windows, TimeProvider? clock = null,
-    Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null)
+    Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null, Func<bool>? newCreditNotifications = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -29,11 +29,17 @@ public sealed class ReminderDispatcher(
             var desktop = new List<ReminderOccurrence>();
             foreach (var group in due.GroupBy(ReminderPlanner.EventKey))
             {
-                var urgent = group.Min(r => r.LeadMinutes);
+                // A new-credit notice shares its credit's expiry but never replaces its expiry reminders.
+                var urgent = group.Where(r => !NewResetCredits.Is(r)).Select(r => r.LeadMinutes).DefaultIfEmpty(0).Min();
                 foreach (var r in group)
                 {
                     token.ThrowIfCancellationRequested();
                     if (journal.Entries.Any(d => d.Occurrence.Key == r.Key && d.Status != DeliveryStatus.Deferred)) continue;
+                    if (NewResetCredits.Is(r))
+                    {
+                        if (Due(_clock.GetUtcNow()).Any(x => x.Key == r.Key)) desktop.Add(r);
+                        continue;
+                    }
                     if (r.LeadMinutes == 0 && r.Channel == ReminderChannel.Windows && journal.Entries.Any(d =>
                         d.Occurrence.LeadMinutes == 0 && ReminderPlanner.EventKey(d.Occurrence) == ReminderPlanner.EventKey(r) &&
                         d.Status is DeliveryStatus.Submitting or DeliveryStatus.Shown or DeliveryStatus.Accepted or DeliveryStatus.Delivered or DeliveryStatus.Completed or DeliveryStatus.Unknown)) continue;
@@ -96,6 +102,7 @@ public sealed class ReminderDispatcher(
             .Concat(requested)
             .Concat(expectedResetNotifications?.Invoke() == true ? ExpectedReset.Due(current, now)
                 .Where(r => !requested.Any(a => ReminderPlanner.EventKey(a) == ReminderPlanner.EventKey(r))) : [])
+            .Concat(newCreditNotifications?.Invoke() == true ? NewResetCredits.Due(current, now) : [])
             .ToArray();
     }
     private void Put(ReminderOccurrence r, DeliveryStatus status, string text) => journal.Put(new(r, status, _clock.GetUtcNow(), text));

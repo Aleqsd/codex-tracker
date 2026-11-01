@@ -124,6 +124,7 @@ public sealed record QuotaAlertEvaluation(QuotaAlertState State, IReadOnlyList<Q
 public static class QuotaAlertEvaluator
 {
     private static readonly int[] Thresholds = [20, 10, 5];
+    public static readonly TimeSpan RecentReset = TimeSpan.FromHours(24);
 
     public static QuotaAlertEvaluation Observe(AccountProfile profile, AccountSnapshot snapshot, QuotaAlertState? previous,
         bool suppressNotifications = false)
@@ -156,7 +157,12 @@ public static class QuotaAlertEvaluator
         var lastReset = previous.LastObservedReset;
         if (window.ResetsAt is { } currentReset && (lastReset is null || currentReset > lastReset)) lastReset = currentReset;
         var continuous = !suppress && observedAt - previous.ObservedAt <= UsageAnalytics.MaximumObservationGap;
-        if (continuous && newPeriod && remaining > previous.Remaining)
+        // A new period is announced once (LastObservedReset is persisted), also after sleep, a restart or a
+        // slower refresh, as long as the reset itself is recent: an old one is not news anymore.
+        // Outside continuous observation, only a server date that moved by a whole period step counts.
+        var recentReset = continuous || !window.IsResetEstimated && window.ResetsAt - previous.ResetsAt >= TimeSpan.FromHours(1) &&
+            (observedAt - previous.ObservedAt < RecentReset || previous.ResetsAt is { } passed && passed <= observedAt && observedAt - passed < RecentReset);
+        if (newPeriod && remaining > previous.Remaining && recentReset)
             notifications.Add(new(profile.Id, profile.Email, NotificationKind.Reset, null, observedAt, kind));
         if (continuous && !advances)
         {

@@ -51,7 +51,7 @@ public sealed class NotificationSecretStore(string directory)
         try { NotificationFiles.Write(_path, Protect(bytes, true)); }
         finally { CryptographicOperations.ZeroMemory(bytes); }
     }
-    private static byte[] Protect(byte[] bytes, bool encrypt)
+    internal static byte[] Protect(byte[] bytes, bool encrypt)
     {
         var input = new Blob { Length = bytes.Length, Data = Marshal.AllocHGlobal(bytes.Length) };
         try

@@ -69,10 +69,13 @@ public static class ReminderPlanner
     public static bool IsGlobalReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("global/", StringComparison.Ordinal);
     public static bool IsRequestedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && r.Key.StartsWith("reset-alert/", StringComparison.Ordinal);
     public static bool IsExpectedReset(ReminderOccurrence r) => r.LeadMinutes == 0 && (r.Key.StartsWith("expected/", StringComparison.Ordinal) || IsGlobalReset(r));
-    public static string Title(ReminderOccurrence r) => IsRequestedReset(r) ? (r.IsResetEstimated ? Loc.T("Échéance de reset estimée atteinte") : Loc.T("Échéance de reset atteinte"))
+    public static string Title(ReminderOccurrence r) => NewResetCredits.Is(r) ? Loc.T("Nouveau reset en réserve")
+        : IsRequestedReset(r) ? (r.IsResetEstimated ? Loc.T("Échéance de reset estimée atteinte") : Loc.T("Échéance de reset atteinte"))
         : IsGlobalReset(r) ? Loc.T("Reset général annoncé comme terminé") : IsExpectedReset(r) ? Loc.T("Compte probablement rechargé")
         : r.Kind == ResetKind.Reserve ? Loc.T("Un reset en réserve va expirer") : Label(r.Kind);
-    public static string Body(ReminderOccurrence r) => IsRequestedReset(r)
+    public static string Body(ReminderOccurrence r) => NewResetCredits.Is(r)
+        ? Loc.F("{0} · {1}\nÀ utiliser avant le {2:dd/MM/yyyy HH:mm zzz}.\nRelevé : {3:dd/MM/yyyy HH:mm zzz}.", r.AccountName, r.ProviderName, r.At.ToLocalTime(), r.ObservedAt.ToLocalTime())
+        : IsRequestedReset(r)
         ? Loc.F("{0} · {1}\n{2} : heure prévue {3:dd/MM/yyyy HH:mm zzz}.\nVérifiez le quota dans {1} pour confirmer la recharge.",
             r.AccountName, r.ProviderName, r.IsResetEstimated ? Loc.T("Reset hebdomadaire estimé") : Label(r.Kind), r.At.ToLocalTime())
         : IsGlobalReset(r)

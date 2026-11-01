@@ -43,6 +43,12 @@ Le journal des rappels conserve 30 jours et les clés nécessaires aux échéanc
 
 Les assistants peuvent consulter les quotas mais ne peuvent ni changer de compte Codex, ni exécuter des commandes arbitraires, ni éditer des fichiers. La modification du code se fait dans le dépôt avec les outils habituels de l’assistant.
 
+## Nouveaux resets en réserve et Google Agenda
+
+`NewResetCredits.Due` produit une occurrence Windows `credit-new/{identité agenda}` à délai zéro pour chaque crédit Codex reçu depuis moins de 7 jours et non expiré (`NewCreditNotifications`). Le dispatcher la journalise comme les autres ; elle partage l’`EventKey` des rappels d’expiration du crédit mais n’entre pas dans le choix du délai le plus urgent, afin de ne jamais les remplacer. `QuotaAlertEvaluator` annonce une nouvelle période même après démarrage, veille ou relevés espacés si le reset date de moins de 24 h ; hors observation continue, la date serveur doit avancer d’au moins une heure.
+
+`GoogleCalendarClient` (Codex) utilise un client OAuth « Application de bureau » importé par l’utilisateur, PKCE et une redirection `GoogleLoopbackReceiver` sur 127.0.0.1 (une requête GET sur `/`, état vérifié, puis fermeture). Portée `calendar.events` sur l’agenda principal. L’identifiant d’événement est `CalendarExport.Key` (64 caractères hexadécimaux, valides en base32hex) : un 409 renvoie l’événement existant, un événement annulé n’est restauré que sur demande explicite. Secrets en DPAPI (`GoogleCalendarSecretStore`), état par crédit dans `CalendarLinkStore` (fichier illisible : suivi suspendu, jamais écrasé). `GoogleCalendarSync` (App, dispatcher WPF) sérialise ajouts, ajout automatique et vérification toutes les 30 min, recule de 15 min après une erreur. La récupération des préférences coupe `GoogleCalendarAutoAdd` et `NewCreditNotifications`.
+
 ## Agenda semaine (0.8)
 
 `ResetCalendar` groupe les instants connus par date dans un fuseau explicite, du lundi au dimanche. Les heures répétées restent deux instants distincts. `PriorityReserve` exige un compteur serveur positif et une expiration future connue ; l’entrée conserve le relevé et ses erreurs. `ResetsView` partage ses filtres entre Agenda et Semaine et préserve la navigation à chaque collecte. Ces projections ne modifient ni les rappels ni les échéances.

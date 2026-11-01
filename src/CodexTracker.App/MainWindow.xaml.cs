@@ -29,6 +29,8 @@ public partial class MainWindow : Window
     internal PreferencesStore Preferences => _preferences;
     internal ITrackerService TrackerService => _service;
     internal ReminderRuntime Reminders { get; }
+    internal GoogleCalendarSync Calendar { get; }
+    private readonly DispatcherTimer _calendarTimer = new() { Interval = TimeSpan.FromMinutes(5) };
     internal ApplicationCommands Commands { get; }
     internal Mcp.TrackerControl? Assistant { get; set; }
     internal string? AssistantError { get; set; }
@@ -52,6 +54,7 @@ public partial class MainWindow : Window
         if (!demo && UpdateService.CanSelfUpdate) _automaticUpdates = new(updates);
         Reminders = new(service, preferences, demo);
         Commands = new(preferences, Reminders.Secrets);
+        Calendar = new(preferences.DataDirectory, demo);
         Theme = new ThemeManager(preferences);
         _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast };
         InitializeComponent();
@@ -63,7 +66,8 @@ public partial class MainWindow : Window
         _resets = new ResetsView(_preferences, id => new CalendarWindow(this, _service, _preferences, Theme, id).ShowDialog(),
             () => _ = RefreshAsync(), () => OpenManualCodexReset(), (entry, enabled) =>
                 Commands.SetResetAlert(_service.State, entry.Account.Profile.Id, entry.Kind, entry.At!.Value, enabled, PreviewClock.UtcNow, Commands.Revision),
-            () => { if (_preferences.Current.ManualCodexReset is { } reset) Commands.SavePreferences(p => p with { DismissedManualCodexReset = reset.DeclaredAt }); });
+            () => { if (_preferences.Current.ManualCodexReset is { } reset) Commands.SavePreferences(p => p with { DismissedManualCodexReset = reset.DeclaredAt }); },
+            Calendar, entry => AddCreditToCalendarAsync(GoogleCalendarSync.Key(entry.Account.Profile.Id, entry.CreditId!, entry.At!.Value), throwErrors: true));
         ResetsTab.Content = _resets;
         MainTabs.SelectionChanged += (_, e) =>
         { if (ReferenceEquals(e.OriginalSource, MainTabs) && SettingsTab.IsSelected) _ = Settings; };
@@ -74,6 +78,8 @@ public partial class MainWindow : Window
         _preferences.Changed += Preferences_Changed;
         Theme.Changed += Theme_Changed;
         _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); RefreshHealth(); };
+        Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(() => { if (!_canClose) _resets.Update(_service.State); });
+        _calendarTimer.Tick += (_, _) => _ = SyncCalendarAsync();
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
         KeyDown += (_, e) => { if (e.Key == Key.Escape) HideToTray(); if (e.Key == Key.F5) _ = RefreshAsync(); };
@@ -82,6 +88,7 @@ public partial class MainWindow : Window
     {
         await _service.InitializeAsync(_lifetime.Token);
         UpdateModel(); _clockTimer.Start();
+        if (!_demo) { _calendarTimer.Start(); _ = SyncCalendarAsync(); }
         if (_automaticUpdates is not null)
         {
             _automaticUpdates.SetEnabled(_preferences.Current.DownloadUpdatesAutomatically);
@@ -99,7 +106,30 @@ public partial class MainWindow : Window
         RecoveryBanner.Visibility = HealthWarnings().Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _settings?.RefreshHealth();
     }
-    private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(UpdateModel);
+    private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() => { UpdateModel(); _ = SyncCalendarAsync(); });
+    private Task SyncCalendarAsync() => _canClose || _demo || _preferences.RecoveryRequired ? Task.CompletedTask
+        : Calendar.SyncAsync(_service.State, _preferences.Current.GoogleCalendarAutoAdd, CalendarName);
+    private string CalendarName(AccountProfile profile) => PrivacyText.ContextualAccount(profile, _service.State, _preferences.Current);
+    /// <summary>
+    /// From a notification or the Resets tab: Google Calendar when connected, otherwise the prefilled event in the browser.
+    /// A confirmed event opens instead of being added again.
+    /// </summary>
+    internal async Task AddCreditToCalendarAsync(string key, bool throwErrors = false)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var entry = GoogleCalendarSync.Credits(_service.State, now, CalendarName).FirstOrDefault(e => CalendarExport.Key(e) == key);
+        try
+        {
+            if (entry is null) throw new InvalidOperationException(Loc.T("Ce reset en réserve n’est plus disponible. Actualisez le compte dans Codex."));
+            if (Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed, HtmlLink: { } existing })
+            { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(existing) { UseShellExecute = true }); return; }
+            if (Calendar.IsConnected) await Calendar.AddAsync(entry);
+            else Calendar.OpenInBrowser(entry);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) when (!throwErrors && error is Codex.GoogleCalendarException or InvalidOperationException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        { if (!_canClose) ShowMessage(Loc.T("Google Agenda"), error.Message); }
+    }
     private void Preferences_Changed(object? sender, EventArgs e)
     {
         _service.SynchronizeGlobalResetMonitoring();
@@ -142,13 +172,13 @@ public partial class MainWindow : Window
     }
     public void PrepareExit()
     {
-        _canClose = true; _lifetime.Cancel(); _clockTimer.Stop();
+        _canClose = true; _lifetime.Cancel(); _clockTimer.Stop(); _calendarTimer.Stop();
         Assistant?.Dispose();
         foreach (Window child in OwnedWindows.Cast<Window>().ToArray()) child.Close();
         _service.Changed -= Service_Changed; _preferences.Changed -= Preferences_Changed; Theme.Changed -= Theme_Changed;
         _automaticUpdates?.Dispose(); _updates.PreparationChanged -= UpdatePreparationChanged;
         _settings?.Dispose();
-        Reminders.Dispose(); Theme.Dispose(); _updates.Dispose();
+        Reminders.Dispose(); Calendar.Dispose(); Theme.Dispose(); _updates.Dispose();
     }
     private void ApplyChrome()
     {

@@ -18,6 +18,8 @@ internal sealed class ResetsView : UserControl
     private readonly Button _refresh;
     private readonly Action<ResetScheduleEntry, bool>? _notify;
     private readonly Action? _dismissDeclaration;
+    private readonly GoogleCalendarSync? _calendar;
+    private readonly Func<ResetScheduleEntry, Task>? _addToCalendar;
     private readonly List<(ResetScheduleEntry Entry, Button Button)> _alertButtons = [];
     private readonly TextBlock _notificationStatus = Ui.Text("", 11, "WarningBrush");
     private readonly List<(ResetScheduleEntry Entry, TextBlock Countdown, TextBlock Freshness)> _rows = [];
@@ -35,10 +37,11 @@ internal sealed class ResetsView : UserControl
     private readonly SelectionPill? _viewPill;
 
     internal ResetsView(PreferencesStore preferences, Action<Guid?> calendar, Action refresh, Action? declareReset = null,
-        Action<ResetScheduleEntry, bool>? notify = null, Action? dismissDeclaration = null)
+        Action<ResetScheduleEntry, bool>? notify = null, Action? dismissDeclaration = null,
+        GoogleCalendarSync? googleCalendar = null, Func<ResetScheduleEntry, Task>? addToCalendar = null)
     {
         _preferences = preferences;
-        _notify = notify; _dismissDeclaration = dismissDeclaration;
+        _notify = notify; _dismissDeclaration = dismissDeclaration; _calendar = googleCalendar; _addToCalendar = addToCalendar;
         _accounts = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Id", Tag = FindResource("AccountsIcon"), Margin = new Thickness(0, 0, 8, 0) };
         var root = new Grid { Margin = new Thickness(0, 6, 0, 0) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -238,6 +241,9 @@ internal sealed class ResetsView : UserControl
         var counts = codex.Select(a => a.Snapshot?.AvailableResetCredits).ToArray();
         var title = counts.All(n => n is null) ? Loc.T("Réserves Codex · non communiquées")
             : Loc.F("Réserves Codex · {0} resets au dernier relevé", counts.Sum(n => (long)(n ?? 0))) + (counts.Any(n => n is null) ? " · " + Loc.T("compteurs incomplets") : "");
+        var dated = entries.Where(e => HasCalendar(e) && e.At > now).ToArray();
+        if (_calendar is not null && dated.Length > 0)
+            title += " · " + Loc.F("{0}/{1} dans l’agenda", dated.Count(e => CalendarLinkFor(e) is { Status: Codex.CalendarLinkStatus.Confirmed }), dated.Length);
         var content = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         var priority = ResetCalendar.PriorityReserve(_state, now, (_accounts.SelectedItem as ResetAccountChoice)?.Id);
         if (priority is not null)
@@ -322,6 +328,7 @@ internal sealed class ResetsView : UserControl
         var identity = new StackPanel { Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
         var account = Ui.Text(AccountLabel(entry.Account), 13); account.FontWeight = FontWeights.Medium; account.TextWrapping = TextWrapping.NoWrap; account.TextTrimming = TextTrimming.CharacterEllipsis; account.ToolTip = AccountName(entry.Account); identity.Children.Add(account);
         var kind = Ui.Text(KindLabel(entry), 11, "MutedBrush"); kind.Margin = new Thickness(0, 3, 0, 0); identity.Children.Add(kind); Grid.SetColumn(identity, 1); header.Children.Add(identity);
+        if (_calendar is not null && HasCalendar(entry) && entry.At > PreviewClock.UtcNow) AddCalendar(header, identity, entry);
         var timing = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         var countdown = Ui.Text("", 13); countdown.FontWeight = FontWeights.Medium; countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown);
         var exact = Ui.Text(entry.At is not { } resetAt ? Loc.T("Date indisponible") : dayShown ? resetAt.ToLocalTime().ToString("HH:mm") : Display.ResetHour(resetAt), 11, "MutedBrush"); exact.TextAlignment = TextAlignment.Right; exact.Margin = new Thickness(0, 3, 0, 0); timing.Children.Add(exact); Grid.SetColumn(timing, 2); header.Children.Add(timing);
@@ -379,6 +386,47 @@ internal sealed class ResetsView : UserControl
                 : Loc.T("Aucun relevé");
             freshness.ToolTip = Loc.F("Dernier relevé : {0}", Display.Exact(entry.Account.Snapshot?.FetchedAt)) + "\n" + entry.Account.Error;
         }
+    }
+    private static bool HasCalendar(ResetScheduleEntry entry) => entry is { Kind: ResetKind.Reserve, CreditId: not null, At: not null } &&
+        entry.Account.Profile.Provider == AccountProvider.Codex;
+    private Codex.CalendarLink? CalendarLinkFor(ResetScheduleEntry entry) =>
+        _calendar?.Link(GoogleCalendarSync.Key(entry.Account.Profile.Id, entry.CreditId!, entry.At!.Value));
+    /// <summary>Each reserve says at a glance whether its expiry is in Google Calendar; the button adds or opens it.</summary>
+    private void AddCalendar(Grid header, StackPanel identity, ResetScheduleEntry entry)
+    {
+        var link = CalendarLinkFor(entry);
+        var (text, brush, hint) = link?.Status switch
+        {
+            Codex.CalendarLinkStatus.Confirmed => (Loc.T("Dans Google Agenda"), "AccentBrush",
+                Loc.F("Événement vérifié le {0}, avec rappels 3 jours, 1 jour et 1 heure avant expiration.", Display.Exact(link.VerifiedAt ?? link.UpdatedAt))),
+            Codex.CalendarLinkStatus.Opened => (Loc.T("Ouvert dans Google Agenda · non vérifié"), "MutedBrush",
+                Loc.T("Événement prérempli ouvert dans le navigateur. Son enregistrement n’est vérifiable qu’avec Google Agenda connecté.")),
+            Codex.CalendarLinkStatus.Deleted => (Loc.T("Supprimé de Google Agenda"), "WarningBrush",
+                Loc.T("L’événement n’existe plus dans Google Agenda ; il ne sera pas recréé automatiquement.")),
+            _ => (Loc.T("Pas dans l’agenda"), "MutedBrush", _calendar!.IsConnected ? Loc.T("Pas encore ajouté à Google Agenda.") : Loc.T("Connectez Google Agenda dans Réglages → Calendrier pour l’ajouter automatiquement."))
+        };
+        var status = Ui.Text(text, 11, brush); status.Margin = new Thickness(0, 3, 0, 0); status.ToolTip = hint; status.Tag = "CalendarStatus";
+        identity.Children.Add(status);
+        if (_addToCalendar is null) return;
+        var action = link?.Status switch
+        {
+            Codex.CalendarLinkStatus.Confirmed => Loc.T("Ouvrir l’événement dans Google Agenda"),
+            Codex.CalendarLinkStatus.Deleted => Loc.T("Ajouter à nouveau à Google Agenda"),
+            _ => _calendar!.IsConnected ? Loc.T("Ajouter à Google Agenda") : Loc.T("Ouvrir l’événement prérempli dans Google Agenda")
+        };
+        var button = Ui.IconButton("DropdownCalendarIcon", action, action + " · " + AccountName(entry.Account));
+        button.Tag = "Calendar:" + EntryKey(entry); button.Margin = new Thickness(9, 0, 0, 0); button.VerticalAlignment = VerticalAlignment.Center;
+        button.SetResourceReference(Control.ForegroundProperty, link?.Status == Codex.CalendarLinkStatus.Confirmed ? "AccentBrush" : "MutedBrush");
+        button.Click += async (_, e) =>
+        {
+            e.Handled = true; button.IsEnabled = false;
+            try { await _addToCalendar(entry); _notificationStatus.Visibility = Visibility.Collapsed; }
+            catch (Exception ex) when (ex is Codex.GoogleCalendarException or InvalidOperationException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+            { _notificationStatus.Text = ex.Message; _notificationStatus.Visibility = Visibility.Visible; }
+            finally { button.IsEnabled = true; }
+        };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(button, header.ColumnDefinitions.Count - 1); header.Children.Add(button);
     }
     private bool AlertSelected(ResetScheduleEntry entry) => entry.At is { } at && _preferences.Current.ResetAlerts.Any(a =>
         a.Enabled && ResetAlertPlanner.Matches(a, entry.Account.Profile.Id, entry.Kind, at));

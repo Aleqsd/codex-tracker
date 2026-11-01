@@ -27,13 +27,10 @@ public static class CalendarExport
         foreach (var account in state.Accounts)
         {
             if (account.Snapshot is not { } snapshot) continue;
-            var link = AccountLink(account.Profile.Id);
-            var description = Loc.F("Date prévue selon le relevé du {0:dd/MM/yyyy HH:mm:ss zzz}. Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans {1}.",
-                snapshot.FetchedAt, account.Profile.ProviderName) + "\n" + Loc.F("Ouvrir le compte dans Codex Tracker : {0}", link);
             void Add(string kind, string id, string title, DateTimeOffset? date)
             {
                 if (date is not { } at || at <= now) return;
-                result.Add(new(Identity(account.Profile.Id, kind, id, at) + "@codex-tracker.local", $"{name(account.Profile)} · {title}", description, at, link));
+                result.Add(Entry(account, snapshot, kind, id, title, at, name));
             }
             Add("quota", "weekly", Loc.F("Reset {0} · semaine", account.Profile.ProviderName), QuotaPresentation.ResetsAt(state, account, ResetKind.Weekly, now));
             Add("quota", "short", Loc.F("Reset {0} · 5 heures", account.Profile.ProviderName), QuotaPresentation.ResetsAt(state, account, ResetKind.Short, now));
@@ -41,6 +38,22 @@ public static class CalendarExport
                 foreach (var credit in snapshot.ResetCredits ?? []) Add("credit", credit.Id, Loc.T("Expiration d’un reset en réserve"), credit.ExpiresAt);
         }
         return result.DistinctBy(e => e.Uid).OrderBy(e => e.StartsAt).ToArray();
+    }
+
+    /// <summary>The expiry event of a reset credit still held at the last observation, or null.</summary>
+    public static CalendarEntry? CreditEntry(AccountState account, string creditId, DateTimeOffset now, Func<AccountProfile, string> name) =>
+        account.Snapshot is { AvailableResetCredits: > 0 } snapshot && snapshot.ResetCredits?.FirstOrDefault(c => c.Id == creditId) is { ExpiresAt: { } at } credit && at > now
+            ? Entry(account, snapshot, "credit", credit.Id, Loc.T("Expiration d’un reset en réserve"), at, name) : null;
+
+    /// <summary>Identity without the domain suffix: 64 lowercase hex characters, also valid as a Google event id.</summary>
+    public static string Key(CalendarEntry entry) => entry.Uid.Split('@')[0];
+
+    private static CalendarEntry Entry(AccountState account, AccountSnapshot snapshot, string kind, string id, string title, DateTimeOffset at, Func<AccountProfile, string> name)
+    {
+        var link = AccountLink(account.Profile.Id);
+        var description = Loc.F("Date prévue selon le relevé du {0:dd/MM/yyyy HH:mm:ss zzz}. Export ponctuel : les modifications ultérieures ne sont pas synchronisées. Vérifiez dans {1}.",
+            snapshot.FetchedAt, account.Profile.ProviderName) + "\n" + Loc.F("Ouvrir le compte dans Codex Tracker : {0}", link);
+        return new(Identity(account.Profile.Id, kind, id, at) + "@codex-tracker.local", $"{name(account.Profile)} · {title}", description, at, link);
     }
 
     public static string Serialize(IEnumerable<CalendarEntry> entries, DateTimeOffset now)

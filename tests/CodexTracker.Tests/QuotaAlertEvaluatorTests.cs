@@ -60,7 +60,25 @@ public sealed class QuotaAlertEvaluatorTests
         Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(2, 4), previous, suppressNotifications: true).Notifications);
         Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(10, 4), previous).Notifications);
         Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(0, 4), previous).Notifications);
-        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(2, 100, reset: Start.AddDays(8)), previous, true).Notifications);
+    }
+
+    [Fact]
+    public void ARecentResetIsAnnouncedOnceAfterStartupSleepOrASlowRefresh()
+    {
+        var previous = QuotaAlertEvaluator.Observe(Profile, Snapshot(0, 25), null).State;
+        // First observation after a restart: thresholds stay quiet, the new period is still news.
+        var startup = QuotaAlertEvaluator.Observe(Profile, Snapshot(2, 100, reset: Start.AddDays(8)), previous, suppressNotifications: true);
+        Assert.Equal(NotificationKind.Reset, Assert.Single(startup.Notifications).Kind);
+        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(4, 100, reset: Start.AddDays(8)), startup.State, true).Notifications);
+        // Woken a few hours after the weekly reset (Start + 7 days): announced once.
+        var asleep = QuotaAlertEvaluator.Observe(Profile, Snapshot(7 * 1440 + 180, 100, reset: Start.AddDays(14)), previous with
+            { Weekly = previous.Weekly! with { ObservedAt = Start.AddDays(6) } });
+        Assert.Equal(UsageWindowKind.Weekly, Assert.Single(asleep.Notifications).Window);
+        Assert.Empty(QuotaAlertEvaluator.Observe(Profile, Snapshot(7 * 1440 + 182, 100, reset: Start.AddDays(14)), asleep.State).Notifications);
+        // An account seen again days after its reset: no stale announcement, but the period is recorded.
+        var stale = QuotaAlertEvaluator.Observe(Profile, Snapshot(9 * 1440, 100, reset: Start.AddDays(14)), previous);
+        Assert.Empty(stale.Notifications);
+        Assert.Equal(Start.AddDays(14), stale.State.Weekly!.LastObservedReset);
     }
 
     [Fact]
