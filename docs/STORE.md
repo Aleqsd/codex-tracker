@@ -63,6 +63,8 @@ Envoyer `artifacts/CodexTracker-<version>.msix` dans **Packages** d’une nouvel
 
 ## Différences de l’édition Store
 
+- Widget Windows 11 (Win+W) inclus : serveur COM `Widgets\CodexTracker.Widgets.exe`, dépendance au Windows App Runtime 1.8 (installée par le Store). Essai local : `./scripts/build-msix.ps1 -Register` (mode développeur), retrait : `-Unregister`.
+
 - Mises à jour : par le Store uniquement (`AppPackage.IsPackaged` coupe la mise à jour intégrée et masque ses réglages).
 - Chemins donnés à Windows et aux autres outils (démarrage avec Windows, configuration MCP, réglage Claude Code, liens de comptes) : alias `codex-tracker.exe`, stable d’une version à l’autre.
 - Données : même dossier que l’édition classique ; passer de l’une à l’autre conserve comptes et réglages. Ne pas installer les deux en même temps.

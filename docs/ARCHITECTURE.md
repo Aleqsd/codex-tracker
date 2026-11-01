@@ -75,6 +75,14 @@ Téléphone (ntfy) : canal `ReminderChannel.Push`, réglages `NtfySettings` dans
 
 E-mails Gmail : la connexion peut demander `gmail.send` (`GoogleCalendarSecrets.CanMail`, d’après les portées accordées). Le dispatcher route le canal Email vers Gmail quand SendGrid n’est pas configuré, avec journal avant envoi comme les autres canaux ; `ReserveMailAlerts` ajoute la règle implicite Réserve · 24 h · Email tant que l’envoi Gmail est accordé.
 
+Rappels intelligents (`SmartReminders`, Core) : quand `TrackerPreferences.SmartReminders` est vrai, le dispatcher écarte les occurrences de règles et les « probablement rechargé » d’une fenêtre 5 heures ou hebdomadaire dont le quota mesuré dépasse 50 % ; `NotificationPolicy` fait de même pour « Quota rechargé » grâce à `QuotaNotification.PreviousRemaining`. Les cloches (`ResetAlertPlanner`), réserves et resets généraux ne passent pas par ce filtre.
+
+Nouveautés (`WhatsNew`, App) : catalogue des fonctions par version, en français via `Loc.T`, le plus récent d’abord ; à compléter à chaque release visible. `LastSeenVersion` est fixée à la version installée au premier démarrage, le bandeau du tableau de bord montre `WhatsNew.Since(LastSeenVersion, version courante)`.
+
+Signalement : `SupportDiagnostics.ReportUrl` construit une demande GitHub pré-remplie (gabarit + diagnostic, tronqué sous 7 000 caractères d’adresse) ; le diagnostic reste la seule donnée transmise, à l’initiative de l’utilisateur.
+
+Widget Windows 11 : `WidgetFeed` (App) écrit `widget.json` (textes déjà localisés, comptes actifs, pourcentage, recharge, conseil) à chaque mise à jour de l’icône, seulement s’il change. `src/CodexTracker.Widgets` est un serveur COM séparé (Windows App SDK 1.8, `IWidgetProvider`, carte adaptative `QuotaCard.json`) qui lit ce fichier, surveille ses changements et met à jour les widgets épinglés ; il ne touche à aucune autre donnée. Il n’est livré que dans le MSIX (`build-msix.ps1` : extensions `windows.comServer` et `com.microsoft.windows.widgets`, dépendance `Microsoft.WindowsAppRuntime.1.8`). `build-msix.ps1 -Register` installe la mise en page sur ce PC pour l’essayer (mode développeur Windows), `-Unregister` la retire.
+
 ## Agenda semaine (0.8)
 
 `ResetCalendar` groupe les instants connus par date dans un fuseau explicite, du lundi au dimanche. Les heures répétées restent deux instants distincts. `PriorityReserve` exige un compteur serveur positif et une expiration future connue ; l’entrée conserve le relevé et ses erreurs. `ResetsView` partage ses filtres entre Agenda et Semaine et préserve la navigation à chaque collecte. Ces projections ne modifient ni les rappels ni les échéances.

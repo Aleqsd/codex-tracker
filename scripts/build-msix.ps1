@@ -8,7 +8,9 @@ Partner Center shows under Product identity (Package/Identity/Name and Package/I
 they come from %USERPROFILE%\.codex-tracker\store-identity.json ({"IdentityName", "Publisher", "PublisherDisplayName"},
 outside the repo); otherwise local placeholders only let the package be built and inspected. The package is full trust, with file and registry write virtualization
 disabled so that it keeps the classic installation's data in %LOCALAPPDATA%\CodexTracker, and declares the
-`codex-tracker.exe` execution alias used for startup, MCP and Claude Code (AppPackage.LaunchPath).
+`codex-tracker.exe` execution alias used for startup, MCP and Claude Code (AppPackage.LaunchPath). It also carries the
+Windows 11 widget (src/CodexTracker.Widgets, a COM server reading widget.json), which depends on Windows App Runtime 1.8.
+-Register installs the built layout on this PC for testing (Windows developer mode required); -Unregister removes it.
 Requires the Windows SDK (makeappx.exe).
 #>
 [CmdletBinding()]
@@ -16,7 +18,9 @@ param(
     [string]$Version,
     [string]$IdentityName = 'Aleqsd.CodexTracker',
     [string]$Publisher = 'CN=Aleqsd',
-    [string]$PublisherDisplayName = 'Aleqsd'
+    [string]$PublisherDisplayName = 'Aleqsd',
+    [switch]$Register,
+    [switch]$Unregister
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -40,6 +44,12 @@ $layout = Join-Path $work 'layout'
 if (Test-Path $work) { Remove-Item -LiteralPath $work -Recurse -Force }
 New-Item -ItemType Directory -Force $layout | Out-Null
 Copy-Item -Path (Join-Path $published '*') -Destination $layout -Recurse
+# Widget provider: self-contained next to the tracker (the tracker's single file cannot host it).
+$dotnet = & (Join-Path $PSScriptRoot 'find-dotnet.ps1')
+& $dotnet publish (Join-Path $root 'src/CodexTracker.Widgets/CodexTracker.Widgets.csproj') -c Release -r win-x64 --self-contained true -p:Version=$Version -o (Join-Path $layout 'Widgets') | Out-Null
+if ($LASTEXITCODE) { throw 'Publication du widget échouée.' }
+New-Item -ItemType Directory -Force (Join-Path $layout 'Public') | Out-Null
+Set-Content (Join-Path $layout 'Public/README.txt') 'Codex Tracker widget' -Encoding utf8
 
 # Tile and Store images from the 256 px frame of the application icon, on a transparent background.
 Add-Type -AssemblyName System.Drawing
@@ -65,6 +75,7 @@ try {
     Save-Logo 'Square310x310Logo.png' 310 310 0.62
 }
 finally { $source.Dispose(); $icon.Dispose() }
+Copy-Item (Join-Path $root 'docs/pill.png') (Join-Path $assets 'WidgetScreenshot.png')
 
 $manifest = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -73,8 +84,9 @@ $manifest = @"
          xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
          xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
          xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
+         xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap uap3 desktop desktop6 rescap">
+         IgnorableNamespaces="uap uap3 desktop desktop6 com rescap">
   <Identity Name="$IdentityName" Publisher="$Publisher" Version="$packageVersion" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>Codex Tracker</DisplayName>
@@ -85,6 +97,7 @@ $manifest = @"
   </Properties>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.26100.0" />
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.1.8" MinVersion="8000.994.2142.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
   </Dependencies>
   <Resources>
     <Resource Language="en-US" />
@@ -102,6 +115,37 @@ $manifest = @"
             <desktop:ExecutionAlias Alias="codex-tracker.exe" />
           </uap3:AppExecutionAlias>
         </uap3:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Widgets\CodexTracker.Widgets.exe" Arguments="-RegisterProcessAsComServer" DisplayName="Codex Tracker widget">
+              <com:Class Id="6E0B7C2A-9A4D-4F6B-9C2E-3D1A7B5E8F40" DisplayName="Codex Tracker quotas" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Codex Tracker" Id="CodexTrackerWidgets" PublicFolder="Public">
+            <uap3:Properties>
+              <WidgetProvider>
+                <ProviderIcons><Icon Path="Assets\StoreLogo.png" /></ProviderIcons>
+                <Activation><CreateInstance ClassId="6E0B7C2A-9A4D-4F6B-9C2E-3D1A7B5E8F40" /></Activation>
+                <Definitions>
+                  <Definition Id="quotas" DisplayName="Codex Tracker" Description="Codex and Claude Code usage left, next reset and the account to switch to" AllowMultiple="false" IsCustomizable="false">
+                    <Capabilities>
+                      <Capability><Size Name="small" /></Capability>
+                      <Capability><Size Name="medium" /></Capability>
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons><Icon Path="Assets\StoreLogo.png" /></Icons>
+                      <Screenshots><Screenshot Path="Assets\WidgetScreenshot.png" DisplayAltText="Codex Tracker quotas widget" /></Screenshots>
+                      <DarkMode />
+                      <LightMode />
+                    </ThemeResources>
+                  </Definition>
+                </Definitions>
+              </WidgetProvider>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
       </Extensions>
     </Application>
   </Applications>
@@ -116,3 +160,9 @@ $output = Join-Path $root "artifacts/CodexTracker-$Version.msix"
 & $makeappx.FullName pack /d $layout /p $output /o /h SHA256 | Out-Null
 if ($LASTEXITCODE) { throw 'makeappx a échoué.' }
 Write-Output "Paquet Store $packageVersion : $output ($([Math]::Round((Get-Item $output).Length / 1MB, 1)) Mo)"
+if ($Unregister -or $Register) { Get-AppxPackage -Name $IdentityName | Remove-AppxPackage -ErrorAction SilentlyContinue }
+if ($Register) {
+    # Loose layout registration: developer mode only, nothing signed, removed with -Unregister.
+    Add-AppxPackage -Register (Join-Path $layout 'AppxManifest.xml') -ForceApplicationShutdown
+    Write-Output "Paquet de test installé : Win+W → Ajouter des widgets → Codex Tracker."
+}

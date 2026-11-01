@@ -5,7 +5,7 @@ namespace CodexTracker.App;
 internal static class NotificationPolicy
 {
     public static bool IsEnabled(QuotaNotification notification, TrackerPreferences preferences) =>
-        notification.Kind == NotificationKind.Reset ? preferences.ResetNotifications
+        notification.Kind == NotificationKind.Reset ? preferences.ResetNotifications && (!preferences.SmartReminders || SmartReminders.Worth(notification.PreviousRemaining))
         : notification.Kind == NotificationKind.Forecast ? preferences.ForecastNotifications : notification.Threshold switch
         {
             20 => preferences.Alert20,

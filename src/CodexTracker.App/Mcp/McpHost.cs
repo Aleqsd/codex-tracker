@@ -64,7 +64,7 @@ internal sealed class TrackerTools(LocalClient client)
     public Task<JsonElement> Refresh(CancellationToken token) => Call("refresh", new { }, token);
     [McpServerTool(Name = "open_page", Destructive = false), Description("Ouvre Comptes, Resets, Général, Rappels, Canaux, Historique, Calendrier, Assistants ou Application.")]
     public Task<JsonElement> Show(string page, CancellationToken token) => Call("show", new { page }, token);
-    [McpServerTool(Name = "update_preferences", Destructive = false), Description("Remplace les réglages généraux après lecture (langue, thème, tri, alertes, pastille, copie téléphone, icônes, mises à jour…) ; les champs facultatifs omis gardent leur valeur. requestId UUID stable : réutilisez le même pour toute répétition. expectedRevision vient de la dernière lecture.")]
+    [McpServerTool(Name = "update_preferences", Destructive = false), Description("Remplace les réglages généraux après lecture (langue, thème, alertes ; sortMode est réservé et sans effet ; pastille, copie téléphone, icônes, mises à jour…) ; les champs facultatifs omis gardent leur valeur. requestId UUID stable : réutilisez le même pour toute répétition. expectedRevision vient de la dernière lecture.")]
     public Task<JsonElement> SetPreferences(string requestId, string expectedRevision, General settings, CancellationToken token) => Change("set_preferences", requestId, expectedRevision, settings, token);
     [McpServerTool(Name = "update_phone_policy", Destructive = false), Description("Change les limites et heures silencieuses. Une augmentation des permissions nécessite une confirmation locale, valable cinq minutes.")]
     public Task<JsonElement> SetPhone(string requestId, string expectedRevision, PhonePolicy policy, CancellationToken token) => Change("set_phone", requestId, expectedRevision, policy, token);
@@ -88,16 +88,62 @@ internal sealed class TrackerTools(LocalClient client)
     public Task<JsonElement> SyncGoogle(string requestId, string expectedRevision, CancellationToken token) => Change("google_sync", requestId, expectedRevision, new { }, token);
     [McpServerTool(Name = "add_reserve_to_calendar", Destructive = false), Description("Ajoute à Google Agenda l’expiration d’un reset en réserve (accountId et creditId lus dans list_resets). Idempotent : un événement existant est réutilisé.")]
     public Task<JsonElement> AddReserve(string requestId, string expectedRevision, Guid accountId, string creditId, CancellationToken token) => Change("google_add", requestId, expectedRevision, new { accountId, creditId }, token);
+    [McpServerTool(Name = "get_diagnostic", ReadOnly = true), Description("Diagnostic de support sans compte, quota, chemin personnel ni secret, et l’adresse d’une demande GitHub pré-remplie (reportUrl) à faire relire à l’utilisateur avant envoi.")]
+    public Task<JsonElement> Diagnostic(CancellationToken token) => Call("diagnostic", new { }, token);
+    [McpServerTool(Name = "get_usage_history", ReadOnly = true), Description("Courbe du quota restant d’un compte : hours 24 ou 168, window Weekly ou Short (400 points au plus).")]
+    public Task<JsonElement> UsageHistory(Guid accountId, int hours, ResetKind window, CancellationToken token) => Call("usage_history", new { accountId, hours, window }, token);
+    [McpServerTool(Name = "get_global_reset_feed", ReadOnly = true), Description("Annonces publiques de reset général Codex, état du contrôle des sources et statut de chaque compte.")]
+    public Task<JsonElement> GlobalFeed(CancellationToken token) => Call("global_feed", new { }, token);
+    [McpServerTool(Name = "get_update_status", ReadOnly = true), Description("Version installée, dernière recherche, version prête, édition Store, page des versions.")]
+    public Task<JsonElement> UpdateStatus(CancellationToken token) => Call("update_status", new { }, token);
+    [McpServerTool(Name = "get_claude_code_setup", ReadOnly = true), Description("Réglage de barre de statut Claude Code à copier, fichier de configuration et état des relevés du terminal.")]
+    public Task<JsonElement> ClaudeSetup(CancellationToken token) => Call("claude_setup", new { }, token);
+    [McpServerTool(Name = "get_whats_new", ReadOnly = true), Description("Nouveautés : dernière version vue, version installée, nouveautés non vues (unseen) et historique (all) avec la page qui les montre.")]
+    public Task<JsonElement> WhatsNewRead(CancellationToken token) => Call("whats_new", new { }, token);
+    [McpServerTool(Name = "detect_current_account", Destructive = false), Description("Détecte maintenant le compte actif de Codex et Claude Code (bouton « Détecter maintenant »).")]
+    public Task<JsonElement> Detect(string requestId, string expectedRevision, CancellationToken token) => Change("detect_account", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "complete_onboarding", Destructive = false), Description("Termine l’accueil du premier lancement (bouton « Compris »).")]
+    public Task<JsonElement> Onboarding(string requestId, string expectedRevision, CancellationToken token) => Change("complete_onboarding", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "dismiss_notice", Destructive = false), Description("Masque un encart du tableau de bord jusqu’au prochain événement : kind manualReset, expectedResets ou advice (lus dans get_status.notices).")]
+    public Task<JsonElement> DismissNotice(string requestId, string expectedRevision, string kind, CancellationToken token) => Change("dismiss_notice", requestId, expectedRevision, new { kind }, token);
+    [McpServerTool(Name = "hide_pill", Destructive = false), Description("Masque la pastille à l’écran pour une situation (key lue dans get_status.pill) jusqu’à la prochaine alerte.")]
+    public Task<JsonElement> HidePill(string requestId, string expectedRevision, string key, CancellationToken token) => Change("hide_pill", requestId, expectedRevision, new { key }, token);
+    [McpServerTool(Name = "set_account_avatar", Destructive = false), Description("Photo d’un compte depuis une image locale PNG ou JPEG (8 Mo au plus, recadrée en carré) ; path null rétablit les initiales.")]
+    public Task<JsonElement> Avatar(string requestId, string expectedRevision, Guid accountId, string? path = null, CancellationToken token = default) => Change("set_avatar", requestId, expectedRevision, new { accountId, path }, token);
+    [McpServerTool(Name = "export_calendar_ics", Destructive = false), Description("Échéances au format iCalendar (.ics), pour un compte ou tous : sans path, renvoie le texte ; avec un chemin absolu nouveau, écrit le fichier (jamais de remplacement).")]
+    public Task<JsonElement> ExportIcs(string requestId, string expectedRevision, Guid? accountId = null, string? path = null, CancellationToken token = default) => Change("export_ics", requestId, expectedRevision, new { accountId, path }, token);
+    [McpServerTool(Name = "prepare_google_calendar_import", Destructive = false), Description("Prépare un fichier .ics dans le dossier du tracker et renvoie son chemin et la page d’import de Google Agenda.")]
+    public Task<JsonElement> PrepareImport(string requestId, string expectedRevision, Guid? accountId = null, CancellationToken token = default) => Change("prepare_google_import", requestId, expectedRevision, new { accountId }, token);
+    [McpServerTool(Name = "check_global_reset_announcements", Destructive = false), Description("Relit maintenant les annonces publiques de reset général (une fois par minute au plus) et renvoie leur état.")]
+    public Task<JsonElement> CheckAnnouncements(string requestId, string expectedRevision, CancellationToken token) => Change("check_announcements", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "forget_google_client", Destructive = true), Description("Supprime le client OAuth Google importé (le client intégré reprend la main), après confirmation dans le tracker.")]
+    public Task<JsonElement> ForgetClient(string requestId, string expectedRevision, CancellationToken token) => Change("forget_google_client", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "check_for_update", Destructive = false), Description("Recherche une mise à jour sur GitHub et la télécharge si le téléchargement automatique est actif ; renvoie get_update_status.")]
+    public Task<JsonElement> CheckUpdate(string requestId, string expectedRevision, CancellationToken token) => Change("check_update", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "install_update", Destructive = true), Description("Installe la mise à jour prête et redémarre le tracker, après confirmation dans le tracker. La connexion MCP se coupe : reconnecter ensuite.")]
+    public Task<JsonElement> InstallUpdate(string requestId, string expectedRevision, CancellationToken token) => Change("install_update", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "quit_tracker", Destructive = true), Description("Ferme Codex Tracker après confirmation dans le tracker : le suivi et les rappels s’arrêtent.")]
+    public Task<JsonElement> Quit(string requestId, string expectedRevision, CancellationToken token) => Change("quit", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "restart_tracker", Destructive = false), Description("Redémarre Codex Tracker après confirmation (par exemple pour appliquer la langue) ; la connexion MCP se coupe.")]
+    public Task<JsonElement> Restart(string requestId, string expectedRevision, CancellationToken token) => Change("restart", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "acknowledge_recovery", Destructive = false), Description("Valide les réglages récupérés après un fichier illisible, après confirmation dans le tracker (get_status.recoveryPending).")]
+    public Task<JsonElement> Recovery(string requestId, string expectedRevision, CancellationToken token) => Change("acknowledge_recovery", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "dismiss_whats_new", Destructive = false), Description("Marque les nouveautés de la version installée comme vues (masque le bandeau).")]
+    public Task<JsonElement> DismissWhatsNew(string requestId, string expectedRevision, CancellationToken token) => Change("dismiss_whats_new", requestId, expectedRevision, new { }, token);
+    [McpServerTool(Name = "export_profile", Destructive = false), Description("Exporte le profil chiffré (comptes, historique, réglages) vers un chemin absolu nouveau, après confirmation dans le tracker. Le mot de passe (8 caractères au moins) passe par le contexte de l’assistant.")]
+    public Task<JsonElement> ExportProfile(string requestId, string expectedRevision, string path, string password, CancellationToken token) => Change("export_profile", requestId, expectedRevision, new { path, password }, token);
+    [McpServerTool(Name = "import_profile", Destructive = true), Description("Importe un profil chiffré après confirmation dans le tracker : ses réglages, rappels, noms et photos remplacent ceux de ce PC. Le mot de passe passe par le contexte de l’assistant.")]
+    public Task<JsonElement> ImportProfile(string requestId, string expectedRevision, string path, string password, CancellationToken token) => Change("import_profile", requestId, expectedRevision, new { path, password }, token);
     [McpServerTool(Name = "set_tray_quota", Destructive = false), Description("Choisit le quota dessiné dans l’icône pour un outil : provider Codex ou ClaudeCode, window Weekly ou Short.")]
     public Task<JsonElement> TrayQuota(string requestId, string expectedRevision, AccountProvider provider, ResetKind window, CancellationToken token) => Change("set_tray_quota", requestId, expectedRevision, new { provider, window }, token);
     [McpServerTool(Name = "set_start_with_windows", Destructive = false), Description("Active ou coupe le démarrage du tracker avec Windows (lu dans get_preferences.startWithWindows).")]
     public Task<JsonElement> Startup(string requestId, string expectedRevision, bool enabled, CancellationToken token) => Change("set_startup", requestId, expectedRevision, new { enabled }, token);
     [McpServerTool(Name = "declare_codex_reset", Destructive = false), Description("Déclare un reset général Codex à une date passée (ISO 8601), affiché « 100 % · déclaré » jusqu’au prochain relevé réel ; at null annule la déclaration.")]
-    public Task<JsonElement> DeclareReset(string requestId, string expectedRevision, DateTimeOffset? at, CancellationToken token) => Change("declare_reset", requestId, expectedRevision, new { at }, token);
+    public Task<JsonElement> DeclareReset(string requestId, string expectedRevision, DateTimeOffset? at = null, CancellationToken token = default) => Change("declare_reset", requestId, expectedRevision, new { at }, token);
     [McpServerTool(Name = "set_reset_alert", Destructive = false), Description("Active ou retire la notification ponctuelle (cloche) d’une échéance lue dans list_resets : accountId, kind Weekly ou Short, at exact, enabled.")]
     public Task<JsonElement> ResetAlert(string requestId, string expectedRevision, Guid accountId, ResetKind kind, DateTimeOffset at, bool enabled, CancellationToken token) => Change("set_reset_alert", requestId, expectedRevision, new { accountId, kind, at, enabled }, token);
     [McpServerTool(Name = "rename_account", Destructive = false), Description("Donne un nom d’affichage à un compte (60 caractères au plus) ; name vide ou null rétablit l’adresse.")]
-    public Task<JsonElement> Rename(string requestId, string expectedRevision, Guid accountId, string? name, CancellationToken token) => Change("rename_account", requestId, expectedRevision, new { accountId, name }, token);
+    public Task<JsonElement> Rename(string requestId, string expectedRevision, Guid accountId, string? name = null, CancellationToken token = default) => Change("rename_account", requestId, expectedRevision, new { accountId, name }, token);
     [McpServerTool(Name = "remove_account", Destructive = true), Description("Retire un compte inactif et son historique local du tracker, après confirmation dans le tracker. Ne touche jamais au compte Codex ou Claude.")]
     public Task<JsonElement> Remove(string requestId, string expectedRevision, Guid accountId, CancellationToken token) => Change("remove_account", requestId, expectedRevision, new { accountId }, token);
     private Task<JsonElement> Change(string method, string requestId, string expectedRevision, object value, CancellationToken token) => Call(method, new { requestId, expectedRevision, value }, token);

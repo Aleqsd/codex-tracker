@@ -8,8 +8,9 @@ public sealed record UsageSample(Guid AccountId, DateTimeOffset Timestamp, doubl
     DateTimeOffset? WeeklyResetsAt, double? ShortRemaining = null, DateTimeOffset? ShortResetsAt = null, bool WeeklyResetEstimated = false);
 public sealed record UsageForecast(TimeSpan? TimeToExhaustion, DateTimeOffset? EstimatedExhaustionAt,
     string Explanation, UsageWindowKind? Window = null, bool LastsUntilReset = false);
+/// <param name="PreviousRemaining">For a reset: what the window had left before the refill.</param>
 public sealed record QuotaNotification(Guid AccountId, string Email, NotificationKind Kind, int? Threshold,
-    DateTimeOffset ObservedAt, UsageWindowKind Window = UsageWindowKind.Weekly, DateTimeOffset? ExhaustionAt = null);
+    DateTimeOffset ObservedAt, UsageWindowKind Window = UsageWindowKind.Weekly, DateTimeOffset? ExhaustionAt = null, double? PreviousRemaining = null);
 
 public static class UsageAnalytics
 {
@@ -163,7 +164,7 @@ public static class QuotaAlertEvaluator
         var recentReset = continuous || !window.IsResetEstimated && window.ResetsAt - previous.ResetsAt >= TimeSpan.FromHours(1) &&
             (observedAt - previous.ObservedAt < RecentReset || previous.ResetsAt is { } passed && passed <= observedAt && observedAt - passed < RecentReset);
         if (newPeriod && remaining > previous.Remaining && recentReset)
-            notifications.Add(new(profile.Id, profile.Email, NotificationKind.Reset, null, observedAt, kind));
+            notifications.Add(new(profile.Id, profile.Email, NotificationKind.Reset, null, observedAt, kind, PreviousRemaining: previous.Remaining));
         if (continuous && !advances)
         {
             for (var i = 0; i < Thresholds.Length; i++)

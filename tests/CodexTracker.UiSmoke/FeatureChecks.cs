@@ -239,6 +239,13 @@ internal static class FeatureChecks
             zone.BringIntoView(); zone.Focus();
             await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
             var zoneBounds = zone.TransformToAncestor(pageScroll).TransformBounds(new Rect(zone.RenderSize));
+            if (zoneBounds.Top < 0 || zoneBounds.Bottom > pageScroll.ViewportHeight + 1)
+            {
+                // Content above (the phone QR code) may finish its layout after the first scroll: scroll once more.
+                zone.BringIntoView(); settings.UpdateLayout();
+                await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+                zoneBounds = zone.TransformToAncestor(pageScroll).TransformBounds(new Rect(zone.RenderSize));
+            }
             Check(zone.IsLoaded && zoneBounds.Top >= 0 && zoneBounds.Bottom <= pageScroll.ViewportHeight + 1,
                 "Timezone dropdown is loaded and visible in the settings viewport");
             var selectedZone = zone.SelectedItem;

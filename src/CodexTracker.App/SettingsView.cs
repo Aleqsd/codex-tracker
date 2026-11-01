@@ -137,6 +137,8 @@ internal sealed class SettingsView : UserControl, IDisposable
             p => p.ReserveAdviceNotifications, (p, value) => p with { ReserveAdviceNotifications = value });
         Toggle(Loc.T("Prévenir d’un nouveau reset en réserve"), Loc.T("Notification Windows quand Codex accorde un reset en réserve, avec son expiration et l’ajout à Google Agenda. Reçu il y a moins de 7 jours, une seule fois."),
             p => p.NewCreditNotifications, (p, value) => p with { NewCreditNotifications = value });
+        Toggle(Loc.T("Rappels de recharge seulement s’ils sont utiles"), Loc.T("Rappels avant un reset, « probablement rechargé » et « quota rechargé » seulement si la fenêtre avait servi au moins à moitié. Les cloches, réserves et resets généraux ne sont jamais filtrés."),
+            p => p.SmartReminders, (p, value) => p with { SmartReminders = value });
         Toggle(Loc.T("Prévenir après un reset"), Loc.T("Notification Windows après confirmation par Codex, ou à l’échéance d’un compte inactif : quota probablement à 100 %, à confirmer. Reprise des échéances récentes après veille."), p => p.ResetNotifications, (p, value) => p with { ResetNotifications = value });
         Section(Loc.T("Annonces de resets généraux"));
         Toggle(Loc.T("Vérifier les annonces publiques"), Loc.T("Toutes les 15 min : index communautaire shixilin.com, puis vérification des posts originaux via X. Aucune donnée de compte transmise. Certaines formulations restent indétectables."), p => p.MonitorGlobalResets, (p, value) => p with { MonitorGlobalResets = value });
@@ -217,8 +219,16 @@ internal sealed class SettingsView : UserControl, IDisposable
         var support = Block();
         support.Children.Add(_health);
         var diagnostic = new Button { Content = Loc.T("Préparer un diagnostic…"), HorizontalAlignment = HorizontalAlignment.Left };
-        diagnostic.Click += (_, _) => ShowDiagnostic(); support.Children.Add(diagnostic);
-        var privacy = Ui.Text(Loc.T("Aperçu avant copie. Aucun compte, quota, chemin personnel ni identifiant secret."), 11, "MutedBrush"); privacy.Margin = new Thickness(0, 9, 0, 0); support.Children.Add(privacy);
+        diagnostic.Click += (_, _) => ShowDiagnostic();
+        // One click: a GitHub issue prefilled with the same diagnostic, reviewed by the user before sending.
+        var report = new Button { Content = Loc.T("Signaler un problème ↗"), Margin = new Thickness(8, 0, 0, 0), IsEnabled = !demo };
+        report.Click += (_, _) =>
+        {
+            try { Process.Start(new ProcessStartInfo(SupportDiagnostics.ReportUrl(_owner.BuildDiagnostic())) { UseShellExecute = true }); }
+            catch (Exception error) { ShowError(error.Message); }
+        };
+        var supportActions = new WrapPanel(); supportActions.Children.Add(diagnostic); supportActions.Children.Add(report); support.Children.Add(supportActions);
+        var privacy = Ui.Text(Loc.T("Aperçu avant copie ou envoi. Aucun compte, quota, chemin personnel ni identifiant secret ; la demande GitHub s’ouvre dans votre navigateur, à relire avant de l’envoyer."), 11, "MutedBrush"); privacy.Margin = new Thickness(0, 9, 0, 0); support.Children.Add(privacy);
         _group = null;
         var quit = new Button { Content = Loc.T("Quitter Codex Tracker"),Style = (Style)FindResource("QuietButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-2, 16, 0, 0) };
         quit.SetResourceReference(ForegroundProperty, "DangerBrush");

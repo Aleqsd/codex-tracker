@@ -10,7 +10,7 @@ public sealed class ReminderDispatcher(
     Func<bool>? expectedResetNotifications = null, Func<ResetAlert[]>? resetAlerts = null, Func<bool>? newCreditNotifications = null,
     Func<bool>? reserveAdvice = null,
     Func<ReminderOccurrence, CancellationToken, Task<DeliveryResult>>? gmail = null, Func<bool>? gmailReady = null, Func<bool>? reserveMail = null,
-    Func<bool>? pushMirror = null)
+    Func<bool>? pushMirror = null, Func<bool>? smartReminders = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -105,10 +105,13 @@ public sealed class ReminderDispatcher(
     {
         var current = state();
         var requested = ResetAlertPlanner.Due(current, resetAlerts?.Invoke() ?? [], now);
-        return ReminderPlanner.Due(current, rules(), now)
+        // Smart reminders: a reset reminder or "probably refilled" notice only for a window at least half used.
+        var smart = smartReminders?.Invoke() == true;
+        return ReminderPlanner.Due(current, rules(), now).Where(r => !smart || SmartReminders.Worth(current, r, now))
             .Concat(requested)
             .Concat(expectedResetNotifications?.Invoke() == true ? ExpectedReset.Due(current, now)
-                .Where(r => !requested.Any(a => ReminderPlanner.EventKey(a) == ReminderPlanner.EventKey(r))) : [])
+                .Where(r => !requested.Any(a => ReminderPlanner.EventKey(a) == ReminderPlanner.EventKey(r)))
+                .Where(r => !smart || SmartReminders.Worth(current, r, now)) : [])
             .Concat(newCreditNotifications?.Invoke() == true ? NewResetCredits.Due(current, now) : [])
             .Concat(reserveAdvice?.Invoke() == true ? ReserveAdvice.Due(current, now) : [])
             // The default email alert: a day before a credit would be lost, once Gmail sending is granted.

@@ -56,7 +56,13 @@ public partial class MainWindow : Window
         Reminders = new(service, preferences, demo, Calendar);
         Commands = new(preferences, Reminders.Secrets);
         Theme = new ThemeManager(preferences);
-        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast, InCalendar = key => Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed }, CalendarConnected = () => Calendar.IsConnected || !Calendar.IsAvailable && !Calendar.DemoSetup };
+        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast, InCalendar = key => Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed }, CalendarConnected = () => Calendar.IsConnected || !Calendar.IsAvailable && !Calendar.DemoSetup, CurrentVersion = updates.CurrentVersion };
+        // A fresh installation has nothing new to announce: remember the installed version as seen.
+        // Demo previews of the banner start from an older version.
+        if (demo && Environment.GetCommandLineArgs().Contains("--demo-whats-new"))
+            Commands.SavePreferences(p => p with { LastSeenVersion = "0.9.36" });
+        else if (preferences.Current.LastSeenVersion is null)
+            try { Commands.SavePreferences(p => p with { LastSeenVersion = updates.CurrentVersion }); } catch (Exception) { /* Shown again next start. */ }
         InitializeComponent();
         ShowVersion();
         CheckUpdateButton.IsEnabled = !_demo;
@@ -350,6 +356,24 @@ public partial class MainWindow : Window
         editor.Show(); return editor;
     }
     private void CalendarPromo_Click(object sender, RoutedEventArgs e) => OpenPage("Calendrier");
+    /// <summary>The list of what changed since the last version seen; "Essayer" opens the first feature that has a page.</summary>
+    private void WhatsNew_Click(object sender, RoutedEventArgs e)
+    {
+        var items = _model.NewItems;
+        if (items.Count == 0) return;
+        var page = items.FirstOrDefault(i => i.Page is not null)?.Page;
+        var text = string.Join("\n", items.Select(i => "• " + i.Text));
+        var dialog = new TrackerDialog(this, Loc.F("Nouveautés de la {0}", _updates.CurrentVersion), text, page is null ? Loc.T("Compris") : Loc.T("Essayer"), page is null ? null : Loc.T("Plus tard"));
+        var accepted = dialog.ShowDialog() == true;
+        MarkWhatsNewSeen();
+        if (accepted && page is not null) OpenPage(page);
+    }
+    private void DismissWhatsNew_Click(object sender, RoutedEventArgs e) => DismissNotice(sender, p => p with { LastSeenVersion = _updates.CurrentVersion });
+    private void MarkWhatsNewSeen()
+    {
+        try { Commands.SavePreferences(p => p with { LastSeenVersion = _updates.CurrentVersion }); }
+        catch (Exception error) { ShowMessage(Loc.T("L’action n’a pas abouti"), error.Message); }
+    }
     private void DismissCalendarPromo_Click(object sender, RoutedEventArgs e) => DismissNotice(sender, p => p with { CalendarSuggestionDismissed = true });
     private void Advice_Click(object sender, RoutedEventArgs e)
     {

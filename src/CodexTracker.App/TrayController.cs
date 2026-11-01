@@ -253,6 +253,9 @@ internal sealed class TrayController : IDisposable
     {
         if (_disposed || _suspended || _service is DemoTrackerService) return;
         _pill.Update(_service.State, _preferences.Current, PreviewClock.UtcNow);
+        // The Windows 11 widget (Store edition) reads this summary; the tracker stays the only writer of its data.
+        try { WidgetFeed.Write(_preferences.DataDirectory, _service.State, _preferences.Current, PreviewClock.UtcNow); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { /* The widget keeps its last summary. */ }
     }
     internal ScreenPillWindow Pill => _pill;
     /// <summary>Demo capture of the pill: the active account is shown nearly empty, with and without its detail.</summary>

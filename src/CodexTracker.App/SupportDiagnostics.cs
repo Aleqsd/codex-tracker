@@ -8,6 +8,23 @@ namespace CodexTracker.App;
 // Explicit projection only: never serialize preferences, tracker state, paths or exception messages.
 internal static class SupportDiagnostics
 {
+    internal const string IssuesPage = "https://github.com/Aleqsd/codex-tracker/issues/new";
+    private const int MaximumUrlLength = 7000;
+
+    /// <summary>
+    /// A new GitHub issue, prefilled with a short template and the diagnostic (already free of accounts and secrets).
+    /// The diagnostic is cut so that the address stays within what browsers and GitHub accept.
+    /// </summary>
+    internal static string ReportUrl(string diagnostic)
+    {
+        string Url(string text) => IssuesPage + "?title=" + Uri.EscapeDataString(Loc.T("Problème : ")) + "&body=" + Uri.EscapeDataString(
+            Loc.T("## Ce qui s’est passé") + "\n\n" + Loc.T("Décrivez ce que vous faisiez et ce que vous attendiez.") + "\n\n" +
+            Loc.T("## Diagnostic (sans compte ni secret)") + "\n\n```\n" + text + "\n```\n");
+        var kept = diagnostic.Trim();
+        while (Url(kept).Length > MaximumUrlLength && kept.Length > 0) kept = kept[..Math.Max(0, kept.Length - 200)].TrimEnd() + (kept.Length > 200 ? "\n…" : "");
+        return Url(kept);
+    }
+
     internal static string Create(string version, TrackerPreferences preferences, CodexCompatibilityDiagnostic? compatibility,
         bool remindersAvailable, bool assistantAvailable, WindowsNotificationState notifications, bool updateReady, bool demo)
     {

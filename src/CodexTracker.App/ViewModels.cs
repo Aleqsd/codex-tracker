@@ -349,6 +349,12 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public bool ShowOnboarding => !_state.OnboardingComplete && !IsDemo;
     /// <summary>Whether Google Calendar is connected; absent in isolated view-model tests.</summary>
     internal Func<bool>? CalendarConnected { get; set; }
+    /// <summary>The running version, for the "what's new" banner.</summary>
+    internal string CurrentVersion { get; set; } = "0.0.0";
+    internal IReadOnlyList<WhatsNewItem> NewItems => WhatsNew.Since(_preferences.Current.LastSeenVersion, CurrentVersion);
+    public bool ShowWhatsNew => NewItems.Count > 0;
+    public string WhatsNewTitle => Loc.F("Nouveautés de la {0}", CurrentVersion);
+    public string WhatsNewSummary => NewItems switch { [] => "", [var one] => one.Text, [var first, ..] items => first.Text + " · " + Loc.F("+{0} autres", items.Count - 1) };
     private int HeldCredits => _state.Accounts.Where(a => a.Profile.Provider == AccountProvider.Codex && a.Snapshot is { AvailableResetCredits: > 0 })
         .Sum(a => (a.Snapshot!.ResetCredits ?? []).Count(c => c.ExpiresAt > PreviewClock.UtcNow));
     public bool ShowCalendarPromo => CalendarConnected?.Invoke() == false && !_preferences.Current.CalendarSuggestionDismissed && HeldCredits > 0;

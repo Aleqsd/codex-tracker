@@ -30,7 +30,8 @@ internal sealed class ReminderRuntime : IDisposable
                 reserveAdvice: () => preferences.Current.ReserveAdviceNotifications,
                 gmail: google is null ? null : (reminder, token) => google.SendMailAsync(reminder, token), gmailReady: () => google?.CanMail == true,
                 reserveMail: () => preferences.Current.ReserveMailAlerts,
-                pushMirror: () => preferences.Current.PushMirror);
+                pushMirror: () => preferences.Current.PushMirror,
+                smartReminders: () => preferences.Current.SmartReminders);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException)
         { Error = Loc.T("Le journal des rappels est illisible. Les envois sont suspendus pour éviter les doublons."); }

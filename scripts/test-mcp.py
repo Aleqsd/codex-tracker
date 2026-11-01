@@ -64,7 +64,7 @@ class Client:
 try:
     a = Client()
     names = {t["name"] for t in a.rpc("tools/list", {})["tools"]}
-    check(len(names) == 28, "28 typed MCP tools discovered")
+    check(len(names) == 51, "51 typed MCP tools discovered")
     google = a.tool("get_google_calendar")["result"]
     check("connected" in google and "reserves" in google and "token" not in json.dumps(google).lower(), "Google calendar state readable without tokens")
     status = a.tool("get_status")["result"]
@@ -91,6 +91,24 @@ try:
     check(code == 1 or json.loads(out)["result"]["status"] == "pending", "account removal is refused for the active account or waits for local confirmation")
     code, out = cli("unknown_command")
     check(code == 2, "CLI rejects unknown commands with exit code 2")
+    code, out = cli("help")
+    check(all(n in out for n in names), "CLI still lists every MCP tool")
+    acct = a.tool("list_accounts")["result"]["accounts"][0]["id"]
+    hist = a.tool("get_usage_history", accountId=acct, hours=168, window="Weekly")["result"]
+    check(hist["window"] == "Weekly" and isinstance(hist["points"], list), "usage history readable")
+    check("current" in a.tool("get_update_status")["result"], "update status readable")
+    news = a.tool("get_whats_new")["result"]
+    check("unseen" in news and len(news["all"]) > 0, "what's new readable")
+    status = a.tool("get_status")["result"]
+    check("notices" in status and "onboardingComplete" in status and "windowsNotifications" in status, "notices and health readable in status")
+    check("calendarEvents" in a.tool("list_resets")["result"], "prefilled calendar links readable")
+    result = a.tool("export_calendar_ics", requestId=str(uuid.uuid4()), expectedRevision=a.tool("get_status")["result"]["revision"])["result"]
+    check(result["status"] == "completed" and "BEGIN:VCALENDAR" in result["detail"], "calendar exported as text without a file")
+    code, out = cli("dismiss_whats_new")
+    check(code == 0 and json.loads(out)["result"]["status"] == "completed", "CLI marks what's new as seen")
+    check(not a.tool("get_whats_new")["result"]["unseen"], "nothing left to see after dismissal")
+    code, out = cli("acknowledge_recovery")
+    check(code == 1, "nothing to acknowledge is refused before any confirmation")
     check(len(a.tool("list_accounts")["result"]["accounts"]) > 0, "fictional accounts readable")
     check(len(a.tool("list_resets")["result"]["resets"]) > 0, "reset types and dates readable")
     b = Client()

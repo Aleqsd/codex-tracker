@@ -116,14 +116,8 @@ internal sealed class HistoryWindow : ThemedWindow
         if (new TrackerDialog(this, Loc.T("Retirer ce compte du suivi ?"), name + "\n\n" + Loc.T("Son historique local sera supprimé. Il réapparaîtra quand vous l’ouvrirez dans son application."), Loc.T("Retirer"), Loc.T("Annuler")).ShowDialog() != true) return;
         try
         {
-            await _service.RemoveAccountAsync(AccountId);
-            var avatar = _preferences.Current.Appearances.GetValueOrDefault(AccountId)?.AvatarFile;
-            _preferences.Update(p =>
-            {
-                var appearances = new Dictionary<Guid, AccountAppearance>(p.Appearances); appearances.Remove(AccountId);
-                return p with { Appearances = appearances };
-            });
-            AvatarStore.Remove(_preferences.DataDirectory, avatar); Close();
+            await AccountRemoval.RemoveAsync(_service, _preferences, AccountId); Close();
+
         }
         catch (Exception error) { if (!_closed) ShowError(error.Message); }
     }

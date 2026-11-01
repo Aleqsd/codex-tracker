@@ -1,0 +1,61 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "${empty}",
+      "wrap": true,
+      "isSubtle": true,
+      "$when": "${empty != ''}"
+    },
+    {
+      "type": "Container",
+      "$data": "${accounts}",
+      "spacing": "Medium",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                { "type": "TextBlock", "text": "${name}", "weight": "Bolder", "wrap": false },
+                { "type": "TextBlock", "text": "${provider} · ${detail}", "isSubtle": true, "spacing": "None", "size": "Small", "wrap": true }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "verticalContentAlignment": "Center",
+              "items": [
+                { "type": "TextBlock", "text": "${percent}", "size": "ExtraLarge", "weight": "Bolder", "color": "${color}" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "${advice}",
+      "wrap": true,
+      "color": "Accent",
+      "size": "Small",
+      "spacing": "Medium",
+      "$when": "${hasAdvice}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${updated}",
+      "isSubtle": true,
+      "size": "Small",
+      "spacing": "Small"
+    }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "${openLabel}", "verb": "open" }
+  ]
+}

@@ -34,6 +34,10 @@ internal sealed record TrackerPreferences
     public bool PushMirror { get; init; } = true;
     /// <summary>The pill above the clock while a quota in use is nearly empty or a reset credit expires within 24 hours.</summary>
     public bool ScreenPill { get; init; } = true;
+    /// <summary>Reset reminders and refill notices only for a window that was at least half used.</summary>
+    public bool SmartReminders { get; init; } = true;
+    /// <summary>Last version whose "what's new" was acknowledged; null until the first start records the installed one.</summary>
+    public string? LastSeenVersion { get; init; }
     /// <summary>Pill situations hidden with "Masquer"; a new situation shows again.</summary>
     public string[] PillHidden { get; init; } = [];
     /// <summary>Once Google Calendar is connected, every reset credit gets its expiry event automatically.</summary>

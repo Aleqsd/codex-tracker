@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Windows 11 widget provider of the Microsoft Store edition: a separate COM server started by the widget host.
+       It only reads widget.json written by the tracker; it never opens the tracker's other files. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>x64</Platforms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>CodexTracker.Widgets</AssemblyName>
+    <RootNamespace>CodexTracker.Widgets</RootNamespace>
+    <!-- Always runs inside the MSIX package, whose manifest declares the Windows App Runtime dependency. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
+    <UseWinUI>false</UseWinUI>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="QuotaCard.json" LogicalName="QuotaCard.json" />
+  </ItemGroup>
+</Project>

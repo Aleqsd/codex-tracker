@@ -52,7 +52,7 @@ Les scripts trouvent un SDK .NET 10 dans le PATH ou dans `%LOCALAPPDATA%\Microso
 
 ## Pilotable par agent
 
-Toute fonctionnalité doit rester pilotable par un agent de code sans contrôle de l’écran : chaque réglage, connexion, action ou état visible dans l’interface a son outil MCP (`Mcp/McpHost.cs`, `Mcp/TrackerControl.cs`, `docs/MCP.md`, compteur de `scripts/test-mcp.py`) et donc sa commande `--cli` (même nom, table de `Mcp/Cli.cs`). Seules les validations humaines voulues (confirmation locale, consentement Google, activation des Assistants) restent hors agent. Exceptions actuelles, à résorber : photo d’un compte, export et import de profil (fichiers choisis par l’utilisateur). Les opérations de maintenance (release, site, winget, Store, statistiques) ont chacune leur script.
+Toute fonctionnalité doit rester pilotable par un agent de code sans contrôle de l’écran : chaque réglage, connexion, action ou état visible dans l’interface a son outil MCP (`Mcp/McpHost.cs`, `Mcp/TrackerControl.cs`, `docs/MCP.md`, compteur de `scripts/test-mcp.py`) et donc sa commande `--cli` (même nom, table de `Mcp/Cli.cs`). Seules les validations humaines voulues (confirmation locale, consentement Google, activation des Assistants) restent hors agent. Les opérations de maintenance (release, site, winget, Store, statistiques) ont chacune leur script.
 
 ## Vérification proportionnée
 

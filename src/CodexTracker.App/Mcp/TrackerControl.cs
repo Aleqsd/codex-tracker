@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.Json;
+using CodexTracker.App.Updates;
 using CodexTracker.Codex;
 
 namespace CodexTracker.App.Mcp;
@@ -16,11 +18,12 @@ internal sealed class TrackerControl : IDisposable
     private string _accountIds = "";
     private bool _disposed;
     private readonly bool _demo;
+    private readonly UpdateService _updates;
     internal int Connections { get; set; }
     internal static readonly JsonSerializerOptions Json = new(NotificationFiles.Json) { WriteIndented = false, TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(), UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
-    internal TrackerControl(MainWindow window, bool demo)
+    internal TrackerControl(MainWindow window, bool demo, UpdateService? updates = null)
     {
-        _window = window; _preferences = window.Preferences; _commands = window.Commands; _demo = demo;
+        _window = window; _preferences = window.Preferences; _commands = window.Commands; _demo = demo; _updates = updates ?? new UpdateService();
         _actions = new(demo ? null : _preferences.DataDirectory);
         _accountIds = string.Join(",", _window.TrackerService.State.Accounts.Select(a => a.Profile.Id).Order());
         _preferences.Changed += Changed;
@@ -54,15 +57,25 @@ internal sealed class TrackerControl : IDisposable
                     .Select(p => new { provider = p.Active.Profile.Provider.ToString(), fromAccountId = p.Active.Profile.Id, toAccountId = p.Best!.Account.Profile.Id, toAccount = p.Best.Account.Profile.Email, remaining = p.Best.Remaining, estimated = p.Best.Estimated }),
                 pill = _preferences.Current.ScreenPill ? ScreenPill.Current(state with { ManualCodexReset = _preferences.Current.ManualCodexReset }, DateTimeOffset.UtcNow, _preferences.Current.PillHidden)
                     .Select(p => new { p.Key, kind = p.Kind.ToString(), accountId = p.Account.Profile.Id, window = p.Window.ToString(), p.Remaining, p.At }) : null,
-                manualCodexReset = state.ManualCodexReset, state.IsBusy, connections = Connections, reminderError = _window.Reminders.Error };
-            case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, provider = a.Profile.Provider.ToString(), organization = a.Profile.OrganizationName, a.IsActive, a.IsActiveInCodex, a.IsActiveInClaudeCode, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", manualReset = state.ManualCodexReset?.Applies(a, ResetKind.Weekly, DateTimeOffset.UtcNow) == true, displayedWeeklyRemaining = QuotaPresentation.Remaining(state, a, ResetKind.Weekly, DateTimeOffset.UtcNow), snapshot = a.Snapshot }) };
-            case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, provider = e.Account.Profile.Provider.ToString(), e.Kind, e.At, e.IsProjected, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }) };
+                manualCodexReset = state.ManualCodexReset, state.IsBusy, connections = Connections, reminderError = _window.Reminders.Error,
+                onboardingComplete = state.OnboardingComplete, notices = AgentQueries.Notices(state, _preferences.Current, DateTimeOffset.UtcNow),
+                healthWarnings = _window.HealthWarnings(), recoveryPending = _preferences.RecoveryRequired,
+                windowsNotifications = WindowsNotificationDelivery.ReadState().ToString() };
+            case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, provider = a.Profile.Provider.ToString(), organization = a.Profile.OrganizationName, a.IsActive, a.IsActiveInCodex, a.IsActiveInClaudeCode, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", manualReset = state.ManualCodexReset?.Applies(a, ResetKind.Weekly, DateTimeOffset.UtcNow) == true, displayedWeeklyRemaining = QuotaPresentation.Remaining(state, a, ResetKind.Weekly, DateTimeOffset.UtcNow),
+                displayedShortRemaining = a.HasShortWindow ? QuotaPresentation.Remaining(state, a, ResetKind.Short, DateTimeOffset.UtcNow) : null,
+                forecast = AgentQueries.Forecast(_window.TrackerService, a), pace = AgentQueries.Pace(state, a, DateTimeOffset.UtcNow), snapshot = a.Snapshot }) };
+            case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, provider = e.Account.Profile.Provider.ToString(), e.Kind, e.At, e.IsProjected, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }),
+                // Prefilled Google Calendar events, as « Ajouter une seule échéance » opens them.
+                calendarEvents = AgentQueries.CalendarEntries(state, _preferences.Current, null, DateTimeOffset.UtcNow).Select(c => new { c.Title, startsAt = c.StartsAt, googleEventLink = CalendarExport.GoogleEventLink(c) }) };
             case "history": return new { revision, entries = _window.Reminders.History.OrderByDescending(h => h.UpdatedAt).Take(200).ToArray() };
             case "preferences": return new { revision, settings = General.From(_preferences.Current), phone = _preferences.Current.PhonePolicy,
                 startWithWindows = !_demo && StartupSettings.IsEnabled,
                 trayQuota = new { provider = _preferences.Current.TrayProvider.ToString(), window = _preferences.Current.TrayWindow.ToString(), perTool = _preferences.Current.TrayWindows },
                 accountNames = _preferences.Current.Appearances.Where(a => a.Value.Name is not null).ToDictionary(a => a.Key, a => a.Value.Name),
-                resetAlerts = _preferences.Current.ResetAlerts };
+                resetAlerts = _preferences.Current.ResetAlerts, pillHidden = _preferences.Current.PillHidden,
+                avatars = _preferences.Current.Appearances.Where(a => a.Value.AvatarFile is not null).Select(a => a.Key),
+                languagePendingRestart = (Loc.Resolve(_preferences.Current.Language) == AppLanguage.English) != Loc.IsEnglish,
+                sortMode = "reserved: no effect" };
             case "rules": return new { revision, rules = _preferences.Current.ReminderRules };
             case "channels":
                 var s = _window.Reminders.Secrets.Read();
@@ -73,13 +86,28 @@ internal sealed class TrackerControl : IDisposable
             case "refresh":
                 await _window.TrackerService.RefreshAsync(); return new { refreshed = true, revision = Revision, observedAt = _window.TrackerService.State.ActiveAccount?.Snapshot?.FetchedAt };
             case "show": _window.OpenPage(Read<PageQuery>(args).Page); return new { opened = true };
+            case "usage_history":
+                var history = Read<HistoryQuery>(args);
+                if (history.Hours is not (24 or 168) || history.Window is not (ResetKind.Weekly or ResetKind.Short)) throw new ArgumentException("hours 24 ou 168, window Weekly ou Short.");
+                if (!state.Accounts.Any(a => a.Profile.Id == history.AccountId)) throw new ArgumentException("Compte inconnu.");
+                return AgentQueries.History(_window.TrackerService, history.AccountId, history.Hours, history.Window, DateTimeOffset.UtcNow);
+            case "global_feed": return AgentQueries.GlobalFeed(state, DateTimeOffset.UtcNow);
+            case "update_status": return AgentQueries.Updates(_updates);
+            case "claude_setup": return AgentQueries.ClaudeCodeSetup(_preferences, _demo);
+            case "whats_new":
+                return new { revision, lastSeen = _preferences.Current.LastSeenVersion, current = _updates.CurrentVersion,
+                    unseen = WhatsNew.Since(_preferences.Current.LastSeenVersion, _updates.CurrentVersion), all = WhatsNew.Items() };
+            case "diagnostic":
+                var report = _window.BuildDiagnostic();
+                return new { revision, diagnostic = report, reportUrl = SupportDiagnostics.ReportUrl(report) };
             case "google":
                 var calendar = _window.Calendar;
                 return new
                 {
                     revision, available = calendar.IsAvailable, connected = calendar.IsConnected, email = calendar.Email, canMail = calendar.CanMail,
                     connecting = calendar.IsConnecting, ownClient = calendar.HasOwnClient, bundledClient = GoogleCalendarSync.Bundled is not null,
-                    problem = calendar.Problem?.ToString(), error = calendar.Error,
+                    problem = calendar.Problem?.ToString(), error = calendar.Error, projectId = calendar.ProjectId,
+                    detectedClientFile = calendar.HasOwnClient || _demo ? null : calendar.FindClientFile()?.Path,
                     autoAdd = _preferences.Current.GoogleCalendarAutoAdd, mailAlerts = _preferences.Current.ReserveMailAlerts,
                     reserves = GoogleCalendarSync.HeldCredits(state, DateTimeOffset.UtcNow).Select(c => new
                     {
@@ -211,7 +239,143 @@ internal sealed class TrackerControl : IDisposable
                 // Removing an account deletes its local history: always confirmed in the tracker.
                 confirm = true;
                 summary = Loc.F("Retirer le compte {0} ({1}) et son historique local du tracker ?", target.Profile.Email, target.Profile.ProviderName);
-                run = async () => { await _window.TrackerService.RemoveAccountAsync(removed); return "Compte retiré du tracker."; }; break;
+                run = async () => { await AccountRemoval.RemoveAsync(_window.TrackerService, _preferences, removed); return "Compte retiré du tracker, avec son nom et sa photo."; }; break;
+            case "detect_account":
+                run = async () => { await _window.TrackerService.ImportCurrentAccountAsync(); return "Détection du compte actif terminée."; };
+                summary = Loc.T("Détecter le compte actif"); break;
+            case "complete_onboarding":
+                run = async () => { await _window.TrackerService.CompleteOnboardingAsync(); return "Accueil terminé."; };
+                summary = Loc.T("Terminer l’accueil"); break;
+            case "dismiss_notice":
+                var noticeKind = Read<NoticeQuery>(request.Value).Kind;
+                var notices = AgentQueries.Notices(state, _preferences.Current, DateTimeOffset.UtcNow);
+                var notice = notices.FirstOrDefault(n => n.Kind == noticeKind) ?? throw new ArgumentException("Aucun encart de ce type n’est affiché.");
+                run = () =>
+                {
+                    if (notice.Kind == "manualReset") _commands.SavePreferences(p => p with { DismissedManualCodexReset = p.ManualCodexReset?.DeclaredAt });
+                    else _commands.SavePreferences(p => p with { DismissedNotices = AgentQueries.Dismissing(p, notices, notice.Keys) });
+                    return Task.FromResult("Encart masqué jusqu’au prochain événement.");
+                };
+                summary = Loc.T("Masquer un encart"); break;
+            case "hide_pill":
+                var pillKey = Read<KeyQuery>(request.Value).Key;
+                if (string.IsNullOrWhiteSpace(pillKey) || pillKey.Length > 200) throw new ArgumentException("Clé de pastille invalide (lue dans get_status.pill).");
+                run = () => { _commands.SavePreferences(p => p with { PillHidden = [.. p.PillHidden.Where(k => k != pillKey).TakeLast(19), pillKey] }); return Task.FromResult("Pastille masquée jusqu’à la prochaine alerte."); };
+                summary = Loc.T("Masquer la pastille"); break;
+            case "set_avatar":
+                var avatar = Read<AvatarQuery>(request.Value);
+                if (!state.Accounts.Any(a => a.Profile.Id == avatar.AccountId)) throw new ArgumentException("Compte inconnu.");
+                // Read and checked now (PNG or JPEG, 8 MB, 40 megapixels), like the window's file picker.
+                var image = string.IsNullOrWhiteSpace(avatar.Path) ? null : AvatarStore.ReadImage(avatar.Path);
+                run = () =>
+                {
+                    var file = image is null ? null : AvatarStore.Save(_preferences.DataDirectory, image);
+                    var previous = _preferences.Current.Appearances.GetValueOrDefault(avatar.AccountId)?.AvatarFile;
+                    _commands.SavePreferences(p =>
+                    {
+                        var appearances = new Dictionary<Guid, AccountAppearance>(p.Appearances);
+                        appearances[avatar.AccountId] = (appearances.GetValueOrDefault(avatar.AccountId) ?? new()) with { AvatarFile = file };
+                        return p with { Appearances = appearances };
+                    });
+                    AvatarStore.Remove(_preferences.DataDirectory, previous);
+                    return Task.FromResult(file is null ? "Photo retirée : initiales affichées." : "Photo du compte enregistrée.");
+                };
+                summary = Loc.T("Changer la photo d’un compte"); break;
+            case "export_ics":
+                var ics = Read<IcsQuery>(request.Value);
+                var entries = AgentQueries.CalendarEntries(state, _preferences.Current, ics.AccountId, DateTimeOffset.UtcNow);
+                if (entries.Count == 0) throw new ArgumentException("Aucune échéance à exporter.");
+                var text = CalendarExport.Serialize(entries, DateTimeOffset.UtcNow);
+                if (ics.Path is { } icsPath && (!Path.IsPathFullyQualified(icsPath) || File.Exists(icsPath) || !icsPath.EndsWith(".ics", StringComparison.OrdinalIgnoreCase)))
+                    throw new ArgumentException("Chemin .ics absolu et nouveau attendu : un fichier existant n’est jamais remplacé.");
+                run = () =>
+                {
+                    if (ics.Path is null) return Task.FromResult(text);
+                    if (_preferences.IsPersistent) try { AccountLink.EnsureRegistered(AppPackage.LaunchPath); } catch (Exception) { /* The file stays usable without the link. */ }
+                    File.WriteAllText(ics.Path, text, new System.Text.UTF8Encoding(false));
+                    return Task.FromResult($"{entries.Count} échéances exportées dans {ics.Path}.");
+                };
+                summary = Loc.T("Exporter les échéances"); break;
+            case "prepare_google_import":
+                var import = Read<AccountFilterQuery>(request.Value);
+                var importEntries = AgentQueries.CalendarEntries(state, _preferences.Current, import.AccountId, DateTimeOffset.UtcNow);
+                if (importEntries.Count == 0) throw new ArgumentException("Aucune échéance à exporter.");
+                run = () =>
+                {
+                    var directory = Path.Combine(_preferences.DataDirectory, "calendar-exports"); Directory.CreateDirectory(directory);
+                    var file = Path.Combine(directory, $"CodexTracker-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.ics");
+                    File.WriteAllText(file, CalendarExport.Serialize(importEntries, DateTimeOffset.UtcNow), new System.Text.UTF8Encoding(false));
+                    return Task.FromResult(JsonSerializer.Serialize(new { path = file, importPage = "https://calendar.google.com/calendar/r/settings/export" }));
+                };
+                summary = Loc.T("Préparer l’import dans Google Agenda"); break;
+            case "check_announcements":
+                if (_demo || !_preferences.Current.MonitorGlobalResets) throw new InvalidOperationException("Surveillance des annonces désactivée (ou démonstration).");
+                run = async () => { await _window.TrackerService.CheckGlobalResetAnnouncementsAsync(); return JsonSerializer.Serialize(AgentQueries.GlobalFeed(_window.TrackerService.State, DateTimeOffset.UtcNow), Json); };
+                summary = Loc.T("Vérifier les annonces"); break;
+            case "forget_google_client":
+                if (!_window.Calendar.HasOwnClient) throw new ArgumentException("Aucun client Google importé.");
+                confirm = true;
+                run = () => { _window.Calendar.ForgetClient(); return Task.FromResult("Client Google importé supprimé ; le client intégré reprend la main."); };
+                summary = Loc.T("Supprimer le client Google importé ? La connexion qui l’utilise est coupée."); break;
+            case "check_update":
+                if (_demo) throw new InvalidOperationException("Mises à jour désactivées dans la démonstration.");
+                if (AppPackage.IsPackaged) throw new InvalidOperationException("Édition Microsoft Store : les mises à jour arrivent par le Store.");
+                run = async () =>
+                {
+                    var result = await _updates.CheckDetailedAsync();
+                    if (result.Release is { } release && UpdateService.CanSelfUpdate && _preferences.Current.DownloadUpdatesAutomatically) await _updates.PrepareAsync(release);
+                    return JsonSerializer.Serialize(AgentQueries.Updates(_updates), Json);
+                };
+                summary = Loc.T("Rechercher une mise à jour"); break;
+            case "install_update":
+                if (_demo || !UpdateService.CanSelfUpdate) throw new InvalidOperationException("Installation indisponible ici (démonstration, développement ou édition Store).");
+                if (_updates.Prepared is null) throw new ArgumentException("Aucune mise à jour prête : appeler check_for_update avec le téléchargement automatique.");
+                confirm = true;
+                run = () => { Later(() => _window.InstallReadyUpdateAsync()); return Task.FromResult("Installation de la mise à jour lancée ; le tracker redémarre."); };
+                summary = Loc.F("Installer la version {0} et redémarrer le tracker ?", _updates.Prepared.Release.Version); break;
+            case "quit":
+                confirm = true;
+                run = () => { Later(() => ((App)System.Windows.Application.Current).ExitAsync()); return Task.FromResult("Fermeture du tracker demandée."); };
+                summary = Loc.T("Quitter Codex Tracker ? Le suivi et les rappels s’arrêtent jusqu’au prochain lancement."); break;
+            case "restart":
+                confirm = true;
+                run = () =>
+                {
+                    Process.Start(new ProcessStartInfo(AppPackage.LaunchPath, $"--relaunch-after {Environment.ProcessId}") { UseShellExecute = false });
+                    Later(() => ((App)System.Windows.Application.Current).ExitAsync());
+                    return Task.FromResult("Redémarrage du tracker demandé.");
+                };
+                summary = Loc.T("Redémarrer Codex Tracker ?"); break;
+            case "acknowledge_recovery":
+                if (!_preferences.RecoveryRequired) throw new ArgumentException("Aucun réglage récupéré à valider.");
+                confirm = true;
+                run = () => { _preferences.AcknowledgeRecovery(); return Task.FromResult("Réglages récupérés validés ; les rappels coupés restent à réactiver."); };
+                summary = Loc.T("Valider les réglages récupérés ?"); break;
+            case "dismiss_whats_new":
+                run = () => { _commands.SavePreferences(p => p with { LastSeenVersion = _updates.CurrentVersion }); return Task.FromResult("Nouveautés vues."); };
+                summary = Loc.T("Masquer les nouveautés"); break;
+            case "export_profile":
+                var exportQuery = Read<ProfileQuery>(request.Value);
+                if (_demo) throw new InvalidOperationException("Export de profil indisponible dans la démonstration.");
+                if (!Path.IsPathFullyQualified(exportQuery.Path) || File.Exists(exportQuery.Path)) throw new ArgumentException("Chemin absolu et nouveau attendu : un fichier existant n’est jamais remplacé.");
+                if (exportQuery.Password is not { Length: >= 8 }) throw new ArgumentException("Mot de passe d’au moins 8 caractères.");
+                confirm = true;
+                run = async () =>
+                {
+                    var archive = await Task.Run(() => ProfileTransfer.Export(_window.TrackerService, _preferences, exportQuery.Password, DateTimeOffset.UtcNow));
+                    await File.WriteAllBytesAsync(exportQuery.Path, archive);
+                    return $"Profil chiffré exporté ({_window.TrackerService.State.Accounts.Count} comptes).";
+                };
+                summary = Loc.F("Exporter le profil chiffré (comptes, historique, réglages) vers {0} ?", exportQuery.Path); break;
+            case "import_profile":
+                var importQuery = Read<ProfileQuery>(request.Value);
+                if (_demo) throw new InvalidOperationException("Import de profil indisponible dans la démonstration.");
+                if (!File.Exists(importQuery.Path) || new FileInfo(importQuery.Path).Length > ProfileArchive.MaximumBytes) throw new ArgumentException("Fichier de profil introuvable ou trop volumineux.");
+                // Decrypted now: a wrong password fails before the local confirmation.
+                var bundle = await Task.Run(async () => ProfileTransfer.Read(await File.ReadAllBytesAsync(importQuery.Path), importQuery.Password));
+                confirm = true;
+                run = async () => { var result = await ProfileTransfer.ImportAsync(bundle, _window.TrackerService, _commands, _preferences); return $"{result.Added} comptes ajoutés, {result.Updated} mis à jour."; };
+                summary = Loc.F("Importer ce profil ? {0} comptes, exportés le {1:dd/MM/yyyy à HH:mm}. Ses réglages, rappels, noms et photos remplacent ceux de ce PC.", bundle.Profiles.Accounts.Count, bundle.ExportedAt.ToLocalTime()); break;
             case "test":
                 var channel = Read<TestQuery>(request.Value).Channel;
                 if (!Enum.IsDefined(channel)) throw new ArgumentException("Canal inconnu.");
@@ -273,6 +437,8 @@ internal sealed class TrackerControl : IDisposable
         }
         catch { _window.AssistantError = Loc.T("MCP suspendu : journal local indisponible."); _timer.Stop(); _pending.Clear(); foreach (var dialog in _dialogs.Values.ToArray()) dialog.Close(); }
     }
+    /// <summary>Runs after the reply is on its way: quitting, restarting or installing ends this process.</summary>
+    private void Later(Func<Task> action) => _ = _window.Dispatcher.InvokeAsync(async () => { await Task.Delay(800); await action(); });
     private static object Public(AssistantAction a) => new { requestId = a.Id, a.Status, a.ExpiresAt, a.Detail };
     private static T Read<T>(JsonElement value) => value.Deserialize<T>(Json) ?? throw new ArgumentException("Paramètres manquants.");
     public void Dispose()
@@ -296,16 +462,23 @@ internal sealed record DeclareQuery(DateTimeOffset? At);
 internal sealed record ResetAlertQuery(Guid AccountId, ResetKind Kind, DateTimeOffset At, bool Enabled);
 internal sealed record AccountNameQuery(Guid AccountId, string? Name);
 internal sealed record AccountQuery(Guid AccountId);
+internal sealed record HistoryQuery(Guid AccountId, int Hours, ResetKind Window);
+internal sealed record NoticeQuery(string Kind);
+internal sealed record KeyQuery(string Key);
+internal sealed record AvatarQuery(Guid AccountId, string? Path);
+internal sealed record IcsQuery(Guid? AccountId, string? Path);
+internal sealed record AccountFilterQuery(Guid? AccountId);
+internal sealed record ProfileQuery(string Path, string Password);
 internal sealed record ChannelChange(string Provider, TwilioSettings? Twilio = null, SendGridSettings? SendGrid = null, NtfySettings? Ntfy = null);
 /// <summary>General settings. The calendar, email and credit notice switches are optional: omitted, they keep their value.</summary>
 internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Alert20, bool Alert10, bool Alert5, bool ResetNotifications, bool HoverPreview, int RefreshMinutes, bool AdaptiveRefresh,
     bool? NewCreditNotifications = null, bool? ReserveAdviceNotifications = null, bool? ReserveMailAlerts = null, bool? GoogleCalendarAutoAdd = null, bool? CalendarSuggestionDismissed = null, bool? ForecastNotifications = null,
     bool? PushMirror = null, bool? ScreenPill = null, AppLanguage? Language = null, bool? TrayIconPerTool = null, bool? MonitorGlobalResets = null,
-    bool? DownloadUpdatesAutomatically = null, bool? InstallUpdatesAtStartup = null, bool? IncludePrereleaseUpdates = null)
+    bool? DownloadUpdatesAutomatically = null, bool? InstallUpdatesAtStartup = null, bool? IncludePrereleaseUpdates = null, bool? SmartReminders = null)
 {
     internal static General From(TrackerPreferences p) => new(p.ThemeMode, p.SortMode, p.Alert20, p.Alert10, p.Alert5, p.ResetNotifications, p.HoverPreview, p.RefreshMinutes, p.AdaptiveRefresh,
         p.NewCreditNotifications, p.ReserveAdviceNotifications, p.ReserveMailAlerts, p.GoogleCalendarAutoAdd, p.CalendarSuggestionDismissed, p.ForecastNotifications, p.PushMirror, p.ScreenPill,
-        p.Language, p.TrayIconPerTool, p.MonitorGlobalResets, p.DownloadUpdatesAutomatically, p.InstallUpdatesAtStartup, p.IncludePrereleaseUpdates);
+        p.Language, p.TrayIconPerTool, p.MonitorGlobalResets, p.DownloadUpdatesAutomatically, p.InstallUpdatesAtStartup, p.IncludePrereleaseUpdates, p.SmartReminders);
     internal TrackerPreferences Apply(TrackerPreferences p) => p with
     {
         ThemeMode = ThemeMode, SortMode = SortMode, Alert20 = Alert20, Alert10 = Alert10, Alert5 = Alert5, ResetNotifications = ResetNotifications, HoverPreview = HoverPreview, RefreshMinutes = RefreshMinutes, AdaptiveRefresh = AdaptiveRefresh,
@@ -315,6 +488,6 @@ internal sealed record General(ThemeMode ThemeMode, SortMode SortMode, bool Aler
         PushMirror = PushMirror ?? p.PushMirror, ScreenPill = ScreenPill ?? p.ScreenPill,
         Language = Language ?? p.Language, TrayIconPerTool = TrayIconPerTool ?? p.TrayIconPerTool, MonitorGlobalResets = MonitorGlobalResets ?? p.MonitorGlobalResets,
         DownloadUpdatesAutomatically = DownloadUpdatesAutomatically ?? p.DownloadUpdatesAutomatically, InstallUpdatesAtStartup = InstallUpdatesAtStartup ?? p.InstallUpdatesAtStartup,
-        IncludePrereleaseUpdates = IncludePrereleaseUpdates ?? p.IncludePrereleaseUpdates
+        IncludePrereleaseUpdates = IncludePrereleaseUpdates ?? p.IncludePrereleaseUpdates, SmartReminders = SmartReminders ?? p.SmartReminders
     };
 }

@@ -32,6 +32,7 @@
     <Compile Include="../../src/CodexTracker.App/AppTypography.cs" Link="App/AppTypography.cs" />
     <Compile Include="../../src/CodexTracker.App/AccountLink.cs" Link="App/AccountLink.cs" />
     <Compile Include="../../src/CodexTracker.App/AppPackage.cs" Link="App/AppPackage.cs" />
+    <Compile Include="../../src/CodexTracker.App/WhatsNew.cs" Link="App/WhatsNew.cs" />
     <Compile Include="../../src/CodexTracker.App/ProfileTransfer.cs" Link="App/ProfileTransfer.cs" />
     <Compile Include="../../src/CodexTracker.App/AvatarStore.cs" Link="App/AvatarStore.cs" />
     <Compile Include="../../src/CodexTracker.App/Localization/EnglishApp*.cs" Link="App/Localization/%(Filename)%(Extension)" />

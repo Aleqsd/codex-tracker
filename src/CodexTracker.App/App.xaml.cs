@@ -136,7 +136,7 @@ public partial class App : System.Windows.Application
             {
                 try
                 {
-                    window.Assistant = new Mcp.TrackerControl(window, IsDemo);
+                    window.Assistant = new Mcp.TrackerControl(window, IsDemo, updates);
                     _assistantServer = new(window, window.Assistant, e.Args);
                 }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
