@@ -147,6 +147,7 @@ if ($Submit) {
     $commitBody = @{ message = "Aleqsd.CodexTracker $Version"; tree = $tree; parents = @($head) } | ConvertTo-Json -Compress
     $commit = $commitBody | gh api "repos/$Fork/git/commits" --input - --jq '.sha'
     @{ sha = $commit; force = $false } | ConvertTo-Json -Compress | gh api -X PATCH "repos/$Fork/git/refs/heads/$Branch" --input - | Out-Null
-    gh pr edit $PullRequest --repo microsoft/winget-pkgs --title "New package: Aleqsd.CodexTracker version $Version" | Out-Null
+    # REST, not "gh pr edit": its GraphQL query fails on retired classic projects.
+    gh api -X PATCH "repos/microsoft/winget-pkgs/pulls/$PullRequest" -f title="New package: Aleqsd.CodexTracker version $Version" | Out-Null
     Write-Output "Demande microsoft/winget-pkgs#$PullRequest mise à jour : $Version (commit $commit)."
 }
