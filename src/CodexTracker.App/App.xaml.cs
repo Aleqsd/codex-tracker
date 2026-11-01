@@ -18,6 +18,8 @@ public partial class App : System.Windows.Application
     private static readonly uint ExitMessage = RegisterWindowMessage("CodexTracker.RequestExit.v1");
     private static readonly uint ShowMessage = RegisterWindowMessage("CodexTracker.RequestShow.v1");
     private static readonly uint OpenAccountMessage = RegisterWindowMessage("CodexTracker.OpenAccount.v1");
+    // Sent by the Windows 11 widget's "Actualiser" button: reread the active accounts, like the refresh button.
+    private static readonly uint RefreshMessage = RegisterWindowMessage("CodexTracker.RequestRefresh.v1");
     private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
     private readonly DispatcherTimer _environmentTimer = new(DispatcherPriority.Loaded) { Interval = TimeSpan.FromMilliseconds(200) };
     private bool _taskbarCreated, _suspended;
@@ -227,6 +229,11 @@ public partial class App : System.Windows.Application
             {
                 if (!_exiting && MainWindow is MainWindow window) window.ShowPanel();
             });
+        }
+        if ((uint)message == RefreshMessage)
+        {
+            handled = true;
+            Dispatcher.InvokeAsync(async () => { if (!_exiting && MainWindow is MainWindow window) await window.RefreshAsync(); });
         }
         if ((uint)message == OpenAccountMessage)
         {

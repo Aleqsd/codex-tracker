@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Runtime.InteropServices;
 using Microsoft.Windows.Widgets.Providers;
 using WinRT;
@@ -17,6 +19,8 @@ internal static class Program
     private static void Main(string[] args)
     {
         ComWrappersSupport.InitializeComWrappers();
+        // Diagnostic: the card data shaped from a summary file, without any widget host.
+        if (args is ["--shape", var file]) { Console.Out.Write(QuotaWidgetProvider.Shape(File.ReadAllText(file))); return; }
         if (!args.Contains("-RegisterProcessAsComServer")) return;
         var hr = CoRegisterClassObject(typeof(QuotaWidgetProvider).GUID, new ProviderFactory(), ClsctxLocalServer, RegclsMultipleUse, out var cookie);
         if (hr < 0) Marshal.ThrowExceptionForHR(hr);
@@ -92,11 +96,18 @@ internal sealed class QuotaWidgetProvider : IWidgetProvider
 
     public void OnActionInvoked(WidgetActionInvokedArgs args)
     {
-        if (args.Verb != "open") return;
-        // The tracker of this package: a second start brings the running instance forward.
+        // The running tracker (classic or Store edition) owns the data: ask it, through its registered window messages.
+        var tracker = FindWindow(null, "Codex Tracker");
+        if (args.Verb == "refresh" && tracker != IntPtr.Zero) { PostMessage(tracker, RegisterWindowMessage("CodexTracker.RequestRefresh.v1"), IntPtr.Zero, IntPtr.Zero); return; }
+        if (tracker != IntPtr.Zero) { PostMessage(tracker, RegisterWindowMessage("CodexTracker.RequestShow.v1"), IntPtr.Zero, IntPtr.Zero); return; }
+        // Not running: start the tracker of this package, which opens in the notification area.
         try { Process.Start(new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "..", "CodexTracker.exe")) { UseShellExecute = true }); }
         catch (Exception) { /* Nothing else to do from a widget. */ }
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string windowName);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint RegisterWindowMessage(string message);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
     private void UpdateAll()
     {
@@ -123,33 +134,50 @@ internal sealed class QuotaWidgetProvider : IWidgetProvider
     }
 
     /// <summary>
-    /// Card data from the tracker's summary: the most urgent account first (the small size shows only it), and a gauge
-    /// drawn with two weighted columns whose colour follows the tracker's (accent, then warning and attention when low).
+    /// Card data from the tracker's summary. Small: ring of the most urgent account in use (PNG drawn here, the card
+    /// format has no ring). Medium: every tracked account as a thin gauge, two weighted columns. Large: the week.
+    /// A summary from an older tracker (only "accounts") still renders.
     /// </summary>
     internal static string Shape(string feed)
     {
-        var root = System.Text.Json.Nodes.JsonNode.Parse(feed)!.AsObject();
-        var accounts = (root["accounts"] as System.Text.Json.Nodes.JsonArray ?? []).OfType<System.Text.Json.Nodes.JsonObject>().Select(a =>
+        var root = JsonNode.Parse(feed)!.AsObject();
+        var active = Items(root["active"] ?? root["accounts"]);
+        foreach (var item in active)
         {
-            var digits = new string((a["percent"]?.GetValue<string>() ?? "").TakeWhile(char.IsDigit).ToArray());
-            int? value = int.TryParse(digits, out var parsed) ? Math.Clamp(parsed, 0, 100) : null;
-            var color = a["color"]?.GetValue<string>() ?? "Default";
-            return (Value: value, Node: new System.Text.Json.Nodes.JsonObject
-            {
-                ["name"] = a["name"]?.GetValue<string>() ?? "",
-                ["provider"] = a["provider"]?.GetValue<string>() ?? "",
-                ["percent"] = a["percent"]?.GetValue<string>() ?? "--",
-                ["color"] = color,
-                ["reset"] = a["detail"]?.GetValue<string>() ?? "",
-                ["fill"] = Math.Max(1, value ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["rest"] = Math.Max(1, 100 - (value ?? 0)).ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["bar"] = value is null ? "emphasis" : color switch { "Attention" => "attention", "Warning" => "warning", _ => "accent" },
-            });
-        }).OrderBy(a => a.Value ?? 101).Select(a => (System.Text.Json.Nodes.JsonNode)a.Node).ToArray();
-        root["accounts"] = new System.Text.Json.Nodes.JsonArray(accounts);
-        root["first"] = accounts.FirstOrDefault()?.DeepClone() ?? new System.Text.Json.Nodes.JsonObject();
+            item["ring"] = Ring.DataUri(Value(item), Bar(item) switch { "attention" => Ring.Attention, "warning" => Ring.Warning, _ => Ring.Accent });
+            item["reset"] ??= item["detail"]?.GetValue<string>() ?? "";
+        }
+        var tracked = Items(root["tracked"] ?? root["accounts"]);
+        foreach (var item in tracked)
+        {
+            var value = Value(item);
+            item["fill"] = Math.Max(1, value ?? 0).ToString(CultureInfo.InvariantCulture);
+            item["rest"] = Math.Max(1, 100 - (value ?? 0)).ToString(CultureInfo.InvariantCulture);
+            item["bar"] = Bar(item);
+            item["active"] ??= false;
+        }
+        root["active"] = new JsonArray([.. active.OrderBy(i => Value(i) ?? 101).Select(i => (JsonNode)i)]);
+        root["tracked"] = new JsonArray([.. tracked.OrderBy(i => Value(i) ?? 101).Select(i => (JsonNode)i)]);
+        root["first"] = root["active"]!.AsArray().FirstOrDefault()?.DeepClone() ?? new JsonObject();
+        root["week"] ??= new JsonArray();
+        foreach (var name in new[] { "reserve", "reserves", "advice", "empty" }) root[name] ??= "";
+        root["hasAdvice"] ??= false;
+        root["refreshLabel"] ??= "↻";
         return root.ToJsonString();
     }
+
+    private static List<JsonObject> Items(JsonNode? array) =>
+        (array as JsonArray ?? []).OfType<JsonObject>().Select(o => (JsonObject)o.DeepClone()).ToList();
+
+    private static int? Value(JsonObject item)
+    {
+        if (item["value"] is JsonValue number && number.TryGetValue<double>(out var exact)) return (int)Math.Clamp(Math.Floor(exact), 0, 100);
+        var digits = new string((item["percent"]?.GetValue<string>() ?? "").TakeWhile(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var parsed) ? Math.Clamp(parsed, 0, 100) : null;
+    }
+
+    private static string Bar(JsonObject item) => Value(item) is null ? "emphasis"
+        : (item["color"]?.GetValue<string>() ?? "Default") switch { "Attention" => "attention", "Warning" => "warning", _ => "accent" };
 
     private static string ReadTemplate()
     {

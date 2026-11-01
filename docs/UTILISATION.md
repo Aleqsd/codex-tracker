@@ -230,7 +230,7 @@ Le message **« échec de lecture des quotas »** concerne le relevé du compte 
 
 **Nouveautés** : après une mise à jour, un bandeau du tableau de bord résume ce qui a changé depuis la version précédente ; **Découvrir** liste les nouveautés et ouvre la page de la première, la croix le masque jusqu’à la prochaine version. Une nouvelle installation n’affiche rien.
 
-**Widget Windows 11** (édition Microsoft Store) : **Win+W → Ajouter des widgets → Codex Tracker** affiche, en petit ou moyen format, le pourcentage restant de chaque compte actif, l’heure de recharge et le compte conseillé quand vous êtes presque à court. Il se met à jour avec le tracker, qui doit rester ouvert.
+**Widget Windows 11** (édition Microsoft Store) : **Win+W → Ajouter des widgets → Codex Tracker**. Petit format : l’anneau du compte utilisé le plus entamé, son heure de recharge et vos réserves. Format moyen : tous les comptes suivis en jauges, du plus entamé au moins entamé, et le compte conseillé. Grand format : la prochaine recharge en compte à rebours, la semaine avec ses jours de recharge, les comptes utilisés et la prochaine réserve à utiliser. **Ouvrir** affiche le tracker, **Actualiser** relit les comptes actifs. Il se met à jour avec le tracker, qui doit rester ouvert.
 
 **Signaler un problème ↗** (Réglages → Application) ouvre dans votre navigateur une demande GitHub pré-remplie avec ce même diagnostic : relisez-la avant de l’envoyer. Pour demander de l’aide autrement, **Réglages → Application → Préparer un diagnostic** montre le texte exact avant copie. Ce rapport contient les versions, états techniques et dates de vérification, sans compte, quota, chemin personnel ni secret. Il n’envoie rien automatiquement.
 

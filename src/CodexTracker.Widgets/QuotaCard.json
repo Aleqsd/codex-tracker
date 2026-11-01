@@ -3,58 +3,38 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "version": "1.5",
   "body": [
-    {
-      "type": "TextBlock",
-      "text": "${empty}",
-      "wrap": true,
-      "isSubtle": true,
-      "$when": "${empty != ''}"
-    },
+    { "type": "TextBlock", "text": "${empty}", "wrap": true, "isSubtle": true, "$when": "${empty != ''}" },
+
     {
       "type": "Container",
-      "$when": "${$host.widgetSize == 'small' && count(accounts) > 0}",
+      "$when": "${$host.widgetSize == 'small' && count(active) > 0}",
       "items": [
-        { "type": "TextBlock", "text": "${first.provider}", "size": "Small", "isSubtle": true, "weight": "Bolder" },
-        { "type": "TextBlock", "text": "${first.percent}", "size": "ExtraLarge", "weight": "Bolder", "color": "${first.color}", "spacing": "None" },
-        {
-          "type": "ColumnSet",
-          "spacing": "Small",
-          "columns": [
-            { "type": "Column", "width": "${first.fill}", "style": "${first.bar}", "minHeight": "6px", "items": [] },
-            { "type": "Column", "width": "${first.rest}", "style": "emphasis", "minHeight": "6px", "spacing": "None", "items": [] }
-          ]
-        },
-        { "type": "TextBlock", "text": "${first.reset}", "size": "Small", "isSubtle": true, "wrap": true, "spacing": "Small" }
+        { "type": "Image", "url": "${first.ring}", "width": "92px", "height": "92px", "horizontalAlignment": "Center", "altText": "${first.percent}" },
+        { "type": "TextBlock", "text": "${first.percent}", "size": "Large", "weight": "Bolder", "color": "${first.color}", "horizontalAlignment": "Center", "spacing": "Small" },
+        { "type": "TextBlock", "text": "${first.provider} · ${first.reset}", "size": "Small", "isSubtle": true, "horizontalAlignment": "Center", "spacing": "None", "wrap": true },
+        { "type": "TextBlock", "text": "${reserves}", "size": "Small", "color": "Accent", "horizontalAlignment": "Center", "spacing": "Small", "$when": "${reserves != ''}" }
       ]
     },
+
     {
       "type": "Container",
-      "$when": "${$host.widgetSize != 'small'}",
+      "$when": "${$host.widgetSize == 'medium'}",
       "items": [
         {
           "type": "Container",
-          "$data": "${accounts}",
-          "spacing": "Medium",
+          "$data": "${tracked}",
+          "spacing": "Small",
           "items": [
             {
               "type": "ColumnSet",
               "columns": [
                 {
-                  "type": "Column",
-                  "width": "stretch",
-                  "verticalContentAlignment": "Center",
-                  "items": [
-                    { "type": "TextBlock", "text": "${provider}", "size": "Small", "isSubtle": true, "weight": "Bolder" },
-                    { "type": "TextBlock", "text": "${name}", "spacing": "None", "maxLines": 1 }
-                  ]
+                  "type": "Column", "width": "stretch",
+                  "items": [ { "type": "TextBlock", "text": "${name} · ${provider}", "maxLines": 1, "size": "Small", "weight": "${if(active, 'Bolder', 'Default')}" } ]
                 },
                 {
-                  "type": "Column",
-                  "width": "auto",
-                  "verticalContentAlignment": "Center",
-                  "items": [
-                    { "type": "TextBlock", "text": "${percent}", "size": "ExtraLarge", "weight": "Bolder", "color": "${color}", "horizontalAlignment": "Right" }
-                  ]
+                  "type": "Column", "width": "auto",
+                  "items": [ { "type": "TextBlock", "text": "${percent}", "size": "Small", "weight": "Bolder", "color": "${color}" } ]
                 }
               ]
             },
@@ -62,27 +42,68 @@
               "type": "ColumnSet",
               "spacing": "Small",
               "columns": [
-                { "type": "Column", "width": "${fill}", "style": "${bar}", "minHeight": "6px", "items": [] },
-                { "type": "Column", "width": "${rest}", "style": "emphasis", "minHeight": "6px", "spacing": "None", "items": [] }
+                { "type": "Column", "width": "${fill}", "style": "${bar}", "minHeight": "4px", "items": [] },
+                { "type": "Column", "width": "${rest}", "style": "emphasis", "minHeight": "4px", "spacing": "None", "items": [] }
               ]
-            },
-            { "type": "TextBlock", "text": "${reset}", "size": "Small", "isSubtle": true, "wrap": true, "spacing": "Small" }
+            }
           ]
         },
         {
-          "type": "Container",
-          "style": "accent",
-          "spacing": "Medium",
-          "$when": "${hasAdvice}",
+          "type": "Container", "style": "accent", "spacing": "Medium", "$when": "${hasAdvice}",
+          "items": [ { "type": "TextBlock", "text": "${advice}", "wrap": true, "size": "Small", "weight": "Bolder" } ]
+        }
+      ]
+    },
+
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'large'}",
+      "items": [
+        {
+          "type": "Container", "$when": "${next != null}",
           "items": [
-            { "type": "TextBlock", "text": "${advice}", "wrap": true, "size": "Small", "weight": "Bolder" }
+            { "type": "TextBlock", "text": "${next.label}", "size": "Small", "isSubtle": true },
+            { "type": "TextBlock", "text": "${next.countdown}", "size": "ExtraLarge", "weight": "Bolder", "spacing": "None" },
+            { "type": "TextBlock", "text": "${next.detail}", "size": "Small", "isSubtle": true, "spacing": "None", "wrap": true }
           ]
         },
-        { "type": "TextBlock", "text": "${updated}", "isSubtle": true, "size": "Small", "spacing": "Medium", "horizontalAlignment": "Right" }
+        {
+          "type": "ColumnSet",
+          "spacing": "Medium",
+          "columns": [
+            {
+              "type": "Column", "width": "stretch", "$data": "${week}",
+              "items": [
+                { "type": "TextBlock", "text": "${day}", "size": "Small", "horizontalAlignment": "Center", "isSubtle": "${level == 0}", "weight": "${if(level > 0, 'Bolder', 'Default')}" },
+                { "type": "Container", "style": "${if(level > 0, 'accent', 'emphasis')}", "minHeight": "26px", "spacing": "Small", "items": [] }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Container", "$data": "${active}", "spacing": "Small", "separator": true,
+          "items": [
+            {
+              "type": "ColumnSet",
+              "columns": [
+                { "type": "Column", "width": "stretch", "items": [ { "type": "TextBlock", "text": "${provider}", "size": "Small", "maxLines": 1 } ] },
+                { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "${percent} · ${reset}", "size": "Small", "color": "${color}" } ] }
+              ]
+            }
+          ]
+        },
+        { "type": "TextBlock", "text": "${reserve}", "size": "Small", "color": "Accent", "spacing": "Small", "wrap": true, "$when": "${reserve != ''}" },
+        {
+          "type": "Container", "style": "accent", "spacing": "Small", "$when": "${hasAdvice}",
+          "items": [ { "type": "TextBlock", "text": "${advice}", "wrap": true, "size": "Small", "weight": "Bolder" } ]
+        }
       ]
-    }
+    },
+
+    { "type": "TextBlock", "text": "${updated}", "isSubtle": true, "size": "Small", "spacing": "Small", "horizontalAlignment": "Right", "$when": "${$host.widgetSize != 'small'}" }
   ],
   "actions": [
-    { "type": "Action.Execute", "title": "${openLabel}", "verb": "open" }
+    { "type": "Action.Execute", "title": "${openLabel}", "verb": "open" },
+    { "type": "Action.Execute", "title": "${refreshLabel}", "verb": "refresh" }
   ]
 }

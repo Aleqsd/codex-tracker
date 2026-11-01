@@ -221,5 +221,7 @@ internal static partial class EnglishApp
         ("Ouvrez Codex ou Claude Code : le compte connecté apparaîtra ici.", "Open Codex or Claude Code: the signed-in account will appear here."),
         ("Relevé {0:HH:mm}", "Read at {0:HH:mm}"),
         ("Les assistants de code pilotent désormais tout le tracker", "Coding assistants now control the whole tracker"),
+        ("Prochaine recharge", "Next refill"),
+        ("{0} · {1} · il reste {2}", "{0} · {1} · {2} left"),
     ];
 }
