@@ -14,7 +14,9 @@ Never run it while Final Fantasy XIV is open; the window takes the focus.
 param(
     [string]$Dotnet,
     [string]$Ffmpeg = 'ffmpeg',
-    [string]$Client = (Join-Path $env:USERPROFILE '.codex-tracker\google-oauth-client.json')
+    [string]$Client = (Join-Path $env:USERPROFILE '.codex-tracker\google-oauth-client.json'),
+    # Recorded screen: primary, left, right or DISPLAYn. Keep the tracker and the browser on it.
+    [ValidatePattern('^(primary|left|right|DISPLAY\d+)$')][string]$Screen = 'primary'
 )
 $ErrorActionPreference = 'Stop'
 if (Get-Process -Name ffxiv_dx11,ffxiv -ErrorAction SilentlyContinue) { throw 'Final Fantasy XIV est en cours : enregistrement reporté.' }
@@ -29,9 +31,26 @@ $out = Join-Path $root 'artifacts/google-verification'
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 $video = Join-Path $out ("demo-{0:yyyyMMdd-HHmmss}.mp4" -f (Get-Date))
 
+# Physical pixels, as gdigrab captures them.
+Add-Type -Namespace RecordDemo -Name Dpi -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
+[void][RecordDemo.Dpi]::SetProcessDPIAware()
+Add-Type -AssemblyName System.Windows.Forms
+$screens = [System.Windows.Forms.Screen]::AllScreens
+$primary = $screens | Where-Object Primary
+$target = switch -Regex ($Screen) {
+    '^primary$' { $primary }
+    '^left$' { $screens | Where-Object { $_.Bounds.Right -le $primary.Bounds.Left } | Sort-Object { $_.Bounds.Left } -Descending | Select-Object -First 1 }
+    '^right$' { $screens | Where-Object { $_.Bounds.Left -ge $primary.Bounds.Right } | Sort-Object { $_.Bounds.Left } | Select-Object -First 1 }
+    default { $screens | Where-Object { $_.DeviceName -eq "\\.\$Screen" } }
+}
+if (-not $target) { throw "Écran introuvable : $Screen" }
+$b = $target.Bounds
+Write-Host "Écran enregistré : $($target.DeviceName) $($b.Width)x$($b.Height) à ($($b.X),$($b.Y))"
+
 $recorder = [System.Diagnostics.Process]::new()
 $recorder.StartInfo = [System.Diagnostics.ProcessStartInfo]::new($Ffmpeg)
-foreach ($argument in '-hide_banner', '-loglevel', 'error', '-f', 'gdigrab', '-framerate', '30', '-draw_mouse', '1', '-i', 'desktop',
+foreach ($argument in '-hide_banner', '-loglevel', 'error', '-f', 'gdigrab', '-framerate', '30', '-draw_mouse', '1',
+    '-offset_x', "$($b.X)", '-offset_y', "$($b.Y)", '-video_size', "$($b.Width)x$($b.Height)", '-i', 'desktop',
     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', $video) {
     $recorder.StartInfo.ArgumentList.Add($argument)
 }

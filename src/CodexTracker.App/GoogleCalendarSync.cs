@@ -63,6 +63,8 @@ internal sealed class GoogleCalendarSync : IDisposable
         if (LiveDemo) demo = false;
         _client = new(_http);
         _openBrowser = openBrowser ?? (uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }));
+        // The recording opens the consent itself, in a browser tab it controls: the address is handed over in the demo folder.
+        if (LiveDemo && openBrowser is null) _openBrowser = uri => File.WriteAllText(Path.Combine(dataDirectory, "consent-url.txt"), uri.AbsoluteUri);
         // --demo-calendar-setup previews the not-yet-connected screens; actions stay unavailable in the demo.
         DemoSetup = demo && Environment.GetCommandLineArgs().Contains("--demo-calendar-setup");
         IsAvailable = !demo; _demo = demo && !DemoSetup;
