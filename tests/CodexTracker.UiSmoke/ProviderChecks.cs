@@ -120,7 +120,7 @@ internal static class ProviderChecks
             var editBanner = Tree(banner).OfType<Button>().Single(b => Equals(b.Content, "Modifier…"));
             // Logical focus: Windows may keep the foreground on the user's own window while the suite runs.
             editBanner.Focus(); editBanner.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
-            Check(banner.IsVisible && (dismissBanner.IsKeyboardFocused || FocusManager.GetFocusedElement(window) == dismissBanner),
+            Check(banner.IsVisible && (Foreground.HasFocus(dismissBanner) || FocusManager.GetFocusedElement(window) == dismissBanner),
                 "The declared reset notice is dismissible and reachable after Modifier… with Tab");
             var declared = preferences.Current.ManualCodexReset!;
             dismissBanner.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(50); window.UpdateLayout();
@@ -173,7 +173,7 @@ internal static class ProviderChecks
             var notice = Tree(resets).OfType<Border>().Single(b => b.Name == "DeclaredResetNotice");
             var dismissNotice = Tree(notice).OfType<Button>().Single();
             dismissNotice.Focus();
-            Check(dismissNotice.IsKeyboardFocused || FocusManager.GetFocusedElement(window) == dismissNotice, "The declared reset notice in Resets can be dismissed with the keyboard");
+            Check(Foreground.HasFocus(dismissNotice) || FocusManager.GetFocusedElement(window) == dismissNotice, "The declared reset notice in Resets can be dismissed with the keyboard");
             dismissNotice.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(50); window.UpdateLayout();
             Check(!Tree(resets).OfType<Border>().Any(b => b.Name == "DeclaredResetNotice") && !dashboard.ShowManualResetBanner &&
                 preferences.Current.DismissedManualCodexReset == preferences.Current.ManualCodexReset!.DeclaredAt &&

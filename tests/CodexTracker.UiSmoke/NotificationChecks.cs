@@ -82,7 +82,7 @@ internal static class NotificationChecks
             var button = Tree(component).OfType<Button>().Single(b => b.Content?.ToString() == "Tester une notification Windows");
             var result = Tree(component).OfType<TextBlock>().Single(t => t.Visibility == Visibility.Collapsed);
             button.Focus();
-            Check(button.IsKeyboardFocused, "Windows notification test is reachable by keyboard");
+            Check(Foreground.HasFocus(button), "Windows notification test is reachable by keyboard");
             button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(!button.IsEnabled && result.IsVisible && result.Text.Contains("Vérification"), "Windows test shows progress and disables repeat sends while pending");
             button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));

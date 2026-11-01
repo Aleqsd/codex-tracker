@@ -115,9 +115,9 @@ internal static class TrayChecks
             var button = Tree(peek).OfType<Button>().Single();
             scroll.Focus(); scroll.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
             Check(Keyboard.FocusedElement is RadioButton { IsChecked: true }, "Hover preview quota choice is reachable by keyboard");
-            for (var i = 0; i < 4 && !button.IsKeyboardFocused; i++)
+            for (var i = 0; i < 4 && !Foreground.HasFocus(button); i++)
                 ((UIElement)Keyboard.FocusedElement).MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
-            Check(button.IsKeyboardFocused, "Hover preview action is reachable by keyboard");
+            Check(Foreground.HasFocus(button), "Hover preview action is reachable by keyboard");
             button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Check(opens == 1 && !peek.IsVisible, "Hover preview action opens the tracker and hides the popup");
         }

@@ -36,13 +36,13 @@ internal static class GlobalResetChecks
                 Check(model.Active!.WeeklyDisplayNumber == "72%" && !model.Accounts.Single(a => a.Plan == "Free").HasResetEstimate, "Measured active quota and excluded Free plan remain unchanged");
                 Check(model.Accounts.First(a => a.GlobalAnnouncement is not null).EstimateHint.Contains("example.com/reset-demo"), "Estimate hover exposes dated source and preserves measurement");
                 var show = (Button)window.FindName("ShowExpectedResetButton");
-                Check(show.Focus() && show.IsKeyboardFocused, "Global reset action supports keyboard navigation");
+                Check(Foreground.Focus(show), "Global reset action supports keyboard navigation");
                 foreach (var dpi in new[] { 96, 144, 192 }) window.SaveScreenshot(Path.GetFullPath($"artifacts/previews/global-accounts-{mode}-{compact}-{dpi}.png"), dpi);
                 show.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 resets.Update(demo.State); window.UpdateLayout();
                 Check(((TabItem)window.FindName("ResetsTab")).IsSelected, "Global reset action opens the sources in Resets");
                 var source = Tree(resets).OfType<Button>().Single(b => b.Content?.ToString() == "Voir la confirmation ↗");
-                Check(source.Focus() && source.IsKeyboardFocused && source.ActualWidth >= source.DesiredSize.Width, "Source link is keyboard accessible and not cropped");
+                Check(Foreground.Focus(source) && source.ActualWidth >= source.DesiredSize.Width, "Source link is keyboard accessible and not cropped");
                 Check(Tree(resets).OfType<TextBlock>().Any(t => t.Text.Contains("anciens relevés")), "Agenda distinguishes old deadlines from global reset evidence");
                 foreach (var dpi in new[] { 96, 144, 192 }) window.SaveScreenshot(Path.GetFullPath($"artifacts/previews/global-agenda-{mode}-{compact}-{dpi}.png"), dpi);
                 var detail = Tree(resets).OfType<Expander>().Single(e => e.Header?.ToString() == "Détail des comptes (5)");

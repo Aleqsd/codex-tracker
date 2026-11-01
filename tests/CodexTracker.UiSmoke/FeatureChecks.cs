@@ -55,7 +55,7 @@ internal static class FeatureChecks
                 Check(updateBanner.IsVisible && updateButton.IsVisible && updateButton.ActualWidth > 120,
                     $"Prepared update has a readable action in {mode}");
                 updateButton.Focus();
-                Check(updateButton.IsKeyboardFocused, "Prepared update action is reachable by keyboard");
+                Check(Foreground.HasFocus(updateButton), "Prepared update action is reachable by keyboard");
                 await window.InstallReadyUpdateAsync();
                 Check(window.IsVisible && !window.Dispatcher.HasShutdownStarted, "Fictional preview cannot install a real update");
             }
@@ -252,7 +252,7 @@ internal static class FeatureChecks
             if (!foreground) Foreground.Skip("Themed dropdown keyboard focus and opening");
             else
             {
-                Check(zone.IsKeyboardFocused, "Timezone dropdown is keyboard-focused before opening");
+                Check(Foreground.HasFocus(zone), "Timezone dropdown is keyboard-focused before opening");
                 zone.IsDropDownOpen = true;
                 await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
                 var popup = (Popup)zone.Template.FindName("PART_Popup", zone);

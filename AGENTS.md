@@ -29,6 +29,9 @@ Prérequis : Windows, SDK .NET 10, Python 3 (Pillow pour les visuels), `gh` conn
 # Distribution et visibilité
 ./scripts/winget.ps1 [-Submit]                           # manifestes winget ; -Submit met à jour la demande ouverte
 ./scripts/build-msix.ps1                                 # paquet Microsoft Store (docs/STORE.md)
+python scripts/store-screenshots.py [fr en …]            # captures Store 1920 × 1080 par langue, hors écran
+./scripts/sandbox-test.ps1 -Version 0.9.44               # installation, mise à jour, ligne PowerShell et désinstallation dans Windows Sandbox
+./scripts/record-google-demo.ps1                         # vidéo de validation Google (docs/GOOGLE-VERIFICATION.md)
 ./scripts/site.ps1 [-Draft|-Deploy]                      # site local, aperçu wrangler dev ou publication immédiate
 ./scripts/stats.ps1 [-Json]                              # téléchargements, trafic GitHub, visites du site
 ```

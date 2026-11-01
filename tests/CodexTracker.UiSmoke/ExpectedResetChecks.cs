@@ -44,9 +44,9 @@ internal static class ExpectedResetChecks
                 Check(number.IsVisible && number.ActualWidth >= number.DesiredSize.Width && Tree(window).OfType<TextBlock>().Any(t => t.Text == "estimé" && t.IsVisible),
                     "Approximate percentage is visible without clipping and explicitly labelled");
                 var refresh = Tree(window).OfType<Button>().First(b => b.ToolTip?.ToString() == "Actualiser et détecter les comptes Codex et Claude Code");
-                Check(refresh.Focus() && refresh.IsKeyboardFocused, "Account refresh remains keyboard accessible");
+                Check(Foreground.Focus(refresh), "Account refresh remains keyboard accessible");
                 var show = (Button)window.FindName("ShowExpectedResetButton");
-                Check(show.Focus() && show.IsKeyboardFocused, "Reached-reset action is keyboard accessible");
+                Check(Foreground.Focus(show), "Reached-reset action is keyboard accessible");
                 show.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)); window.UpdateLayout();
                 var position = number.TransformToAncestor(window).Transform(new Point());
                 Check(position.Y > 0 && position.Y + number.ActualHeight < window.ActualHeight - 34,

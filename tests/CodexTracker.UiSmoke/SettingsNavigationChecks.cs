@@ -37,7 +37,7 @@ internal static class SettingsNavigationChecks
             Check(ReferenceEquals(settingsTab.Content, settings) && settingsTab.IsSelected && settings.IsVisible && window.OwnedWindows.Count == 0,
                 "Settings use a real embedded control without opening a second window");
             settingsTab.Focus();
-            Check(settingsTab.IsKeyboardFocused, "Settings tab header accepts keyboard focus");
+            Check(Foreground.HasFocus(settingsTab), "Settings tab header accepts keyboard focus");
             var twilio = Tree(settings).OfType<Expander>().Single(e => Equals(e.Header, "Twilio · SMS et appels"));
             twilio.IsExpanded = true; window.UpdateLayout();
             var draft = Tree(twilio).OfType<TextBox>().First(); var originalDraft = draft.Text;
@@ -48,10 +48,10 @@ internal static class SettingsNavigationChecks
             window.Activate(); window.UpdateLayout();
             await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             draft.BringIntoView(); draft.Focus();
-            Check(draft.IsKeyboardFocused, "Draft owns keyboard focus before a background health change");
+            Check(Foreground.HasFocus(draft), "Draft owns keyboard focus before a background health change");
             window.AssistantError = "État fictif : service local momentanément indisponible.";
             await Task.Delay(1150);
-            Check(draft.IsKeyboardFocused && draft.Text == "fictitious unsaved draft" && ReferenceEquals(settings, window.Settings),
+            Check(Foreground.HasFocus(draft) && draft.Text == "fictitious unsaved draft" && ReferenceEquals(settings, window.Settings),
                 "A background health change does not rebuild forms or steal keyboard focus");
             Check(((Border)window.FindName("RecoveryBanner")).IsVisible,
                 "A newly reported local error appears without requiring a quota refresh");

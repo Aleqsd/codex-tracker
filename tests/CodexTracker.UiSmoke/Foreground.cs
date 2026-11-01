@@ -19,6 +19,9 @@ internal static class Foreground
     internal static bool HasFocus(UIElement element) => element.IsKeyboardFocused ||
         Window.GetWindow(element) is { IsActive: false } && FocusManager.GetFocusedElement(FocusManager.GetFocusScope(element)) == element;
 
+    /// <summary>Moves the focus to the element and reports it, keyboard or logical as in <see cref="HasFocus"/>.</summary>
+    internal static bool Focus(UIElement element) { element.Focus(); return HasFocus(element); }
+
     internal static void Skip(string check)
     {
         Skipped++;

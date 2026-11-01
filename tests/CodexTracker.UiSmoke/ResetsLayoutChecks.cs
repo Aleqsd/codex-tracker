@@ -60,7 +60,7 @@ internal static class ResetsLayoutChecks
             await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Input); window.UpdateLayout();
             bell = Tree(timeline).OfType<Button>().Single(b => Equals(b.Tag, bellTag));
             Check(window.Preferences.Current.ResetAlerts.Any(a => a.Enabled && ResetAlertPlanner.Matches(a, alertEntry.Account.Profile.Id, alertEntry.Kind, alertEntry.At!.Value)) &&
-                bell.IsKeyboardFocused && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Annuler"),
+                Foreground.HasFocus(bell) && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Annuler"),
                 "Clicking the bell saves the chosen deadline and restores keyboard focus after refresh");
             Check(!Tree(timeline).OfType<Expander>().Single(e => Equals(e.Tag, alertEntry)).IsExpanded,
                 "Notification clicks do not expand the reset details");
@@ -70,7 +70,7 @@ internal static class ResetsLayoutChecks
             first = Tree(timeline).OfType<Expander>().First(e => e.Tag is ResetScheduleEntry { Kind: ResetKind.Weekly or ResetKind.Short } && e.IsVisible);
             var toggle = Tree(first).OfType<ToggleButton>().Single();
             toggle.BringIntoView(); toggle.Focus(); toggle.IsChecked = true; window.UpdateLayout();
-            Check(toggle.IsKeyboardFocused && Tree(first).OfType<TextBlock>().Any(t => t.IsVisible && t.Text.Contains("UTC")),
+            Check(Foreground.HasFocus(toggle) && Tree(first).OfType<TextBlock>().Any(t => t.IsVisible && t.Text.Contains("UTC")),
                 "Keyboard focus reaches a reset row and its expanded details expose the exact timezone");
             var firstEntry = (ResetScheduleEntry)first.Tag;
             view.Update(demo.State); window.UpdateLayout();

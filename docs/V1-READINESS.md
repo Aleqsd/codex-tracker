@@ -4,13 +4,22 @@
 
 ## Essais physiques
 
-- [ ] Cycle de l’installateur (`scripts/test-installer.ps1`) et mise à niveau publique ([recette](PUBLISHED-UPDATE-TEST.md), bouton et démarrage) dans Windows Sandbox ou une VM jetable. Les dernières preuves en profil vierge précèdent la 0.9.13 ; la désinstallation qui retire l’enregistrement des notifications n’a jamais été testée.
+- [ ] Profil vierge : `scripts/sandbox-test.ps1 -Version <x.y.z>` (Windows Sandbox à activer une fois dans les fonctionnalités facultatives) enchaîne mise à jour depuis la version publique précédente avec données conservées, installation neuve, raccourci, ligne PowerShell publiée et désinstallation. Compléter à la main par la [recette](PUBLISHED-UPDATE-TEST.md) du bouton de mise à jour et du démarrage. Les dernières preuves en profil vierge précèdent la 0.9.13.
 - [ ] Réception réelle des notifications actionnables (Ouvrir le suivi, Rappeler) et effet de « Ne pas déranger », pastille à l’écran et copie ntfy comprises.
 - [ ] Deux écrans physiques à DPI différents, sortie de veille, redémarrage d’Explorer et démarrage avec Windows.
 - [ ] Utilisateur non élevé : lancement, accès MCP, premier lancement sans Codex, changement réel de compte dans Codex puis fermeture et réouverture du tracker.
-- [ ] Passage manuel complet de l’interface en anglais.
+- [ ] Passage manuel complet de l’interface en anglais, puis un survol en espagnol, allemand, portugais et japonais (textes tronqués, polices). Les traductions sont vérifiées par `LocalizationTests` (complètes, paramètres, formats) ; leur relecture par un locuteur reste souhaitable.
 
 Pour chaque essai, noter la version exacte, la date, Windows et l’affichage, les étapes, le résultat attendu et le résultat observé, sans adresse, quota réel ni dossier privé.
+
+## Tests WPF
+
+Les vérifications de focus clavier passent par `Foreground.Focus` / `Foreground.HasFocus` : quand Windows garde le premier plan sur une autre application, le focus logique de la fenêtre fait foi, et seules les interactions qui exigent vraiment le premier plan sont signalées « SKIP ». La suite ne doit plus échouer parce que l’utilisateur travaille pendant qu’elle tourne.
+
+## Diffusion et validations externes
+
+- [ ] Validation Google des portées sensibles ([GOOGLE-VERIFICATION.md](GOOGLE-VERIFICATION.md)) : vidéo `scripts/record-google-demo.ps1`, puis soumission.
+- [ ] Première soumission Microsoft Store ([STORE.md](STORE.md)) : compte Partner Center, identité, captures `scripts/store-screenshots.py`.
 
 ## Candidat 1.0
 

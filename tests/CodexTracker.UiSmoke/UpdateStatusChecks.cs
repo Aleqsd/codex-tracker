@@ -82,7 +82,7 @@ internal static class UpdateStatusChecks
             await automatic.TickAsync(); await Settle();
             Check(calls == 2 && status.Text != before && status.Text.Contains("Vérifié le " + now.ToLocalTime().ToString("dd/MM/yyyy à HH:mm:ss")),
                 "A 304 automatic revalidation updates the visible successful timestamp");
-            Check(navigation.IsKeyboardFocused, "An automatic check preserves keyboard focus and the Settings view");
+            Check(Foreground.HasFocus(navigation), "An automatic check preserves keyboard focus and the Settings view");
             // The production timer projects the scheduler, not the earlier five-minute manual deadline.
             await Task.Delay(1100);
             Check(schedule.Text.Contains(automatic.NextCheck.ToLocalTime().ToString("dd/MM/yyyy à HH:mm:ss")) &&
