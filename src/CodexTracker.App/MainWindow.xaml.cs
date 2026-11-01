@@ -56,7 +56,7 @@ public partial class MainWindow : Window
         Commands = new(preferences, Reminders.Secrets);
         Calendar = new(preferences.DataDirectory, demo);
         Theme = new ThemeManager(preferences);
-        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast };
+        _model = new DashboardViewModel(demo, preferences) { Forecast = service.GetForecast, InCalendar = key => Calendar.Link(key) is { Status: Codex.CalendarLinkStatus.Confirmed } };
         InitializeComponent();
         ShowVersion();
         CheckUpdateButton.IsEnabled = !_demo;
@@ -78,7 +78,7 @@ public partial class MainWindow : Window
         _preferences.Changed += Preferences_Changed;
         Theme.Changed += Theme_Changed;
         _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); RefreshHealth(); };
-        Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(() => { if (!_canClose) _resets.Update(_service.State); });
+        Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(() => { if (!_canClose) UpdateModel(); });
         _calendarTimer.Tick += (_, _) => _ = SyncCalendarAsync();
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };

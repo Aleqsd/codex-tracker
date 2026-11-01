@@ -65,7 +65,7 @@ internal static class Display
         var left = date.Value - PreviewClock.UtcNow;
         return left <= TimeSpan.Zero ? Loc.T("Reset attendu") : Span(left);
     }
-    private static string Span(TimeSpan left) =>
+    internal static string Span(TimeSpan left) =>
         left.TotalDays >= 1 ? Loc.F("{0} j {1:00} h", (int)left.TotalDays, left.Hours)
         : left.TotalHours >= 1 ? Loc.F("{0} h {1:00} min", (int)left.TotalHours, left.Minutes)
         : Loc.F("{0} min {1:00} s", left.Minutes, left.Seconds);
@@ -124,8 +124,9 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     private TrackerState _state;
     private readonly PreferencesStore _preferences;
     public event PropertyChangedEventHandler? PropertyChanged;
-    public AccountViewModel(AccountState account, TrackerState state, PreferencesStore preferences, Func<Guid, UsageForecast>? forecast = null)
-    { _account = account; _state = state; _preferences = preferences; _forecast = forecast; }
+    public AccountViewModel(AccountState account, TrackerState state, PreferencesStore preferences, Func<Guid, UsageForecast>? forecast = null, Func<string, bool>? inCalendar = null)
+    { _account = account; _state = state; _preferences = preferences; _forecast = forecast; _inCalendar = inCalendar; }
+    private readonly Func<string, bool>? _inCalendar;
     private readonly Func<Guid, UsageForecast>? _forecast;
     private UsageForecast? Forecast => IsActive ? _forecast?.Invoke(Id) : null;
     public bool HasForecast => Forecast is { EstimatedExhaustionAt: not null } or { LastsUntilReset: true };
@@ -203,6 +204,20 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public Brush PaceBrush => PaceDisplay.Brush(WeeklyPace);
     public string PaceBudget => PaceDisplay.Budget(WeeklyPace);
     public string PaceHint => PaceDisplay.Hint(WeeklyPace, QuotaPace.For(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
+    /// <summary>
+    /// One verdict instead of two competing lines: the recent-rate exhaustion first, then an overrun of the steady pace,
+    /// then the reassuring cases. Both computations stay in the tooltip.
+    /// </summary>
+    public bool HasProjection => !HasManualWeeklyReset && (HasForecast || HasPace);
+    private DateTimeOffset? Exhaustion => Forecast?.EstimatedExhaustionAt;
+    private bool Overrun => WeeklyPace is { OnPace: false, Margin: < 0 };
+    public string ProjectionText => Exhaustion is { } at ? Loc.F("Vide {0}", Display.ResetHour(at).ToLowerInvariant())
+        : Overrun ? PaceText : Forecast is { LastsUntilReset: true } ? Loc.T("Tient jusqu’au reset") : PaceText;
+    public Brush ProjectionBrush => Exhaustion is not null || Overrun ? Display.Orange
+        : Forecast is { LastsUntilReset: true } ? Display.Green : PaceBrush;
+    private string ProjectionGap => Exhaustion is { } at && QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow) is { } reset && reset > at
+        ? Loc.F("{0} avant le reset", Display.Span(reset - at)) : "";
+    public string ProjectionHint => string.Join("\n\n", new[] { ProjectionGap, ForecastHint, HasPace ? PaceHint : "" }.Where(text => text.Length > 0));
     public string ShortWindowRemaining => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
     public double ShortPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow) ?? 0;
     public Brush ShortBarBrush => HasManualShortReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Short?.RemainingPercent);
@@ -225,7 +240,7 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
         : Display.ResetHour(QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow), WeeklyResetInferred);
     public string ResetCountdown => Projected(ResetKind.Weekly) is { } projected ? "≈ " + Display.Countdown(projected)
         : Approximate + Display.Countdown(_account.Snapshot?.Weekly?.ResetsAt);
-    public string ResetCompact => WeeklyEstimate?.Announcement is not null ? Loc.T("À reconfirmer") : HasWeeklyEstimate ? Loc.T("Reset passé")
+    public string ResetCompact => WeeklyEstimate?.Announcement is not null ? Loc.T("À reconfirmer") : HasWeeklyEstimate ? Loc.T("À confirmer")
         : Projected(ResetKind.Weekly) is { } projected ? "≈ " + Display.Remaining(projected) : Approximate + Display.Remaining(_account.Snapshot?.Weekly?.ResetsAt);
     public string ResetHint => HasManualWeeklyReset ? ProjectedHint(ResetKind.Weekly) : HasWeeklyEstimate ? EstimateHint
         : WeeklyResetInferred ? Display.EstimatedReset(_account.Snapshot!.Weekly!) : NeedsResetHelp ? Display.ClaudeResetHelp : $"{ResetExact}\n{ResetZone}";
@@ -236,6 +251,17 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ReserveCount => _account.Snapshot?.AvailableResetCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
     public string ReserveSummary => HasReserves ? Display.ReserveSummary(_account.Snapshot) : Loc.T("Pas de resets en réserve");
     public string ReserveBadge => $"↺ {ReserveCount}";
+    /// <summary>"2 dans l’agenda" once at least one held credit has its Google Calendar event; nothing otherwise.</summary>
+    public string ReserveCalendar
+    {
+        get
+        {
+            if (_inCalendar is null || _account.Snapshot is not { AvailableResetCredits: > 0 } snapshot) return "";
+            var count = (snapshot.ResetCredits ?? []).Count(c => c.ExpiresAt is { } at && at > PreviewClock.UtcNow &&
+                _inCalendar(GoogleCalendarSync.Key(Id, c.Id, at)));
+            return count == 0 ? "" : Loc.F("{0} dans l’agenda", count);
+        }
+    }
     public Brush ReserveBrush => ThemeManager.GetBrush(_account.Snapshot?.AvailableResetCredits > 0 ? "TextBrush" : "MutedBrush");
     public string ReserveHint => HasReserves ? Display.ReserveHint(_account.Snapshot, _preferences.Current.PrivacyMode) : Loc.T("Claude Code ne communique pas de resets en réserve.");
     public string SubscriptionSummary
@@ -290,6 +316,8 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     public ObservableCollection<AccountViewModel> Accounts { get; } = new();
     /// <summary>Pace estimate for active accounts; absent in isolated view-model tests.</summary>
     internal Func<Guid, UsageForecast>? Forecast { get; set; }
+    /// <summary>Whether a credit's calendar identity has a confirmed Google Calendar event.</summary>
+    internal Func<string, bool>? InCalendar { get; set; }
     public DashboardViewModel(bool isDemo, PreferencesStore preferences) { IsDemo = isDemo; _preferences = preferences; Advice = AccountAdvisor.Evaluate(_state, PreviewClock.UtcNow); }
     public bool IsDemo { get; }
     public AccountViewModel? Active => Accounts.FirstOrDefault(a => a.IsActive);
@@ -305,7 +333,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
     internal string[] ExpectedResetNoticeKeys => Accounts.SelectMany(a => a.EstimateNoticeKeys).ToArray();
     public bool ShowExpectedResetsBanner => ExpectedResetNoticeKeys.Except(_preferences.Current.DismissedNotices).Any();
     public bool HasGlobalReset => Accounts.Any(a => a.GlobalAnnouncement is not null);
-    public string ExpectedResetsCaption => HasGlobalReset ? Loc.T("Reset général annoncé · estimation datée et sources dans Resets") : Loc.T("Reset prévu passé · estimation à confirmer dans le compte concerné");
+    public string ExpectedResetsCaption => HasGlobalReset ? Loc.T("reset général annoncé, sources dans Resets") : Loc.T("probablement rechargé, à confirmer");
     public string ExpectedResetsTitle
     {
         get
@@ -371,7 +399,7 @@ internal sealed class DashboardViewModel : INotifyPropertyChanged
         var sorted = source.OrderBy(a => a.account.Profile.Provider).ThenByDescending(a => a.account.IsActive).ThenBy(a => a.index);
         var ordered = sorted.Select(a => a.account).ToArray();
         var existing = Accounts.ToDictionary(a => a.Id);
-        var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences, Forecast); }).ToArray();
+        var next = ordered.Select(a => { if (existing.TryGetValue(a.Profile.Id, out var vm)) { vm.Update(a, state); return vm; } return new AccountViewModel(a, state, _preferences, Forecast, InCalendar); }).ToArray();
         foreach (var group in next.GroupBy(a => a.ProviderName))
         {
             var count = group.Count(); var index = 0;

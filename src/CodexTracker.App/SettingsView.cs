@@ -138,10 +138,13 @@ internal sealed class SettingsView : UserControl, IDisposable
         Section(null);
         Row(ReminderSettingsView.History(owner.Reminders));
         Page("Calendrier", Loc.T("Calendrier"), Loc.T("Retrouvez les échéances de vos comptes dans votre agenda."));
-        Section(Loc.T("Google Agenda connecté"));
+        Section(Loc.T("Google Agenda"));
         Row(new GoogleCalendarSettingsView(owner.Calendar));
-        Toggle(Loc.T("Ajouter automatiquement les resets en réserve"), Loc.T("Dès qu’un reset en réserve est connu, son expiration est ajoutée avec des rappels. Un événement supprimé dans Google n’est pas recréé."),
+        var autoAdd = Toggle(Loc.T("Ajouter automatiquement les resets en réserve"), Loc.T("Dès qu’un reset en réserve est connu, son expiration est ajoutée avec des rappels. Un événement supprimé dans Google n’est pas recréé."),
             p => p.GoogleCalendarAutoAdd, (p, value) => p with { GoogleCalendarAutoAdd = value });
+        // Effective only once Google is connected: an active-looking switch would promise events that cannot exist yet.
+        void CalendarState() => autoAdd.IsEnabled = owner.Calendar.IsConnected;
+        CalendarState(); owner.Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(CalendarState);
         Section(Loc.T("Ajout ponctuel"));
         var agenda = Block();
         var calendar = new Button { Content = Loc.T("Ouvrir les options Google Agenda…"), HorizontalAlignment = HorizontalAlignment.Left };
@@ -220,11 +223,20 @@ internal sealed class SettingsView : UserControl, IDisposable
     private void ReloadableSection(Func<FrameworkElement> create)
     {
         var host = new ContentControl { Content = create(), HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        var reload = new Button { Content = Loc.T("Recharger la section"), Style = (Style)FindResource("LinkButton"),
-            HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0, 2, 0, 6),
-            ToolTip = Loc.T("Relire la configuration actuelle. Les modifications non enregistrées de cette section seront abandonnées.") };
-        reload.Click += (_, _) => { host.Content = create(); _pageScroll.ScrollToTop(); };
-        var block = Block(); block.Children.Add(reload); block.Children.Add(host);
+        // A rarely needed repair action: a small icon beside the section title, not the first thing in the card.
+        var reload = Ui.IconButton("DropdownRefreshIcon", Loc.T("Relire la configuration actuelle. Les modifications non enregistrées de cette section seront abandonnées."), Loc.T("Recharger la section"), 13);
+        reload.Width = reload.Height = 26; reload.VerticalAlignment = VerticalAlignment.Center;
+        reload.Click += (_, _) => { UiMotion.Spin((FrameworkElement)reload.Content); host.Content = create(); _pageScroll.ScrollToTop(); };
+        var block = Block(); block.Children.Add(host);
+        if (_page.Children.Count >= 2 && _page.Children[^2] is TextBlock title)
+        {
+            var index = _page.Children.Count - 2; _page.Children.RemoveAt(index);
+            var header = new DockPanel { Margin = new Thickness(title.Margin.Left, title.Margin.Top - 5, 0, title.Margin.Bottom - 5) };
+            title.Margin = new Thickness(0); title.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(reload, Dock.Right); header.Children.Add(reload); header.Children.Add(title);
+            _page.Children.Insert(index, header);
+        }
+        else { reload.HorizontalAlignment = HorizontalAlignment.Right; reload.Margin = new Thickness(0, -6, -8, 0); block.Children.Insert(0, reload); }
     }
     /// <summary>The French <paramref name="key"/> identifies the page for navigation; <paramref name="title"/> is displayed.</summary>
     private void Page(string key, string title, string description)
@@ -283,12 +295,12 @@ internal sealed class SettingsView : UserControl, IDisposable
         var check = new CheckBox { Content = title, Margin = new Thickness(0, 0, 24, 0) };
         check.Click += (_, _) => { if (!_syncing) Save(p => set(p, check.IsChecked == true)); }; _toggles.Add((check, read)); return check;
     }
-    private void Toggle(string title, string? description, Func<TrackerPreferences, bool> read, Func<TrackerPreferences, bool, TrackerPreferences> set)
+    private CheckBox Toggle(string title, string? description, Func<TrackerPreferences, bool> read, Func<TrackerPreferences, bool, TrackerPreferences> set)
     {
         var check = PreferenceCheck(title, read, set); check.Style = (Style)FindResource("Switch"); check.Margin = new Thickness(0);
         var row = new StackPanel(); row.Children.Add(check);
         if (description is not null) { var hint = Ui.Text(description, 11, "MutedBrush"); hint.Margin = new Thickness(0, 4, 64, 0); row.Children.Add(hint); }
-        Row(row);
+        Row(row); return check;
     }
     private void Save(Func<TrackerPreferences, TrackerPreferences> update)
     {

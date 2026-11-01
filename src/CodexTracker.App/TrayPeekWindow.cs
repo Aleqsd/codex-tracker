@@ -30,14 +30,14 @@ internal sealed class TrayPeekWindow : Window
         Topmost = true;
         SetResourceReference(BackgroundProperty, "PanelBrush");
         SetResourceReference(ForegroundProperty, "TextBrush");
-        var border = new Border { Padding = new Thickness(20, 18, 20, 20), BorderThickness = new Thickness(1) };
+        var border = new Border { Padding = new Thickness(18, 16, 18, 16), BorderThickness = new Thickness(1) };
         border.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
         border.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         var content = new StackPanel(); border.Child = content;
         UiMotion.SetRise(content, 8); UiMotion.SetFadeOnShow(content, true);
         Content = new ScrollViewer { Content = border, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         content.Children.Add(_sections);
-        var button = new Button { Content = Loc.T("Ouvrir le suivi"), Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 18, 0, 0), Padding = new Thickness(10, 8, 10, 8), HorizontalAlignment = HorizontalAlignment.Stretch };
+        var button = new Button { Content = Loc.T("Ouvrir le suivi"), Margin = new Thickness(0, 16, 0, 0), Padding = new Thickness(10, 7, 10, 7), HorizontalAlignment = HorizontalAlignment.Stretch };
         button.Click += (_, _) => { Hide(); open(); }; content.Children.Add(button);
         SourceInitialized += (_, _) =>
         {
@@ -80,7 +80,7 @@ internal sealed class TrayPeekWindow : Window
 
     private sealed class AccountPeek : StackPanel
     {
-        private readonly Border _divider = Ui.Divider(new Thickness(0, 18, 0, 16));
+        private readonly Border _divider = Ui.Divider(new Thickness(0, 16, 0, 14));
         private readonly TextBlock _name = new() { FontSize = 14, FontWeight = FontWeights.Medium, TextTrimming = TextTrimming.CharacterEllipsis };
         private readonly TextBlock _plan = new() { FontSize = 11, FontWeight = FontWeights.Medium };
         private readonly Border _planChip = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(8, 2, 8, 3), VerticalAlignment = VerticalAlignment.Center };
@@ -94,12 +94,12 @@ internal sealed class TrayPeekWindow : Window
         private readonly TextBlock _shortReset = new() { FontSize = 12, FontWeight = FontWeights.Medium, TextAlignment = TextAlignment.Right, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 0, 0, 0) };
         private readonly Grid _weeklyResetRow, _shortResetRow;
         private readonly TextBlock _freshness = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
-        private readonly TextBlock _reserve = new() { FontSize = 12, FontWeight = FontWeights.Medium };
+        private readonly TextBlock _reserve = new() { FontSize = 12 };
         private readonly TextBlock _expirations = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
-        private readonly StackPanel _reserves = new() { Margin = new Thickness(0, 0, 0, 12) };
+        private readonly StackPanel _reserves = new() { Margin = new Thickness(0, 0, 0, 10) };
         private readonly TextBlock _status = new() { FontSize = 11, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         // Official icon of the tool, as on the dashboard's active account cards.
-        private readonly Image _providerIcon = new() { Width = 18, Height = 18, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+        private readonly Image _providerIcon = new() { Width = 16, Height = 16, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
         private readonly RadioButton _weeklyChoice, _shortChoice;
         private readonly TextBlock _weeklyInIcon, _shortInIcon;
         private readonly bool _selectable;
@@ -108,7 +108,7 @@ internal sealed class TrayPeekWindow : Window
         public AccountPeek(Action<AccountProvider, ResetKind>? select)
         {
             _selectable = select is not null;
-            _status.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); Muted(_plan); Muted(_freshness); Muted(_expirations);
+            Muted(_status); _status.FontWeight = FontWeights.Normal; Muted(_plan); Muted(_freshness); Muted(_expirations);
             var status = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
             status.Children.Add(_providerIcon); status.Children.Add(_status);
             Children.Add(_divider); Children.Add(status);
@@ -168,9 +168,9 @@ internal sealed class TrayPeekWindow : Window
             var now = PreviewClock.UtcNow;
             _divider.Visibility = first ? Visibility.Collapsed : Visibility.Visible;
             // Two accounts stay readable without a scroll bar on a small screen.
-            foreach (var ring in new[] { _weeklyRing, _shortRing }) ring.Width = ring.Height = compact ? 68 : 84;
-            _weekly.FontSize = _short.FontSize = compact ? 17 : 19;
-            _quotas.Margin = compact ? new Thickness(0, 12, 0, 12) : new Thickness(0, 18, 0, 18);
+            foreach (var ring in new[] { _weeklyRing, _shortRing }) ring.Width = ring.Height = compact ? 58 : 70;
+            _weekly.FontSize = _short.FontSize = compact ? 15 : 17;
+            _quotas.Margin = compact ? new Thickness(0, 10, 0, 10) : new Thickness(0, 14, 0, 14);
             var showShort = account?.HasShortWindow != false;
             _shortChoice.Visibility = showShort ? Visibility.Visible : Visibility.Collapsed;
             Grid.SetColumnSpan(_weeklyChoice, showShort ? 1 : 2);
@@ -219,12 +219,13 @@ internal sealed class TrayPeekWindow : Window
             _shortResetRow.ToolTip = shortDeclared ? ProjectedHint(shortProjected ? shortReset : null) : Display.Exact(shortReset) + " · " + Display.Zone(shortReset);
             _weeklyResetRow.ToolTip = declared ? ProjectedHint(weeklyProjected ? nextReset : null) : snapshot?.Weekly is { IsResetEstimated: true } estimate && estimate.ResetsAt == nextReset
                 ? Display.EstimatedReset(estimate) : Display.Exact(nextReset) + " · " + Display.Zone(nextReset);
-            _reserve.Text = "↺ " + Display.ReserveSummary(snapshot);
+            _reserve.Text = Display.ReserveSummary(snapshot);
             _reserve.ToolTip = new ToolTip { Content = new TextBlock { Text = Display.ReserveHint(snapshot, preferences.PrivacyMode), TextWrapping = TextWrapping.Wrap, MaxWidth = 390 } };
-            _expirations.Text = snapshot?.ResetCredits is { Count: > 0 } credits
-                ? string.Join("\n", credits.OrderBy(c => c.ExpiresAt ?? DateTimeOffset.MaxValue).Select(c =>
-                    c.ExpiresAt is { } expires ? Display.Expiry(expires, DateTimeOffset.UtcNow) + " · " + Display.Zone(expires) : Loc.T("Expiration non communiquée")))
-                : Loc.T("Dates d’expiration non communiquées");
+            // The nearest expiry only; every date stays in the tooltip.
+            _expirations.Text = snapshot?.ResetCredits?.Where(c => c.ExpiresAt > now).MinBy(c => c.ExpiresAt) is { ExpiresAt: { } next }
+                ? Loc.F("Prochaine expiration : {0}", Display.ResetHour(next)) : "";
+            _expirations.Visibility = _expirations.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            _expirations.ToolTip = _reserve.ToolTip;
             _reserves.Visibility = account?.Profile.Provider != AccountProvider.ClaudeCode ? Visibility.Visible : Visibility.Collapsed;
             if (snapshot is null) _freshness.Text = Loc.T("Ouvrez Codex ou Claude Code pour détecter votre compte.");
             else

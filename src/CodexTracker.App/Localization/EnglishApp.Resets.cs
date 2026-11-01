@@ -7,7 +7,6 @@ internal static partial class EnglishApp
         ("Reset hebdomadaire · estimé", "Weekly reset · estimated"),
         ("Reset 5 heures · estimé", "5-hour reset · estimated"),
         // ResetsView: heading, actions and filters
-        ("Prochains resets", "Upcoming resets"),
         ("Actualiser les comptes actifs de Codex et Claude Code", "Refresh the active Codex and Claude Code accounts"),
         ("Actualiser les comptes actifs", "Refresh active accounts"),
         ("Autres actions", "More actions"),
@@ -49,7 +48,6 @@ internal static partial class EnglishApp
         ("Dates inconnues · {0}", "Unknown dates · {0}"),
         ("Reset général annoncé · voir les sources", "Global reset announced · see sources"),
         ("Réserves Codex · non communiquées", "Codex reset credits · not reported"),
-        ("Réserves Codex · {0} resets au dernier relevé", "Codex reset credits · {0} at last reading"),
         ("compteurs incomplets", "incomplete counts"),
         ("À utiliser en priorité : {0} · {1}", "Use first: {0} · {1}"),
         ("Aucune réserve à afficher pour cette sélection.", "No reset credits to show for this selection."),
@@ -130,5 +128,15 @@ internal static partial class EnglishApp
         ("Ajouter à Google Agenda", "Add to Google Calendar"),
         ("Ouvrir l’événement prérempli dans Google Agenda", "Open the prefilled event in Google Calendar"),
         ("Ajout automatique dans Google Agenda, avec rappels avant expiration.", "Added automatically to Google Calendar, with reminders before expiry."),
+        ("Réserves à utiliser bientôt", "Credits to use soon"),
+        ("Réserves Codex · {0}", "Codex credits · {0}"),
+        ("Un compte ne communique pas toutes ses dates d’expiration.", "One account does not report all its expiry dates."),
+        ("{0} comptes ne communiquent pas toutes leurs dates d’expiration.", "{0} accounts do not report all their expiry dates."),
+        ("1 réserve", "1 credit"),
+        ("{0} réserves", "{0} credits"),
+        ("1 expire sous 24 h", "1 expires within 24 h"),
+        ("{0} expirent sous 24 h", "{0} expire within 24 h"),
+        ("{0} · {1} semaine", "{0} · {1} week"),
+        ("Prochaine expiration : {0}", "Next expiry: {0}"),
     ];
 }

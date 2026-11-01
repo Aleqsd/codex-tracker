@@ -12,9 +12,72 @@ internal static class ReminderSettingsView
     private static Button Button(string text) => new() { Content = text, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 8, 0) };
     private static CheckBox Check(string text, bool value) => new() { Content = text, IsChecked = value, Margin = new Thickness(0, 6, 12, 6) };
 
+    /// <summary>
+    /// Windows reminders at a glance: one row per reset type, one pill per delay, saved on click.
+    /// Accounts and the SMS, call and email channels stay in the detailed editors below.
+    /// </summary>
     internal static FrameworkElement Rules(PreferencesStore preferences, ITrackerService service, ApplicationCommands commands)
     {
-        var root = Panel(); root.Margin = new Thickness(0); root.Children.Add(Hint(Loc.T("Le tracker doit rester ouvert et le PC éveillé. Chaque canal est indépendant ; un rappel passé ne confirme pas un reset dans Codex.")));
+        var root = Panel(); root.Margin = new Thickness(0);
+        var grid = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(128) });
+        foreach (var _ in ReminderPlanner.AllowedMinutes) grid.ColumnDefinitions.Add(new ColumnDefinition());
+        var advanced = new ContentControl { HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var status = Ui.Text("", 11, "WarningBrush"); status.Visibility = Visibility.Collapsed;
+        var pills = new List<(ResetKind Kind, int Lead, System.Windows.Controls.Primitives.ToggleButton Pill)>();
+        static bool On(ReminderRule[] rules, ResetKind kind, int lead) => rules.Any(r => r.Kind == kind && r.Enabled && r.LeadMinutes.Contains(lead) && r.Channels.Contains(ReminderChannel.Windows));
+        void Refresh() { foreach (var (kind, lead, pill) in pills) pill.IsChecked = On(preferences.Current.ReminderRules!, kind, lead); }
+        foreach (var kind in Enum.GetValues<ResetKind>())
+        {
+            int row = grid.RowDefinitions.Count; grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
+            var label = Ui.Text(kind == ResetKind.Reserve ? Loc.T("Réserve qui expire") : ReminderPlanner.Label(kind), 12); label.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetRow(label, row); grid.Children.Add(label);
+            for (int c = 0; c < ReminderPlanner.AllowedMinutes.Length; c++)
+            {
+                var lead = ReminderPlanner.AllowedMinutes[c];
+                var pill = new System.Windows.Controls.Primitives.ToggleButton { Content = LeadName(lead), VerticalAlignment = VerticalAlignment.Center, IsEnabled = kind != ResetKind.Short || lead < 300 };
+                pill.SetResourceReference(FrameworkElement.StyleProperty, "LeadPill");
+                System.Windows.Automation.AutomationProperties.SetName(pill, Loc.F("{0}, notification Windows {1} avant", ReminderPlanner.Label(kind), LeadName(lead)));
+                pill.Click += (_, _) =>
+                {
+                    var wanted = pill.IsChecked == true;
+                    try
+                    {
+                        commands.SavePreferences(p =>
+                        {
+                            var rules = p.ReminderRules!.ToList();
+                            // Turning a disabled type back on starts from this delay alone, as the grid showed it empty.
+                            if (wanted && !rules.Any(r => r.Kind == kind && r.Enabled))
+                                rules = rules.Select(r => r.Kind == kind ? r with { Enabled = true, Channels = r.Channels.Where(x => x != ReminderChannel.Windows).ToArray() } : r).ToList();
+                            var existing = rules.FirstOrDefault(r => r.Kind == kind && r.LeadMinutes.Contains(lead));
+                            var accounts = rules.FirstOrDefault(r => r.Kind == kind)?.AccountIds;
+                            if (existing is null) { if (wanted) rules.Add(new ReminderRule(kind, true, [lead], [ReminderChannel.Windows], accounts)); }
+                            else rules[rules.IndexOf(existing)] = existing with { Enabled = true, Channels = wanted
+                                ? existing.Channels.Append(ReminderChannel.Windows).Distinct().ToArray() : existing.Channels.Where(x => x != ReminderChannel.Windows).ToArray() };
+                            return p with { ReminderRules = rules.ToArray() };
+                        });
+                        status.Visibility = Visibility.Collapsed;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+                    { status.Text = Loc.T("Impossible d’enregistrer les rappels."); status.Visibility = Visibility.Visible; }
+                    Refresh(); advanced.Content = Detailed(preferences, service, commands);
+                };
+                Grid.SetRow(pill, row); Grid.SetColumn(pill, c + 1); grid.Children.Add(pill); pills.Add((kind, lead, pill));
+            }
+        }
+        Refresh();
+        root.Children.Add(grid);
+        var note = Hint(Loc.T("Notifications Windows, tant que le tracker est ouvert et le PC éveillé. Un rappel ne confirme pas un reset.")); note.Margin = new Thickness(0, 8, 0, 4);
+        root.Children.Add(note); root.Children.Add(status);
+        advanced.Content = Detailed(preferences, service, commands);
+        root.Children.Add(new Expander { Header = Loc.T("Comptes et autres canaux"), Content = advanced, Margin = new Thickness(0, 8, 0, 0) });
+        return root;
+    }
+
+    /// <summary>The full editor of each reset type: accounts, delays and every channel.</summary>
+    private static FrameworkElement Detailed(PreferencesStore preferences, ITrackerService service, ApplicationCommands commands)
+    {
+        var root = Panel(); root.Margin = new Thickness(0, 4, 0, 0);
         foreach (var kind in Enum.GetValues<ResetKind>())
         {
             var baseline = preferences.Current.ReminderRules!.Where(r => r.Kind == kind).ToArray();

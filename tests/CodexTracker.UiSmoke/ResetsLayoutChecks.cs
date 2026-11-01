@@ -43,13 +43,15 @@ internal static class ResetsLayoutChecks
             tab.Content = view; view.Update(demo.State); window.ShowResets(); await Task.Delay(100); window.UpdateLayout();
             var timeline = Field<StackPanel>(view, "_timeline");
             var rows = Tree(timeline).OfType<Expander>().Where(e => e.Tag is ResetScheduleEntry && e.IsVisible).ToArray();
-            Check(rows.Length > 0 && rows.All(e => !e.IsExpanded && ((ResetScheduleEntry)e.Tag).Kind != ResetKind.Reserve && ((ResetScheduleEntry)e.Tag).At > PreviewClock.UtcNow),
-                "The reset landing view shows upcoming quota resets with secondary details closed");
+            Check(rows.Length > 0 && rows.All(e => !e.IsExpanded && ((ResetScheduleEntry)e.Tag).At > PreviewClock.UtcNow &&
+                    (((ResetScheduleEntry)e.Tag).Kind != ResetKind.Reserve || ((ResetScheduleEntry)e.Tag).At - PreviewClock.UtcNow <= TimeSpan.FromDays(3))),
+                "The reset landing view shows upcoming quota resets, and only the credits about to expire, with secondary details closed");
             Check(!Tree(timeline).OfType<TextBlock>().Any(t => t.IsVisible && (t.Text.Contains("UTC") || t.Text.StartsWith("Reçu le") || t.Text.Contains("relevé il y a"))),
                 "Timezone, grant dates and observation age do not crowd the reset landing view");
             Check(Tree(rows[0]).OfType<Image>().Any(i => i.Source is not null), "Reset rows use the bundled official provider icons");
-            var first = rows[0];
+            var first = rows.First(e => ((ResetScheduleEntry)e.Tag).Kind is ResetKind.Weekly or ResetKind.Short);
             var bell = Tree(first).OfType<Button>().Single(b => b.Tag is string tag && tag.StartsWith("ResetAlert:"));
+            Check(bell.Opacity == 0, "An unselected reset keeps its bell out of sight until hovered or focused");
             var bellTag = bell.Tag; var alertEntry = (ResetScheduleEntry)first.Tag;
             Check(bell.IsEnabled && System.Windows.Automation.AutomationProperties.GetName(bell).StartsWith("Me prévenir"),
                 "Every known upcoming reset exposes an accessible one-off notification button");
@@ -65,7 +67,7 @@ internal static class ResetsLayoutChecks
             bell.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(40); window.UpdateLayout();
             Check(!window.Preferences.Current.ResetAlerts.Any(a => ResetAlertPlanner.Matches(a, alertEntry.Account.Profile.Id, alertEntry.Kind, alertEntry.At!.Value)),
                 "Clicking the selected bell cancels that single reset notification");
-            first = Tree(timeline).OfType<Expander>().First(e => e.Tag is ResetScheduleEntry && e.IsVisible);
+            first = Tree(timeline).OfType<Expander>().First(e => e.Tag is ResetScheduleEntry { Kind: ResetKind.Weekly or ResetKind.Short } && e.IsVisible);
             var toggle = Tree(first).OfType<ToggleButton>().Single();
             toggle.BringIntoView(); toggle.Focus(); toggle.IsChecked = true; window.UpdateLayout();
             Check(toggle.IsKeyboardFocused && Tree(first).OfType<TextBlock>().Any(t => t.IsVisible && t.Text.Contains("UTC")),

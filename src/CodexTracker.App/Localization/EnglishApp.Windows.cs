@@ -83,8 +83,6 @@ internal static partial class EnglishApp
         ("1 compte Codex passe à 100 % sur la semaine et les 5 heures.", "1 Codex account goes to 100% for the week and the 5 hours."),
         ("{0} comptes Codex passent à 100 % sur la semaine et les 5 heures.", "{0} Codex accounts go to 100% for the week and the 5 hours."),
         ("Déclarer un reset général Codex…", "Declare a general Codex reset…"),
-        ("Déclarer qu’OpenAI a remis à zéro les quotas de tous les comptes Codex", "Declare that OpenAI reset the quotas of every Codex account"),
-        ("Reset général…", "General reset…"),
         ("Aujourd’hui · {0:ddd d MMM}", "Today · {0:ddd, MMM d}"),
         ("Hier · {0:ddd d MMM}", "Yesterday · {0:ddd, MMM d}"),
         ("Date", "Date"),

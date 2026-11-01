@@ -19,6 +19,15 @@
   <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="12"/></Style>
   <Style x:Key="Eyebrow" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="Medium"/></Style>
   <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="16"/></Style>
+  <!-- One delay of a reminder: a quiet outline, the accent once chosen. -->
+  <Style x:Key="LeadPill" TargetType="ToggleButton"><Setter Property="FocusVisualStyle" Value="{x:Null}"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="11"/><Setter Property="Margin" Value="3,0"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton"><Border x:Name="Box" CornerRadius="6" BorderThickness="1" BorderBrush="{DynamicResource LineBrush}" Background="Transparent" Padding="0,5" SnapsToDevicePixels="True"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+    <ControlTemplate.Triggers>
+     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource SubtleBrush}"/></Trigger>
+     <Trigger Property="IsChecked" Value="True"><Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentSoftBrush}"/><Setter TargetName="Box" Property="BorderBrush" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/><Setter Property="FontWeight" Value="Medium"/></Trigger>
+     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger>
+     <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Box" Property="Opacity" Value=".35"/></Trigger>
+    </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
   <Style x:Key="Chip" TargetType="Border"><Setter Property="Background" Value="{DynamicResource RaisedBrush}"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Padding" Value="8,2,8,3"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
   <Style x:Key="IconPath" TargetType="Path"><Setter Property="StrokeThickness" Value="1.8"/><Setter Property="StrokeStartLineCap" Value="Round"/><Setter Property="StrokeEndLineCap" Value="Round"/><Setter Property="StrokeLineJoin" Value="Round"/><Setter Property="IsHitTestVisible" Value="False"/></Style>
 
@@ -164,6 +173,7 @@
   <Geometry x:Key="DropdownRefreshIcon">M20,7 A9,9 0 1 0 21,15 M20,3 L20,8 15,8</Geometry>
   <Geometry x:Key="DropdownClockIcon">M12,3 A9,9 0 1 1 11.999,3 M12,7 L12,12 16,14</Geometry>
   <Geometry x:Key="DropdownCalendarIcon">M4,5 L20,5 20,21 4,21 Z M8,3 L8,7 M16,3 L16,7 M4,10 L20,10</Geometry>
+  <Geometry x:Key="CalendarAddIcon">M4,5 L20,5 20,21 4,21 Z M8,3 L8,7 M16,3 L16,7 M4,10 L20,10 M12,13 L12,18 M9.5,15.5 L14.5,15.5</Geometry>
   <Geometry x:Key="DropdownQuotaIcon">M4,20 L4,14 M12,20 L12,8 M20,20 L20,3</Geometry>
   <Style TargetType="ComboBox">
    <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource ButtonBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>

@@ -6,7 +6,7 @@
   <Style x:Key="NoticeDismissButton" TargetType="Button" BasedOn="{StaticResource IconButton}"><Setter Property="Width" Value="28"/><Setter Property="Height" Value="28"/><Setter Property="Margin" Value="2,0,-6,0"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Content" Value="×"/>
    <Setter Property="ContentTemplate"><Setter.Value><DataTemplate><Viewbox Width="13" Height="13"><Canvas Width="24" Height="24"><Path Data="{StaticResource CloseIcon}" Style="{StaticResource IconPath}" StrokeThickness="2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox></DataTemplate></Setter.Value></Setter>
   </Style>
-  <Style x:Key="Callout" TargetType="Border"><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="14,11"/><Setter Property="Margin" Value="0,12,0,0"/></Style>
+  <Style x:Key="Callout" TargetType="Border"><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="14,6,10,6"/><Setter Property="MinHeight" Value="38"/><Setter Property="Margin" Value="0,10,0,0"/></Style>
   <Style x:Key="AccountRow" TargetType="Border">
    <Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1,0,1,1"/><Setter Property="Padding" Value="12,9"/>
    <Style.Triggers>
@@ -18,6 +18,7 @@
   </Style>
   <Style x:Key="MetricLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontSize" Value="11"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
   <Style x:Key="MetricValue" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="Medium"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="HorizontalAlignment" Value="Right"/><Setter Property="Margin" Value="8,0,0,0"/></Style>
+  <Style x:Key="MetricAside" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="FontSize" Value="11"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="8,0,0,0"/><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style>
   <Style x:Key="MetricCountdown" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="FontSize" Value="10"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="HorizontalAlignment" Value="Right"/><Setter Property="Margin" Value="0,2,0,0"/></Style>
  </Window.Resources>
  <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="54" ResizeBorderThickness="6" CornerRadius="10" GlassFrameThickness="0"/></shell:WindowChrome.WindowChrome>
@@ -31,59 +32,51 @@
      <ItemsControl ItemsSource="{Binding ActiveAccounts}" Margin="0,0,-12,0">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" local:UiMotion.Rise="14" local:UiMotion.Stagger="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate><DataTemplate>
-       <Border Style="{StaticResource Card}" Padding="18,15,18,16" Margin="0,0,12,0">
+       <Border Style="{StaticResource Card}" Padding="16,12,16,14" Margin="0,0,12,0">
         <Grid>
          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
          <DockPanel>
-          <Image Style="{StaticResource ProviderIconImage}" Width="18" Height="18" Margin="0,0,8,0"/>
+          <Image Style="{StaticResource ProviderIconImage}" Width="16" Height="16" Margin="0,0,7,0"/>
           <TextBlock Text="{Binding SummaryLabel}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding SummaryLabel}"/>
          </DockPanel>
-         <Grid Grid.Row="1" Margin="0,14,0,0">
+         <Grid Grid.Row="1" Margin="0,10,0,0">
           <!-- A lone active account keeps a readable detail column instead of spreading across the window. -->
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="100*" MaxWidth="360"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-          <Grid Width="86" Height="86" VerticalAlignment="Top" ToolTip="{Binding WeeklyHint}">
-           <local:QuotaRing Value="{Binding WeeklyPercent, Mode=OneWay}" RingBrush="{Binding WeeklyBarBrush}" TrackBrush="{DynamicResource TrackBrush}" Thickness="7" Marker="{Binding WeeklyPaceMarker, Mode=OneWay}" MarkerBrush="{DynamicResource TextBrush}"/>
+          <Grid Width="74" Height="74" VerticalAlignment="Top" Margin="0,2,0,0" ToolTip="{Binding WeeklyHint}">
+           <local:QuotaRing Value="{Binding WeeklyPercent, Mode=OneWay}" RingBrush="{Binding WeeklyBarBrush}" TrackBrush="{DynamicResource TrackBrush}" Thickness="6" Marker="{Binding WeeklyPaceMarker, Mode=OneWay}" MarkerBrush="{DynamicResource TextBrush}"/>
            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBlock Text="{Binding WeeklyNumber}" FontSize="22" FontWeight="Medium" Foreground="{Binding WeeklyBrush}" HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding WeeklyRingCaption}" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0"/>
+            <TextBlock Text="{Binding WeeklyNumber}" FontSize="19" FontWeight="Medium" Foreground="{Binding WeeklyBrush}" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding WeeklyRingCaption}" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center"/>
            </StackPanel>
           </Grid>
-          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-           <TextBlock Text="{Binding Email}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis" ToolTip="{Binding Email}"/>
-           <TextBlock Text="{Binding PlanBadge}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
-           <Grid Margin="0,12,0,0" ToolTip="{Binding ShortSummary}" Visibility="{Binding HasShortWindow, Converter={StaticResource BoolVisibility}}">
+          <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Top">
+           <TextBlock Text="{Binding Email}" FontSize="14" FontWeight="Medium" TextTrimming="CharacterEllipsis" ToolTip="{Binding Email}"/>
+           <TextBlock Text="{Binding PlanBadge}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+           <Grid Margin="0,9,0,0" ToolTip="{Binding ShortSummary}" Visibility="{Binding HasShortWindow, Converter={StaticResource BoolVisibility}}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Text="{local:T '5 heures'}" Style="{StaticResource MetricLabel}"/>
             <ProgressBar Grid.Column="1" Height="4" Margin="10,0,0,0" MinWidth="24" Value="{Binding ShortPercent, Mode=OneWay}" Foreground="{Binding ShortBarBrush}" VerticalAlignment="Center"/>
             <TextBlock Grid.Column="2" Text="{Binding ShortWindowRemaining}" Style="{StaticResource MetricValue}"/>
            </Grid>
-           <Grid Tag="ShortResetMetric" Margin="0,8,0,0" ToolTip="{Binding ShortResetHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasShortWindow, Converter={StaticResource BoolVisibility}}">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+           <Grid Tag="ShortResetMetric" local:FitAside.Enabled="True" Margin="0,7,0,0" ToolTip="{Binding ShortResetHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasShortWindow, Converter={StaticResource BoolVisibility}}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Text="{local:T 'Reset 5 h'}" Style="{StaticResource MetricLabel}"/>
-            <TextBlock Grid.Column="1" Text="{Binding ShortResetHour}" Style="{StaticResource MetricValue}"/>
-            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding ShortResetCompact}" Style="{StaticResource MetricCountdown}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding ShortResetCompact}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding ShortResetHour}" Style="{StaticResource MetricValue}"/></StackPanel>
            </Grid>
-           <Grid Tag="WeeklyResetMetric" Margin="0,8,0,0" ToolTip="{Binding ResetHint}" ToolTipService.ShowDuration="60000" Background="Transparent"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+           <Grid Tag="WeeklyResetMetric" local:FitAside.Enabled="True" Margin="0,7,0,0" ToolTip="{Binding ResetHint}" ToolTipService.ShowDuration="60000" Background="Transparent"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding NeedsResetHelp}" Value="True"><Setter Property="Cursor" Value="Help"/></DataTrigger></Style.Triggers></Style></Grid.Style>
             <TextBlock Text="{local:T 'Reset semaine'}" Style="{StaticResource MetricLabel}"/>
-            <TextBlock Grid.Column="1" Text="{Binding ResetHour}" Style="{StaticResource MetricValue}"/>
-            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding ResetCompact}" Style="{StaticResource MetricCountdown}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding ResetCompact}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding ResetHour}" Style="{StaticResource MetricValue}"/></StackPanel>
            </Grid>
-           <Grid Tag="PaceMetric" Margin="0,8,0,0" ToolTip="{Binding PaceHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasPace, Converter={StaticResource BoolVisibility}}">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+           <Grid Tag="ProjectionMetric" Margin="0,7,0,0" ToolTip="{Binding ProjectionHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasProjection, Converter={StaticResource BoolVisibility}}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="{local:T 'Rythme'}" Style="{StaticResource MetricLabel}"/>
-            <TextBlock Grid.Column="1" Text="{Binding PaceText}" Foreground="{Binding PaceBrush}" Style="{StaticResource MetricValue}"/>
-            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding PaceBudget}" Style="{StaticResource MetricCountdown}"/>
+            <TextBlock Text="{local:T 'Projection'}" Style="{StaticResource MetricLabel}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding ProjectionText}" Foreground="{Binding ProjectionBrush}" Style="{StaticResource MetricValue}"/></StackPanel>
            </Grid>
-           <Grid Margin="0,8,0,0" ToolTip="{Binding ForecastHint}" Visibility="{Binding HasForecast, Converter={StaticResource BoolVisibility}}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding ForecastLabel}" Style="{StaticResource MetricLabel}"/>
-            <TextBlock Grid.Column="1" Text="{Binding ForecastText}" Foreground="{Binding ForecastBrush}" Style="{StaticResource MetricValue}"/>
-           </Grid>
-           <Border Style="{StaticResource ReserveMetric}" Padding="0" MinHeight="0" Margin="0,8,0,0" Visibility="{Binding HasReserves, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="{Binding ReserveSummary}">
+           <Border Style="{StaticResource ReserveMetric}" Padding="0" MinHeight="0" Margin="0,7,0,0" Visibility="{Binding HasReserves, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="{Binding ReserveSummary}">
             <Border.ToolTip><ToolTip Content="{Binding ReserveHint}" ContentTemplate="{StaticResource ReserveTooltip}"/></Border.ToolTip>
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{local:T 'Resets en réserve'}" Style="{StaticResource MetricLabel}"/><TextBlock Grid.Column="1" Text="{Binding ReserveCount}" Foreground="{Binding ReserveBrush}" Style="{StaticResource MetricValue}"/></Grid>
+            <Grid local:FitAside.Enabled="True"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{local:T 'Réserves'}" Style="{StaticResource MetricLabel}"/>
+             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding ReserveCalendar}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding ReserveCount}" Foreground="{Binding ReserveBrush}" Style="{StaticResource MetricValue}"/></StackPanel></Grid>
            </Border>
           </StackPanel>
          </Grid>
@@ -95,10 +88,10 @@
     <Border x:Name="ManualResetBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource AccentSoftBrush}" Visibility="{Binding ShowManualResetBanner, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ManualResetHint}">
      <DockPanel><StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"><Button Content="{local:T 'Modifier…'}" Click="ManualCodexReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/><Button x:Name="DismissManualResetButton" Style="{StaticResource NoticeDismissButton}" Click="DismissManualReset_Click" ToolTip="{local:T 'Masquer cet encart · la déclaration reste appliquée'}" AutomationProperties.Name="{local:T 'Masquer l’encart du reset Codex déclaré'}"/></StackPanel><Viewbox DockPanel.Dock="Left" Width="17" Height="17" Margin="0,0,11,0"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox><TextBlock Text="{Binding ManualResetCaption}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"/></DockPanel>
     </Border>
-    <Border x:Name="ExpectedResetsBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource GoodSoftBrush}" Visibility="{Binding ShowExpectedResetsBanner, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ExpectedResetsHint}">
+    <Border x:Name="ExpectedResetsBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource GoodSoftBrush}" Visibility="{Binding ShowExpectedResetsBanner, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ExpectedResetsHint}" AutomationProperties.Name="{Binding ExpectedResetsTitle}">
      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Viewbox Width="17" Height="17" Margin="0,1,11,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource GoodBrush}" StrokeThickness="2"/></Canvas></Viewbox>
-      <StackPanel Grid.Column="1"><TextBlock Text="{Binding ExpectedResetsTitle}" FontSize="12" FontWeight="Medium" TextWrapping="Wrap"/><TextBlock Text="{Binding ExpectedResetsNames}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/><TextBlock Text="{Binding ExpectedResetsCaption}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/></StackPanel>
+      <TextBlock Text="≈100 %" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource GoodBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+      <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding ExpectedResetsNames, Mode=OneWay}" FontWeight="Medium"/><Run Text=" · " Foreground="{DynamicResource SubtleBrush}"/><Run Text="{Binding ExpectedResetsCaption, Mode=OneWay}" Foreground="{DynamicResource MutedBrush}"/></TextBlock>
       <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"><Button x:Name="ShowExpectedResetButton" Content="{local:T 'Voir'}" Click="ExpectedReset_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource GoodBrush}" VerticalAlignment="Center" ToolTip="{local:T 'Voir le compte probablement rechargé'}"/><Button x:Name="DismissExpectedResetsButton" Tag="ExpectedResets" Style="{StaticResource NoticeDismissButton}" Click="DismissEventNotice_Click" ToolTip="{local:T 'Masquer cet encart jusqu’au prochain reset passé · les comptes gardent leur estimation'}" AutomationProperties.Name="{local:T 'Masquer l’encart des comptes probablement rechargés'}"/></StackPanel>
      </Grid>
     </Border>
@@ -127,7 +120,7 @@
      <ItemsControl x:Name="AccountsList" ItemsSource="{Binding Accounts}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel local:UiMotion.Rise="10" local:UiMotion.StaggerDelay="110" local:UiMotion.Stagger="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><StackPanel>
       <Grid Tag="ProviderSectionHeader" Margin="13,18,13,8" Visibility="{Binding ShowProviderHeader, Converter={StaticResource BoolVisibility}}">
        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="84"/><ColumnDefinition Width="60"/><ColumnDefinition Width="92"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
-       <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center"><Image Style="{StaticResource ProviderIconImage}" Width="20" Height="20"/><TextBlock Text="{Binding ProviderName}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/><TextBlock Text="{Binding ProviderCount}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="8,1,0,0" VerticalAlignment="Center"/><Button Click="ManualCodexReset_Click" Margin="14,0,0,0" Padding="0,3" FontSize="11" VerticalAlignment="Center" ToolTip="{local:T 'Déclarer qu’OpenAI a remis à zéro les quotas de tous les comptes Codex'}" AutomationProperties.Name="{local:T 'Déclarer un reset général Codex'}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource LinkButton}"><Style.Triggers><DataTrigger Binding="{Binding IsClaude}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style><StackPanel Orientation="Horizontal"><Viewbox Width="12" Height="12" Margin="0,0,5,0" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="{StaticResource ResetClockIcon}" Style="{StaticResource IconPath}" StrokeThickness="2.2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox><TextBlock Text="{local:T 'Reset général…'}" VerticalAlignment="Center"/></StackPanel></Button></StackPanel>
+       <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center"><Image Style="{StaticResource ProviderIconImage}" Width="20" Height="20"/><TextBlock Text="{Binding ProviderName}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/><TextBlock Text="{Binding ProviderCount}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="8,1,0,0" VerticalAlignment="Center"/><Button Click="ManualCodexReset_Click" Margin="8,0,0,0" Width="26" Height="26" Padding="0" VerticalAlignment="Center" ToolTip="{local:T 'Déclarer un reset général Codex…'}" AutomationProperties.Name="{local:T 'Déclarer un reset général Codex'}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource IconButton}"><Style.Triggers><DataTrigger Binding="{Binding IsClaude}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style><Viewbox Width="13" Height="13"><Canvas Width="24" Height="24"><Path Data="{StaticResource ResetClockIcon}" Style="{StaticResource IconPath}" StrokeThickness="2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox></Button></StackPanel>
        <TextBlock Grid.Column="2" Text="{local:T 'Semaine'}" Foreground="{DynamicResource SubtleBrush}" FontSize="11" VerticalAlignment="Bottom"/>
        <TextBlock Grid.Column="3" Text="{local:T 'Resets'}" ToolTip="{local:T 'Resets disponibles en réserve : survolez le nombre pour voir les dates'}" Foreground="{DynamicResource SubtleBrush}" FontSize="11" VerticalAlignment="Bottom"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsClaude}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
        <TextBlock Grid.Column="4" Text="{local:T 'Prochain reset'}" Foreground="{DynamicResource SubtleBrush}" FontSize="11" VerticalAlignment="Bottom"/>
@@ -178,7 +171,7 @@
   <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource ChromeBrush}" Padding="20,0,16,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <Grid Width="7" Height="7" HorizontalAlignment="Left" VerticalAlignment="Center"><Ellipse Fill="{Binding StatusBrush}" Opacity="0" local:UiMotion.Pulse="{Binding IsBusy}"/><Ellipse Fill="{Binding StatusBrush}"/></Grid>
    <TextBlock Grid.Column="1" Text="{Binding StatusText}" ToolTip="{Binding StatusHint}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-   <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource AccentSoftBrush}" Margin="12,0,0,0" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"><TextBlock Text="{local:T 'Démo · comptes fictifs'}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource AccentBrush}"/></Border>
+   <Border Grid.Column="2" Style="{StaticResource Chip}" Background="Transparent" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Margin="12,0,0,0" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"><TextBlock Text="{local:T 'Démo · comptes fictifs'}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource MutedBrush}"/></Border>
    <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="12,0,0,0"><TextBlock x:Name="AppVersionLabel" Foreground="{DynamicResource SubtleBrush}" FontSize="11" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Version installée de Codex Tracker'}"/><Button x:Name="CheckUpdateButton" Style="{StaticResource IconButton}" Width="24" Height="24" Margin="4,0,-6,0" VerticalAlignment="Center" Click="CheckUpdate_Click" ToolTip="{local:T 'Rechercher une mise à jour'}" AutomationProperties.Name="{local:T 'Rechercher une mise à jour de Codex Tracker'}"><Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="{StaticResource DropdownRefreshIcon}" Style="{StaticResource IconPath}" StrokeThickness="2.2" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Canvas></Viewbox></Button></StackPanel>
   </Grid></Border>
  </Grid></Border>

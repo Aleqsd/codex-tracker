@@ -67,20 +67,23 @@ internal static class ProviderChecks
                 Check(Tree(weekReset).OfType<TextBlock>().Any(t => t.Text.Length > weeklyHour.Length + 1 && t.Text.EndsWith(" " + weeklyHour)) &&
                     !Tree(weekReset).OfType<TextBlock>().Any(t => t.Text == weeklyHour),
                     "A weekly reset on another day names its day next to the hour");
-                Check(Tree(shortReset).Concat(Tree(weekReset)).OfType<TextBlock>().All(TextFits),
+                // A countdown beside the hour may step aside in a narrow card; what is shown must be whole.
+                Check(Tree(shortReset).Concat(Tree(weekReset)).OfType<TextBlock>().Where(t => t.IsVisible).All(TextFits),
                     $"Reset hours, labels and countdowns fit {theme}, compact={compact}");
-                // Claude's week (57 % used, reset in four days of seven) is 14 points under the steady line.
-                var pace = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "PaceMetric" && ReferenceEquals(g.DataContext, claude));
-                Check(pace.IsVisible && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "Rythme") && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "Dépassé de 14 %") &&
-                    Tree(pace).OfType<TextBlock>().Any(t => t.Text.StartsWith("≈ ") && t.Text.EndsWith(" % par jour")) && Tree(pace).OfType<TextBlock>().All(TextFits),
-                    $"The active Claude week shows its steady-pace margin and daily budget in {theme}, compact={compact}");
+                // Claude's week (57 % used, reset in four days of seven) is 14 points under the steady line: one warning verdict,
+                // the exhaustion time when the recent rate gives one, otherwise the overrun.
+                var pace = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "ProjectionMetric" && ReferenceEquals(g.DataContext, claude));
+                Check(pace.IsVisible && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "Projection") &&
+                    Tree(pace).OfType<TextBlock>().Any(t => (t.Text == "Dépassé de 14 %" || t.Text.StartsWith("Vide ")) && t.Foreground == Display.Orange) &&
+                    claude.ProjectionHint.Contains("Semaine : un rythme régulier laisserait") && Tree(pace).OfType<TextBlock>().All(TextFits),
+                    $"The active Claude week shows a single projection, with the steady-pace detail in its tooltip, in {theme}, compact={compact}");
                 Check(Tree(card).OfType<QuotaRing>().Single(r => ReferenceEquals(r.DataContext, claude)).Marker is var tick && Math.Abs(tick - 400d / 7) < .5,
                     "The weekly ring places its tick where a steady use would be");
-                Check(!Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "PaceMetric" && ReferenceEquals(g.DataContext, codex)).IsVisible &&
+                Check(!Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "ProjectionMetric" && ReferenceEquals(g.DataContext, codex)).IsVisible &&
                     !double.IsFinite(Tree(card).OfType<QuotaRing>().Single(r => ReferenceEquals(r.DataContext, codex)).Marker), "A declared Codex reset shows no invented pace");
                 var codexWeek = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "WeeklyResetMetric" && ReferenceEquals(g.DataContext, codex));
                 Check(Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetHour && t.Text.StartsWith("≈ ")) &&
-                    Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetCompact && t.Text.StartsWith("≈ ")) && Tree(codexWeek).OfType<TextBlock>().All(TextFits),
+                    Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetCompact && t.Text.StartsWith("≈ ")) && Tree(codexWeek).OfType<TextBlock>().Where(t => t.IsVisible).All(TextFits),
                     $"A declared Codex reset shows the estimated next weekly reset in {theme}, compact={compact}");
                 var list = (ItemsControl)window.FindName("AccountsList");
                 var scroll = Tree(window).OfType<ScrollViewer>().First(s => s.Content is StackPanel p && Tree(p).Contains(list));

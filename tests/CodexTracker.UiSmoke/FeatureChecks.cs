@@ -208,6 +208,17 @@ internal static class FeatureChecks
             var labels = Tree(settings).OfType<TextBlock>().Select(t => t.Text).ToArray();
             Check(labels.Contains("Chaque minute") && !labels.Any(t => t.Contains("NumberChoice")), "Refresh selector displays a readable label");
             Tree(settings).OfType<Button>().Single(b => b.Content?.ToString() == "Rappels").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(100);
+            // The grid saves one Windows delay per click; the detailed per-type editors sit under "Comptes et autres canaux".
+            var sixHours = Tree(settings).OfType<System.Windows.Controls.Primitives.ToggleButton>()
+                .Single(p => System.Windows.Automation.AutomationProperties.GetName(p) == "Reset hebdomadaire, notification Windows 6 h avant");
+            var wasOn = sixHours.IsChecked == true;
+            sixHours.IsChecked = !wasOn; sixHours.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(50);
+            Check(settingsPreferences.Current.ReminderRules!.Any(r => r.Kind == ResetKind.Weekly && r.Enabled && r.LeadMinutes.Contains(360) && r.Channels.Contains(ReminderChannel.Windows)) != wasOn,
+                "A delay pill saves the Windows reminder on click");
+            Check(!Tree(settings).OfType<System.Windows.Controls.Primitives.ToggleButton>().Single(p =>
+                System.Windows.Automation.AutomationProperties.GetName(p) == "Reset 5 heures, notification Windows 6 h avant").IsEnabled,
+                "Delays longer than the 5-hour window are not offered for it");
+            var detailed = Tree(settings).OfType<Expander>().Single(t => t.Header?.ToString() == "Comptes et autres canaux"); detailed.IsExpanded = true; settings.UpdateLayout();
             Check(settings.CurrentPage == "Rappels" && Tree(settings).OfType<Expander>().Any(t => t.Header?.ToString() == "Reset hebdomadaire"), "Reminder settings show per-type expandable rules");
             var week = Tree(settings).OfType<Expander>().Single(t => t.Header?.ToString() == "Reset hebdomadaire"); week.IsExpanded = true; settings.UpdateLayout();
             var smsOneHour = Tree(week).OfType<CheckBox>().Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == "Reset hebdomadaire, 1 h, SMS");

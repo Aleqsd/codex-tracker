@@ -144,7 +144,17 @@ internal sealed class TrayController : IDisposable
         var menu = new Forms.ContextMenuStrip { Font = _menuFont.Font, BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
         menu.Opening += (_, _) => HidePeek();
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
-        menu.Items.Add(Loc.T("Ouvrir le suivi"), null, (_, _) => _window.ShowPanel());
+        // A quiet summary first: the menu answers "how much is left" before offering actions.
+        foreach (var active in state.ActiveAccounts)
+        {
+            var left = QuotaPresentation.Remaining(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+            var reset = QuotaPresentation.ResetsAt(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+            var line = Loc.F("{0} · {1} semaine", active.Profile.ProviderName, Display.Percent(left)) + (reset is { } at ? " · " + Display.Countdown(at).ToLowerInvariant() : "");
+            menu.Items.Add(new Forms.ToolStripLabel(line) { ForeColor = dark ? Color.FromArgb(152, 155, 164) : Color.FromArgb(93, 97, 106), Padding = new Forms.Padding(6, 3, 6, 3) });
+        }
+        if (state.ActiveAccounts.Count > 0) menu.Items.Add(new Forms.ToolStripSeparator());
+        var open = new Forms.ToolStripMenuItem(Loc.T("Ouvrir le suivi"), null, (_, _) => _window.ShowPanel());
+        menu.Items.Add(open);
         menu.Items.Add(Loc.T("Actualiser"), null, async (_, _) => await _window.RefreshAsync());
         if (state.ActiveAccounts.Count > 0)
         {
@@ -172,7 +182,11 @@ internal sealed class TrayController : IDisposable
             menu.Items.Add(choice);
         }
         menu.Items.Add(Loc.T("Réglages"), null, (_, _) => { _window.ShowPanel(); _window.ShowSettings(); });
+        menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(Loc.T("Quitter"), null, async (_, _) => await _exit());
+        // Taller rows than the Windows default: easier to aim at, closer to the app's own controls.
+        foreach (var entry in menu.Items.OfType<Forms.ToolStripMenuItem>().Concat(menu.Items.OfType<Forms.ToolStripMenuItem>()
+            .SelectMany(i => i.DropDownItems.OfType<Forms.ToolStripMenuItem>()))) entry.Padding = new Forms.Padding(4, 5, 4, 5);
         var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = menu; _toolTray.ContextMenuStrip = menu; oldMenu?.Dispose();
     }
     private void Draw(Forms.NotifyIcon tray, ref Icon? icon, ref string? iconKey, TrackerState state, AccountState? account, ResetKind window, bool dark, int iconSize, string text)
@@ -345,7 +359,25 @@ internal sealed class TrayController : IDisposable
     }
     private sealed class DarkMenuRenderer : Forms.ToolStripProfessionalRenderer
     {
-        public DarkMenuRenderer(bool dark) : base(new DarkColors(dark)) { }
+        private readonly bool _dark;
+        public DarkMenuRenderer(bool dark) : base(new DarkColors(dark)) { _dark = dark; RoundedEdges = false; }
+        protected override void OnRenderMenuItemBackground(Forms.ToolStripItemRenderEventArgs e)
+        {
+            if (!e.Item.Selected || !e.Item.Enabled) return;
+            var area = new Rectangle(4, 1, e.Item.Width - 8, e.Item.Height - 2);
+            using var path = new GraphicsPath(); const int radius = 6;
+            path.AddArc(area.X, area.Y, radius * 2, radius * 2, 180, 90); path.AddArc(area.Right - radius * 2, area.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(area.Right - radius * 2, area.Bottom - radius * 2, radius * 2, radius * 2, 0, 90); path.AddArc(area.X, area.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseFigure();
+            var smoothing = e.Graphics.SmoothingMode; e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var brush = new SolidBrush(_dark ? Color.FromArgb(38, 40, 48) : Color.FromArgb(236, 238, 242));
+            e.Graphics.FillPath(brush, path); e.Graphics.SmoothingMode = smoothing;
+        }
+        protected override void OnRenderSeparator(Forms.ToolStripSeparatorRenderEventArgs e)
+        {
+            using var pen = new System.Drawing.Pen(_dark ? Color.FromArgb(39, 41, 48) : Color.FromArgb(225, 227, 232));
+            var y = e.Item.Height / 2; e.Graphics.DrawLine(pen, 8, y, e.Item.Width - 8, y);
+        }
         // The stock check glyph is black: draw it in the menu's text color on both themes.
         protected override void OnRenderItemCheck(Forms.ToolStripItemImageRenderEventArgs e)
         {

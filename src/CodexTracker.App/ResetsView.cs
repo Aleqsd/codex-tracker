@@ -47,13 +47,10 @@ internal sealed class ResetsView : UserControl
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
-        var heading = new Grid();
-        heading.ColumnDefinitions.Add(new ColumnDefinition()); heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var introduction = new StackPanel();
-        var title = Ui.Text(Loc.T("Prochains resets"), 22); title.FontWeight = FontWeights.Medium; introduction.Children.Add(title);
-        _summary.Margin = new Thickness(0, 5, 0, 0); introduction.Children.Add(_summary); heading.Children.Add(introduction);
+        var introduction = new StackPanel { Margin = new Thickness(2, 10, 0, 0) };
+        introduction.Children.Add(_summary);
         _notificationStatus.Margin = new Thickness(0, 5, 0, 0); _notificationStatus.Visibility = Visibility.Collapsed; introduction.Children.Add(_notificationStatus);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
         _refresh = Ui.IconButton("DropdownRefreshIcon", Loc.T("Actualiser les comptes actifs de Codex et Claude Code"), Loc.T("Actualiser les comptes actifs"));
         _refresh.Click += (_, _) => { UiMotion.Spin((FrameworkElement)_refresh.Content); refresh(); }; actions.Children.Add(_refresh);
         var more = Ui.IconButton("MoreIcon", Loc.T("Autres actions"), Loc.T("Autres actions des resets"), 18, 3);
@@ -67,12 +64,14 @@ internal sealed class ResetsView : UserControl
             declare.Click += (_, _) => declareReset(); more.ContextMenu.Items.Insert(0, declare);
         }
         more.Click += (_, _) => { more.ContextMenu.PlacementTarget = more; more.ContextMenu.IsOpen = true; };
-        actions.Children.Add(more); Grid.SetColumn(actions, 1); heading.Children.Add(actions); root.Children.Add(heading);
+        actions.Children.Add(more);
 
-        var filters = new Grid { Margin = new Thickness(0, 18, 0, 6) };
+        var filters = new Grid { Margin = new Thickness(0, 4, 0, 0) };
         filters.ColumnDefinitions.Add(new ColumnDefinition());
         filters.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
         filters.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        filters.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(actions, 3); filters.Children.Add(actions);
         System.Windows.Automation.AutomationProperties.SetName(_accounts, Loc.T("Filtrer les resets par compte"));
         _accounts.SelectionChanged += (_, _) => { if (!_syncing) Render(animate: true); }; filters.Children.Add(_accounts);
         _kinds = new ComboBox { DisplayMemberPath = "Label", SelectedValuePath = "Kind", Tag = FindResource("DropdownClockIcon"), Margin = new Thickness(0, 0, 10, 0),
@@ -93,7 +92,8 @@ internal sealed class ResetsView : UserControl
         _viewPill = new SelectionPill(segment, pill, () => _weekChoice.IsChecked == true ? _weekChoice : _agendaChoice);
         var track = new Border { Child = segment, Style = (Style)FindResource("SegmentTrack"), VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(track, 2); filters.Children.Add(track);
-        Grid.SetRow(filters, 1); root.Children.Add(filters);
+        root.Children.Add(filters);
+        Grid.SetRow(introduction, 1); root.Children.Add(introduction);
         _timeline.Margin = new Thickness(0, 0, 6, 20);
         UiMotion.SetRise(_timeline, 10); UiMotion.SetStagger(_timeline, true);
         var scroll = new ScrollViewer { Content = _timeline, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
@@ -144,7 +144,7 @@ internal sealed class ResetsView : UserControl
         var unknown = schedule.Where(e => e.At is null).ToArray();
         _renderedDate = DateOnly.FromDateTime(now.LocalDateTime);
         _summary.Text = accounts.Length == 0 ? Loc.T("Détectez un compte pour retrouver ses prochaines échéances.")
-            : future.Length == 1 ? Loc.T("1 échéance à venir") : Loc.F("{0} échéances à venir", future.Length);
+            : string.Join(" · ", new[] { future.Length == 1 ? Loc.T("1 échéance à venir") : Loc.F("{0} échéances à venir", future.Length), ReserveSummary(entries, now) }.Where(t => t.Length > 0));
         _summary.ToolTip = Loc.T("Selon les derniers relevés. Les comptes inactifs ne sont pas actualisés en arrière-plan.");
         _rows.Clear(); _alertButtons.Clear(); _timeline.Children.Clear(); _announcementCards.Clear();
         // Same dismissal as the Comptes notice: hidden until a new declaration, which stays applied meanwhile.
@@ -167,6 +167,7 @@ internal sealed class ResetsView : UserControl
             _timeline.Children.Add(chip);
         }
         AddGlobalAnnouncements(accounts, now);
+        if (_kindFilter is null && !_weekView) AddExpiringReserves(entries, now);
         if (_weekView) AddWeek(schedule, now);
         else
         {
@@ -234,26 +235,42 @@ internal sealed class ResetsView : UserControl
         if (content.Children.Count > 0)
             _timeline.Children.Add(Disclosure("ResetAnnouncements", Loc.T("Reset général annoncé · voir les sources"), content, _showAnnouncements, open => _showAnnouncements = open));
     }
+    /// <summary>A credit is lost once expired: those expiring within 3 days come first, above the quota resets.</summary>
+    private void AddExpiringReserves(ResetScheduleEntry[] entries, DateTimeOffset now)
+    {
+        var soon = entries.Where(e => e.Kind == ResetKind.Reserve && e.At > now && e.At - now <= TimeSpan.FromDays(3)).ToArray();
+        if (soon.Length == 0) return;
+        var label = Ui.Text(Loc.T("Réserves à utiliser bientôt"), 12, "WarningBrush"); label.FontWeight = FontWeights.Medium; label.Margin = new Thickness(2, 16, 0, 8);
+        _timeline.Children.Add(label);
+        var rows = Group(_timeline);
+        foreach (var entry in soon) AddEntry(rows, entry);
+    }
     private void AddReserves(AccountState[] accounts, ResetScheduleEntry[] entries, DateTimeOffset now)
     {
         var codex = accounts.Where(a => a.Profile.Provider == AccountProvider.Codex).ToArray();
         if (codex.Length == 0) return;
         var counts = codex.Select(a => a.Snapshot?.AvailableResetCredits).ToArray();
         var title = counts.All(n => n is null) ? Loc.T("Réserves Codex · non communiquées")
-            : Loc.F("Réserves Codex · {0} resets au dernier relevé", counts.Sum(n => (long)(n ?? 0))) + (counts.Any(n => n is null) ? " · " + Loc.T("compteurs incomplets") : "");
-        var dated = entries.Where(e => HasCalendar(e) && e.At > now).ToArray();
-        if (_calendar is not null && dated.Length > 0)
-            title += " · " + Loc.F("{0}/{1} dans l’agenda", dated.Count(e => CalendarLinkFor(e) is { Status: Codex.CalendarLinkStatus.Confirmed }), dated.Length);
+            : Loc.F("Réserves Codex · {0}", counts.Sum(n => (long)(n ?? 0))) + (counts.Any(n => n is null) ? " · " + Loc.T("compteurs incomplets") : "");
         var content = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-        var priority = ResetCalendar.PriorityReserve(_state, now, (_accounts.SelectedItem as ResetAccountChoice)?.Id);
+        // In the list, rows are already sorted by expiry: the priority line only helps the week view.
+        var priority = _weekView ? ResetCalendar.PriorityReserve(_state, now, (_accounts.SelectedItem as ResetAccountChoice)?.Id) : null;
         if (priority is not null)
         {
             var note = Ui.Text(Loc.F("À utiliser en priorité : {0} · {1}", AccountLabel(priority.Account), Display.Countdown(priority.At)), 12, "MutedBrush");
             note.Margin = new Thickness(2, 2, 0, 10); note.ToolTip = EntryHint(priority); content.Children.Add(note);
         }
-        if (entries.Length > 0) { var rows = Group(content); foreach (var entry in entries) AddEntry(rows, entry); }
-        else content.Children.Add(Empty(Loc.T("Aucune réserve à afficher pour cette sélection.")));
-        var section = Disclosure("ReserveResets", title, content, _showReserves, open => _showReserves = open);
+        var dated = entries.Where(e => e.At is not null).ToArray();
+        if (dated.Length > 0) { var rows = Group(content); foreach (var entry in dated) AddEntry(rows, entry); }
+        var undated = entries.Length - dated.Length;
+        if (undated > 0)
+        {
+            var note = Ui.Text(undated == 1 ? Loc.T("Un compte ne communique pas toutes ses dates d’expiration.") : Loc.F("{0} comptes ne communiquent pas toutes leurs dates d’expiration.", undated), 11, "MutedBrush");
+            note.Margin = new Thickness(2, dated.Length > 0 ? 8 : 2, 0, 0); note.ToolTip = string.Join("\n", entries.Where(e => e.At is null).Select(e => AccountName(e.Account)));
+            content.Children.Add(note);
+        }
+        if (entries.Length == 0) content.Children.Add(Empty(Loc.T("Aucune réserve à afficher pour cette sélection.")));
+        var section = Disclosure("ReserveResets", title, content, _showReserves, value => _showReserves = value);
         section.ToolTip = Loc.T("Compteurs serveur au dernier relevé. Les dates d’expiration ne permettent pas de déduire le nombre de resets disponibles.");
         _timeline.Children.Add(section);
     }
@@ -299,7 +316,7 @@ internal sealed class ResetsView : UserControl
             var content = new StackPanel();
             var name = Ui.Text(day.Date.ToString("ddd", Loc.Culture), 11, day.Date == today ? "AccentBrush" : "MutedBrush"); name.TextAlignment = TextAlignment.Center; content.Children.Add(name);
             var date = Ui.Text(day.Date.ToString("dd"), 19, dayBrush); date.FontWeight = day.Date == today ? FontWeights.Bold : FontWeights.Medium; date.TextAlignment = TextAlignment.Center; date.Margin = new Thickness(0, 3, 0, 4); content.Children.Add(date);
-            var count = Ui.Text(day.Entries.Count == 0 ? "—" : day.Entries.Count == 1 ? Loc.T("1 reset") : Loc.F("{0} resets", day.Entries.Count), 10, day.Entries.Count == 0 ? "SubtleBrush" : "MutedBrush"); count.TextAlignment = TextAlignment.Center; content.Children.Add(count);
+            var count = Ui.Text(day.Entries.Count == 0 ? " " : day.Entries.Count == 1 ? Loc.T("1 reset") : Loc.F("{0} resets", day.Entries.Count), 10, day.Entries.Count == 0 ? "SubtleBrush" : "MutedBrush"); count.TextAlignment = TextAlignment.Center; content.Children.Add(count);
             var select = new Button { Content = content, Style = (Style)FindResource("QuietButton"), Padding = new Thickness(2, 9, 2, 9), Margin = new Thickness(2, 0, 2, 0), FontWeight = FontWeights.Normal };
             if (_day == day.Date) { select.SetResourceReference(BackgroundProperty, "AccentSoftBrush"); select.SetResourceReference(BorderBrushProperty, "AccentBrush"); }
             select.Click += (_, _) => { _day = _day == day.Date ? null : day.Date; Render(animate: true); };
@@ -328,10 +345,10 @@ internal sealed class ResetsView : UserControl
         var identity = new StackPanel { Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
         var account = Ui.Text(AccountLabel(entry.Account), 13); account.FontWeight = FontWeights.Medium; account.TextWrapping = TextWrapping.NoWrap; account.TextTrimming = TextTrimming.CharacterEllipsis; account.ToolTip = AccountName(entry.Account); identity.Children.Add(account);
         var kind = Ui.Text(KindLabel(entry), 11, "MutedBrush"); kind.Margin = new Thickness(0, 3, 0, 0); identity.Children.Add(kind); Grid.SetColumn(identity, 1); header.Children.Add(identity);
-        if (_calendar is not null && HasCalendar(entry) && entry.At > PreviewClock.UtcNow) AddCalendar(header, identity, entry);
         var timing = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         var countdown = Ui.Text("", 13); countdown.FontWeight = FontWeights.Medium; countdown.TextAlignment = TextAlignment.Right; timing.Children.Add(countdown);
         var exact = Ui.Text(entry.At is not { } resetAt ? Loc.T("Date indisponible") : dayShown ? resetAt.ToLocalTime().ToString("HH:mm") : Display.ResetHour(resetAt), 11, "MutedBrush"); exact.TextAlignment = TextAlignment.Right; exact.Margin = new Thickness(0, 3, 0, 0); timing.Children.Add(exact); Grid.SetColumn(timing, 2); header.Children.Add(timing);
+        if (_calendar is not null && HasCalendar(entry) && entry.At > PreviewClock.UtcNow) AddCalendar(header, exact, entry);
         if (_notify is not null && entry.Kind is ResetKind.Weekly or ResetKind.Short)
         {
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -360,6 +377,12 @@ internal sealed class ResetsView : UserControl
         var row = new Expander { Header = header, Content = details, Style = (Style)FindResource("ResetEntry"), Tag = entry, IsExpanded = _openEntries.Contains(key), ToolTip = EntryHint(entry) };
         if (target.Children.Count == 0) row.BorderThickness = new Thickness(0);
         row.Expanded += (_, _) => _openEntries.Add(key); row.Collapsed += (_, _) => _openEntries.Remove(key);
+        if (_alertButtons.Count > 0 && ReferenceEquals(_alertButtons[^1].Entry, entry) && _alertButtons[^1].Button is var bell)
+        {
+            row.MouseEnter += (_, _) => UpdateBell(entry, bell, row); row.MouseLeave += (_, _) => UpdateBell(entry, bell, row);
+            bell.GotKeyboardFocus += (_, _) => UpdateBell(entry, bell, row); bell.LostKeyboardFocus += (_, _) => UpdateBell(entry, bell, row);
+            UpdateBell(entry, bell, row);
+        }
         System.Windows.Automation.AutomationProperties.SetName(row, Loc.F("{0} · {1} · détails", KindLabel(entry), AccountName(entry.Account)));
         target.Children.Add(row); _rows.Add((entry, countdown, freshness));
     }
@@ -387,12 +410,24 @@ internal sealed class ResetsView : UserControl
             freshness.ToolTip = Loc.F("Dernier relevé : {0}", Display.Exact(entry.Account.Snapshot?.FetchedAt)) + "\n" + entry.Account.Error;
         }
     }
+    /// <summary>"9 réserves, 1 expire demain · 7/9 dans l’agenda": what needs attention among the credits, or nothing.</summary>
+    private string ReserveSummary(ResetScheduleEntry[] entries, DateTimeOffset now)
+    {
+        if (_kindFilter is not (null or ResetKind.Reserve)) return "";
+        var dated = entries.Where(e => HasCalendar(e) && e.At > now).ToArray();
+        if (dated.Length == 0) return "";
+        var soon = dated.Count(e => e.At - now <= TimeSpan.FromDays(1));
+        var text = (dated.Length == 1 ? Loc.T("1 réserve") : Loc.F("{0} réserves", dated.Length)) +
+            (soon == 0 ? "" : ", " + (soon == 1 ? Loc.T("1 expire sous 24 h") : Loc.F("{0} expirent sous 24 h", soon)));
+        var linked = dated.Count(e => CalendarLinkFor(e) is { Status: Codex.CalendarLinkStatus.Confirmed });
+        return _calendar is not null && (linked > 0 || _calendar.IsConnected) ? text + " · " + Loc.F("{0}/{1} dans l’agenda", linked, dated.Length) : text;
+    }
     private static bool HasCalendar(ResetScheduleEntry entry) => entry is { Kind: ResetKind.Reserve, CreditId: not null, At: not null } &&
         entry.Account.Profile.Provider == AccountProvider.Codex;
     private Codex.CalendarLink? CalendarLinkFor(ResetScheduleEntry entry) =>
         _calendar?.Link(GoogleCalendarSync.Key(entry.Account.Profile.Id, entry.CreditId!, entry.At!.Value));
     /// <summary>Each reserve says at a glance whether its expiry is in Google Calendar; the button adds or opens it.</summary>
-    private void AddCalendar(Grid header, StackPanel identity, ResetScheduleEntry entry)
+    private void AddCalendar(Grid header, TextBlock status, ResetScheduleEntry entry)
     {
         var link = CalendarLinkFor(entry);
         var (text, brush, hint) = link?.Status switch
@@ -403,10 +438,11 @@ internal sealed class ResetsView : UserControl
                 Loc.T("Événement prérempli ouvert dans le navigateur. Son enregistrement n’est vérifiable qu’avec Google Agenda connecté.")),
             Codex.CalendarLinkStatus.Deleted => (Loc.T("Supprimé de Google Agenda"), "WarningBrush",
                 Loc.T("L’événement n’existe plus dans Google Agenda ; il ne sera pas recréé automatiquement.")),
+            _ when !_calendar!.IsConnected => (status.Text, "MutedBrush", Loc.T("Connectez Google Agenda dans Réglages → Calendrier pour l’ajouter automatiquement.")),
             _ => (Loc.T("Pas dans l’agenda"), "MutedBrush", _calendar!.IsConnected ? Loc.T("Pas encore ajouté à Google Agenda.") : Loc.T("Connectez Google Agenda dans Réglages → Calendrier pour l’ajouter automatiquement."))
         };
-        var status = Ui.Text(text, 11, brush); status.Margin = new Thickness(0, 3, 0, 0); status.ToolTip = hint; status.Tag = "CalendarStatus";
-        identity.Children.Add(status);
+        status.Text = text; status.SetResourceReference(TextBlock.ForegroundProperty, brush); status.ToolTip = hint; status.Tag = "CalendarStatus";
+        ToolTipService.SetShowDuration(status, 60000);
         if (_addToCalendar is null) return;
         var action = link?.Status switch
         {
@@ -414,7 +450,7 @@ internal sealed class ResetsView : UserControl
             Codex.CalendarLinkStatus.Deleted => Loc.T("Ajouter à nouveau à Google Agenda"),
             _ => _calendar!.IsConnected ? Loc.T("Ajouter à Google Agenda") : Loc.T("Ouvrir l’événement prérempli dans Google Agenda")
         };
-        var button = Ui.IconButton("DropdownCalendarIcon", action, action + " · " + AccountName(entry.Account));
+        var button = Ui.IconButton(link?.Status == Codex.CalendarLinkStatus.Confirmed ? "DropdownCalendarIcon" : "CalendarAddIcon", action, action + " · " + AccountName(entry.Account));
         button.Tag = "Calendar:" + EntryKey(entry); button.Margin = new Thickness(9, 0, 0, 0); button.VerticalAlignment = VerticalAlignment.Center;
         button.SetResourceReference(Control.ForegroundProperty, link?.Status == Codex.CalendarLinkStatus.Confirmed ? "AccentBrush" : "MutedBrush");
         button.Click += async (_, e) =>
@@ -430,9 +466,12 @@ internal sealed class ResetsView : UserControl
     }
     private bool AlertSelected(ResetScheduleEntry entry) => entry.At is { } at && _preferences.Current.ResetAlerts.Any(a =>
         a.Enabled && ResetAlertPlanner.Matches(a, entry.Account.Profile.Id, entry.Kind, at));
+    private void UpdateBell(ResetScheduleEntry entry, Button bell, Expander row) =>
+        bell.Opacity = AlertSelected(entry) || row.IsMouseOver || bell.IsKeyboardFocusWithin ? 1 : 0;
     private void UpdateAlertButton(ResetScheduleEntry entry, Button button, DateTimeOffset now)
     {
         var selected = AlertSelected(entry);
+        if (LogicalTreeHelper.GetParent(LogicalTreeHelper.GetParent(button)) is Expander row) UpdateBell(entry, button, row);
         button.IsEnabled = selected || entry.At > now && !_preferences.RecoveryRequired && !entry.IsProjected;
         button.SetResourceReference(Control.ForegroundProperty, selected ? "AccentBrush" : "MutedBrush");
         var action = selected ? Loc.T("Annuler la notification de ce reset") : Loc.T("Me prévenir de ce reset");

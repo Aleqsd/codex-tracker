@@ -6,6 +6,42 @@ using System.Windows.Shell;
 
 namespace CodexTracker.App;
 
+/// <summary>
+/// A metric row (label, optional aside, value): when the row is too narrow, the aside (Tag "Aside") is hidden
+/// before the label or the value would be cut. Compact windows keep the essential text whole.
+/// </summary>
+internal static class FitAside
+{
+    public static readonly DependencyProperty EnabledProperty = DependencyProperty.RegisterAttached("Enabled", typeof(bool), typeof(FitAside), new PropertyMetadata(false, Changed));
+    public static void SetEnabled(DependencyObject element, bool value) => element.SetValue(EnabledProperty, value);
+    public static bool GetEnabled(DependencyObject element) => (bool)element.GetValue(EnabledProperty);
+    private static void Changed(DependencyObject element, DependencyPropertyChangedEventArgs e)
+    {
+        if (element is not Grid row || e.NewValue is not true) return;
+        row.SizeChanged += (_, _) => Fit(row);
+        row.Loaded += (_, _) => Fit(row);
+    }
+    private static void Fit(Grid row)
+    {
+        var texts = Texts(row).ToArray();
+        var aside = texts.FirstOrDefault(t => Equals(t.Tag, "Aside"));
+        if (aside is null || row.ActualWidth <= 0) return;
+        static double Width(TextBlock text) => string.IsNullOrEmpty(text.Text) ? 0 : new FormattedText(text.Text, Loc.Culture, text.FlowDirection,
+            new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(text).PixelsPerDip).Width + text.Margin.Left + text.Margin.Right;
+        var needed = texts.Where(t => !ReferenceEquals(t, aside)).Sum(Width) + Width(aside) + 8;
+        var visibility = needed <= row.ActualWidth || string.IsNullOrEmpty(aside.Text) ? Visibility.Visible : Visibility.Collapsed;
+        if (aside.Visibility != visibility) aside.Visibility = visibility;
+    }
+    private static IEnumerable<TextBlock> Texts(DependencyObject root)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is TextBlock text) yield return text;
+            else foreach (var nested in Texts(child)) yield return nested;
+        }
+    }
+}
+
 internal static class Ui
 {
     public static void ConstrainInitialSize(Window window)
