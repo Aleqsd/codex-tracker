@@ -1,0 +1,17 @@
+// Cloudflare Worker (static assets only) serving https://codex-tracker.zqsdev.com.
+// Workers Builds runs `python3 scripts/build-site.py` then `npx wrangler deploy` on every push to main;
+// scripts/site.ps1 -Deploy does the same from this PC. Headers and redirects: site/_headers and site/_redirects.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "codex-tracker",
+  "compatibility_date": "2026-10-01",
+  "account_id": "7b9ee223c6a171ffa7672f2c34bf7c16",
+  "assets": {
+    "directory": "./artifacts/site",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "codex-tracker.zqsdev.com/*", "zone_name": "zqsdev.com" }],
+  "workers_dev": true,
+  "preview_urls": false
+}

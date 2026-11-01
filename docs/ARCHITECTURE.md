@@ -57,7 +57,7 @@ Le français est la source et le repli : `Loc.T` traduit un texte, `Loc.F` un mo
 
 ## Site public et publication
 
-`site/` contient le site https://codex-tracker.zqsdev.com ; `scripts/build-site.py` le construit (version de la dernière Release publiée, Cloudflare Web Analytics sans cookie) et Netlify le reconstruit à chaque push sur `main` (`netlify.toml`). Compilation, tests, paquets et Releases : voir [AGENTS.md](../AGENTS.md) et `scripts/release.ps1`.
+`site/` contient le site https://codex-tracker.zqsdev.com ; `scripts/build-site.py` le construit (version de la dernière Release publiée, Cloudflare Web Analytics sans cookie) et Cloudflare Workers Builds le reconstruit et le publie à chaque push sur `main` (`wrangler.jsonc`). Compilation, tests, paquets et Releases : voir [AGENTS.md](../AGENTS.md) et `scripts/release.ps1`.
 
 ## Nouveaux resets en réserve et Google Agenda
 

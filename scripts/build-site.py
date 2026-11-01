@@ -1,7 +1,7 @@
-"""Builds the public site into artifacts/site (local or on Netlify, Linux or Windows, standard library only).
+"""Builds the public site into artifacts/site (local or on Cloudflare Workers Builds, Linux or Windows, standard library only).
 
 Injects the latest published release version (Directory.Build.props when GitHub is unreachable) and today's date, copies the demo screenshots from docs/ and the
-embedded Roboto fonts, then writes robots.txt and sitemap.xml. With --indexnow (or on a Netlify production build)
+embedded Roboto fonts, then writes robots.txt and sitemap.xml. With --indexnow (or on a Workers Builds build of main)
 it notifies IndexNow (Bing, Yandex, Seznam, Naver) of the main pages.
 """
 import datetime
@@ -90,6 +90,12 @@ def build():
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
                 'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + "\n".join(urls) + "\n</urlset>\n")
 
+    # Cloudflare adds the trailing slash with a 307; keep the permanent 301 for every folder page.
+    folders = sorted("/" + os.path.relpath(folder, OUT).replace(os.sep, "/") for folder, _, files in os.walk(OUT)
+                     if folder != OUT and "index.html" in files)
+    with open(os.path.join(OUT, "_redirects"), "a", encoding="utf-8", newline="\n") as f:
+        f.write("".join(f"{path} {path}/ 301\n" for path in folders))
+
     for folder, _, files in os.walk(OUT):
         for name in files:
             if name.endswith((".html", ".txt")) and "{{" in open(os.path.join(folder, name), encoding="utf-8").read():
@@ -115,5 +121,5 @@ def indexnow(published):
 
 if __name__ == "__main__":
     pages = build()
-    if "--indexnow" in sys.argv or os.environ.get("CONTEXT") == "production":
+    if "--indexnow" in sys.argv or os.environ.get("WORKERS_CI_BRANCH") == "main":
         indexnow(pages)

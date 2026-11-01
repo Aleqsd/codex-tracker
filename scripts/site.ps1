@@ -3,16 +3,15 @@
 .SYNOPSIS
 Builds the public site (codex-tracker.zqsdev.com) into artifacts/site, and publishes it with -Deploy.
 .DESCRIPTION
-The build itself is scripts/build-site.py, the same one Netlify runs on every push to main (netlify.toml):
-pushing is enough to publish. -Deploy publishes the local build right away through the Netlify CLI
-(`netlify login` needed), for example to check a change before pushing it; -Draft gives a preview URL instead.
+The build itself is scripts/build-site.py, the same one Cloudflare Workers Builds runs on every push to main
+(wrangler.jsonc): pushing is enough to publish. -Deploy publishes the local build right away with `npx wrangler deploy`
+(`npx wrangler login` needed), for example after a release; -Draft serves it locally with `wrangler dev` instead.
 #>
 [CmdletBinding()]
 param(
     [switch]$Deploy,
     [switch]$Draft,
-    [string]$Python = 'python',
-    [string]$Site = '4614a772-0a46-40bd-a0d3-85f95dd514b7' # Netlify project codex-tracker-zqsdev
+    [string]$Python = 'python'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -21,9 +20,8 @@ $production = $Deploy -and -not $Draft
 & $Python (Join-Path $root 'scripts/build-site.py') @(if ($production) { '--indexnow' })
 if ($LASTEXITCODE) { throw 'Construction du site échouée.' }
 if ($Deploy -or $Draft) {
-    $netlify = (Get-Command netlify -ErrorAction Stop).Source
-    $arguments = @('deploy', '--dir', $out, '--site', $Site, '--message', 'Déploiement local')
-    if ($production) { $arguments += '--prod' }
-    & $netlify @arguments
-    if ($LASTEXITCODE) { throw 'Déploiement Netlify échoué.' }
+    Push-Location $root
+    try { & npx --yes wrangler $(if ($production) { 'deploy' } else { 'dev' }) }
+    finally { Pop-Location }
+    if ($LASTEXITCODE) { throw 'Déploiement Cloudflare échoué.' }
 }

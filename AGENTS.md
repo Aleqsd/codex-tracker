@@ -12,7 +12,7 @@ Application Windows 11 .NET 10 / WPF, interface française (anglais disponible).
 
 ## Commandes
 
-Prérequis : Windows, SDK .NET 10, Python 3 (Pillow pour les visuels), `gh` connecté ; Netlify CLI et SDK Windows (makeappx) pour le site et le Store.
+Prérequis : Windows, SDK .NET 10, Python 3 (Pillow pour les visuels), `gh` connecté ; Node (pour `npx wrangler`, `wrangler login` une fois) et SDK Windows (makeappx) pour le site et le Store.
 
 ```powershell
 # Développement
@@ -29,7 +29,7 @@ Prérequis : Windows, SDK .NET 10, Python 3 (Pillow pour les visuels), `gh` conn
 # Distribution et visibilité
 ./scripts/winget.ps1 [-Submit]                           # manifestes winget ; -Submit met à jour la demande ouverte
 ./scripts/build-msix.ps1                                 # paquet Microsoft Store (docs/STORE.md)
-./scripts/site.ps1 [-Draft|-Deploy]                      # site local, aperçu Netlify ou publication immédiate
+./scripts/site.ps1 [-Draft|-Deploy]                      # site local, aperçu wrangler dev ou publication immédiate
 ./scripts/stats.ps1 [-Json]                              # téléchargements, trafic GitHub, visites du site
 ```
 
@@ -63,7 +63,7 @@ Modifier une règle métier : tests de ses limites et erreurs. Modifier une comm
 ## Présentation publique et distribution
 
 - **README** bref, orienté installation et usage : `README.md` (français) et `README.en.md`, alignés sur les fonctions réelles ; détails dans docs/UTILISATION.md.
-- **Site** https://codex-tracker.zqsdev.com : sources `site/` (accueil en six langues, guides anglais, `/install/`, confidentialité, `llms.txt`), construit par `scripts/build-site.py` sur Netlify à chaque push sur main (dernière version publiée, sitemap, IndexNow, Cloudflare Web Analytics sans cookie). DNS zqsdev.com chez Netlify ; Search Console vérifiée pour le domaine. Aucun JavaScript propre, en-têtes de sécurité dans `site/_headers`. Garder les six langues alignées quand une fonction change.
+- **Site** https://codex-tracker.zqsdev.com : sources `site/` (accueil en six langues, guides anglais, `/install/`, confidentialité, `llms.txt`), construit par `scripts/build-site.py` et servi par le Worker Cloudflare à fichiers statiques `codex-tracker` (`wrangler.jsonc`) : Workers Builds le reconstruit et le publie à chaque push sur main, `scripts/site.ps1 -Deploy` depuis ce PC et après chaque release (dernière version publiée, sitemap, IndexNow, Cloudflare Web Analytics sans cookie). DNS zqsdev.com chez Cloudflare ; Search Console vérifiée pour le domaine. Aucun JavaScript propre, en-têtes de sécurité dans `site/_headers`, redirections dans `site/_redirects`. Garder les six langues alignées quand une fonction change.
 - **Installation** : installateur Inno (utilisateur courant, sans droits administrateur), ZIP portable, `irm https://codex-tracker.zqsdev.com/install.ps1 | iex` (empreinte GitHub vérifiée) ou « demander à Codex » via `/install/`.
 - **Distribution** : winget (demande microsoft/winget-pkgs#438574, `scripts/winget.ps1 -Submit`), Microsoft Store (docs/STORE.md, le Store signe le MSIX). Pas de certificat de signature : SmartScreen peut avertir l’installateur GitHub.
 - **Visuels** exclusivement fictifs : `scripts/visuals.ps1` régénère hors écran le visuel principal, les captures du guide, le GIF, la pastille et l’image de partage.

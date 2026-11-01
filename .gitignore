@@ -35,3 +35,4 @@ snapshots.json.bak*
 snapshots.json.corrupt-*
 
 .netlify/
+.wrangler/

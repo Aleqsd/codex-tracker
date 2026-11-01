@@ -9,7 +9,7 @@ and a notes file holding only the feature bullets: download links and the ZIP ch
 Refuses to start while Final Fantasy XIV runs: the WPF suite activates real windows.
 -Quick skips the checks that the changes since the last release tag cannot affect: the WPF suite unless a view,
 the tray or XAML changed, the Claude collectors unless the Codex project changed, the MCP start delay unless Mcp/ changed.
-A change to the site, docs or scripts alone needs no release: Netlify rebuilds the site on push.
+A change to the site, docs or scripts alone needs no release: Cloudflare Workers Builds rebuilds the site on push.
 After publishing, the winget manifests (artifacts/winget) and the Store package (artifacts/*.msix) of the version are
 prepared; submitting them stays explicit (scripts/winget.ps1 -Submit, Partner Center).
 The installer lifecycle needs a disposable Windows profile and is not run on this PC (docs/PUBLISHED-UPDATE-TEST.md).
@@ -140,12 +140,13 @@ try {
         }
         $report.published = $true
         # The site shows the latest published release: rebuild it from main now that this one exists.
-        if (Get-Command netlify -ErrorAction SilentlyContinue) {
-            $site = @{ site_id = '4614a772-0a46-40bd-a0d3-85f95dd514b7' } | ConvertTo-Json -Compress
-            & netlify api createSiteBuild --data $site *> $null
-            Write-Host ($LASTEXITCODE ? 'Site non reconstruit : relancer scripts/site.ps1 -Deploy.' : 'Site en reconstruction sur Netlify.') -ForegroundColor ($LASTEXITCODE ? 'Yellow' : 'Gray')
-            $global:LASTEXITCODE = 0
+        try {
+            & (Join-Path $PSScriptRoot 'site.ps1') -Deploy *> $null
+            Write-Host 'Site republié sur Cloudflare.' -ForegroundColor Gray
+        } catch {
+            Write-Host 'Site non republié : relancer scripts/site.ps1 -Deploy.' -ForegroundColor Yellow
         }
+        $global:LASTEXITCODE = 0
     }
     $report | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $root "artifacts/release-$Version.json") -Encoding utf8
     if ($Publish) {

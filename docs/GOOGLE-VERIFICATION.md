@@ -4,7 +4,7 @@ Le client « Codex Tracker » (projet Google Cloud `codex-tracker-513408`) deman
 
 ## Déjà en place
 
-- Domaine `zqsdev.com` validé dans Search Console (enregistrement TXT chez Netlify DNS, à ne pas supprimer).
+- Domaine `zqsdev.com` validé dans Search Console (enregistrement TXT dans le DNS Cloudflare de zqsdev.com, à ne pas supprimer).
 - Page d’accueil https://codex-tracker.zqsdev.com/ et politique de confidentialité https://codex-tracker.zqsdev.com/privacy/ (utilisation limitée des données Google), même domaine autorisé `zqsdev.com`.
 - Marque OAuth : nom, adresse d’assistance, accueil, confidentialité, domaine autorisé.
 - **Data Access** : `openid`, `userinfo.email`, `calendar.events.owned`, `gmail.send` déclarés, justification enregistrée (texte ci-dessous).
