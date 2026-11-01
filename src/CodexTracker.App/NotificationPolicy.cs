@@ -14,7 +14,24 @@ internal static class NotificationPolicy
             _ => false
         };
 
-    public static (string Title, string Body) Compose(QuotaNotification notification, TrackerState state, TrackerPreferences? preferences = null)
+    public static (string Title, string Body) Compose(QuotaNotification notification, TrackerState state, TrackerPreferences? preferences = null, DateTimeOffset? now = null)
+    {
+        var (title, body) = Text(notification, state, preferences);
+        if (notification.Kind == NotificationKind.Reset) return (title, body);
+        var account = state.Accounts.FirstOrDefault(a => a.Profile.Id == notification.AccountId);
+        return account is not null && Suggestion(state, account, preferences ?? new(), now ?? DateTimeOffset.UtcNow) is { } advice ? (title, body + "\n" + advice) : (title, body);
+    }
+
+    /// <summary>"Switch to X": the same tool's account with clearly more quota, when this one is nearly empty.</summary>
+    public static string? Suggestion(TrackerState state, AccountState account, TrackerPreferences preferences, DateTimeOffset now)
+    {
+        if (AccountSuggestions.For(state, account, now) is not { } best) return null;
+        var name = PrivacyText.Account(best.Account.Profile, state, preferences);
+        return best.Estimated ? Loc.F("Passez sur {0} : probablement rechargé, à confirmer.", name)
+            : Loc.F("Passez sur {0} : il lui reste {1:0} %.", name, Math.Floor(best.Remaining));
+    }
+
+    private static (string Title, string Body) Text(QuotaNotification notification, TrackerState state, TrackerPreferences? preferences)
     {
         var account = state.Accounts.FirstOrDefault(a => a.Profile.Id == notification.AccountId);
         // Use the same display name as the account panel.

@@ -29,6 +29,19 @@ Aucun runtime .NET séparé, compte supplémentaire ou serveur réseau n’est n
 - « Connecte Google Agenda avec les e-mails, puis ajoute mes resets en réserve. »
 - « Envoie-moi un e-mail de test depuis Gmail. »
 
+## Ligne de commande
+
+Les mêmes outils existent sans client MCP, pour un agent, un script ou un terminal, avec l’accès Assistants activé :
+
+```powershell
+CodexTracker.exe --cli list_resets
+CodexTracker.exe --cli test_notification channel=Email
+CodexTracker.exe --cli update_preferences '@reglages.json'
+CodexTracker.exe --cli help
+```
+
+Mêmes noms et paramètres que les outils MCP, en `clé=valeur` (valeurs `true`, nombres et JSON reconnus), objet JSON ou `@fichier.json`. Sortie JSON sur stdout ; code 0 en cas de succès, 1 pour une erreur ou un refus, 2 pour une commande ou des arguments invalides. Pour une modification, `expectedRevision` est lu automatiquement s’il est omis et `requestId` est généré : fournir les deux pour répéter une demande sans doublon. Le tracker est démarré en arrière-plan si nécessaire. Depuis cmd.exe, rediriger la sortie (`| more`) pour attendre la réponse.
+
 ## Contrat des outils
 
 Lecture : `get_status`, `list_accounts`, `list_resets`, `get_notification_history`, `get_preferences`, `get_reminder_rules`, `get_channels`, `get_action_status`, `get_google_calendar`.

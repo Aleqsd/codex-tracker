@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Tracker – límites de uso de Codex y Claude Code</title>
+<meta name="description" content="App gratuita para Windows que muestra cuánto uso de Codex y Claude Code te queda: límites de 5 horas y semanales, hora exacta de restablecimiento, créditos guardados, recordatorios y Google Calendar. Local y sin cuenta.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/es/">
+<link rel="alternate" hreflang="en" href="https://codex-tracker.zqsdev.com/">
+<link rel="alternate" hreflang="fr" href="https://codex-tracker.zqsdev.com/fr/">
+<link rel="alternate" hreflang="es" href="https://codex-tracker.zqsdev.com/es/">
+<link rel="alternate" hreflang="de" href="https://codex-tracker.zqsdev.com/de/">
+<link rel="alternate" hreflang="pt-BR" href="https://codex-tracker.zqsdev.com/pt/">
+<link rel="alternate" hreflang="ja" href="https://codex-tracker.zqsdev.com/ja/">
+<link rel="alternate" hreflang="x-default" href="https://codex-tracker.zqsdev.com/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#101114">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/styles.css">
+<link rel="preload" href="/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Codex Tracker">
+<meta property="og:title" content="Codex Tracker – cuánto uso de Codex y Claude Code te queda">
+<meta property="og:description" content="Tus límites de 5 horas y semanales, la hora del próximo restablecimiento y un recordatorio en el momento justo, en la barra de tareas de Windows. Gratis y local.">
+<meta property="og:url" content="https://codex-tracker.zqsdev.com/es/">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Panel de Codex Tracker con cuentas de demostración, calendario semanal de restablecimientos y vista previa de la barra de tareas">
+<meta property="og:locale" content="es_ES">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://codex-tracker.zqsdev.com/#app",
+      "name": "Codex Tracker",
+      "description": "Aplicación para la barra de tareas de Windows que controla los límites de uso de OpenAI Codex y Claude Code: cuotas de 5 horas y semanales, hora exacta de restablecimiento, créditos de restablecimiento de Codex guardados con su caducidad, recordatorios (Windows, correo, SMS, llamada), alertas de Google Calendar y Gmail, y un servidor MCP local para asistentes de programación.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Windows 11 x64",
+      "softwareVersion": "{{VERSION}}",
+      "datePublished": "2026-09-20",
+      "dateModified": "{{DATE}}",
+      "inLanguage": ["en", "fr"],
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+      "downloadUrl": "https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe",
+      "installUrl": "https://github.com/Aleqsd/codex-tracker/releases/latest",
+      "codeRepository": "https://github.com/Aleqsd/codex-tracker",
+      "screenshot": ["https://codex-tracker.zqsdev.com/img/hero.png", "https://codex-tracker.zqsdev.com/img/dashboard.png", "https://codex-tracker.zqsdev.com/img/resets-week.png"],
+      "featureList": [
+        "Cuota restante de Codex y Claude Code en el icono de la barra de tareas de Windows",
+        "Límites de uso de 5 horas y semanales para cada cuenta",
+        "Hora exacta de restablecimiento de cada límite, en lista o en vista semanal",
+        "Créditos de restablecimiento de Codex guardados, con su fecha de caducidad",
+        "Notificaciones antes de un restablecimiento, por debajo del 20/10/5 % y cuando llega un nuevo crédito de restablecimiento",
+        "Sincronización con Google Calendar y alertas por correo de Gmail para los créditos de restablecimiento a punto de caducar",
+        "Recordatorios opcionales por SMS, llamada y correo con tu propia cuenta de Twilio o SendGrid",
+        "Servidor MCP local para que los asistentes de programación lean las cuotas y cambien los ajustes",
+        "Sin cuenta ni servidor: los datos se quedan en el PC"
+      ],
+      "author": { "@id": "https://codex-tracker.zqsdev.com/#author" },
+      "publisher": { "@id": "https://codex-tracker.zqsdev.com/#author" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://codex-tracker.zqsdev.com/#author",
+      "name": "Alexandre Do-O Almeida",
+      "url": "https://github.com/Aleqsd"
+    },
+    {
+      "@type": "FAQPage",
+      "inLanguage": "es",
+      "mainEntity": [
+        { "@type": "Question", "name": "¿Cómo veo cuánto uso de Codex me queda?", "acceptedAnswer": { "@type": "Answer", "text": "Instala Codex Tracker en Windows y sigue usando Codex como siempre. El icono de la bandeja muestra el porcentaje restante de la cuenta activa; pasa el ratón por encima para ver los límites de 5 horas y semanal y la hora del próximo restablecimiento." } },
+        { "@type": "Question", "name": "¿Cuándo se restablece mi límite semanal de Codex?", "acceptedAnswer": { "@type": "Answer", "text": "Cada cuenta de Codex tiene su propia hora de restablecimiento. Codex Tracker la lee del propio Codex y muestra la fecha y la hora exactas de cada cuenta, en lista o en vista semanal, con un recordatorio opcional." } },
+        { "@type": "Question", "name": "¿Funciona con Claude Code?", "acceptedAnswer": { "@type": "Answer", "text": "Sí. La app de escritorio de Claude se detecta automáticamente. Para Claude Code en una terminal, copia el ajuste de línea de estado que se ofrece en Settings → General → Claude Code." } },
+        { "@type": "Question", "name": "¿Qué son los créditos de restablecimiento de Codex?", "acceptedAnswer": { "@type": "Answer", "text": "Codex puede conceder créditos de restablecimiento guardados que recargan un límite cuando quieras y caducan pasado un tiempo. Codex Tracker los muestra con su caducidad, te avisa cuando llega uno nuevo, puede añadirlo a Google Calendar y te aconseja usarlo antes de que se desperdicie." } },
+        { "@type": "Question", "name": "¿Codex Tracker es gratuito y privado?", "acceptedAnswer": { "@type": "Answer", "text": "Sí. Es gratuito y de código abierto (MIT). No hay registro ni servidor: lee las cuotas que Codex y Claude ya conocen en tu PC, nunca tus conversaciones ni tus contraseñas." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/es/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Principal">
+      <a href="#features" class="hide-sm">Funciones</a>
+      <a href="#faq" class="hide-sm">Preguntas</a>
+      <a href="https://github.com/Aleqsd/codex-tracker" class="hide-sm">GitHub</a>
+      <a href="/" hreflang="en" lang="en" title="English">EN</a>
+      <a href="/fr/" hreflang="fr" lang="fr" title="Français">FR</a>
+      <a href="/es/" hreflang="es" lang="es" aria-current="page" title="Español">ES</a>
+      <a href="/de/" hreflang="de" lang="de" title="Deutsch">DE</a>
+      <a href="/pt/" hreflang="pt-BR" lang="pt-BR" title="Português">PT</a>
+      <a href="/ja/" hreflang="ja" lang="ja" title="日本語">JA</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" style="border:0">
+      <span class="eyebrow">Gratis · Windows 11 · Codex y Claude Code</span>
+      <h1>Sabe siempre cuánto uso de Codex y Claude Code te queda</h1>
+      <p class="lead">Codex Tracker muestra tus límites de uso de 5 horas y semanales en la barra de tareas de Windows, te dice exactamente cuándo se restablece cada uno y te avisa en el momento justo. Sin cuenta, sin servidor, sin nada que configurar.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Descargar para Windows</a>
+        <a class="button" href="https://github.com/Aleqsd/codex-tracker">Ver en GitHub</a>
+      </div>
+      <p class="meta">Versión {{VERSION}} · Windows 11 x64 · Interfaz en inglés o francés · Licencia MIT</p>
+      <img class="shot" src="/img/hero.png" alt="Codex Tracker: panel oscuro, calendario semanal de restablecimientos y vista previa de la barra de tareas, con cuentas de demostración" width="1274" height="984" fetchpriority="high">
+    </section>
+
+    <section id="problem">
+      <h2>Los límites de Codex y Claude Code, a la vista</h2>
+      <p class="sub">OpenAI Codex y Claude Code de Anthropic limitan tu uso dos veces: un límite de <strong>5 horas</strong> y otro <strong>semanal</strong>. Cuando se agota, toca esperar a que se recargue, y ninguna de las dos herramientas te dice con claridad cómo vas en varias cuentas. Codex Tracker responde a tres preguntas de un vistazo.</p>
+      <div class="grid">
+        <div class="card"><h3>¿Cuánto me queda?</h3><p>El porcentaje restante aparece en el propio icono de la barra de tareas. Pasa el ratón por encima para ver los dos límites de la cuenta activa.</p></div>
+        <div class="card"><h3>¿Cuándo se restablece?</h3><p>La hora exacta de restablecimiento de cada límite, para cada cuenta, en lista o en un calendario semanal.</p></div>
+        <div class="card"><h3>¿Qué cuenta uso?</h3><p>Todas tus cuentas de Codex y Claude Code una al lado de otra, personales y de trabajo, cada una con la fecha de su última lectura.</p></div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Todo sobre tus cuotas, nada más</h2>
+      <div class="split">
+        <div>
+          <h3>Tus cuentas de un vistazo</h3>
+          <p>Un anillo para la cuenta activa, una barra para las demás y la antigüedad de cada lectura. Las cuentas inactivas conservan su último valor; cuando pasa su hora de restablecimiento aparecen como «probablemente recargada».</p>
+        </div>
+        <img src="/img/dashboard.png" alt="Panel con cuentas de demostración de Codex y Claude Code" loading="lazy" width="760" height="620">
+      </div>
+      <div class="split" style="margin-top:40px">
+        <img src="/img/resets-week.png" alt="Vista semanal de los próximos restablecimientos y de los créditos guardados, cuentas de demostración" loading="lazy" width="760" height="620">
+        <div>
+          <h3>Calendario de restablecimientos y créditos guardados</h3>
+          <p>Los próximos restablecimientos día a día, además de tus créditos de restablecimiento de Codex con su caducidad. Recibe un aviso cuando llega un crédito nuevo y un consejo para usarlo antes de que caduque sin aprovecharse.</p>
+        </div>
+      </div>
+      <div class="split" style="margin-top:40px">
+        <div>
+          <h3>Google Calendar y Gmail, en un clic</h3>
+          <p>Conecta Google Calendar y cada crédito guardado aparece en tu calendario con recordatorios, y se elimina cuando lo usas. Un correo desde tu propio Gmail el día antes de que caduque un crédito.</p>
+        </div>
+        <img src="/img/calendar.png" alt="Ajustes de Google Calendar en Codex Tracker, datos de demostración" loading="lazy" width="870" height="900">
+      </div>
+      <div class="grid" style="margin-top:40px">
+        <div class="card"><h3>Recordatorios a tu medida</h3><p>Antes de un restablecimiento, por debajo del 20, 10 o 5 %, antes de quedarte sin uso o cuando otra cuenta puede haberse recargado. Notificaciones de Windows por defecto; SMS, llamada o correo con tu propia cuenta de Twilio o SendGrid.</p></div>
+        <div class="card"><h3>Para asistentes de programación</h3><p>Un servidor MCP local, desactivado por defecto, permite a tu agente de programación leer las cuotas, planificar en torno a los restablecimientos y cambiar ajustes, con confirmación local para todo lo externo.</p></div>
+        <div class="card"><h3>Discreta y nativa</h3><p>Clara u oscura como Windows, en inglés o francés, se inicia con Windows y se actualiza sola. Al cerrar la ventana, sigue junto al reloj.</p></div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Instalación en tres pasos</h2>
+      <ol class="steps">
+        <li><strong>Descarga y ejecuta</strong> el instalador. Sin permisos de administrador ni nada más que instalar.</li>
+        <li><strong>Usa Codex o Claude Code como siempre.</strong> La cuenta con la sesión iniciada aparece sola; las demás se añaden cuando las abres.</li>
+        <li><strong>Mantén el icono visible</strong> arrastrándolo fuera del menú ^ de iconos ocultos de la barra de tareas.</li>
+      </ol>
+      <p>¿Prefieres no usar instalador? Hay un ZIP portable en la <a href="https://github.com/Aleqsd/codex-tracker/releases">página de versiones</a>. Los ejecutables no tienen firma de código, así que SmartScreen puede mostrar un aviso en el primer inicio.</p>
+    </section>
+
+    <section id="privacy">
+      <h2>Tus datos se quedan en tu PC</h2>
+      <div class="grid">
+        <div class="card"><h3>Sin registro ni servidor</h3><p>Todo se guarda localmente. Los secretos opcionales se cifran con DPAPI de Windows.</p></div>
+        <div class="card"><h3>Sin pedir contraseñas</h3><p>Lee las cuotas que Codex y Claude ya conocen. Nunca tus conversaciones, y nunca cambia de cuenta por ti.</p></div>
+        <div class="card"><h3>Pocas conexiones, y elegidas</h3><p>Comprobación de actualizaciones en GitHub y anuncios públicos de restablecimiento, ambos opcionales. Google solo si lo conectas.</p></div>
+      </div>
+      <p style="margin-top:20px"><a href="/privacy/" hreflang="en">Leer la política de privacidad (en inglés)</a></p>
+    </section>
+
+    <section id="compare">
+      <h2>¿Por qué no mirar simplemente la página de uso?</h2>
+      <table class="compare">
+        <thead><tr><th></th><th>Codex Tracker</th><th>Páginas de uso integradas</th></tr></thead>
+        <tbody>
+          <tr><td>Siempre visible</td><td>Porcentaje en la barra de tareas</td><td>Abrir una página o ejecutar un comando</td></tr>
+          <tr><td>Varias cuentas</td><td>Una al lado de otra, Codex y Claude Code</td><td>Una sola cuenta con sesión iniciada a la vez</td></tr>
+          <tr><td>Recordatorios de restablecimiento</td><td>Windows, Google Calendar, correo, SMS</td><td>Ninguno</td></tr>
+          <tr><td>Créditos de restablecimiento guardados</td><td>Caducidad, alertas y consejo de «úsalo ahora»</td><td>Solo listados</td></tr>
+          <tr><td>Acceso para agentes</td><td>Servidor MCP local</td><td>Ninguno</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2>Preguntas frecuentes</h2>
+      <details><summary>¿Cómo veo cuánto uso de Codex me queda?</summary><p>Instala Codex Tracker y sigue usando Codex como siempre. El icono de la bandeja muestra el porcentaje restante de la cuenta activa; pasa el ratón por encima para ver los límites de 5 horas y semanal y la hora del próximo restablecimiento.</p></details>
+      <details><summary>¿Cuándo se restablece mi límite semanal de Codex?</summary><p>Cada cuenta tiene su propia hora de restablecimiento. Codex Tracker la lee de Codex y muestra la fecha y la hora exactas de cada cuenta, con un recordatorio opcional.</p></details>
+      <details><summary>¿Funciona con Claude Code?</summary><p>Sí. La app de escritorio de Claude se detecta automáticamente. Para Claude Code en una terminal, copia el ajuste de línea de estado que se ofrece en Settings → General → Claude Code.</p></details>
+      <details><summary>¿Qué son los créditos de restablecimiento de Codex?</summary><p>Codex puede conceder créditos de restablecimiento guardados que recargan un límite cuando quieras y caducan pasado un tiempo. Codex Tracker los muestra con su caducidad, te avisa cuando llega uno, lo añade a Google Calendar y te aconseja usarlo antes de que se desperdicie.</p></details>
+      <details><summary>¿Por qué solo se actualiza la cuenta abierta?</summary><p>El tracker lee la cuenta activa en Codex y en Claude. Las demás cuentas conservan su última lectura fechada hasta que vuelvas a abrirlas.</p></details>
+      <details><summary>¿Tiene que quedarse abierto?</summary><p>Para los recordatorios, sí: se queda discretamente en la barra de tareas y puede iniciarse con Windows. El PC debe estar encendido.</p></details>
+      <details><summary>¿Es gratis?</summary><p>Sí, gratis y de código abierto con licencia MIT. Solo los SMS, las llamadas y los correos de SendGrid opcionales pasan por tus propias cuentas de proveedor y sus tarifas.</p></details>
+      <details><summary>¿Está afiliado a OpenAI o Anthropic?</summary><p>No. Codex Tracker es un proyecto independiente. Codex y Claude son marcas comerciales de sus respectivos propietarios.</p></details>
+    </section>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>© 2026 Codex Tracker · MIT · Independiente, sin afiliación con OpenAI ni Anthropic</span>
+    <span><a href="/privacy/" hreflang="en">Privacidad (EN)</a> · <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md">Guía de uso (FR)</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Soporte</a> · <a href="/" hreflang="en">English</a></span>
+  </div>
+</footer>
+</body>
+</html>

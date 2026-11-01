@@ -28,7 +28,7 @@ Get-ChildItem $out -Recurse -File -Include *.html, *.txt | ForEach-Object {
 }
 
 $images = New-Item -ItemType Directory -Force (Join-Path $out 'img')
-foreach ($name in 'hero', 'dashboard', 'resets-week', 'calendar') { Copy-Item (Join-Path $root "docs/$name.png") $images }
+foreach ($name in 'hero', 'dashboard', 'resets-week', 'calendar', 'social-preview') { Copy-Item (Join-Path $root "docs/$name.png") $images }
 $fonts = New-Item -ItemType Directory -Force (Join-Path $out 'fonts')
 Copy-Item (Join-Path $root 'src/CodexTracker.App/Assets/Fonts/*.ttf') $fonts
 
@@ -38,17 +38,26 @@ try { $bitmap = $icon.ToBitmap(); $bitmap.Save((Join-Path $out 'icon.png'), [Sys
 finally { $icon.Dispose() }
 
 [IO.File]::WriteAllText((Join-Path $out 'robots.txt'), "User-agent: *`nAllow: /`n`nSitemap: $origin/sitemap.xml`n")
-$pages = @(
-    @{ en = '/'; fr = '/fr/'; priority = '1.0' },
-    @{ en = '/privacy/'; fr = '/fr/confidentialite/'; priority = '0.5' }
+# Translations of one page share their hreflang alternates; any other page is listed on its own.
+$groups = @(
+    [ordered]@{ en = '/'; fr = '/fr/'; es = '/es/'; de = '/de/'; 'pt-BR' = '/pt/'; ja = '/ja/' },
+    [ordered]@{ en = '/privacy/'; fr = '/fr/confidentialite/' }
 )
-$urls = foreach ($page in $pages) {
-    foreach ($own in 'en', 'fr') {
-        $alternates = ($pages | Where-Object { $_ -eq $page } | ForEach-Object {
-            "    <xhtml:link rel=`"alternate`" hreflang=`"en`" href=`"$origin$($_.en)`"/>`n    <xhtml:link rel=`"alternate`" hreflang=`"fr`" href=`"$origin$($_.fr)`"/>"
-        })
-        "  <url>`n    <loc>$origin$($page[$own])</loc>`n    <lastmod>$date</lastmod>`n    <priority>$($page.priority)</priority>`n$alternates`n  </url>"
+$published = Get-ChildItem $out -Recurse -File -Filter index.html | ForEach-Object {
+    '/' + [IO.Path]::GetRelativePath($out, $_.DirectoryName).Replace('\', '/').Trim('.').Trim('/') + '/' -replace '^//$', '/'
+}
+$grouped = $groups | ForEach-Object { $_.Values }
+$entries = @(foreach ($group in $groups) {
+    $present = [ordered]@{}; foreach ($k in $group.Keys) { if ($published -contains $group[$k]) { $present[$k] = $group[$k] } }
+    foreach ($path in $present.Values) { @{ Path = $path; Alternates = $present } }
+}) + @($published | Where-Object { $_ -notin $grouped } | Sort-Object | ForEach-Object { @{ Path = $_; Alternates = $null } })
+$urls = foreach ($entry in $entries) {
+    $priority = $entry.Path -eq '/' ? '1.0' : $entry.Path -match '^/(fr|es|de|pt|ja)/$' ? '0.9' : $entry.Path -like '/guides/*' ? '0.8' : '0.5'
+    $links = if ($entry.Alternates) {
+        (@($entry.Alternates.Keys | ForEach-Object { "    <xhtml:link rel=`"alternate`" hreflang=`"$_`" href=`"$origin$($entry.Alternates[$_])`"/>" }) +
+            "    <xhtml:link rel=`"alternate`" hreflang=`"x-default`" href=`"$origin$(@($entry.Alternates.Values)[0])`"/>") -join "`n"
     }
+    "  <url>`n    <loc>$origin$($entry.Path)</loc>`n    <lastmod>$date</lastmod>`n    <priority>$priority</priority>$(if ($links) { "`n$links" })`n  </url>"
 }
 $sitemap = "<?xml version=`"1.0`" encoding=`"UTF-8`"?>`n<urlset xmlns=`"http://www.sitemaps.org/schemas/sitemap/0.9`" xmlns:xhtml=`"http://www.w3.org/1999/xhtml`">`n$($urls -join "`n")`n</urlset>`n"
 [IO.File]::WriteAllText((Join-Path $out 'sitemap.xml'), $sitemap)

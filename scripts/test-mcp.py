@@ -69,6 +69,19 @@ try:
     check("connected" in google and "reserves" in google and "token" not in json.dumps(google).lower(), "Google calendar state readable without tokens")
     status = a.tool("get_status")["result"]
     check(bool(status["revision"]), "cold background startup responds with revision")
+    def cli(*command):
+        r = subprocess.run(base + ["--cli", *command], capture_output=True, text=True, encoding="utf-8", timeout=45, creationflags=subprocess.CREATE_NO_WINDOW)
+        return r.returncode, r.stdout
+    code, out = cli("help")
+    check(code == 0 and all(n in out for n in names), "CLI exposes every MCP tool by name")
+    code, out = cli("get_status")
+    check(code == 0 and json.loads(out)["result"]["revision"], "CLI reads status as JSON and exits")
+    code, out = cli("test_notification", "channel=Windows")
+    check(code == 0 and json.loads(out)["result"]["status"] in ("completed", "pending"), "CLI change fetches the revision itself")
+    code, out = cli("open_page", "page=Nope")
+    check(code == 1 and "error" in json.loads(out), "CLI reports refusals with exit code 1")
+    code, out = cli("unknown_command")
+    check(code == 2, "CLI rejects unknown commands with exit code 2")
     check(len(a.tool("list_accounts")["result"]["accounts"]) > 0, "fictional accounts readable")
     check(len(a.tool("list_resets")["result"]["resets"]) > 0, "reset types and dates readable")
     b = Client()

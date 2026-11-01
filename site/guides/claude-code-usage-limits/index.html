@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code usage limits: 5-hour and weekly limits</title>
+<meta name="description" content="How Claude Code usage limits work on Pro, Max and Ultra: the 5-hour session and weekly limits, when they reset, how to check usage and what to do at the limit.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/guides/claude-code-usage-limits/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#101114">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/styles.css">
+<link rel="preload" href="/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Codex Tracker">
+<meta property="og:title" content="Claude Code usage limits: 5-hour and weekly limits">
+<meta property="og:description" content="The Claude Code 5-hour session and weekly limits, when they reset, how to check them with /usage or the status line, and your options at the limit.">
+<meta property="og:url" content="https://codex-tracker.zqsdev.com/guides/claude-code-usage-limits/">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/hero.png">
+<meta property="og:image:alt" content="Codex Tracker dashboard with demo accounts, weekly reset calendar and taskbar preview">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  .crumbs { font-size: 14px; color: var(--subtle); margin: 8px 0 0; }
+  .crumbs a { color: var(--muted); }
+  .prose h1 { font-size: clamp(30px, 4.6vw, 40px); margin: 18px 0 16px; max-width: none; }
+  .answer { background: var(--accent-soft); border-radius: 14px; padding: 18px 22px; margin: 0 0 8px; }
+  .updated { font-size: 14px; color: var(--subtle); }
+  .prose figure { margin: 28px 0; }
+  .prose figure img { border-radius: 12px; border: 1px solid var(--line); }
+  .prose figcaption { font-size: 14px; color: var(--subtle); margin-top: 8px; }
+  .cta { margin: 36px 0 8px; }
+  .cta h2 { margin-top: 0; }
+  .cta p { margin: 0 0 16px; }
+  .prose section.faq { padding: 8px 0 0; border: 0; }
+  .sources li { font-size: 15px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://codex-tracker.zqsdev.com/guides/claude-code-usage-limits/#article",
+      "headline": "Claude Code usage limits: 5-hour and weekly limits",
+      "description": "How Claude Code usage limits work on Pro, Max and Ultra: the 5-hour session and weekly limits, when they reset, how to check usage and what to do at the limit.",
+      "image": "https://codex-tracker.zqsdev.com/img/hero.png",
+      "inLanguage": "en",
+      "datePublished": "2026-11-01",
+      "dateModified": "{{DATE}}",
+      "author": { "@type": "Person", "@id": "https://codex-tracker.zqsdev.com/#author", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" },
+      "publisher": { "@type": "Person", "@id": "https://codex-tracker.zqsdev.com/#author", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://codex-tracker.zqsdev.com/guides/claude-code-usage-limits/" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://codex-tracker.zqsdev.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://codex-tracker.zqsdev.com/guides/" },
+        { "@type": "ListItem", "position": 3, "name": "Claude Code usage limits", "item": "https://codex-tracker.zqsdev.com/guides/claude-code-usage-limits/" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Does Claude Code have a weekly limit?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pro and Max plans have a five-hour session limit and a weekly limit; Ultra plans have a weekly limit. Max and Ultra also have a separate weekly limit for Fable. The weekly limit resets at a fixed time each week assigned to your account." } },
+        { "@type": "Question", "name": "When does the Claude Code 5-hour limit reset?", "acceptedAnswer": { "@type": "Answer", "text": "The five-hour period starts when you send your first message and resets in full five hours later. Settings > Usage on claude.ai shows the time remaining in the current session." } },
+        { "@type": "Question", "name": "Do Claude chats count against my Claude Code limit?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Anthropic says usage on claude.ai, Claude Code and Claude Desktop counts towards the same limits, and Claude Code in an IDE counts too." } },
+        { "@type": "Question", "name": "How do I check my Claude Code usage?", "acceptedAnswer": { "@type": "Answer", "text": "Run /usage in Claude Code to see plan usage limits, or open Settings > Usage on claude.ai for the current session and weekly limits with their reset times. A custom status line can also show both percentages." } },
+        { "@type": "Question", "name": "Does Codex Tracker work with Claude Code in the terminal?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Claude desktop app is detected automatically. For Claude Code in a terminal, copy the status line setting offered in Codex Tracker under Settings > General > Claude Code." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top">
+    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Main"><a href="/">Home</a><a href="/guides/">Guides</a><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></nav>
+  </header>
+  <main class="prose">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/guides/">Guides</a> › Claude Code usage limits</nav>
+    <h1>Claude Code usage limits: the 5-hour session and weekly limit</h1>
+    <p class="answer">On Claude Pro and Max plans, Claude Code is limited by a five-hour session limit and a weekly limit, shared with claude.ai and the Claude desktop app. The session period starts with your first message and resets five hours later; the weekly limit resets at a fixed time each week assigned to your account. Run <code>/usage</code> in Claude Code or open Settings &gt; Usage on claude.ai to see both.</p>
+    <p class="updated">Published 1 November 2026 · Updated {{DATE}} · Facts checked against Anthropic’s documentation on 1 November 2026.</p>
+
+    <h2>What are the Claude Code usage limits?</h2>
+    <p>Anthropic’s help center describes the limits for individual plans as follows (as of 1 November 2026):</p>
+    <ul>
+      <li><strong>Pro and Max:</strong> a five-hour session limit and a weekly limit.</li>
+      <li><strong>Ultra:</strong> a weekly limit. Verified Ultra accounts have no five-hour session limit.</li>
+      <li><strong>Max and Ultra:</strong> a separate weekly limit for Fable models, on top of the general weekly limit.</li>
+    </ul>
+    <p>Team and Enterprise plans are covered by a separate Anthropic article. Anthropic does not publish a fixed number of messages or hours for Claude Code. Usage depends on message and conversation length, attached files, tools, the model and the effort level, and Anthropic says it may adjust limits at its discretion.</p>
+    <p>The limits are shared. Usage on claude.ai, Claude Code and Claude Desktop counts towards the same limits, and so does Claude Code in VS Code, Cursor or JetBrains IDEs. A long chat in the browser leaves less for your terminal sessions.</p>
+
+    <h2>When do the Claude Code limits reset?</h2>
+    <ul>
+      <li><strong>Five-hour session limit:</strong> the period starts when you send your first message, and the limit resets in full five hours later. If you reach it earlier, you can use Claude again once it resets.</li>
+      <li><strong>Weekly limit:</strong> it resets at a fixed time each week that is assigned to your account. Anthropic says your reset day and time stay the same regardless of when you start using Claude or when your subscription began.</li>
+    </ul>
+
+    <h2>How do I check my Claude Code usage?</h2>
+    <ul>
+      <li><strong><code>/usage</code> in Claude Code</strong> shows session cost, plan usage limits and activity stats; on a Pro, Max, Ultra, Team or Enterprise plan it includes a breakdown of what counts against your limits. <code>/cost</code> and <code>/stats</code> are aliases, and it works while Claude is responding.</li>
+      <li><strong>Settings &gt; Usage on claude.ai</strong> shows progress bars: <em>Current session</em> with the time remaining, and <em>Weekly limits</em> with the next reset, for all models and for Fable where included.</li>
+      <li><strong>The status line.</strong> A custom Claude Code status line receives <code>rate_limits.five_hour</code> and <code>rate_limits.seven_day</code>, each with <code>used_percentage</code> and <code>resets_at</code>. The data is present only for claude.ai Pro, Max and Ultra subscribers, and only after the first response in a session.</li>
+    </ul>
+    <p>Anthropic’s Claude Code plan article also suggests <code>/status</code> to monitor your allocation; in the current command reference, <code>/status</code> shows version, model, account and connectivity, while <code>/usage</code> shows the limits. Claude Code also displays warnings as you approach any limit.</p>
+
+    <h2>What happens when you hit the Claude Code limit?</h2>
+    <p>If you reach the five-hour limit while Claude Code is partway through a response, it may finish the current step and show “Usage limit reached · wrapping up”. Anthropic describes this wrap-up allowance as small, capped and counted toward your weekly limit. On Pro it applies up to once per weekly period, on Max each time you reach a five-hour limit. It is rolling out gradually.</p>
+    <p>After that, the options depend on your plan:</p>
+    <ul>
+      <li><strong>Wait</strong> until the limit resets.</li>
+      <li><strong>Enable usage credits</strong> to keep going on your plan after the session or weekly limit.</li>
+      <li><strong>Upgrade:</strong> Pro to Max, or Max to Ultra.</li>
+      <li><strong>Use API credits</strong> through a Claude Console account, billed at standard API rates. Monthly API credits included with Max, Ultra and Team cannot be used in Claude Code or the Claude apps.</li>
+    </ul>
+    <p>One trap: if the <code>ANTHROPIC_API_KEY</code> environment variable is set, Claude Code uses that key instead of your subscription and you pay API rates. To stay strictly within your plan, decline the API credit option and sign in with your plan credentials only.</p>
+
+    <h2>How can I make my Claude Code limit last longer?</h2>
+    <ul>
+      <li>Give complete context in the first message instead of many follow-ups.</li>
+      <li>Batch related requests, and start a new conversation when a long one approaches the limit.</li>
+      <li>Lower the effort level or turn off extended thinking for routine work.</li>
+      <li>Turn off connectors and tools a task does not need; they are token-intensive.</li>
+      <li>Plan big tasks around the reset: a fresh five-hour session gives a long job room to finish, and the weekly reset time tells you how much the week has left.</li>
+    </ul>
+
+    <h2>How does Codex Tracker show Claude Code usage?</h2>
+    <p><a href="/">Codex Tracker</a> is a free, open-source Windows 11 app that shows Claude Code and Codex limits in the taskbar. It reads the quota data Claude already stores on your PC, never conversations, passwords or tokens, and never switches accounts.</p>
+    <ul>
+      <li><strong>Claude desktop app:</strong> the signed-in account is detected automatically.</li>
+      <li><strong>Claude Code in a terminal:</strong> copy the status line setting offered in Settings → General → Claude Code. Codex Tracker then reads the five-hour and weekly percentages and reset times that Claude Code passes to the status line.</li>
+      <li>The remaining percentage appears in the taskbar icon; hover it for both limits and the next reset.</li>
+      <li>Claude and Codex accounts sit side by side. Inactive accounts keep their last reading and show as “probably refilled” once their reset time passes.</li>
+      <li>Reminders before resets, below 20, 10 and 5 %, and before you run out. At 10 % or less, it names another Claude account with at least 30 % left and 20 points more, if you have one.</li>
+    </ul>
+    <figure>
+      <img src="/img/hero.png" alt="Codex Tracker showing demo Claude Code and Codex accounts, a weekly reset calendar and the taskbar percentage preview" width="1274" height="984" loading="lazy">
+      <figcaption>Codex Tracker with demo accounts.</figcaption>
+    </figure>
+
+    <div class="card cta">
+      <h2>See your Claude Code limits at a glance</h2>
+      <p>Free for Windows 11, English or French, MIT license. No account and no server.</p>
+      <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download Codex Tracker {{VERSION}}</a>
+    </div>
+
+    <section id="faq" class="faq">
+      <h2>Frequently asked questions</h2>
+      <details><summary>Does Claude Code have a weekly limit?</summary><p>Yes. Pro and Max plans have a five-hour session limit and a weekly limit; Ultra plans have a weekly limit. Max and Ultra also have a separate weekly limit for Fable. The weekly limit resets at a fixed time each week assigned to your account.</p></details>
+      <details><summary>When does the Claude Code 5-hour limit reset?</summary><p>The five-hour period starts when you send your first message and resets in full five hours later. Settings &gt; Usage on claude.ai shows the time remaining in the current session.</p></details>
+      <details><summary>Do Claude chats count against my Claude Code limit?</summary><p>Yes. Anthropic says usage on claude.ai, Claude Code and Claude Desktop counts towards the same limits, and Claude Code in an IDE counts too.</p></details>
+      <details><summary>How do I check my Claude Code usage?</summary><p>Run /usage in Claude Code to see plan usage limits, or open Settings &gt; Usage on claude.ai for the current session and weekly limits with their reset times. A custom status line can also show both percentages.</p></details>
+      <details><summary>Does Codex Tracker work with Claude Code in the terminal?</summary><p>Yes. The Claude desktop app is detected automatically. For Claude Code in a terminal, copy the status line setting offered in Codex Tracker under Settings &gt; General &gt; Claude Code.</p></details>
+    </section>
+
+    <h2>Related guides</h2>
+    <ul>
+      <li><a href="/guides/codex-usage-limits/">Codex usage limits: 5-hour and weekly limits explained</a></li>
+      <li><a href="/guides/codex-reset-credits/">Codex reset credits: how banked resets work</a></li>
+    </ul>
+
+    <h2>Sources</h2>
+    <ul class="sources">
+      <li>Anthropic Help Center, <a href="https://support.claude.com/en/articles/11145838-use-claude-code-with-your-pro-max-or-ultra-plan">Use Claude Code with your Pro, Max, or Ultra plan</a> (consulted 1 November 2026)</li>
+      <li>Anthropic Help Center, <a href="https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work">How do usage and length limits work?</a></li>
+      <li>Anthropic Help Center, <a href="https://support.claude.com/en/articles/9797557-usage-limit-best-practices">Usage limit best practices</a></li>
+      <li>Claude Code docs, <a href="https://code.claude.com/docs/en/commands">Commands</a> (<code>/usage</code>, <code>/status</code>)</li>
+      <li>Claude Code docs, <a href="https://code.claude.com/docs/en/statusline">Customize your status line</a> (<code>rate_limits</code> fields)</li>
+    </ul>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span>
+    <span><a href="/guides/">Guides</a> · <a href="/privacy/">Privacy</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></span>
+  </div>
+</footer>
+</body>
+</html>

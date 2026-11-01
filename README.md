@@ -1,7 +1,7 @@
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Sachez toujours combien il vous reste de Codex et de Claude Code.</strong><br>Votre quota, l’heure de la prochaine recharge et un rappel au bon moment, directement dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.36/CodexTracker-0.9.36-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com/fr/">Site</a> · <a href="README.en.md">English</a></p>
-<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · Français ou English · Version 0.9.36</sub></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.37/CodexTracker-0.9.37-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com/fr/">Site</a> · <a href="README.en.md">English</a></p>
+<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · Français ou English · Version 0.9.37</sub></p>
 
 <p align="center"><img src="docs/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges en clair et aperçu de la barre des tâches, avec des comptes fictifs" width="880"></p>
 
@@ -69,7 +69,7 @@ Non. Seuls les SMS, appels et emails, facultatifs, passent par vos propres compt
 ## Pour aller plus loin
 
 - **Sans installation** : le ZIP portable est dans les [versions publiées](https://github.com/Aleqsd/codex-tracker/releases). Son petit fichier `.sha256` sert aux mises à jour automatiques.
-- **Assistants de code** : un [serveur MCP local](docs/MCP.md), désactivé par défaut, permet à votre assistant de consulter vos quotas et de piloter tous les réglages.
+- **Assistants de code** : un [serveur MCP local](docs/MCP.md), désactivé par défaut, permet à votre assistant de consulter vos quotas et de piloter tous les réglages ; les mêmes commandes existent en ligne de commande (`CodexTracker.exe --cli help`).
 - [Guide d’utilisation complet](docs/UTILISATION.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues). **Réglages → Application → Préparer un diagnostic** produit un résumé sans compte ni secret à joindre à votre signalement.
 
 Les exécutables ne sont pas signés : Windows peut afficher un avertissement SmartScreen au premier lancement.

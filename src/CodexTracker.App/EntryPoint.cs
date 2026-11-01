@@ -6,6 +6,7 @@ internal static class EntryPoint
     public static int Main(string[] args)
     {
         if (args.Contains("--mcp")) return Mcp.McpHost.RunAsync(args).GetAwaiter().GetResult();
+        if (args.Contains("--cli")) return Mcp.Cli.RunAsync(args).GetAwaiter().GetResult();
         // A restart waits for the previous instance to release the single-instance lock.
         var relaunch = Array.IndexOf(args, "--relaunch-after");
         if (relaunch >= 0 && relaunch + 1 < args.Length && int.TryParse(args[relaunch + 1], out var previous))

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex reset credits: how banked resets work</title>
+<meta name="description" content="What Codex reset credits (banked resets) are, what a reset restores, when they expire and when to use one so it is not wasted, based on OpenAI’s help center.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/guides/codex-reset-credits/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#101114">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/styles.css">
+<link rel="preload" href="/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Codex Tracker">
+<meta property="og:title" content="Codex reset credits: how banked resets work">
+<meta property="og:description" content="Banked Codex resets explained: what they restore, how to redeem them, when they expire and how not to waste one.">
+<meta property="og:url" content="https://codex-tracker.zqsdev.com/guides/codex-reset-credits/">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/resets-week.png">
+<meta property="og:image:alt" content="Week view of upcoming Codex resets and banked reset credits with expiry dates, demo accounts">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  .crumbs { font-size: 14px; color: var(--subtle); margin: 8px 0 0; }
+  .crumbs a { color: var(--muted); }
+  .prose h1 { font-size: clamp(30px, 4.6vw, 40px); margin: 18px 0 16px; max-width: none; }
+  .answer { background: var(--accent-soft); border-radius: 14px; padding: 18px 22px; margin: 0 0 8px; }
+  .updated { font-size: 14px; color: var(--subtle); }
+  .prose figure { margin: 28px 0; }
+  .prose figure img { border-radius: 12px; border: 1px solid var(--line); }
+  .prose figcaption { font-size: 14px; color: var(--subtle); margin-top: 8px; }
+  .cta { margin: 36px 0 8px; }
+  .cta h2 { margin-top: 0; }
+  .cta p { margin: 0 0 16px; }
+  .prose section.faq { padding: 8px 0 0; border: 0; }
+  .sources li { font-size: 15px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://codex-tracker.zqsdev.com/guides/codex-reset-credits/#article",
+      "headline": "Codex reset credits: how banked resets work",
+      "description": "What Codex reset credits (banked resets) are, what a reset restores, when they expire and when to use one so it is not wasted.",
+      "image": "https://codex-tracker.zqsdev.com/img/resets-week.png",
+      "inLanguage": "en",
+      "datePublished": "2026-11-01",
+      "dateModified": "{{DATE}}",
+      "author": { "@type": "Person", "@id": "https://codex-tracker.zqsdev.com/#author", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" },
+      "publisher": { "@type": "Person", "@id": "https://codex-tracker.zqsdev.com/#author", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://codex-tracker.zqsdev.com/guides/codex-reset-credits/" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://codex-tracker.zqsdev.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://codex-tracker.zqsdev.com/guides/" },
+        { "@type": "ListItem", "position": 3, "name": "Codex reset credits", "item": "https://codex-tracker.zqsdev.com/guides/codex-reset-credits/" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "What is a banked Codex reset?", "acceptedAnswer": { "@type": "Answer", "text": "A free, one-time reset that OpenAI saves to your account for later, including resets earned through referral promotions. Receiving one does not refresh your usage; you choose when to use it before it expires." } },
+        { "@type": "Question", "name": "When do Codex reset credits expire?", "acceptedAnswer": { "@type": "Answer", "text": "OpenAI sets the expiration for each offer. The date and time are shown with the reset in Usage settings and in the offer. OpenAI support does not extend expiration dates or replace resets that expired." } },
+        { "@type": "Question", "name": "How do I use a Codex banked reset?", "acceptedAnswer": { "@type": "Answer", "text": "In the desktop app, open Settings > Usage & billing, select the usage summary that shows an available reset, review it and confirm. On the web use Usage settings; in the Codex CLI enter /usage and select Redeem reset. At least one covered allowance must have less than 80% remaining." } },
+        { "@type": "Question", "name": "Is a banked reset the same as buying a reset?", "acceptedAnswer": { "@type": "Answer", "text": "No. A paid instant reset applies immediately and cannot be saved. A banked reset is free, stored on your account and used when you choose, before it expires." } },
+        { "@type": "Question", "name": "Can Codex Tracker use a reset for me?", "acceptedAnswer": { "@type": "Answer", "text": "No. Codex Tracker never spends a reset. It lists your banked resets with their expiry, reminds you before they expire and tells you when using one now is worthwhile; you redeem it in Codex." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top">
+    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Main"><a href="/">Home</a><a href="/guides/">Guides</a><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></nav>
+  </header>
+  <main class="prose">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/guides/">Guides</a> › Codex reset credits</nav>
+    <h1>Codex reset credits: how banked resets work and when to use them</h1>
+    <p class="answer">Codex reset credits, which OpenAI calls banked resets, are free one-time resets saved to your ChatGPT account. Using one restores your main Codex allowances to 100%: the 5-hour and weekly allowances on Plus and Business Standard, the weekly allowance on Pro. Each has an expiration date set by the offer, and an unused reset is lost after it, so use it when your allowance is nearly empty and before it expires.</p>
+    <p class="updated">Published 1 November 2026 · Updated {{DATE}} · Facts checked against OpenAI’s help center on 1 November 2026.</p>
+
+    <h2>What are Codex reset credits?</h2>
+    <p>OpenAI’s help center describes three kinds of one-time Codex resets, all separate from your regular scheduled refresh:</p>
+    <ul>
+      <li><strong>Banked reset (OpenAI-granted):</strong> free, saved to your account for later use, including resets earned through qualifying referral promotions. Receiving one does not refresh your usage.</li>
+      <li><strong>Automatic reset</strong>, sometimes called a global reset: free, applied directly to the accounts and limits an offer selects. It is not saved, and “global” does not mean every account.</li>
+      <li><strong>Purchased instant reset:</strong> offered to selected Plus and Pro personal accounts. It applies immediately and cannot be saved for later.</li>
+    </ul>
+    <p>This guide is about banked resets, the ones you can hold and choose when to spend. They do not permanently raise your plan’s limits and are not cash, API credits or transferable balances. OpenAI calls free banked and automatic resets “discretionary promotional benefits”, with no guaranteed availability or schedule.</p>
+
+    <h2>What does a banked reset restore?</h2>
+    <p>A full banked reset restores the main Codex allowances on your current plan (as of 1 November 2026):</p>
+    <ul>
+      <li><strong>Plus and Business Standard:</strong> the 5-hour and weekly allowances.</li>
+      <li><strong>Pro 100, Pro 200 and Pro 500:</strong> the weekly allowance.</li>
+      <li><strong>Go:</strong> the monthly allowance.</li>
+    </ul>
+    <p>Each covered allowance below 100% goes back to 100%; one already at 100% is not restarted. The reset counts as used only if it restores at least one allowance. Separate allowances, such as image generation, file uploads and regular Chat Voice, do not change. A reset can also restart a usage period, so your next refresh time can move: OpenAI’s example is a weekly period due to end on Friday that restarts on Tuesday and next refreshes the following Tuesday.</p>
+
+    <h2>When do Codex reset credits expire?</h2>
+    <p>OpenAI chooses the recipients, covered limits, delivery timing and expiration for each promotional offer, so there is no single expiry rule. The deadline is the expiration date and time shown in your account or in the offer; check the time zone where one is given. Support does not extend expiration dates or replace resets that expired or were used by accident.</p>
+    <p>Desktop Settings &gt; Usage &amp; billing lists your <em>Available</em> resets with their expiration dates, and History shows the past 30 days of resets received and used. A “Reset received” entry does not tell you whether that reset is still available.</p>
+
+    <h2>How do you use a banked reset?</h2>
+    <ol class="steps">
+      <li>In the desktop app, open Settings &gt; Usage &amp; billing. On the web, open Usage settings. In the Codex CLI, enter <code>/usage</code> and select <em>Redeem reset</em>.</li>
+      <li>Select the usage summary that shows an available reset, such as “1 reset available”.</li>
+      <li>Review the limits it covers and its expiration, then confirm.</li>
+    </ol>
+    <p>At least one covered allowance must have less than 80% remaining, otherwise you see “Your usage does not need a reset right now” and the reset stays available. The mobile app has no reset controls. In the desktop app, <em>Allow your assistant to use resets</em> lets Codex redeem one for you, only when the main 5-hour or weekly allowance has 10% or less remaining.</p>
+
+    <h2>When should you use a Codex reset credit?</h2>
+    <p>A reset fills your allowance back to 100%, so whatever you had left is not added on top. Two simple rules follow:</p>
+    <ul>
+      <li><strong>Use it late, when the allowance is nearly empty.</strong> Redeeming at 60% remaining throws away the 60% you had.</li>
+      <li><strong>Use it before it expires.</strong> If the reset expires before your next weekly refresh and your week is almost used up, using it now is better than letting it lapse.</li>
+    </ul>
+    <p>If your normal weekly refresh is a few hours away and the reset expires much later, waiting for the free refresh usually keeps the reset for a harder week. If a global reset arrives after you used a banked reset, the two do not stack, and the banked reset is not returned.</p>
+
+    <h2>How does Codex Tracker handle reset credits?</h2>
+    <p><a href="/">Codex Tracker</a> reads the reset information Codex already stores on your PC: the number of available resets and their expiry dates. OpenAI does not document this local data, so the tracker shows it as Codex reports it, and an inactive account keeps its last reading until you open it again. It never spends a reset; you always redeem it in Codex.</p>
+    <ul>
+      <li>Lists banked resets for each Codex account with their expiry, in a list or a week view, with those expiring within 3 days at the top.</li>
+      <li>Shows a Windows notification when Codex grants a new reset, with its expiry date.</li>
+      <li>Reminds you before expiry, by default 3 days, 24 hours, 6 hours and 1 hour before.</li>
+      <li>Can add each reset to Google Calendar with reminders 3 days, 1 day and 1 hour before, and removes the event once a recent reading shows the reset was used.</li>
+      <li>Can email you from your own Gmail address, to yourself, the day before a reset expires.</li>
+      <li>Advises using one when less than 15% of the week is left on a Codex account and a reset would expire before the next weekly refill.</li>
+    </ul>
+    <figure>
+      <img src="/img/resets-week.png" alt="Codex Tracker week view of upcoming Codex resets and banked reset credits with their expiry dates, demo accounts" width="760" height="620" loading="lazy">
+      <figcaption>Upcoming resets and banked reset credits, demo data.</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/calendar.png" alt="Codex Tracker Google Calendar settings that add banked Codex resets as events with reminders, demo data" width="870" height="900" loading="lazy">
+      <figcaption>Google Calendar sync for banked resets, demo data.</figcaption>
+    </figure>
+
+    <div class="card cta">
+      <h2>Never let a Codex reset expire unused</h2>
+      <p>Free for Windows 11, English or French, MIT license. No account and no server.</p>
+      <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download Codex Tracker {{VERSION}}</a>
+    </div>
+
+    <section id="faq" class="faq">
+      <h2>Frequently asked questions</h2>
+      <details><summary>What is a banked Codex reset?</summary><p>A free, one-time reset that OpenAI saves to your account for later, including resets earned through referral promotions. Receiving one does not refresh your usage; you choose when to use it before it expires.</p></details>
+      <details><summary>When do Codex reset credits expire?</summary><p>OpenAI sets the expiration for each offer. The date and time are shown with the reset in Usage settings and in the offer. OpenAI support does not extend expiration dates or replace resets that expired.</p></details>
+      <details><summary>How do I use a Codex banked reset?</summary><p>In the desktop app, open Settings &gt; Usage &amp; billing, select the usage summary that shows an available reset, review it and confirm. On the web use Usage settings; in the Codex CLI enter /usage and select Redeem reset. At least one covered allowance must have less than 80% remaining.</p></details>
+      <details><summary>Is a banked reset the same as buying a reset?</summary><p>No. A paid instant reset applies immediately and cannot be saved. A banked reset is free, stored on your account and used when you choose, before it expires.</p></details>
+      <details><summary>Can Codex Tracker use a reset for me?</summary><p>No. Codex Tracker never spends a reset. It lists your banked resets with their expiry, reminds you before they expire and tells you when using one now is worthwhile; you redeem it in Codex.</p></details>
+    </section>
+
+    <h2>Related guides</h2>
+    <ul>
+      <li><a href="/guides/codex-usage-limits/">Codex usage limits: 5-hour and weekly limits explained</a></li>
+      <li><a href="/guides/claude-code-usage-limits/">Claude Code usage limits: 5-hour and weekly limits</a></li>
+    </ul>
+
+    <h2>Sources</h2>
+    <ul class="sources">
+      <li>OpenAI Help Center, <a href="https://help.openai.com/en/articles/20001498-how-resets-work-in-codex">How resets work in Codex</a> (consulted 1 November 2026)</li>
+      <li>OpenAI Help Center, <a href="https://help.openai.com/en/articles/20001507-paid-weekly-work-and-codex-rate-limit-resets">Paid weekly Work and Codex rate limit resets</a></li>
+      <li>OpenAI Help Center, <a href="https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan">Using Codex with your ChatGPT plan</a></li>
+    </ul>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span>
+    <span><a href="/guides/">Guides</a> · <a href="/privacy/">Privacy</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></span>
+  </div>
+</footer>
+</body>
+</html>

@@ -200,5 +200,7 @@ internal static partial class EnglishApp
         ("Chaque reset en réserve devient un événement à sa date d’expiration, avec des rappels Google 3 jours, 1 jour et 1 heure avant.", "Every reset credit becomes an event at its expiry date, with Google reminders 3 days, 1 day and 1 hour before."),
         ("rappels avant expiration", "reminders before expiry"),
         ("Ne plus proposer Google Agenda", "Don’t suggest Google Calendar again"),
+        ("Passez sur {0} : probablement rechargé, à confirmer.", "Switch to {0}: probably refilled, to confirm."),
+        ("Passez sur {0} : il lui reste {1:0} %.", "Switch to {0}: {1:0} % left."),
     ];
 }

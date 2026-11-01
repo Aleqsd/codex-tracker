@@ -154,6 +154,8 @@ La ligne **Projection** du compte actif donne un seul verdict, dans une seule co
 
 Les réglages permettent d’activer séparément les alertes **20 %, 10 % et 5 %**, ainsi que la notification de reset. Elles portent sur les fenêtres semaine et 5 heures. Les franchissements simultanés sont regroupés ; démarrage et changement de compte restent silencieux. Un reset est annoncé seulement après un relevé confirmant une nouvelle période et un quota remonté. Le simple compte à rebours ne déclenche rien.
 
+**Quel compte prendre ensuite ?** Quand le compte utilisé n’a plus que 10 % ou moins (semaine ou 5 heures), l’alerte de quota, l’alerte de rythme et l’infobulle de l’icône nomment l’autre compte du même outil qui en garde le plus : au moins 30 % et 20 points de plus. Un compte dont l’heure de recharge est passée compte comme plein mais « à confirmer », après les quotas mesurés. Le tracker ne change jamais de compte lui-même ; le MCP et `--cli get_status` donnent la même suggestion (`suggestions`).
+
 ### Rappels locaux et connecteurs facultatifs
 
 Les notifications Windows proposent **Ouvrir le suivi**, qui affiche directement Comptes ou Resets, et **Rappeler** dans 15 minutes, 1 heure ou 4 heures. Le rappel est géré par Windows lui-même, même si le tracker est fermé entre-temps. Si Windows refuse ce format, une bulle classique s’affiche à la place.

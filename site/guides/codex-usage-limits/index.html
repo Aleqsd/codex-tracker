@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex usage limits: 5-hour and weekly limits explained</title>
+<meta name="description" content="How OpenAI Codex usage limits work: the 5-hour and weekly allowances, how to check remaining usage and reset time, and what to do when you hit the limit.">
+<link rel="canonical" href="https://codex-tracker.zqsdev.com/guides/codex-usage-limits/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#101114">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/styles.css">
+<link rel="preload" href="/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Codex Tracker">
+<meta property="og:title" content="Codex usage limits: 5-hour and weekly limits explained">
+<meta property="og:description" content="The Codex 5-hour and weekly allowances, where to see what is left and when it resets, and your options when you run out.">
+<meta property="og:url" content="https://codex-tracker.zqsdev.com/guides/codex-usage-limits/">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/hero.png">
+<meta property="og:image:alt" content="Codex Tracker dashboard with demo accounts, weekly reset calendar and taskbar preview">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  .crumbs { font-size: 14px; color: var(--subtle); margin: 8px 0 0; }
+  .crumbs a { color: var(--muted); }
+  .prose h1 { font-size: clamp(30px, 4.6vw, 40px); margin: 18px 0 16px; max-width: none; }
+  .answer { background: var(--accent-soft); border-radius: 14px; padding: 18px 22px; margin: 0 0 8px; }
+  .updated { font-size: 14px; color: var(--subtle); }
+  .prose figure { margin: 28px 0; }
+  .prose figure img { border-radius: 12px; border: 1px solid var(--line); }
+  .prose figcaption { font-size: 14px; color: var(--subtle); margin-top: 8px; }
+  .cta { margin: 36px 0 8px; }
+  .cta h2 { margin-top: 0; }
+  .cta p { margin: 0 0 16px; }
+  .prose section.faq { padding: 8px 0 0; border: 0; }
+  .sources li { font-size: 15px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://codex-tracker.zqsdev.com/guides/codex-usage-limits/#article",
+      "headline": "Codex usage limits: 5-hour and weekly limits explained",
+      "description": "How OpenAI Codex usage limits work: the 5-hour and weekly allowances, how to check remaining usage and reset time, and what to do when you hit the limit.",
+      "image": "https://codex-tracker.zqsdev.com/img/dashboard.png",
+      "inLanguage": "en",
+      "datePublished": "2026-11-01",
+      "dateModified": "{{DATE}}",
+      "author": { "@type": "Person", "@id": "https://codex-tracker.zqsdev.com/#author", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" },
+      "publisher": { "@type": "Person", "@id": "https://codex-tracker.zqsdev.com/#author", "name": "Alexandre Do-O Almeida", "url": "https://github.com/Aleqsd" },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://codex-tracker.zqsdev.com/guides/codex-usage-limits/" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://codex-tracker.zqsdev.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://codex-tracker.zqsdev.com/guides/" },
+        { "@type": "ListItem", "position": 3, "name": "Codex usage limits", "item": "https://codex-tracker.zqsdev.com/guides/codex-usage-limits/" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Does Codex have a weekly limit?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. OpenAI says weekly limits may apply on top of the 5-hour allowance. On Plus and Business Standard, a full banked reset restores both the 5-hour and weekly allowances; on Pro it restores the weekly allowance, because Pro plans currently have no 5-hour limit." } },
+        { "@type": "Question", "name": "How do I check my Codex usage?", "acceptedAnswer": { "@type": "Answer", "text": "Open the usage dashboard at chatgpt.com/codex/settings/usage, or Settings > Usage & billing in the desktop app. In an active Codex CLI session, enter /status. These show what is left, your credit balance and the reset time." } },
+        { "@type": "Question", "name": "When does the Codex weekly limit reset?", "acceptedAnswer": { "@type": "Answer", "text": "OpenAI does not publish a fixed reset day. Check Usage for your next refresh time. After a paid instant reset, the next weekly reset is 7 days after your first request once the reset is applied, and banked or global resets can also change the date." } },
+        { "@type": "Question", "name": "Can I keep working after hitting the Codex limit?", "acceptedAnswer": { "@type": "Answer", "text": "A turn already in progress can finish, subject to fair use limits. After that you can add credits, use an available reset, upgrade, wait for the reset time shown, or run local chats with an API key at API rates." } },
+        { "@type": "Question", "name": "Is Codex Tracker made by OpenAI?", "acceptedAnswer": { "@type": "Answer", "text": "No. Codex Tracker is an independent, free and open-source Windows app. It reads the quota data Codex already stores on your PC and is not affiliated with OpenAI." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top">
+    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28">Codex Tracker</a>
+    <nav class="top" aria-label="Main"><a href="/">Home</a><a href="/guides/">Guides</a><a href="https://github.com/Aleqsd/codex-tracker">GitHub</a></nav>
+  </header>
+  <main class="prose">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/guides/">Guides</a> › Codex usage limits</nav>
+    <h1>Codex usage limits: how the 5-hour and weekly limits work</h1>
+    <p class="answer">OpenAI Codex usage on a ChatGPT plan is capped by allowances that refill over time. On Plus and Business Standard there is a 5-hour allowance and a weekly allowance; Pro plans currently have only the weekly one. To see what is left and when it resets, open the usage dashboard at chatgpt.com/codex/settings/usage or type <code>/status</code> in the Codex CLI.</p>
+    <p class="updated">Published 1 November 2026 · Updated {{DATE}} · Facts checked against OpenAI’s documentation on 1 November 2026.</p>
+
+    <h2>What are the Codex usage limits?</h2>
+    <p>Codex is included in every ChatGPT plan, including Free and Go, and its usage limits vary by plan. OpenAI describes the main allowances per plan as follows (as of 1 November 2026):</p>
+    <ul>
+      <li><strong>Plus and Business Standard:</strong> a 5-hour allowance and a weekly allowance.</li>
+      <li><strong>Pro ($100, $200 and $500 tiers):</strong> a weekly allowance. OpenAI’s pricing page says “Pro plans currently have no five-hour limit.”</li>
+      <li><strong>Go:</strong> a monthly allowance.</li>
+      <li><strong>Enterprise and Edu:</strong> with flexible pricing there are no fixed rate limits and usage scales with credits; without it, per-seat limits are the same as Plus for most features.</li>
+    </ul>
+    <p>The allowance is not a fixed number of messages. OpenAI says usage depends on the model, where the task runs, task complexity, context, reasoning, speed and tools, and that cloud tasks may use more than local messages. Its pricing page gives estimates only, for example 15–160 local messages per five hours with GPT-6.1 Sol and 350–3,000 with GPT-6 Luna on Plus, and states that these “are not fixed message limits”. Fast mode uses included usage 2.5 times faster than Standard speed.</p>
+    <p>The same allowance is shared: local messages and cloud chats draw from one pool, and on plans with shared allowances Codex, ChatGPT Work, ChatGPT for Excel and Workspace Agents use the same allowance and credit pool.</p>
+
+    <h2>How do I check my remaining Codex usage?</h2>
+    <ul>
+      <li><strong>Usage dashboard:</strong> <a href="https://chatgpt.com/codex/settings/usage">chatgpt.com/codex/settings/usage</a> shows your current limits and reset times.</li>
+      <li><strong>Desktop app:</strong> Settings &gt; Usage &amp; billing shows which allowance is used up, your credit balance and the reset time.</li>
+      <li><strong>Codex CLI:</strong> enter <code>/status</code> during an active session to see your remaining limits.</li>
+    </ul>
+    <p>On Plus and Business Standard, the same usage counts against both allowances, but the two periods end at different times. You can have plenty of weekly usage left and still be blocked by the 5-hour allowance, or the reverse, so look at both numbers.</p>
+
+    <h2>When does the Codex weekly limit reset?</h2>
+    <p>OpenAI does not publish a fixed reset day for everyone. Its help center tells you to check Usage for your next refresh time rather than calculate it yourself, and notes that before a new usage period starts the displayed time may be an estimate that can change.</p>
+    <p>Some events move the date. Banked, global and paid resets can change the next refresh time of the allowances they affect, without changing your subscription billing date. After a paid instant reset, your new weekly period starts with your first request in Work or Codex, and the next automatic weekly reset is 7 days after that request.</p>
+
+    <h2>What happens when you hit the Codex limit?</h2>
+    <p>OpenAI says that if you reach your limit during an active turn, the agent can keep working on that turn, subject to fair use limits. After that, the limit notice shows the options available to your account:</p>
+    <ul>
+      <li><strong>Add credits.</strong> Eligible Plus and Pro users can buy credits without changing plans; business plans with flexible pricing can buy workspace credits.</li>
+      <li><strong>Use a reset.</strong> A banked reset you already have, or, on eligible Plus and Pro personal accounts, a paid instant reset. See <a href="/guides/codex-reset-credits/">Codex reset credits</a>.</li>
+      <li><strong>Upgrade</strong> your plan.</li>
+      <li><strong>Wait</strong> until the reset time shown.</li>
+      <li><strong>Use an API key</strong> for extra local chats, billed at standard API rates.</li>
+    </ul>
+
+    <h2>How can I make my Codex usage last longer?</h2>
+    <p>OpenAI’s own suggestions: keep prompts precise, give only the relevant files, define the output you need, keep AGENTS.md small (nest it in larger repositories), and disable MCP servers you do not need, since each one adds context to every message. A smaller model or a narrower task scope can also be enough.</p>
+    <p>Two practical habits help as well:</p>
+    <ul>
+      <li><strong>Check the reset time before a long task.</strong> If the weekly period ends in a few hours, a large refactor started now may stop halfway; started after the refresh, it has the full allowance.</li>
+      <li><strong>Know which account has room.</strong> Each ChatGPT account or workspace you legitimately use, such as a personal Plus plan and a work Business seat, has its own allowances and reset times. Codex shows only the signed-in one, so it is easy to lose track.</li>
+    </ul>
+
+    <h2>How does Codex Tracker show Codex usage?</h2>
+    <p><a href="/">Codex Tracker</a> is a free, open-source Windows 11 app that reads the quota data Codex already stores on your PC. It never reads your conversations, passwords or tokens, and never switches accounts.</p>
+    <ul>
+      <li>The remaining percentage is drawn in the taskbar icon. Hover it to see both windows and the next reset time.</li>
+      <li>All your Codex accounts appear side by side, each with the date of its last reading. Pro accounts show the weekly window only.</li>
+      <li>Only the active account can be read. Inactive accounts keep their last value and are shown as “probably refilled” once their reset time has passed.</li>
+      <li>Reminders before resets, below 20, 10 and 5 %, and a forecast before you run out.</li>
+      <li>When the active account is at 10 % or less, it names another account of the same tool with at least 30 % left and 20 points more.</li>
+      <li>Coding agents can read the same data through a local MCP server or <code>CodexTracker.exe --cli</code> commands.</li>
+    </ul>
+    <figure>
+      <img src="/img/dashboard.png" alt="Codex Tracker dashboard listing demo Codex and Claude Code accounts with remaining 5-hour and weekly usage" width="760" height="620" loading="lazy">
+      <figcaption>Codex Tracker dashboard with demo accounts.</figcaption>
+    </figure>
+
+    <div class="card cta">
+      <h2>Keep your Codex limits in view</h2>
+      <p>Free for Windows 11, English or French, MIT license. No account and no server.</p>
+      <a class="button primary" href="https://github.com/Aleqsd/codex-tracker/releases/download/v{{VERSION}}/CodexTracker-{{VERSION}}-Setup.exe">Download Codex Tracker {{VERSION}}</a>
+    </div>
+
+    <section id="faq" class="faq">
+      <h2>Frequently asked questions</h2>
+      <details><summary>Does Codex have a weekly limit?</summary><p>Yes. OpenAI says weekly limits may apply on top of the 5-hour allowance. On Plus and Business Standard, a full banked reset restores both the 5-hour and weekly allowances; on Pro it restores the weekly allowance, because Pro plans currently have no 5-hour limit.</p></details>
+      <details><summary>How do I check my Codex usage?</summary><p>Open the usage dashboard at chatgpt.com/codex/settings/usage, or Settings &gt; Usage &amp; billing in the desktop app. In an active Codex CLI session, enter /status. These show what is left, your credit balance and the reset time.</p></details>
+      <details><summary>When does the Codex weekly limit reset?</summary><p>OpenAI does not publish a fixed reset day. Check Usage for your next refresh time. After a paid instant reset, the next weekly reset is 7 days after your first request once the reset is applied, and banked or global resets can also change the date.</p></details>
+      <details><summary>Can I keep working after hitting the Codex limit?</summary><p>A turn already in progress can finish, subject to fair use limits. After that you can add credits, use an available reset, upgrade, wait for the reset time shown, or run local chats with an API key at API rates.</p></details>
+      <details><summary>Is Codex Tracker made by OpenAI?</summary><p>No. Codex Tracker is an independent, free and open-source Windows app. It reads the quota data Codex already stores on your PC and is not affiliated with OpenAI.</p></details>
+    </section>
+
+    <h2>Related guides</h2>
+    <ul>
+      <li><a href="/guides/codex-reset-credits/">Codex reset credits: how banked resets work</a></li>
+      <li><a href="/guides/claude-code-usage-limits/">Claude Code usage limits: 5-hour and weekly limits</a></li>
+    </ul>
+
+    <h2>Sources</h2>
+    <ul class="sources">
+      <li>OpenAI, <a href="https://learn.chatgpt.com/docs/pricing">Codex pricing and usage limits</a> (consulted 1 November 2026)</li>
+      <li>OpenAI Help Center, <a href="https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan">Using Codex with your ChatGPT plan</a></li>
+      <li>OpenAI Help Center, <a href="https://help.openai.com/en/articles/20001498-how-resets-work-in-codex">How resets work in Codex</a></li>
+      <li>OpenAI Help Center, <a href="https://help.openai.com/en/articles/20001507-paid-weekly-work-and-codex-rate-limit-resets">Paid weekly Work and Codex rate limit resets</a></li>
+    </ul>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span>
+    <span><a href="/guides/">Guides</a> · <a href="/privacy/">Privacy</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a></span>
+  </div>
+</footer>
+</body>
+</html>

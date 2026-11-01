@@ -24,7 +24,8 @@ img { max-width: 100%; height: auto; display: block; }
 header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
 .brand img { width: 28px; height: 28px; }
-nav.top { display: flex; gap: 18px; font-size: 15px; }
+nav.top { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 18px; font-size: 15px; }
+nav.top a[aria-current] { color: var(--text); font-weight: 500; }
 nav.top a { color: var(--muted); text-decoration: none; }
 nav.top a:hover { color: var(--text); }
 

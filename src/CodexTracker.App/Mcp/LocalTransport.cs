@@ -143,7 +143,8 @@ internal sealed class LocalClient(string[] args) : IAsyncDisposable
             catch { pipe.Dispose(); throw; }
             if (!launched)
             {
-                var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true };
+                // Shell start: the tracker must not inherit the caller's stdio pipes, or a CLI reader would wait for it to exit.
+                var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true };
                 start.ArgumentList.Add("--background"); start.ArgumentList.Add("--assistant-start");
                 if (args.Contains("--demo"))
                 {

@@ -8,6 +8,10 @@
 <link rel="canonical" href="https://codex-tracker.zqsdev.com/">
 <link rel="alternate" hreflang="en" href="https://codex-tracker.zqsdev.com/">
 <link rel="alternate" hreflang="fr" href="https://codex-tracker.zqsdev.com/fr/">
+<link rel="alternate" hreflang="es" href="https://codex-tracker.zqsdev.com/es/">
+<link rel="alternate" hreflang="de" href="https://codex-tracker.zqsdev.com/de/">
+<link rel="alternate" hreflang="pt-BR" href="https://codex-tracker.zqsdev.com/pt/">
+<link rel="alternate" hreflang="ja" href="https://codex-tracker.zqsdev.com/ja/">
 <link rel="alternate" hreflang="x-default" href="https://codex-tracker.zqsdev.com/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#101114">
@@ -20,10 +24,16 @@
 <meta property="og:title" content="Codex Tracker – know how much Codex and Claude Code you have left">
 <meta property="og:description" content="Your 5-hour and weekly limits, the next reset time and a reminder at the right moment, in the Windows taskbar. Free and local.">
 <meta property="og:url" content="https://codex-tracker.zqsdev.com/">
-<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/hero.png">
+<meta property="og:image" content="https://codex-tracker.zqsdev.com/img/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
 <meta property="og:image:alt" content="Codex Tracker dashboard with demo accounts, weekly reset calendar and taskbar preview">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">
 {
@@ -97,8 +107,14 @@
     <nav class="top" aria-label="Main">
       <a href="#features" class="hide-sm">Features</a>
       <a href="#faq" class="hide-sm">FAQ</a>
-      <a href="https://github.com/Aleqsd/codex-tracker">GitHub</a>
-      <a href="/fr/" hreflang="fr" lang="fr">Français</a>
+      <a href="/guides/" class="hide-sm">Guides</a>
+      <a href="https://github.com/Aleqsd/codex-tracker" class="hide-sm">GitHub</a>
+      <a href="/" hreflang="en" lang="en" aria-current="page" title="English">EN</a>
+      <a href="/fr/" hreflang="fr" lang="fr" title="Français">FR</a>
+      <a href="/es/" hreflang="es" lang="es" title="Español">ES</a>
+      <a href="/de/" hreflang="de" lang="de" title="Deutsch">DE</a>
+      <a href="/pt/" hreflang="pt-BR" lang="pt-BR" title="Português">PT</a>
+      <a href="/ja/" hreflang="ja" lang="ja" title="日本語">JA</a>
     </nav>
   </header>
 
@@ -149,9 +165,18 @@
         <img src="/img/calendar.png" alt="Google Calendar settings in Codex Tracker, demo data" loading="lazy" width="870" height="900">
       </div>
       <div class="grid" style="margin-top:40px">
-        <div class="card"><h3>Reminders that fit</h3><p>Before a reset, below 20, 10 or 5 %, before running out, or when another account may have refilled. Windows notifications by default; SMS, call or email with your own Twilio or SendGrid account.</p></div>
-        <div class="card"><h3>For coding assistants</h3><p>A local MCP server, off by default, lets your coding agent read quotas, plan around resets and change settings, with local confirmation for anything external.</p></div>
+        <div class="card"><h3>Reminders that fit</h3><p>Before a reset, below 20, 10 or 5 %, before running out, or when another account may have refilled. Running low? It names the account to switch to. Windows notifications by default; SMS, call or email with your own Twilio or SendGrid account.</p></div>
+        <div class="card"><h3>For coding assistants</h3><p>A local MCP server, off by default, lets your coding agent read quotas, plan around resets and change settings, with local confirmation for anything external. The same commands work on the command line: <code>CodexTracker.exe --cli list_resets</code>.</p></div>
         <div class="card"><h3>Quiet and native</h3><p>Light or dark like Windows, English or French, starts with Windows, updates itself. Closing the window keeps it next to the clock.</p></div>
+      </div>
+    </section>
+
+    <section id="guides">
+      <h2>Understand the limits</h2>
+      <div class="grid">
+        <a class="card" href="/guides/codex-usage-limits/" style="text-decoration:none;color:inherit"><h3>Codex usage limits</h3><p>The 5-hour and weekly windows, how to check what is left and when it resets.</p></a>
+        <a class="card" href="/guides/claude-code-usage-limits/" style="text-decoration:none;color:inherit"><h3>Claude Code usage limits</h3><p>Session and weekly limits on Pro and Max, and how to keep an eye on them.</p></a>
+        <a class="card" href="/guides/codex-reset-credits/" style="text-decoration:none;color:inherit"><h3>Codex reset credits</h3><p>What banked resets are, when they expire and when to use one.</p></a>
       </div>
     </section>
 
@@ -205,7 +230,7 @@
 <footer>
   <div class="wrap">
     <span>© 2026 Codex Tracker · MIT · Independent, not affiliated with OpenAI or Anthropic</span>
-    <span><a href="/privacy/">Privacy</a> · <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md">User guide (FR)</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a> · <a href="/fr/" hreflang="fr">Français</a></span>
+    <span><a href="/privacy/">Privacy</a> · <a href="/guides/">Guides</a> · <a href="https://github.com/Aleqsd/codex-tracker/blob/main/docs/UTILISATION.md">User guide (FR)</a> · <a href="https://github.com/Aleqsd/codex-tracker/issues">Support</a> · <a href="/fr/" hreflang="fr">Français</a></span>
   </div>
 </footer>
 </body>

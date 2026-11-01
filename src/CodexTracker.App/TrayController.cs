@@ -207,6 +207,7 @@ internal sealed class TrayController : IDisposable
         {
             var old = icon; icon = TrayIconRenderer.Render(number, color, dark, iconSize, tool, expiring is not null); tray.Icon = icon; old?.Dispose(); iconKey = key;
         }
+        if (account is not null && NotificationPolicy.Suggestion(state, account, _preferences.Current, PreviewClock.UtcNow) is { } advice) text += "\n" + advice;
         if (expiring is { } at) text += "\n" + Loc.F("Réserve à utiliser avant {0}", Display.ResetHour(at).ToLowerInvariant());
         tray.Text = _peek.IsVisible ? "" : text.Length <= 127 ? text : text[..124] + "…";
     }
@@ -322,7 +323,7 @@ internal sealed class TrayController : IDisposable
         _pendingNotifications.Clear();
         if (pending.Length == 0) return;
         var latest = pending.OrderByDescending(n => n.Kind == NotificationKind.Threshold).ThenBy(n => n.Threshold ?? 100).First();
-        var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current);
+        var (title, body) = NotificationPolicy.Compose(latest, _service.State, _preferences.Current, PreviewClock.UtcNow);
         var others = pending.Length - 1;
         if (others > 0) body += "\n" + (others == 1 ? Loc.T("1 autre événement dans le suivi.") : Loc.F("{0} autre événement dans le suivi.", others));
         _notificationPage = latest.Kind == NotificationKind.Reset ? "Resets" : "Comptes"; _notificationCalendar = null; _notificationSuggestSync = false;
