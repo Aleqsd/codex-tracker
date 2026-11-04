@@ -1,4 +1,4 @@
-<p align="center"><img src="site/icon.png" alt="" width="96" height="96"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/owl-dark.svg"><img src="docs/brand/owl-light.svg" alt="Codex Tracker : le hibou" width="128" height="128"></picture></p>
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Sachez toujours combien il vous reste de Codex et de Claude Code.</strong><br>Votre quota, l’heure de la prochaine recharge et un rappel au bon moment, directement dans la barre des tâches Windows.</p>
 <p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v1.0.1/CodexTracker-1.0.1-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com/fr/">Site</a> · <a href="README.en.md">English</a></p>
@@ -7,6 +7,8 @@
 <p align="center"><img src="docs/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges en clair et aperçu de la barre des tâches, avec des comptes fictifs" width="880"></p>
 
 ## En deux mots
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/watching-dark.png"><img src="docs/brand/watching-light.png" alt="" width="84" align="right"></picture>
 
 Codex et Claude Code limitent votre usage : un quota sur **5 heures** et un autre sur **la semaine**. Une fois épuisé, il faut attendre qu’il se recharge, et rien ne vous dit clairement où vous en êtes.
 
@@ -33,6 +35,8 @@ Codex Tracker répond à trois questions, sans rien configurer :
 
 ## Installer en trois étapes
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/terminal-dark.png"><img src="docs/brand/terminal-light.png" alt="" width="84" align="right"></picture>
+
 1. **Téléchargez et lancez** l’installateur ci-dessus. Pas de droits administrateur, rien d’autre à installer.
 2. **Utilisez Codex ou Claude Code comme d’habitude.** Le compte connecté apparaît tout seul. Vos autres comptes s’ajoutent quand vous les ouvrez.
 3. **Gardez l’icône visible** : glissez-la depuis la flèche ^ de la barre des tâches. Fermer la fenêtre la range simplement à côté de l’horloge ; le suivi continue.
@@ -42,6 +46,8 @@ Ou en une ligne dans PowerShell : `irm https://codex-tracker.zqsdev.com/install.
 Les mises à jour se téléchargent seules ; un bouton **Mettre à jour et relancer** apparaît quand une version est prête.
 
 ## Vos données restent chez vous
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/window-dark.png"><img src="docs/brand/window-light.png" alt="" width="84" align="right"></picture>
 
 - **Rien à créer, rien à partager.** Pas d’inscription, pas de serveur : tout est enregistré sur votre PC.
 - **Aucun mot de passe demandé.** Le tracker lit les quotas que Codex et Claude Code connaissent déjà. Il ne lit pas vos conversations et ne change jamais de compte à votre place.
@@ -71,6 +77,8 @@ Non. Les SMS, appels et e-mails SendGrid, facultatifs, suivent les tarifs de vos
 
 ## Pour aller plus loin
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/reading-dark.png"><img src="docs/brand/reading-light.png" alt="" width="84" align="right"></picture>
+
 - **Sans installation** : le ZIP portable est dans les [versions publiées](https://github.com/Aleqsd/codex-tracker/releases). Son petit fichier `.sha256` sert aux mises à jour automatiques.
 - **Assistants de code** : un [serveur MCP local](docs/MCP.md), désactivé par défaut, permet à votre assistant de consulter vos quotas, de régler les rappels, canaux et Google Agenda et la plupart des réglages ; les mêmes commandes existent en ligne de commande (`CodexTracker.exe --cli help`).
 - [Guide d’utilisation complet](docs/UTILISATION.md) · [Signaler un problème](https://github.com/Aleqsd/codex-tracker/issues). **Réglages → Application → Préparer un diagnostic** produit un résumé sans compte ni secret à joindre à votre signalement.
@@ -87,9 +95,11 @@ Les exécutables ne sont pas signés : Windows peut afficher un avertissement Sm
 ./scripts/dev.ps1 -Action Demo
 ```
 
-Les aperçus utilisent exclusivement des données fictives. Avant une version, `scripts/release.ps1` enchaîne compilation, tests et paquets.
+Logo et illustrations : [assets/brand](assets/brand/README.md), régénérés par `python scripts/brand.py`. Les aperçus utilisent exclusivement des données fictives. Avant une version, `scripts/release.ps1` enchaîne compilation, tests et paquets.
 
 </details>
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/sleeping-dark.png"><img src="docs/brand/sleeping-light.png" alt="" width="64"></picture></p>
 
 ---
 

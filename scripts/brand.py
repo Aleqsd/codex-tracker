@@ -174,9 +174,30 @@ def write_mascots() -> None:
         white.resize((256, 256), Image.LANCZOS).save(target / f"{name}.png", optimize=True)
 
 
+README_LOGO = {"light": "#4F57E3", "dark": "#8E96FF"}     # AccentBrush of each theme
+README_OWLS = {"light": (0x5D, 0x61, 0x6A), "dark": (0x98, 0x9B, 0xA4)}  # MutedBrush of each theme
+
+
+def write_readme_art() -> None:
+    """docs/brand: the logo and the section owls of both READMEs, one file per GitHub theme."""
+    target = ROOT / "docs/brand"
+    target.mkdir(parents=True, exist_ok=True)
+    svg = LOGO.read_text(encoding="utf-8")
+    for theme, color in README_LOGO.items():
+        (target / f"owl-{theme}.svg").write_bytes(svg.replace('fill="#FFFFFF"', f'fill="{color}"').encode("utf-8"))
+    for name, file in MASCOTS.items():
+        drawing = ink(BRAND / file)
+        drawing = drawing.resize((round(drawing.width * 168 / max(drawing.size)), round(drawing.height * 168 / max(drawing.size))), Image.LANCZOS)
+        for theme, color in README_OWLS.items():
+            tinted = Image.new("RGBA", drawing.size, color + (255,))
+            tinted.putalpha(drawing.getchannel("A"))
+            tinted.save(target / f"{name}-{theme}.png", optimize=True)
+
+
 if __name__ == "__main__":
     write_icon()
     write_installer()
     write_app_logo()
     write_mascots()
+    write_readme_art()
     print("Logo, installer artwork and mascots generated.")

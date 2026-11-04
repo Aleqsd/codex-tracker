@@ -1,4 +1,4 @@
-<p align="center"><img src="site/icon.png" alt="" width="96" height="96"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/owl-dark.svg"><img src="docs/brand/owl-light.svg" alt="Codex Tracker: the owl" width="128" height="128"></picture></p>
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Always know how much Codex and Claude Code usage you have left.</strong><br>Your 5-hour and weekly limits, the next reset time and a reminder at the right moment, right in the Windows taskbar.</p>
 <p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v1.0.1/CodexTracker-1.0.1-Setup.exe"><strong>⬇ Download for Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com">Website</a> · <a href="README.md">Français</a></p>
@@ -7,6 +7,8 @@
 <p align="center"><img src="docs/hero.png" alt="Codex Tracker: dark dashboard, weekly reset calendar and taskbar preview, with demo accounts" width="880"></p>
 
 ## Why
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/watching-dark.png"><img src="docs/brand/watching-light.png" alt="" width="84" align="right"></picture>
 
 OpenAI Codex and Claude Code limit your usage twice: over **5 hours** and over **the week**. Once a limit runs out you wait for it to reset, and nothing tells you clearly where you stand, especially across several accounts.
 
@@ -28,6 +30,8 @@ Codex Tracker answers three questions with nothing to configure:
 
 ## Install
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/terminal-dark.png"><img src="docs/brand/terminal-light.png" alt="" width="84" align="right"></picture>
+
 1. **Download and run** the installer above. No admin rights.
 2. **Use Codex or Claude Code as usual.** The signed-in account appears by itself; other accounts are added when you open them.
 3. **Keep the icon visible** by dragging it out of the taskbar’s ^ overflow.
@@ -38,11 +42,17 @@ A portable ZIP is on the [releases page](https://github.com/Aleqsd/codex-tracker
 
 ## Privacy
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/window-dark.png"><img src="docs/brand/window-light.png" alt="" width="84" align="right"></picture>
+
 No sign-up, no server: everything stays on your PC. The tracker reads the quotas Codex and Claude already know, never your conversations or passwords, and never switches accounts. See the [privacy policy](https://codex-tracker.zqsdev.com/privacy/).
 
 ## More
 
-[User guide (French)](docs/UTILISATION.md) · [MCP server](docs/MCP.md) · [Report an issue](https://github.com/Aleqsd/codex-tracker/issues) · Development: .NET 10 / WPF, see [AGENTS.md](AGENTS.md).
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/reading-dark.png"><img src="docs/brand/reading-light.png" alt="" width="84" align="right"></picture>
+
+[User guide (French)](docs/UTILISATION.md) · [MCP server](docs/MCP.md) · [Report an issue](https://github.com/Aleqsd/codex-tracker/issues) · Development: .NET 10 / WPF, see [AGENTS.md](AGENTS.md); logo and owls in [assets/brand](assets/brand/README.md).
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/sleeping-dark.png"><img src="docs/brand/sleeping-light.png" alt="" width="64"></picture></p>
 
 ---
 
