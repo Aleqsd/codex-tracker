@@ -1,8 +1,8 @@
 <p align="center"><img src="site/icon.png" alt="" width="96" height="96"></p>
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Always know how much Codex and Claude Code usage you have left.</strong><br>Your 5-hour and weekly limits, the next reset time and a reminder at the right moment, right in the Windows taskbar.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.45/CodexTracker-0.9.45-Setup.exe"><strong>⬇ Download for Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com">Website</a> · <a href="README.md">Français</a></p>
-<p align="center"><sub>Free · Windows 11 x64 · No account, no server · 6 languages · Version 0.9.45</sub></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v1.0.1/CodexTracker-1.0.1-Setup.exe"><strong>⬇ Download for Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com">Website</a> · <a href="README.md">Français</a></p>
+<p align="center"><sub>Free · Windows 11 x64 · No account, no server · 6 languages · Version 1.0.1</sub></p>
 
 <p align="center"><img src="docs/hero.png" alt="Codex Tracker: dark dashboard, weekly reset calendar and taskbar preview, with demo accounts" width="880"></p>
 
