@@ -1,8 +1,8 @@
 <p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/brand/owl-dark.svg"><img src="docs/brand/owl-light.svg" alt="Codex Tracker : le hibou" width="128" height="128"></picture></p>
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Sachez toujours combien il vous reste de Codex et de Claude Code.</strong><br>Votre quota, l’heure de la prochaine recharge et un rappel au bon moment, directement dans la barre des tâches Windows.</p>
-<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v1.0.2/CodexTracker-1.0.2-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com/fr/">Site</a> · <a href="README.en.md">English</a></p>
-<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · 6 langues · Version 1.0.2</sub></p>
+<p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v1.0.3/CodexTracker-1.0.3-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com/fr/">Site</a> · <a href="README.en.md">English</a></p>
+<p align="center"><sub>Gratuit · Windows 11 x64 · Sans compte ni serveur · 6 langues · Version 1.0.3</sub></p>
 
 <p align="center"><img src="docs/hero.png" alt="Codex Tracker : tableau de bord sombre, semaine des recharges en clair et aperçu de la barre des tâches, avec des comptes fictifs" width="880"></p>
 
