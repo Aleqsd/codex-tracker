@@ -6,11 +6,11 @@ Six hiboux, chacun en trois versions : encre blanche sur fond transparent, encre
 
 | Illustration | Usage |
 | --- | --- |
-| 05 Hibou mascotte (principal) | Logo : icône Windows, site, installateur, barre de titre, page Application, bandeau des nouveautés |
-| 01 Hibou joyeux au terminal | Réglages → Général → Claude Code |
-| 02 Hibou grands yeux | Accueil sans compte |
-| 03 Hibou endormi | Liste Resets vide |
-| 04 Hibou à lunettes | Réglages → Assistants |
-| 06 Hibou dans une fenêtre de terminal | Carte du premier lancement |
+| 05 Hibou mascotte (principal) | Logo (`owl.svg`) : icône Windows, site, installateur, README, barre de titre, page Application, bandeau des nouveautés |
+| 01 Hibou joyeux au terminal | Réglages → Général → Claude Code ; README, installation |
+| 02 Hibou grands yeux | Accueil sans compte ; README, présentation |
+| 03 Hibou endormi | Liste Resets vide ; pied des README |
+| 04 Hibou à lunettes | Réglages → Assistants ; README, pour aller plus loin |
+| 06 Hibou dans une fenêtre de terminal | Carte du premier lancement ; README, confidentialité |
 
-`python scripts/brand.py` produit à partir de `owl.svg` et des autres versions blanches `src/CodexTracker.App/Assets/App.ico`, `site/icon.png`, `installer/Assets/*.bmp` et les silhouettes de `src/CodexTracker.App/Assets/Mascot`.
+`python scripts/brand.py` produit à partir de `owl.svg` et des autres versions blanches `src/CodexTracker.App/Assets/App.ico`, `site/icon.png`, `installer/Assets/*.bmp`, le pinceau `MascotMain` d’App.xaml, les silhouettes de `src/CodexTracker.App/Assets/Mascot` et les images des README dans `docs/brand` (une par thème GitHub).
