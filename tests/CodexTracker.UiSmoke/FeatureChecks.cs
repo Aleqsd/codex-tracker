@@ -260,7 +260,9 @@ internal static class FeatureChecks
                 await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
                 var popup = (Popup)zone.Template.FindName("PART_Popup", zone);
                 var selectedItem = (ComboBoxItem)zone.ItemContainerGenerator.ContainerFromIndex(zone.SelectedIndex);
-                Check(popup.IsOpen && selectedZone is TimeZoneInfo && ReferenceEquals(zone.SelectedItem, selectedZone)
+                // Windows can take the foreground back while the list opens: a closed popup in an inactive window is not a defect.
+                if (!popup.IsOpen && !window.IsActive) Foreground.Skip("Themed dropdown opening (foreground lost while opening)");
+                else Check(popup.IsOpen && selectedZone is TimeZoneInfo && ReferenceEquals(zone.SelectedItem, selectedZone)
                     && selectedItem is { IsSelected: true, IsVisible: true, ActualHeight: > 0 },
                     $"Themed dropdown opens and retains the selected timezone (open={popup.IsOpen}, selection={ReferenceEquals(zone.SelectedItem, selectedZone)}, item={selectedItem is not null}, visible={selectedItem?.IsVisible}, height={selectedItem?.ActualHeight}, active={window.IsActive})");
                 zone.IsDropDownOpen = false;
