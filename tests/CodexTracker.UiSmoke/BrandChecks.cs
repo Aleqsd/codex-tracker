@@ -23,7 +23,10 @@ internal static class BrandChecks
 
     public static async Task Run(MainWindow window)
     {
-        foreach (var key in Mascots)
+        // The logo is the vector owl (assets/brand/owl.svg); the other owls are 256 px silhouettes.
+        Check(Application.Current.FindResource("MascotMain") is DrawingBrush { Drawing: GeometryDrawing { Geometry.Bounds: { Width: > 500, Height: > 500 } } },
+            "The owl logo is drawn from its vector path");
+        foreach (var key in Mascots.Skip(1))
             Check(Application.Current.FindResource(key) is ImageBrush { ImageSource: BitmapSource { PixelWidth: 256, PixelHeight: 256 } }, $"{key} illustration decodes");
         var theme = window.Preferences.Current.ThemeMode;
         var (width, height) = (window.Width, window.Height);

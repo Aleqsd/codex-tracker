@@ -1,5 +1,7 @@
 # Logo et illustrations
 
+`owl.svg` est le logo vectoriel : le hibou 05 redessiné en formes géométriques régulières (ellipses, oreilles en courbes, traits à bouts ronds), un seul chemin de lignes et de courbes de Bézier. Il remplace le PNG 05 pour l’icône, le site, l’installateur et l’application.
+
 Six hiboux, chacun en trois versions : encre blanche sur fond transparent, encre sombre sur fond transparent (`_dark_ink`) et blanc sur fond sombre (`_dark_background`). `codex_tracker_icons_planche.png` les présente ensemble ; `codex_tracker_principal_app.ico` est l’icône livrée avec la planche.
 
 | Illustration | Usage |
@@ -11,4 +13,4 @@ Six hiboux, chacun en trois versions : encre blanche sur fond transparent, encre
 | 04 Hibou à lunettes | Réglages → Assistants |
 | 06 Hibou dans une fenêtre de terminal | Carte du premier lancement |
 
-`python scripts/brand.py` produit à partir des versions blanches `src/CodexTracker.App/Assets/App.ico`, `site/icon.png`, `installer/Assets/*.bmp` et les silhouettes de `src/CodexTracker.App/Assets/Mascot`.
+`python scripts/brand.py` produit à partir de `owl.svg` et des autres versions blanches `src/CodexTracker.App/Assets/App.ico`, `site/icon.png`, `installer/Assets/*.bmp` et les silhouettes de `src/CodexTracker.App/Assets/Mascot`.

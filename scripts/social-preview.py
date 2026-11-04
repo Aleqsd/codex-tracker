@@ -36,10 +36,10 @@ image.paste(fade, (0, 0), fade)
 draw = ImageDraw.Draw(image)
 left = 72
 # The owl logo above the label, in the title's white.
-owl = Image.open(os.path.join(root, "assets", "brand", "codex_tracker_05_hibou_mascotte_PRINCIPAL.png")).convert("RGBA")
-owl = owl.crop(owl.getchannel("A").getbbox())
-owl = owl.resize((round(owl.width * 64 / owl.height), 64), Image.LANCZOS)
-image.paste(owl, (left, 36), owl)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from brand import owl as vector_owl
+logo = vector_owl(66)
+image.paste(logo, (left, 36), logo)
 pill = font("Medium", 22)
 label = "Free · Windows 11 · Open source"
 w = draw.textlength(label, font=pill)
