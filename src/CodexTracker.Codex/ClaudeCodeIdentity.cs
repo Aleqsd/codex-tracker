@@ -104,11 +104,13 @@ internal sealed record ClaudeCodeIdentity(string Email, string AccountId, string
             try { expires = DateTimeOffset.FromUnixTimeMilliseconds(milliseconds); }
             catch (ArgumentOutOfRangeException) { throw new JsonException(); }
         }
-        var tier = oauth.ValueKind == JsonValueKind.Object ? Text(oauth, "rateLimitTier") : null;
-        var plan = oauth.ValueKind == JsonValueKind.Object ? Text(oauth, "subscriptionType") : null;
-        plan ??= Plan(Text(account, "organizationType"));
+        // The profile that Claude Code refreshes (profileFetchedAt) gives the organization's current plan. The credential
+        // keeps what its login returned: it can lag behind a plan change, so it only fills what the profile omits.
+        var credential = oauth.ValueKind == JsonValueKind.Object;
+        var plan = Plan(Text(account, "organizationType")) ?? (credential ? Text(oauth, "subscriptionType") : null);
+        var tier = Text(account, "userRateLimitTier") ?? Text(account, "organizationRateLimitTier") ?? (credential ? Text(oauth, "rateLimitTier") : null);
         return new(email.Trim(), accountId.ToString("D") + "/" + organization?.ToLowerInvariant(),
-            plan, expires, Multiplier(tier ?? Text(account, "userRateLimitTier")), OrganizationLabel(Text(account, "organizationName"), plan, email),
+            plan, expires, Multiplier(tier), OrganizationLabel(Text(account, "organizationName"), plan, email),
             oauth.ValueKind == JsonValueKind.Object && Text(oauth, "accessToken") is { Length: > 0 });
     }
 

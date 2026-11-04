@@ -106,6 +106,23 @@ public sealed class ClaudeDesktopSelectionTests
     }
 
     [Fact]
+    public void TheRefreshedProfileNamesThePlanBeforeTheCredentialOfItsLogin()
+    {
+        // A Max 20x personal organization whose credential still says team / 5x: the address is not repeated as its name.
+        using var profile = JsonDocument.Parse("""{"emailAddress":"demo@example.test","accountUuid":"11111111-1111-4111-8111-111111111111","organizationUuid":"33333333-3333-4333-8333-333333333333","organizationName":"demo@example.test's Organization","organizationType":"claude_max","organizationRateLimitTier":"default_claude_max_20x","userRateLimitTier":null}""");
+        using var credential = JsonDocument.Parse("""{"subscriptionType":"team","rateLimitTier":"default_claude_max_5x"}""");
+        var identity = ClaudeCodeIdentity.FromMetadata(profile.RootElement, credential.RootElement);
+        Assert.Equal("max", identity.PlanType); Assert.Equal(20, identity.PlanMultiplier); Assert.Equal("Personnel", identity.OrganizationName);
+        // A seat tier given by the profile comes before the organization's; the credential only fills what the profile omits.
+        using var seat = JsonDocument.Parse("""{"emailAddress":"demo@example.test","accountUuid":"11111111-1111-4111-8111-111111111111","organizationType":"claude_team","organizationRateLimitTier":"default_claude_max_20x","userRateLimitTier":"default_claude_max_5x"}""");
+        var member = ClaudeCodeIdentity.FromMetadata(seat.RootElement, default);
+        Assert.Equal("team", member.PlanType); Assert.Equal(5, member.PlanMultiplier);
+        using var bare = JsonDocument.Parse("""{"emailAddress":"demo@example.test","accountUuid":"11111111-1111-4111-8111-111111111111"}""");
+        var fallback = ClaudeCodeIdentity.FromMetadata(bare.RootElement, credential.RootElement);
+        Assert.Equal("team", fallback.PlanType); Assert.Equal(5, fallback.PlanMultiplier);
+    }
+
+    [Fact]
     public async Task DesktopAloneNamesItsAccountAndMissingSourcesKeepTheOriginalError()
     {
         using var directory = new TestDirectory();
