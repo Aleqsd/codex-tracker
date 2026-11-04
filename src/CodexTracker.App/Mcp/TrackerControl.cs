@@ -62,7 +62,8 @@ internal sealed class TrackerControl : IDisposable
                 healthWarnings = _window.HealthWarnings(), recoveryPending = _preferences.RecoveryRequired,
                 windowsNotifications = WindowsNotificationDelivery.ReadState().ToString() };
             case "accounts": return new { revision, accounts = state.Accounts.Select(a => new { id = a.Profile.Id, email = a.Profile.Email, provider = a.Profile.Provider.ToString(), organization = a.Profile.OrganizationName, a.IsActive, a.IsActiveInCodex, a.IsActiveInClaudeCode, a.IsConnected, a.IsStale, error = a.Error is null ? null : "Actualisation indisponible", manualReset = state.ManualCodexReset?.Applies(a, ResetKind.Weekly, DateTimeOffset.UtcNow) == true, displayedWeeklyRemaining = QuotaPresentation.Remaining(state, a, ResetKind.Weekly, DateTimeOffset.UtcNow),
-                displayedShortRemaining = a.HasShortWindow ? QuotaPresentation.Remaining(state, a, ResetKind.Short, DateTimeOffset.UtcNow) : null,
+                // False when the plan has no 5-hour quota (Codex Pro, a reading with the week only): the interface hides it.
+                hasShortWindow = a.HasShortWindow, displayedShortRemaining = a.HasShortWindow ? QuotaPresentation.Remaining(state, a, ResetKind.Short, DateTimeOffset.UtcNow) : null,
                 forecast = AgentQueries.Forecast(_window.TrackerService, a), pace = AgentQueries.Pace(state, a, DateTimeOffset.UtcNow), snapshot = a.Snapshot }) };
             case "resets": return new { revision, resets = ResetSchedule.Entries(state).Select(e => new { accountId = e.Account.Profile.Id, account = e.Account.Profile.Email, provider = e.Account.Profile.Provider.ToString(), e.Kind, e.At, e.IsProjected, e.CreditId, e.CreditTitle, e.GrantedAt, e.IsUndetailedReserve, observedAt = e.Account.Snapshot?.FetchedAt, e.Account.IsStale }),
                 // Prefilled Google Calendar events, as « Ajouter une seule échéance » opens them.

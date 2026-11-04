@@ -22,7 +22,7 @@ La lecture du cache ne dépend pas d’un jeton dans le fichier du terminal : De
 
 ## Terminal Claude Code : recevoir les quotas et échéances
 
-Claude Code transmet les limites de 5 heures et de la semaine à sa [barre de statut](https://code.claude.com/docs/en/statusline). Les champs apparaissent après une réponse dans une session avec un abonnement compatible (Pro / Max). Ils peuvent être absents indépendamment ; une absence reste inconnue.
+Claude Code transmet les limites de 5 heures et de la semaine à sa [barre de statut](https://code.claude.com/docs/en/statusline). Les champs apparaissent après une réponse dans une session avec un abonnement compatible (Pro / Max). Ils peuvent être absents indépendamment. Claude Code retire une fenêtre dès que son reset est passé : la fenêtre de 5 heures reste alors affichée avec son dernier relevé et « Reset attendu », tant que la semaine n’a pas bougé. Une semaine relevée sans 5 heures signifie que l’offre n’en a pas (Ultra) : le tracker n’affiche alors que la semaine.
 
 1. Dans le tracker, ouvrez **Réglages → Général → Claude Code** et cliquez sur **Copier le réglage Claude Code**.
 2. Ouvrez les réglages utilisateur de Claude Code, `%USERPROFILE%/.claude/settings.json`, ou `settings.json` sous `CLAUDE_CONFIG_DIR`.

@@ -96,12 +96,27 @@ public sealed class ClaudeCodeObservations(string dataDirectory, ClaudeCodeLocat
             var snapshot = ClaudeCodeQuotaParser.Parse(root, identity.Email, identity.PlanType, now, identity.PlanMultiplier);
             if (snapshot is null) return null;
             var pathForAccount = AccountPath(identity.AccountId);
-            if (Read<Observation>(pathForAccount)?.Snapshot.FetchedAt > now) return null;
+            var previous = Read<Observation>(pathForAccount);
+            if (previous?.Snapshot.FetchedAt > now) return null;
+            if (previous?.AccountId == identity.AccountId && previous.Snapshot is { } last && SameEmail(last.Email, identity.Email))
+                snapshot = KeepDroppedShortWindow(snapshot, last);
             Write(pathForAccount, new Observation(identity.AccountId, snapshot));
             Write(SignalPath, new { observedAt = now, account = Key(identity.AccountId) });
             return Loc.F("Claude Code · 5 h : {0} · semaine : {1}", Percent(snapshot.Short), Percent(snapshot.Weekly));
         }
         finally { if (acquired) mutex.ReleaseMutex(); }
+    }
+
+    /// <summary>
+    /// Claude Code drops a window from its status line once its reset time passes. A 5-hour window gone that way,
+    /// with no new use of the week since, stays as last measured with its passed reset: the plan still has one.
+    /// A plan without a 5-hour quota (Ultra) never reports it, and the tracker then hides it.
+    /// </summary>
+    internal static AccountSnapshot KeepDroppedShortWindow(AccountSnapshot snapshot, AccountSnapshot previous)
+    {
+        if (snapshot.Short is not null || previous.Short is not { ResetsAt: { } reset } dropped || reset > snapshot.FetchedAt ||
+            snapshot.Weekly is not { } weekly || previous.Weekly?.UsedPercent != weekly.UsedPercent) return snapshot;
+        return snapshot with { Buckets = [.. snapshot.Buckets.Select(b => b.Id == "claude" ? b with { Windows = [dropped, .. b.Windows] } : b)] };
     }
 
     internal AccountSnapshot Read(ClaudeCodeIdentity identity)

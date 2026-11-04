@@ -86,7 +86,7 @@ public static class AccountAdvisor
             return false;
         }
         var weekly = snapshot.Weekly;
-        // Codex Pro has a weekly quota only: a 5-hour window is neither shown nor required for it.
+        // A plan without a 5-hour quota (Codex Pro, a reading with the week only): it is neither shown nor required.
         var shortWindow = account.HasShortWindow ? snapshot.Short : null;
         if (!KnownWindow(weekly) || account.HasShortWindow && !KnownWindow(shortWindow))
         {

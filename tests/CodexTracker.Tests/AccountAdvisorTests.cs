@@ -82,18 +82,25 @@ public sealed class AccountAdvisorTests
         Assert.Contains("Aucun autre relevé", advice.Reason);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void MissingEitherWindowIsUnknownAndNeverMeansZeroOrAvailable(bool omitWeekly)
+    [Fact]
+    public void MissingWeekIsUnknownAndNeverMeansZeroOrAvailable()
     {
         var active = Account(ActiveId, active: true, weekly: 10);
-        var incomplete = WithoutWindow(Account(OtherId), omitWeekly ? 10080 : 300);
-        AssertUnavailable(Evaluate(active, incomplete));
-        var incompleteActive = WithoutWindow(active, omitWeekly ? 10080 : 300);
-        var advice = Evaluate(incompleteActive, Account(OtherId));
+        AssertUnavailable(Evaluate(active, WithoutWindow(Account(OtherId), 10080)));
+        var advice = Evaluate(WithoutWindow(active, 10080), Account(OtherId));
         AssertUnavailable(advice);
         Assert.Contains("doivent être connus", advice.Reason);
+    }
+
+    [Fact]
+    public void AReadingWithoutFiveHoursIsAdvisedOnItsWeekLikeTheScreen()
+    {
+        // The plan has no 5-hour quota (limit lifted by OpenAI): the week alone decides, as for Codex Pro.
+        var active = Account(ActiveId, active: true, weekly: 10);
+        var advice = Evaluate(active, WithoutWindow(Account(OtherId, weekly: 70), 300));
+        Assert.Equal(OtherId, advice.AccountId);
+        Assert.Contains("seul quota de son offre", advice.Reason);
+        AssertUnavailable(Evaluate(active, WithoutWindow(Account(OtherId, weekly: 20), 300)));
     }
 
     [Fact]
@@ -234,7 +241,7 @@ public sealed class AccountAdvisorTests
     }
 
     [Fact]
-    public void CodexProStillNeedsAKnownFutureWeeklyResetWhileOtherPlansNeedBothWindows()
+    public void AWeekOnlyPlanStillNeedsAKnownFutureWeeklyReset()
     {
         var active = Account(ActiveId, active: true, weekly: 10);
         var pro = WithoutWindow(Account(OtherId, plan: "pro"), 300);
@@ -245,7 +252,11 @@ public sealed class AccountAdvisorTests
         AssertUnavailable(advice);
         Assert.Contains("quota de la semaine et sa date de reset", advice.Reason);
         foreach (var plan in new[] { "plus", "free", "team", null })
-            AssertUnavailable(Evaluate(active, WithoutWindow(Account(OtherId, plan: plan), 300)));
+        {
+            var weekOnly = WithoutWindow(Account(OtherId, plan: plan), 300);
+            AssertUnavailable(Evaluate(active, ChangeWindow(weekOnly, 10080, w => w with { ResetsAt = null })));
+            Assert.Equal(OtherId, Evaluate(active, weekOnly).AccountId);
+        }
     }
 
     private static AccountAdvice Evaluate(params AccountState[] accounts) => AccountAdvisor.Evaluate(new(accounts, null), Now);

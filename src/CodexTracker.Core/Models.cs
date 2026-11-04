@@ -35,9 +35,14 @@ public sealed record AccountState(AccountProfile Profile, AccountSnapshot? Snaps
 {
     public bool IsActive => Profile.Provider == AccountProvider.ClaudeCode ? IsActiveInClaudeCode : IsActiveInCodex;
     public bool IsStale => Error is not null || (Snapshot is not null && (!IsActive || DateTimeOffset.UtcNow - Snapshot.FetchedAt > TimeSpan.FromMinutes(5)));
-    /// <summary>Codex Pro only has a weekly quota: no 5-hour window is presented for it.</summary>
+    /// <summary>
+    /// Whether the plan has a 5-hour quota to present. Codex Pro has none. Any other plan has none when its reading
+    /// gives the week without a 5-hour window (Claude Ultra, a 5-hour limit lifted by the provider); it comes back
+    /// with the next reading that has one. Before any reading, the 5-hour quota stays shown as unknown.
+    /// </summary>
     public bool HasShortWindow => !(Profile.Provider == AccountProvider.Codex &&
-        (Snapshot?.PlanType ?? Profile.ProviderPlanType)?.ToLowerInvariant() is "pro" or "prolite");
+        (Snapshot?.PlanType ?? Profile.ProviderPlanType)?.ToLowerInvariant() is "pro" or "prolite") &&
+        Snapshot is not { Weekly: not null, Short: null };
 }
 public sealed record TrackerState(IReadOnlyList<AccountState> Accounts, Guid? SelectedAccountId,
     bool IsBusy = false, string? StatusMessage = null, bool OnboardingComplete = false)
