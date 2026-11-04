@@ -599,6 +599,7 @@
 "Limites invalides.": "Ungültige Limits.",
 "Limites modifiées ailleurs. Utilisez « Recharger la section ».": "Limits wurden anderswo geändert. Nutze „Bereich neu laden“.",
 "Liste": "Liste",
+"Logo hibou redessiné, net à toutes les tailles": "Eulen-Logo neu gezeichnet, scharf in jeder Größe",
 "L’API Gmail n’est pas active dans le projet Google Cloud du client. Une API activée il y a quelques minutes peut encore refuser.": "Die Gmail API ist im Google Cloud-Projekt des Clients nicht aktiv. Eine vor wenigen Minuten aktivierte API kann noch ablehnen.",
 "L’API Google Calendar n’est pas encore active dans votre projet Google Cloud. Une API activée il y a moins de quelques minutes peut encore refuser : nouvel essai automatique dans 2 minutes.": "Die Google Calendar API ist in deinem Google Cloud-Projekt noch nicht aktiv. Eine vor wenigen Minuten aktivierte API kann noch ablehnen: automatischer neuer Versuch in 2 Minuten.",
 "L’accès à Google Agenda a expiré ou a été retiré. Reconnectez Google Agenda dans les réglages.": "Der Zugriff auf Google Kalender ist abgelaufen oder wurde entzogen. Verbinde Google Kalender in den Einstellungen erneut.",

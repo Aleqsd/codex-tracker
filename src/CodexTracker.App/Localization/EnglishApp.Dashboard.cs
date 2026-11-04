@@ -209,6 +209,7 @@ internal static partial class EnglishApp
         ("Découvrir", "See what's new"),
         ("Voir les nouveautés", "See what's new"),
         ("Masquer les nouveautés", "Hide what's new"),
+        ("Logo hibou redessiné, net à toutes les tailles", "Owl logo redrawn, sharp at every size"),
         ("Nouveau logo : un hibou, avec quelques illustrations", "New logo: an owl, with a few illustrations"),
         ("Le quota de 5 heures disparaît des offres qui n’en ont pas", "The 5-hour quota is gone from plans that have none"),
         ("Interface en espagnol, allemand, portugais et japonais", "Interface in Spanish, German, Portuguese and Japanese"),

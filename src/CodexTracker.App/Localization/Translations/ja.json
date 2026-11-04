@@ -599,6 +599,7 @@
 "Limites invalides.": "上限が無効です。",
 "Limites modifiées ailleurs. Utilisez « Recharger la section ».": "上限が別の場所で変更されました。「セクションを再読み込み」を使ってください。",
 "Liste": "リスト",
+"Logo hibou redessiné, net à toutes les tailles": "フクロウのロゴを描き直し、どのサイズでもくっきり",
 "L’API Gmail n’est pas active dans le projet Google Cloud du client. Une API activée il y a quelques minutes peut encore refuser.": "クライアントのGoogle Cloudプロジェクトで、Gmail APIが有効になっていません。有効にしてから数分以内のAPIは拒否することがあります。",
 "L’API Google Calendar n’est pas encore active dans votre projet Google Cloud. Une API activée il y a moins de quelques minutes peut encore refuser : nouvel essai automatique dans 2 minutes.": "Google Cloudプロジェクトで、Google Calendar APIがまだ有効になっていません。有効にしてから数分以内のAPIは拒否することがあります：2分後に自動で再試行します。",
 "L’accès à Google Agenda a expiré ou a été retiré. Reconnectez Google Agenda dans les réglages.": "Googleカレンダーへのアクセスが期限切れになったか、取り消されました。設定でGoogleカレンダーを再接続してください。",
