@@ -58,6 +58,87 @@ public sealed class QuotaPaceTests
     }
 
     [Fact]
+    public void TheAverageUseSinceTheResetGivesWhatIsLeftAtTheReset()
+    {
+        // 55 % used in five days: 11 % a day. Two days left: 45 − 22 = 23 % at the reset, up to 22.5 % a day to last.
+        var holds = Pace(Active(weeklyUsed: 55, TimeSpan.FromDays(2)));
+        Assert.Equal(11d / 24, holds.AverageUsePerHour, 9);
+        Assert.Equal(23, holds.AtReset, 9);
+        Assert.Equal(PaceOutlook.Holds, holds.Outlook);
+        Assert.Null(holds.TimeToEmpty);
+        Assert.Equal((22.5, false), holds.Budget);
+        Assert.Equal(11, holds.Average!.Value, 9);
+
+        // 57 % used in three days: 19 % a day. 43 % lasts 43/19 days, before the reset in four.
+        var runsOut = Pace(Active(weeklyUsed: 57, TimeSpan.FromDays(4)));
+        Assert.Equal(PaceOutlook.RunsOut, runsOut.Outlook);
+        Assert.Equal(43 - 4 * 19, runsOut.AtReset, 9);
+        Assert.Equal(TimeSpan.FromDays(43d / 19).TotalMinutes, runsOut.TimeToEmpty!.Value.TotalMinutes, 6);
+
+        // The verdict agrees with the steady line: more left than it, the quota holds.
+        foreach (var used in new[] { 10d, 40, 49.9, 50.1, 70, 99 })
+        {
+            var pace = Pace(Active(weeklyUsed: used, TimeSpan.FromDays(3.5)));
+            Assert.Equal(pace.Margin >= 0, pace.Outlook != PaceOutlook.RunsOut);
+        }
+        // Unused, the quota stays full.
+        Assert.Equal(100, Pace(Active(weeklyUsed: 0, TimeSpan.FromDays(2))).AtReset, 9);
+    }
+
+    [Fact]
+    public void TightAndEmptyLimitsAreExact()
+    {
+        // Half the week left, u % used leaves 100 − 2u at the reset: just above 0 is tight, below runs out,
+        // five points or more holds.
+        Assert.Equal(PaceOutlook.Tight, Pace(Active(weeklyUsed: 49.99, TimeSpan.FromDays(3.5))).Outlook);
+        Assert.Equal(PaceOutlook.RunsOut, Pace(Active(weeklyUsed: 50.01, TimeSpan.FromDays(3.5))).Outlook);
+        Assert.Equal(PaceOutlook.Holds, Pace(Active(weeklyUsed: 47.49, TimeSpan.FromDays(3.5))).Outlook);
+        Assert.Equal(PaceOutlook.Tight, Pace(Active(weeklyUsed: 47.51, TimeSpan.FromDays(3.5))).Outlook);
+        // An empty quota runs out now and has no budget left.
+        var empty = Pace(Active(weeklyUsed: 100, TimeSpan.FromDays(2)));
+        Assert.Equal(PaceOutlook.RunsOut, empty.Outlook);
+        Assert.Equal(TimeSpan.Zero, empty.TimeToEmpty);
+        Assert.Null(empty.Budget);
+        Assert.Null(empty.Average);
+    }
+
+    [Fact]
+    public void TheFirstDayCountsWhole()
+    {
+        // 30 % used in the six hours since the reset: 30 % for the day, not 120 % a day.
+        var early = Pace(Active(weeklyUsed: 30, TimeSpan.FromDays(7) - TimeSpan.FromHours(6)));
+        Assert.True(early.EarlyInWindow);
+        Assert.Equal(30d / 24, early.AverageUsePerHour, 9);
+        Assert.Equal(PaceOutlook.RunsOut, early.Outlook);
+        Assert.Equal(TimeSpan.FromDays(70d / 30).TotalMinutes, early.TimeToEmpty!.Value.TotalMinutes, 6);
+        // From one full day, the real elapsed time applies.
+        var day = Pace(Active(weeklyUsed: 30, TimeSpan.FromDays(6)));
+        Assert.False(day.EarlyInWindow);
+        Assert.Equal(30d / 24, day.AverageUsePerHour, 9);
+        // The 5-hour window counts its first hour whole: 20 % in thirty minutes is 20 % an hour.
+        var hourly = Pace(Active(weeklyUsed: 50, TimeSpan.FromDays(2), shortUsed: 20, shortLeft: TimeSpan.FromHours(4.5)), ResetKind.Short);
+        Assert.True(hourly.EarlyInWindow);
+        Assert.Equal(20, hourly.AverageUsePerHour, 9);
+        Assert.Equal(-10, hourly.AtReset, 9);
+        Assert.Equal(20, hourly.Average!.Value, 9);
+    }
+
+    [Fact]
+    public void OnlyANearRecentExhaustionIsAWarning()
+    {
+        UsageForecast At(TimeSpan left, UsageWindowKind? window = UsageWindowKind.Weekly) => new(left, Now + left, "", window);
+        Assert.True(QuotaPace.IsImminent(At(TimeSpan.FromHours(2)), Now));
+        Assert.True(QuotaPace.IsImminent(At(QuotaPace.ImminentHorizon), Now));
+        Assert.False(QuotaPace.IsImminent(At(QuotaPace.ImminentHorizon + TimeSpan.FromTicks(1)), Now));
+        Assert.True(QuotaPace.IsImminent(At(TimeSpan.FromMinutes(30), UsageWindowKind.Short), Now));
+        Assert.False(QuotaPace.IsImminent(At(TimeSpan.FromHours(1), null), Now));
+        Assert.False(QuotaPace.IsImminent(At(TimeSpan.Zero), Now));
+        Assert.False(QuotaPace.IsImminent(At(TimeSpan.FromMinutes(-5)), Now));
+        Assert.False(QuotaPace.IsImminent(new(null, null, "", UsageWindowKind.Weekly, LastsUntilReset: true), Now));
+        Assert.False(QuotaPace.IsImminent(null, Now));
+    }
+
+    [Fact]
     public void NoPaceIsInventedWithoutAMeasuredWindowOfTheActiveAccount()
     {
         var account = Active(weeklyUsed: 50, TimeSpan.FromDays(2));

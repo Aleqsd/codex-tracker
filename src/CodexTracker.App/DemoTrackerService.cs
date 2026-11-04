@@ -66,6 +66,12 @@ internal sealed class DemoTrackerService : ITrackerService
     {
         var account = State.Accounts.FirstOrDefault(a => a.Profile.Id == accountId);
         var hours = (account?.Snapshot?.Weekly?.RemainingPercent ?? 72) / 1.5;
+        // The active Claude session burns its 5-hour quota: the dashboard shows its "En ce moment" warning.
+        if (account is { IsActive: true, Profile.Provider: AccountProvider.ClaudeCode, Snapshot.Short.ResetsAt: { } shortReset } && shortReset > PreviewClock.UtcNow)
+        {
+            var left = (shortReset - PreviewClock.UtcNow) * 0.7;
+            return new UsageForecast(left, PreviewClock.UtcNow + left, Loc.T("Au rythme récent, estimation indicative fondée sur les relevés de démonstration. Votre usage peut changer."), UsageWindowKind.Short);
+        }
         return account?.IsActive == true
             ? new UsageForecast(TimeSpan.FromHours(hours), PreviewClock.UtcNow.AddHours(hours), Loc.T("Au rythme récent, estimation indicative fondée sur les relevés de démonstration. Votre usage peut changer."), UsageWindowKind.Weekly)
             : new UsageForecast(null, null, Loc.T("Ouvrez ce compte dans Codex pour obtenir une estimation fondée sur son utilisation récente."));

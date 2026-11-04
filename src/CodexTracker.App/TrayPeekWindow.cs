@@ -187,7 +187,7 @@ internal sealed class TrayPeekWindow : Window
                 choice.IsChecked = selected; choice.IsEnabled = account is not null && _selectable;
                 label.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
                 choice.ToolTip = account is null ? null : (selected ? Loc.T("Affiché dans l’icône de la barre des tâches") : Loc.T("Cliquez pour l’afficher dans l’icône de la barre des tâches"))
-                    + (pace is null ? "" : "\n" + PaceDisplay.Line(pace));
+                    + (pace is null ? "" : "\n" + PaceDisplay.Line(pace, PreviewClock.UtcNow));
                 var provider = account?.Profile.ProviderName ?? "Codex Tracker";
                 System.Windows.Automation.AutomationProperties.SetName(choice, kind == ResetKind.Short ? Loc.F("{0} · 5 heures", provider) : Loc.F("{0} · semaine", provider));
             }

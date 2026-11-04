@@ -92,29 +92,67 @@ internal static class Display
         (snapshot is null ? "" : "\n\n" + Loc.F("Dernier relevé : {0}\n{1}\nDisponibilité au moment de ce relevé.", Exact(snapshot.FetchedAt), Zone(snapshot.FetchedAt)));
 }
 
-/// <summary>Texts of the steady pace: a use that would empty the quota exactly at its reset.</summary>
+/// <summary>Texts of the pace: where the average use since the start of the window leads at its reset.</summary>
 internal static class PaceDisplay
 {
-    public static string Margin(QuotaPace? pace) => pace is null ? "" : pace.OnPace ? Loc.T("Dans le rythme")
-        : pace.Margin > 0 ? Loc.F("Marge de {0} %", Points(pace.Margin)) : Loc.F("Dépassé de {0} %", Points(-pace.Margin));
-    public static Brush Brush(QuotaPace? pace) => pace is null || pace.OnPace ? ThemeManager.GetBrush("TextBrush") : pace.Margin > 0 ? Display.Green : Display.Orange;
-    /// <summary>Short in compact panels ("≈ 28 % par jour"); the tooltip says until when.</summary>
-    public static string Budget(QuotaPace? pace, bool untilReset = false) => pace?.Budget is not { } budget ? ""
-        : untilReset ? budget.PerHour ? Loc.F("≈ {0:0.#} % par heure jusqu’au reset", Amount(budget.Amount)) : Loc.F("≈ {0:0.#} % par jour jusqu’au reset", Amount(budget.Amount))
-        : budget.PerHour ? Loc.F("≈ {0:0.#} % par heure", Amount(budget.Amount)) : Loc.F("≈ {0:0.#} % par jour", Amount(budget.Amount));
-    /// <summary>One line for a tooltip: "Rythme régulier : marge de 35 % · ≈ 28 % par jour".</summary>
-    public static string Line(QuotaPace pace) => Loc.F("Rythme régulier : {0}", Lower(Margin(pace))) + (Budget(pace) is { Length: > 0 } budget ? " · " + budget : "");
-    private static string Lower(string text) => text.Length == 0 ? text : char.ToLower(text[0], Loc.Culture) + text[1..];
-    /// <summary>What the tick on the ring means, then each window's numbers.</summary>
-    public static string Hint(QuotaPace? weekly, QuotaPace? shortWindow) => string.Join("\n", new[]
+    /// <summary>The verdict: "≈ 33 % au reset" or "Vide mer. 14:00".</summary>
+    public static string Outlook(QuotaPace? pace, DateTimeOffset now) => pace is null ? ""
+        : pace.TimeToEmpty is { } empty ? empty <= TimeSpan.Zero ? Loc.T("Déjà vide") : Empty(now + empty)
+        : Loc.F("≈ {0} % au reset", Points(pace.AtReset));
+    /// <summary>Beside the verdict: how early the quota runs out, or that it holds only just.</summary>
+    public static string OutlookAside(QuotaPace? pace) => pace is null ? ""
+        : pace.TimeToEmpty is { } empty ? empty <= TimeSpan.Zero ? "" : Loc.F("{0} avant le reset", Display.Span(pace.Left - empty))
+        : pace.Outlook == PaceOutlook.Tight ? Loc.T("de justesse") : "";
+    public static Brush Brush(QuotaPace? pace) => pace?.Outlook switch
     {
-        Loc.T("Le repère sur l’anneau montre ce qu’un rythme régulier laisserait maintenant pour finir à 0 % au reset."),
-        Explain(Loc.T("Semaine"), weekly), Explain(Loc.T("5 heures"), shortWindow)
-    }.Where(line => line.Length > 0));
-    private static string Explain(string window, QuotaPace? pace) => pace is null ? ""
-        : Loc.F("{0} : un rythme régulier laisserait {1} %, il reste {2} %.", window, (int)Math.Round(pace.Expected), (int)Math.Floor(pace.Remaining))
-            + (Budget(pace, untilReset: true) is { Length: > 0 } budget ? " " + budget + "." : "");
-    private static int Points(double margin) => (int)Math.Round(margin, MidpointRounding.AwayFromZero);
+        PaceOutlook.RunsOut => Display.Orange, PaceOutlook.Holds => Display.Green, _ => ThemeManager.GetBrush("TextBrush")
+    };
+    /// <summary>"≤ 35 % par jour" (per hour within the last day): what can still be used to reach the reset.</summary>
+    public static string Budget(QuotaPace? pace) => pace?.Budget is not { } budget ? ""
+        : budget.PerHour ? Loc.F("≤ {0:0.#} % par heure", Amount(budget.Amount)) : Loc.F("≤ {0:0.#} % par jour", Amount(budget.Amount));
+    /// <summary>"moyenne ≈ 10 %": the average use so far, in the unit of the budget.</summary>
+    public static string Average(QuotaPace? pace) => pace?.Average is { } average ? Loc.F("moyenne ≈ {0:0.#} %", Amount(average)) : "";
+    /// <summary>One line for a tooltip: "À ce rythme : ≈ 33 % au reset · pour tenir : ≤ 35 % par jour".</summary>
+    public static string Line(QuotaPace pace, DateTimeOffset now) => Budget(pace) is { Length: > 0 } budget
+        ? Loc.F("À ce rythme : {0} · pour tenir : {1}", Lower(Outlook(pace, now)), budget) : Loc.F("À ce rythme : {0}", Lower(Outlook(pace, now)));
+    /// <summary>Each window in plain sentences, then what the tick on the ring means.</summary>
+    public static string Hint(QuotaPace? weekly, QuotaPace? shortWindow, DateTimeOffset now) => string.Join("\n\n", new[]
+    {
+        Explain(Loc.T("Semaine"), weekly, now), Explain(Loc.T("5 heures"), shortWindow, now),
+        weekly is null ? "" : Loc.F("Repère sur l’anneau : {0} %, ce qu’il resterait maintenant avec un usage régulier qui finit pile à 0 % au reset.", Points(weekly.Expected))
+    }.Where(text => text.Length > 0));
+    private static string Explain(string window, QuotaPace? pace, DateTimeOffset now)
+    {
+        if (pace is null) return "";
+        var perHour = pace.Budget?.PerHour ?? pace.Left < TimeSpan.FromDays(1);
+        var average = perHour ? pace.AverageUsePerHour : pace.AverageUsePerHour * 24;
+        var lines = new List<string>
+        {
+            (perHour ? Loc.F("{0} : {1} % utilisés en {2}, soit ≈ {3:0.#} % par heure en moyenne.", window, Points(100 - pace.Remaining), Display.Span(pace.Elapsed), Amount(average))
+                : Loc.F("{0} : {1} % utilisés en {2}, soit ≈ {3:0.#} % par jour en moyenne.", window, Points(100 - pace.Remaining), Display.Span(pace.Elapsed), Amount(average)))
+            + (pace.EarlyInWindow ? " " + (pace.MinimumSpan >= TimeSpan.FromDays(1) ? Loc.T("Le premier jour compte pour une journée entière.") : Loc.T("La première heure compte pour une heure entière.")) : ""),
+            pace.TimeToEmpty is { } empty
+                ? empty <= TimeSpan.Zero ? Loc.F("Le quota est vide jusqu’au reset, dans {0}.", Display.Span(pace.Left))
+                : Loc.F("À ce rythme, le quota sera vide vers {0}, {1} avant le reset.", Moment(now + empty), Display.Span(pace.Left - empty))
+                : Loc.F("À ce rythme, il restera ≈ {0} % au reset, dans {1}.", Points(pace.AtReset), Display.Span(pace.Left)),
+        };
+        if (pace.Budget is { } budget)
+            lines.Add(budget.PerHour ? Loc.F("Pour tenir jusqu’au reset : ≤ {0:0.#} % par heure.", Amount(budget.Amount)) : Loc.F("Pour tenir jusqu’au reset : ≤ {0:0.#} % par jour.", Amount(budget.Amount)));
+        return string.Join("\n", lines);
+    }
+    /// <summary>"Vide à 14:00" today, "Vide demain 01:10", "Vide mer. 14:00": short enough for a compact card.</summary>
+    public static string Empty(DateTimeOffset at) => ResetCalendar.DaysFrom(at, PreviewClock.UtcNow, TimeZoneInfo.Local) == 0
+        ? Loc.F("Vide à {0:HH:mm}", at.ToLocalTime()) : Loc.F("Vide {0}", Moment(at));
+    /// <summary>"14:00" today, "demain 14:00", "mer. 14:00": the moment inside a sentence.</summary>
+    internal static string Moment(DateTimeOffset at)
+    {
+        var text = Display.ResetHour(at);
+        // A weekday keeps its capital where the language writes one ("Wed 14:00", "Mi. 14:00"), not in French ("mer. 14:00").
+        var days = Loc.Culture.DateTimeFormat.AbbreviatedDayNames;
+        return days.Any(day => day.Length > 0 && char.IsUpper(day[0]) && text.StartsWith(day, StringComparison.CurrentCultureIgnoreCase)) ? text : Lower(text);
+    }
+    internal static string Lower(string text) => text.Length == 0 ? text : char.ToLower(text[0], Loc.Culture) + text[1..];
+    private static int Points(double value) => (int)Math.Round(Math.Max(0, value), MidpointRounding.AwayFromZero);
     private static double Amount(double value) => value >= 10 ? Math.Round(value) : Math.Round(value, 1);
 }
 
@@ -129,12 +167,6 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     private readonly Func<string, bool>? _inCalendar;
     private readonly Func<Guid, UsageForecast>? _forecast;
     private UsageForecast? Forecast => IsActive ? _forecast?.Invoke(Id) : null;
-    public bool HasForecast => Forecast is { EstimatedExhaustionAt: not null } or { LastsUntilReset: true };
-    public string ForecastLabel => Forecast?.EstimatedExhaustionAt is not null ? Loc.T("Épuisé dans") : Loc.T("À ce rythme");
-    public string ForecastText => Forecast?.EstimatedExhaustionAt is { } at ? "≈ " + Display.Remaining(at) : Loc.T("jusqu’au reset");
-    public Brush ForecastBrush => Forecast?.EstimatedExhaustionAt is not null ? Display.Orange : Display.Green;
-    public string ForecastHint => Forecast is not { } forecast ? "" : forecast.EstimatedExhaustionAt is { } at
-        ? forecast.Explanation + "\n" + Loc.F("Épuisement estimé : {0}\n{1}", Display.Exact(at), Display.Zone(at)) : forecast.Explanation;
     public void Update(AccountState account, TrackerState state) { _account = account; _state = state; Tick(); }
     public void Tick() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     private TrackerState PresentationState => _state with { ManualCodexReset = _preferences.Current.ManualCodexReset };
@@ -198,26 +230,34 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public Brush WeeklyDisplayBarBrush => HasManualWeeklyReset || HasWeeklyEstimate ? Display.Green : WeeklyBarBrush;
     public string WeeklyRingCaption => HasManualWeeklyReset ? Loc.T("déclaré") : Loc.T("semaine");
     private QuotaPace? WeeklyPace => QuotaPace.For(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow);
+    private QuotaPace? ShortPace => QuotaPace.For(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow);
     public double WeeklyPaceMarker => WeeklyPace?.Expected ?? double.NaN;
-    public bool HasPace => WeeklyPace is not null;
-    public string PaceText => PaceDisplay.Margin(WeeklyPace);
-    public Brush PaceBrush => PaceDisplay.Brush(WeeklyPace);
-    public string PaceBudget => PaceDisplay.Budget(WeeklyPace);
-    public string PaceHint => PaceDisplay.Hint(WeeklyPace, QuotaPace.For(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
     /// <summary>
-    /// One verdict instead of two competing lines: the recent-rate exhaustion first, then an overrun of the steady pace,
-    /// then the reassuring cases. Both computations stay in the tooltip.
+    /// "À ce rythme": the average use since the weekly reset, continued until it. The recent rate, which varies with each
+    /// session, only gets its own line when it empties a quota within a few hours.
     /// </summary>
-    public bool HasProjection => !HasManualWeeklyReset && (HasForecast || HasPace);
-    private DateTimeOffset? Exhaustion => Forecast?.EstimatedExhaustionAt;
-    private bool Overrun => WeeklyPace is { OnPace: false, Margin: < 0 };
-    public string ProjectionText => Exhaustion is { } at ? Loc.F("Vide {0}", Display.ResetHour(at).ToLowerInvariant())
-        : Overrun ? PaceText : Forecast is { LastsUntilReset: true } ? Loc.T("Tient jusqu’au reset") : PaceText;
-    public Brush ProjectionBrush => Exhaustion is not null || Overrun ? Display.Orange
-        : Forecast is { LastsUntilReset: true } ? Display.Green : PaceBrush;
-    private string ProjectionGap => Exhaustion is { } at && QuotaPresentation.ResetsAt(PresentationState, _account, ResetKind.Weekly, PreviewClock.UtcNow) is { } reset && reset > at
-        ? Loc.F("{0} avant le reset", Display.Span(reset - at)) : "";
-    public string ProjectionHint => string.Join("\n\n", new[] { ProjectionGap, ForecastHint, HasPace ? PaceHint : "" }.Where(text => text.Length > 0));
+    public bool HasPace => WeeklyPace is not null;
+    public string PaceText => PaceDisplay.Outlook(WeeklyPace, PreviewClock.UtcNow);
+    public string PaceAside => PaceDisplay.OutlookAside(WeeklyPace);
+    public Brush PaceBrush => PaceDisplay.Brush(WeeklyPace);
+    public string PaceHint => PaceDisplay.Hint(WeeklyPace, ShortPace, PreviewClock.UtcNow);
+    public bool HasPaceBudget => WeeklyPace?.Budget is not null;
+    public string PaceBudget => PaceDisplay.Budget(WeeklyPace);
+    public string PaceAverage => PaceDisplay.Average(WeeklyPace);
+    private UsageForecast? Imminent => Forecast is { Window: { } window } forecast && QuotaPace.IsImminent(forecast, PreviewClock.UtcNow)
+        && !(window == UsageWindowKind.Short ? HasManualShortReset : HasManualWeeklyReset) ? forecast : null;
+    public bool HasRecentWarning => Imminent is not null;
+    /// <summary>"Vide à 16:06", or "5 h : vide à 16:06" when the 5-hour quota runs out first.</summary>
+    public string RecentText => Imminent is not { EstimatedExhaustionAt: { } at } forecast ? ""
+        : forecast.Window == UsageWindowKind.Short ? Loc.F("5 h : {0}", PaceDisplay.Lower(PaceDisplay.Empty(at))) : PaceDisplay.Empty(at);
+    public string RecentAside => Imminent?.EstimatedExhaustionAt is { } at ? Display.Remaining(at) : "";
+    public string RecentHint => Imminent is not { EstimatedExhaustionAt: { } at, Window: { } window } ? ""
+        : (window == UsageWindowKind.Short
+            ? Loc.F("Au rythme des dernières minutes, sans pause, le quota de 5 heures serait vide vers {0}, {1} avant son reset.", PaceDisplay.Moment(at), Display.Span(ResetOf(window) - at))
+            : Loc.F("Au rythme des dernières minutes, sans pause, la semaine serait vide vers {0}, {1} avant son reset.", PaceDisplay.Moment(at), Display.Span(ResetOf(window) - at)))
+        + "\n" + Loc.F("Épuisement estimé : {0}\n{1}", Display.Exact(at), Display.Zone(at));
+    private DateTimeOffset ResetOf(UsageWindowKind window) => QuotaPresentation.ResetsAt(PresentationState, _account,
+        window == UsageWindowKind.Short ? ResetKind.Short : ResetKind.Weekly, PreviewClock.UtcNow) ?? PreviewClock.UtcNow;
     public string ShortWindowRemaining => Display.Percent(QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow));
     public double ShortPercent => QuotaPresentation.Remaining(PresentationState, _account, ResetKind.Short, PreviewClock.UtcNow) ?? 0;
     public Brush ShortBarBrush => HasManualShortReset ? Display.Green : Display.QuotaBarBrush(_account.Snapshot?.Short?.RemainingPercent);

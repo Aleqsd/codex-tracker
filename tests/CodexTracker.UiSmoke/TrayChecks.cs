@@ -75,7 +75,7 @@ internal static class TrayChecks
                     Check(choices.Length == 3 && choices[0].IsChecked == true && choices.Count(r => r.IsChecked == true) == 1 &&
                         shown.Count(t => t == "Dans l’icône") == 1, "Hover preview marks the Codex week drawn in the icon by default");
                     Check(Tree(peek).OfType<QuotaRing>().Where(r => r.IsVisible).ToArray() is { Length: 3 } rings && rings.All(r => double.IsFinite(r.Marker)) &&
-                        choices.All(c => c.ToolTip is string tip && tip.Contains("Rythme régulier : ")), "Hover preview rings carry the steady-pace tick, explained on each tile");
+                        choices.All(c => c.ToolTip is string tip && tip.Contains("À ce rythme : ")), "Hover preview rings carry the steady-pace tick, each tile saying where its pace leads");
                     var claudeShort = choices.Single(r => r.Tag?.ToString() == "ShortQuotaChoice");
                     claudeShort.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                     Check(selections.LastOrDefault() == (AccountProvider.ClaudeCode, ResetKind.Short), "Clicking the Claude Code 5-hour quota chooses it for the icon");

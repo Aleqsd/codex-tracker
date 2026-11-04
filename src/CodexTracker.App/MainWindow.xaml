@@ -68,10 +68,20 @@
             <TextBlock Text="{local:T 'Reset semaine'}" Style="{StaticResource MetricLabel}"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding ResetCompact}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding ResetHour}" Style="{StaticResource MetricValue}"/></StackPanel>
            </Grid>
-           <Grid Tag="ProjectionMetric" Margin="0,7,0,0" ToolTip="{Binding ProjectionHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasProjection, Converter={StaticResource BoolVisibility}}">
+           <Grid Tag="PaceMetric" local:FitAside.Enabled="True" Margin="0,7,0,0" ToolTip="{Binding PaceHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasPace, Converter={StaticResource BoolVisibility}}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="{local:T 'Projection'}" Style="{StaticResource MetricLabel}"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding ProjectionText}" Foreground="{Binding ProjectionBrush}" Style="{StaticResource MetricValue}"/></StackPanel>
+            <TextBlock Text="{local:T 'À ce rythme'}" Style="{StaticResource MetricLabel}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PaceAside}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding PaceText}" Foreground="{Binding PaceBrush}" Style="{StaticResource MetricValue}"/></StackPanel>
+           </Grid>
+           <Grid Tag="BudgetMetric" local:FitAside.Enabled="True" Margin="0,7,0,0" ToolTip="{Binding PaceHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasPaceBudget, Converter={StaticResource BoolVisibility}}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{local:T 'Pour tenir'}" Style="{StaticResource MetricLabel}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PaceAverage}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding PaceBudget}" Style="{StaticResource MetricValue}"/></StackPanel>
+           </Grid>
+           <Grid Tag="RecentMetric" local:FitAside.Enabled="True" Margin="0,7,0,0" ToolTip="{Binding RecentHint}" ToolTipService.ShowDuration="60000" Background="Transparent" Visibility="{Binding HasRecentWarning, Converter={StaticResource BoolVisibility}}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{local:T 'En ce moment'}" Style="{StaticResource MetricLabel}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding RecentAside}" Tag="Aside" Style="{StaticResource MetricAside}"/><TextBlock Text="{Binding RecentText}" Foreground="{DynamicResource WarningBrush}" Style="{StaticResource MetricValue}"/></StackPanel>
            </Grid>
            <Border Style="{StaticResource ReserveMetric}" Padding="0" MinHeight="0" Margin="0,7,0,0" Visibility="{Binding HasReserves, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="{Binding ReserveSummary}">
             <Border.ToolTip><ToolTip Content="{Binding ReserveHint}" ContentTemplate="{StaticResource ReserveTooltip}"/></Border.ToolTip>

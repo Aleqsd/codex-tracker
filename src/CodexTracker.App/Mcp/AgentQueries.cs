@@ -47,18 +47,26 @@ internal static class AgentQueries
     internal static string[] Dismissing(TrackerPreferences preferences, IReadOnlyList<Notice> current, IEnumerable<string> keys) =>
         preferences.DismissedNotices.Intersect(current.Where(n => n.Kind != "manualReset").SelectMany(n => n.Keys)).Union(keys).ToArray();
 
-    internal static object? Forecast(ITrackerService service, AccountState account)
+    internal static object? Forecast(ITrackerService service, AccountState account, DateTimeOffset now)
     {
         if (!account.IsActive) return null;
         var forecast = service.GetForecast(account.Profile.Id);
-        return new { window = forecast.Window?.ToString(), forecast.EstimatedExhaustionAt, forecast.LastsUntilReset, explanation = forecast.Explanation };
+        // imminent: the dashboard shows the "En ce moment" warning for this exhaustion.
+        return new { window = forecast.Window?.ToString(), forecast.EstimatedExhaustionAt, forecast.LastsUntilReset, imminent = QuotaPace.IsImminent(forecast, now), explanation = forecast.Explanation };
     }
 
     internal static object? Pace(TrackerState state, AccountState account, DateTimeOffset now)
     {
         if (!account.IsActive) return null;
+        // outlook, atReset, emptyAt and budget are what the dashboard shows under "À ce rythme" and "Pour tenir".
         object? For(ResetKind kind) => QuotaPace.For(state, account, kind, now) is { } pace
-            ? new { remaining = pace.Remaining, expected = pace.Expected, margin = pace.Margin, pace.OnPace, left = pace.Left.ToString() } : null;
+            ? new
+            {
+                remaining = pace.Remaining, expected = pace.Expected, margin = pace.Margin, pace.OnPace, left = pace.Left.ToString(),
+                outlook = pace.Outlook.ToString(), atReset = Math.Round(pace.AtReset, 1), emptyAt = pace.TimeToEmpty is { } empty ? now + empty : (DateTimeOffset?)null,
+                averagePerDay = Math.Round(pace.AverageUsePerHour * 24, 1),
+                budget = pace.Budget is { } budget ? new { amount = Math.Round(budget.Amount, 1), unit = budget.PerHour ? "hour" : "day" } : null,
+            } : null;
         return new { weekly = For(ResetKind.Weekly), shortWindow = account.HasShortWindow ? For(ResetKind.Short) : null };
     }
 

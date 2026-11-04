@@ -14,6 +14,7 @@ internal static class WhatsNew
 {
     internal static IReadOnlyList<WhatsNewItem> Items() =>
     [
+        new("1.0.3", Loc.T("Projection de la semaine plus claire : ce qui restera au reset et combien utiliser par jour"), "Comptes"),
         new("1.0.2", Loc.T("Logo hibou redessiné, net à toutes les tailles")),
         new("1.0.1", Loc.T("Nouveau logo : un hibou, avec quelques illustrations")),
         new("0.9.45", Loc.T("Le quota de 5 heures disparaît des offres qui n’en ont pas"), "Comptes"),

@@ -86,16 +86,31 @@ internal static class ProviderChecks
                 // A countdown beside the hour may step aside in a narrow card; what is shown must be whole.
                 Check(Tree(shortReset).Concat(Tree(weekReset)).OfType<TextBlock>().Where(t => t.IsVisible).All(TextFits),
                     $"Reset hours, labels and countdowns fit {theme}, compact={compact}");
-                // Claude's week (57 % used, reset in four days of seven) is 14 points under the steady line: one warning verdict,
-                // the exhaustion time when the recent rate gives one, otherwise the overrun.
-                var pace = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "ProjectionMetric" && ReferenceEquals(g.DataContext, claude));
-                Check(pace.IsVisible && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "Projection") &&
-                    Tree(pace).OfType<TextBlock>().Any(t => (t.Text == "Dépassé de 14 %" || t.Text.StartsWith("Vide ")) && t.Foreground == Display.Orange) &&
-                    claude.ProjectionHint.Contains("Semaine : un rythme régulier laisserait") && Tree(pace).OfType<TextBlock>().All(TextFits),
-                    $"The active Claude week shows a single projection, with the steady-pace detail in its tooltip, in {theme}, compact={compact}");
+                // Claude's week: 57 % used in three days (19 % a day), 43 % left for four days. At this pace it runs out
+                // 1 d 17 h before the reset; to last, 11 % a day at most.
+                Grid Row(string tag, AccountViewModel model) => Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == tag && ReferenceEquals(g.DataContext, model));
+                var pace = Row("PaceMetric", claude);
+                var budget = Row("BudgetMetric", claude);
+                Check(pace.IsVisible && Tree(pace).OfType<TextBlock>().Any(t => t.Text == "À ce rythme") &&
+                    Tree(pace).OfType<TextBlock>().Any(t => t.Text.StartsWith("Vide ") && t.Foreground == Display.Orange) &&
+                    Tree(pace).OfType<TextBlock>().Any(t => t.Text == "1 j 17 h avant le reset") &&
+                    claude.PaceHint.Contains("Semaine : 57 % utilisés en 3 j 00 h, soit ≈ 19 % par jour en moyenne.") &&
+                    claude.PaceHint.Contains("1 j 17 h avant le reset.") && Tree(pace).OfType<TextBlock>().Where(t => t.IsVisible).All(TextFits),
+                    $"The active Claude week says when it runs out at its average pace, in {theme}, compact={compact}");
+                Check(budget.IsVisible && Tree(budget).OfType<TextBlock>().Any(t => t.Text == "Pour tenir") &&
+                    Tree(budget).OfType<TextBlock>().Any(t => t.Text == "≤ 11 % par jour") && Tree(budget).OfType<TextBlock>().Any(t => t.Text == "moyenne ≈ 19 %") &&
+                    Tree(budget).OfType<TextBlock>().Where(t => t.IsVisible).All(TextFits),
+                    $"The budget row compares what is left per day with the average so far, in {theme}, compact={compact}");
+                // The demo session empties the 5-hour quota in about two hours, before its reset in three.
+                var recent = Row("RecentMetric", claude);
+                Check(recent.IsVisible && Tree(recent).OfType<TextBlock>().Any(t => t.Text == "En ce moment") &&
+                    Tree(recent).OfType<TextBlock>().Any(t => t.Text.StartsWith("5 h : vide à ")) &&
+                    Tree(recent).OfType<TextBlock>().Any(t => t.Text.EndsWith(" min")) && claude.RecentHint.Contains("le quota de 5 heures serait vide vers") &&
+                    Tree(recent).OfType<TextBlock>().Where(t => t.IsVisible).All(TextFits),
+                    $"An imminent recent-rate exhaustion gets its own warning line, in {theme}, compact={compact}");
                 Check(Tree(card).OfType<QuotaRing>().Single(r => ReferenceEquals(r.DataContext, claude)).Marker is var tick && Math.Abs(tick - 400d / 7) < .5,
                     "The weekly ring places its tick where a steady use would be");
-                Check(!Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "ProjectionMetric" && ReferenceEquals(g.DataContext, codex)).IsVisible &&
+                Check(!Row("PaceMetric", codex).IsVisible && !Row("BudgetMetric", codex).IsVisible && !Row("RecentMetric", codex).IsVisible &&
                     !double.IsFinite(Tree(card).OfType<QuotaRing>().Single(r => ReferenceEquals(r.DataContext, codex)).Marker), "A declared Codex reset shows no invented pace");
                 var codexWeek = Tree(card).OfType<Grid>().Single(g => g.Tag?.ToString() == "WeeklyResetMetric" && ReferenceEquals(g.DataContext, codex));
                 Check(Tree(codexWeek).OfType<TextBlock>().Any(t => t.Text == codex.ResetHour && t.Text.StartsWith("≈ ")) &&
