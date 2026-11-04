@@ -1,3 +1,4 @@
+<p align="center"><img src="site/icon.png" alt="" width="96" height="96"></p>
 <h1 align="center">Codex Tracker</h1>
 <p align="center"><strong>Sachez toujours combien il vous reste de Codex et de Claude Code.</strong><br>Votre quota, l’heure de la prochaine recharge et un rappel au bon moment, directement dans la barre des tâches Windows.</p>
 <p align="center"><a href="https://github.com/Aleqsd/codex-tracker/releases/download/v0.9.45/CodexTracker-0.9.45-Setup.exe"><strong>⬇ Télécharger pour Windows</strong></a> · <a href="https://codex-tracker.zqsdev.com/fr/">Site</a> · <a href="README.en.md">English</a></p>

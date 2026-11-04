@@ -94,7 +94,11 @@ internal sealed class SettingsView : UserControl, IDisposable
         Toggle(Loc.T("Adapter à mon activité"), Loc.T("Passe à 10 min après 5 min sans clavier ni souris. Reprend la fréquence choisie à votre retour. La détection des comptes reste immédiate."), p => p.AdaptiveRefresh, (p, v) => p with { AdaptiveRefresh = v });
         Section("Claude Code");
         var claude = Block();
-        claude.Children.Add(Ui.Text(Loc.T("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session."), 12, "MutedBrush"));
+        var claudeIntro = new DockPanel();
+        var terminalOwl = Ui.Mascot("MascotTerminal", 46); terminalOwl.Margin = new Thickness(16, 0, 0, 0); terminalOwl.VerticalAlignment = VerticalAlignment.Top;
+        DockPanel.SetDock(terminalOwl, Dock.Right); claudeIntro.Children.Add(terminalOwl);
+        claudeIntro.Children.Add(Ui.Text(Loc.T("L’application Claude fournit automatiquement ses derniers quotas locaux, sans configuration. Les comptes personnels et d’entreprise sont séparés, même sur la même adresse. Pour les relevés du terminal, ajoutez le réglage ci-dessous puis ouvrez une nouvelle session."), 12, "MutedBrush"));
+        claude.Children.Add(claudeIntro);
         var copyClaude = new Button { Content = Loc.T("Copier le réglage Claude Code"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 12), IsEnabled = !demo };
         copyClaude.Click += (_, _) =>
         {
@@ -159,10 +163,10 @@ internal sealed class SettingsView : UserControl, IDisposable
         Page("Historique", Loc.T("Historique"), Loc.T("Le suivi local de vos rappels sur les 30 derniers jours."));
         Section(null);
         Row(ReminderSettingsView.History(owner.Reminders));
-        Page("Assistants", Loc.T("Assistants"), Loc.T("Pilotez le tracker depuis votre assistant de code."));
+        Page("Assistants", Loc.T("Assistants"), Loc.T("Pilotez le tracker depuis votre assistant de code."), "MascotReading");
         Section(null);
         Row(Mcp.AssistantSettingsView.Create(owner, preferences, demo));
-        Page("Application", Loc.T("Application"), Loc.T("Démarrage, mises à jour et version installée."));
+        Page("Application", Loc.T("Application"), Loc.T("Démarrage, mises à jour et version installée."), "MascotMain");
         Section(Loc.T("Démarrage"));
         var startup = new CheckBox { Content = Loc.T("Démarrer avec Windows"), IsChecked = StartupSettings.IsEnabled, IsEnabled = !demo, Style = (Style)FindResource("Switch") };
         startup.Click += (_, _) => { try { StartupSettings.SetEnabled(startup.IsChecked == true); } catch (Exception error) { ShowError(error.Message); startup.IsChecked = StartupSettings.IsEnabled; } }; Row(startup);
@@ -262,12 +266,24 @@ internal sealed class SettingsView : UserControl, IDisposable
         }
         else { reload.HorizontalAlignment = HorizontalAlignment.Right; reload.Margin = new Thickness(0, -6, -8, 0); block.Children.Insert(0, reload); }
     }
-    /// <summary>The French <paramref name="key"/> identifies the page for navigation; <paramref name="title"/> is displayed.</summary>
-    private void Page(string key, string title, string description)
+    /// <summary>
+    /// The French <paramref name="key"/> identifies the page for navigation; <paramref name="title"/> is displayed,
+    /// with an owl illustration at the right of the heading when <paramref name="mascot"/> names one.
+    /// </summary>
+    private void Page(string key, string title, string description, string? mascot = null)
     {
         _page = new StackPanel { Margin = new Thickness(6, 10, 14, 28) }; _group = null; UiMotion.SetStagger(_page, true);
-        var heading = Ui.Text(title, 22); heading.FontWeight = FontWeights.Medium; _page.Children.Add(heading);
-        var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 5, 0, 0); _page.Children.Add(hint);
+        var heading = Ui.Text(title, 22); heading.FontWeight = FontWeights.Medium;
+        var hint = Ui.Text(description, 12, "MutedBrush"); hint.Margin = new Thickness(0, 5, 0, 0);
+        if (mascot is null) { _page.Children.Add(heading); _page.Children.Add(hint); }
+        else
+        {
+            var header = new DockPanel();
+            var owl = Ui.Mascot(mascot, 52); owl.Margin = new Thickness(16, -2, 4, 0); owl.VerticalAlignment = VerticalAlignment.Top;
+            DockPanel.SetDock(owl, Dock.Right); header.Children.Add(owl);
+            var text = new StackPanel(); text.Children.Add(heading); text.Children.Add(hint); header.Children.Add(text);
+            _page.Children.Add(header);
+        }
         var button = new Button { Content = title, Style = (Style)FindResource("SettingsNavigation"), Margin = new Thickness(0, 0, 0, 2), Tag = FindResource(key switch { "Assistants" => "SettingsAssistantsIcon", "Général" => "SettingsGeneralIcon", "Rappels" => "SettingsNotificationsIcon", "Canaux" => "SettingsChannelsIcon", "Historique" => "DropdownClockIcon", "Calendrier" => "DropdownCalendarIcon", _ => "SettingsApplicationIcon" }) };
         button.Click += (_, _) => ShowPage(key); _navigation.Children.Add(button); _pages.Add(key, (_page, button));
     }

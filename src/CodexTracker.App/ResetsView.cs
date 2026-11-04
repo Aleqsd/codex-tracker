@@ -194,9 +194,13 @@ internal sealed class ResetsView : UserControl
         if (focused) Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, (Action)(() =>
             _timeline.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First))));
     }
-    private static TextBlock Empty(string text)
+    /// <summary>Nothing to show: the sleeping owl beside the sentence.</summary>
+    private static FrameworkElement Empty(string text)
     {
-        var block = Ui.Text(text, 13, "MutedBrush"); block.Margin = new Thickness(2, 16, 0, 18); return block;
+        var row = new DockPanel { Margin = new Thickness(2, 14, 0, 16) };
+        var owl = Ui.Mascot("MascotSleeping", 40, "SubtleBrush"); owl.Margin = new Thickness(0, 0, 14, 0); owl.VerticalAlignment = VerticalAlignment.Center;
+        var block = Ui.Text(text, 13, "MutedBrush"); block.VerticalAlignment = VerticalAlignment.Center;
+        row.Children.Add(owl); row.Children.Add(block); return row;
     }
     /// <summary>A card holding schedule rows; rows add their own separators.</summary>
     private static StackPanel Group(Panel target)

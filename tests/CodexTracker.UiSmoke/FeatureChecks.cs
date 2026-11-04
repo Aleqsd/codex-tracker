@@ -96,6 +96,9 @@ internal static class FeatureChecks
             resets.Update(new([service.State.Accounts[0] with { Snapshot = service.State.Accounts[0].Snapshot! with { AvailableResetCredits = 0, ResetCredits = [] } }], id));
             window.UpdateLayout();
             Check(Tree(timeline).OfType<TextBlock>().Any(t => t.Text == "Aucune date à venir connue pour cette sélection.") && !Tree(timeline).OfType<Expander>().Any(e => e.Tag is ResetScheduleEntry), "Empty reserve filter never falls back to quota resets");
+            Check(Tree(timeline).OfType<System.Windows.Shapes.Rectangle>().Any(r => r.IsVisible && ReferenceEquals(r.OpacityMask, Application.Current.FindResource("MascotSleeping"))),
+                "An empty reset list shows the sleeping owl beside its sentence");
+            window.SaveScreenshot(System.IO.Path.GetFullPath("artifacts/previews/brand-resets-empty.png"), 96);
             kindFilters.SelectedIndex = 0;
             resets.Update(service.State);
             var oldSnapshot = service.State.Accounts[0].Snapshot! with

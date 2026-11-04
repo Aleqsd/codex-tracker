@@ -209,6 +209,8 @@ internal static partial class EnglishApp
         ("Découvrir", "See what's new"),
         ("Voir les nouveautés", "See what's new"),
         ("Masquer les nouveautés", "Hide what's new"),
+        ("Nouveau logo : un hibou, avec quelques illustrations", "New logo: an owl, with a few illustrations"),
+        ("Le quota de 5 heures disparaît des offres qui n’en ont pas", "The 5-hour quota is gone from plans that have none"),
         ("Interface en espagnol, allemand, portugais et japonais", "Interface in Spanish, German, Portuguese and Japanese"),
         ("Rappels de recharge seulement quand ils sont utiles", "Refill reminders only when they are useful"),
         ("Signaler un problème en un clic, diagnostic compris", "Report a problem in one click, diagnostic included"),

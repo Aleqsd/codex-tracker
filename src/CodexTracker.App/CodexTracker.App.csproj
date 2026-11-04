@@ -21,6 +21,7 @@
     <InternalsVisibleTo Include="CodexTracker.UiSmoke" />
     <Resource Include="Assets\App.ico" />
     <Resource Include="Assets\Providers\*.png" />
+    <Resource Include="Assets\Mascot\*.png" />
     <Resource Include="Assets\Fonts\*.ttf" />
     <EmbeddedResource Include="Localization\Translations\*.json" LogicalName="CodexTracker.Translations.%(Filename).json" />
     <ProjectReference Include="..\CodexTracker.Core\CodexTracker.Core.csproj" />

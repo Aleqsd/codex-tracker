@@ -58,6 +58,14 @@ internal static class Program
             {
                 if (args.Contains("--providers-only")) { await ProviderChecks.Run(); return; }
                 if (args.Contains("--tray-only")) { await TrayChecks.Run(); return; }
+                if (args.Contains("--brand-only"))
+                {
+                    var brandService = new DemoTrackerService(false, showClaudeCode: true);
+                    var brandWindow = new MainWindow(brandService, true, new PreferencesStore(false, System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CodexTrackerBrandUi", Guid.NewGuid().ToString("N"))), new UpdateService());
+                    try { brandWindow.Show(); await brandWindow.InitializeAsync(); await BrandChecks.Run(brandWindow); }
+                    finally { brandWindow.PrepareExit(); brandWindow.Close(); await brandService.DisposeAsync(); }
+                    return;
+                }
                 service = (ITrackerService)Activator.CreateInstance(Assembly.GetType("CodexTracker.App.DemoTrackerService")!, true)!;
                 var preferences = Activator.CreateInstance(Assembly.GetType("CodexTracker.App.PreferencesStore")!, Instance, null, [false, null], null)!;
                 window = (MainWindow)Activator.CreateInstance(typeof(MainWindow), Instance, null, [service, true, preferences, new UpdateService()], null)!;
@@ -94,6 +102,7 @@ internal static class Program
                 await GlobalResetChecks.Run(window, service);
                 await ResetsLayoutChecks.Run(window);
                 await SettingsNavigationChecks.Run(window);
+                await BrandChecks.Run(window);
                 await NotificationChecks.Run(window);
                 await ReliabilityChecks.Run();
                 await UpdateStatusChecks.Run();

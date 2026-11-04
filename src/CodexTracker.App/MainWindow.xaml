@@ -27,7 +27,7 @@
   <TabControl x:Name="MainTabs" Style="{StaticResource MainTabsStyle}" Padding="24,0,18,0">
    <TabItem x:Name="AccountsTab" Header="{local:T 'Comptes'}" Tag="{StaticResource AccountsIcon}" Style="{StaticResource MainTabStyle}">
    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="0,6,6,22">
-    <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,12" Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolVisibility}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{local:T 'Changez de compte dans Codex ou Claude Code : le tracker suit automatiquement. Glissez son icône dans la barre d’état pour la garder visible.'}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,14,0" VerticalAlignment="Center"/><Button Grid.Column="1" Content="{local:T 'Compris'}" Click="Onboarding_Click" Padding="11,6" VerticalAlignment="Center"/></Grid></Border>
+    <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,12" Visibility="{Binding ShowOnboarding, Converter={StaticResource BoolVisibility}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Rectangle Width="34" Height="34" Margin="0,0,12,0" VerticalAlignment="Center" Fill="{DynamicResource MutedBrush}" OpacityMask="{StaticResource MascotWindow}" IsHitTestVisible="False"/><TextBlock Grid.Column="1" Text="{local:T 'Changez de compte dans Codex ou Claude Code : le tracker suit automatiquement. Glissez son icône dans la barre d’état pour la garder visible.'}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,14,0" VerticalAlignment="Center"/><Button Grid.Column="2" Content="{local:T 'Compris'}" Click="Onboarding_Click" Padding="11,6" VerticalAlignment="Center"/></Grid></Border>
     <Border x:Name="ActiveAccountCard" Visibility="{Binding HasActive, Converter={StaticResource BoolVisibility}}">
      <ItemsControl ItemsSource="{Binding ActiveAccounts}" Margin="0,0,-12,0">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" local:UiMotion.Rise="14" local:UiMotion.Stagger="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -97,7 +97,7 @@
     </Border>
     <Border x:Name="WhatsNewBanner" local:UiMotion.Rise="8" local:UiMotion.FadeOnShow="True" Style="{StaticResource Callout}" Background="{DynamicResource AccentSoftBrush}" Visibility="{Binding ShowWhatsNew, Converter={StaticResource BoolVisibility}}">
      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Viewbox Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="{StaticResource DownloadIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox>
+      <Rectangle Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center" Fill="{DynamicResource AccentBrush}" OpacityMask="{StaticResource MascotMain}" IsHitTestVisible="False"/>
       <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding WhatsNewTitle, Mode=OneWay}" FontWeight="Medium"/><Run Text=" · " Foreground="{DynamicResource SubtleBrush}"/><Run Text="{Binding WhatsNewSummary, Mode=OneWay}" Foreground="{DynamicResource MutedBrush}"/></TextBlock>
       <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"><Button x:Name="WhatsNewButton" Content="{local:T 'Découvrir'}" Click="WhatsNew_Click" Style="{StaticResource QuietButton}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Voir les nouveautés'}"/><Button Style="{StaticResource NoticeDismissButton}" Click="DismissWhatsNew_Click" ToolTip="{local:T 'Masquer les nouveautés'}" AutomationProperties.Name="{local:T 'Masquer les nouveautés'}"/></StackPanel>
      </Grid>
@@ -126,7 +126,7 @@
     </Grid>
     <StackPanel>
      <Border local:UiMotion.Rise="12" local:UiMotion.FadeOnShow="True" Style="{StaticResource Card}" Padding="24,32" Margin="0,14,0,0" Visibility="{Binding IsEmpty, Converter={StaticResource BoolVisibility}}"><StackPanel>
-      <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center"><Viewbox Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="{StaticResource AccountsIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/></Canvas></Viewbox></Border>
+      <Border Width="76" Height="76" CornerRadius="38" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center"><Rectangle Width="46" Height="46" Fill="{DynamicResource AccentBrush}" OpacityMask="{StaticResource MascotWatching}" IsHitTestVisible="False"/></Border>
       <TextBlock Text="{local:T 'Ouvrez Codex ou Claude Code pour commencer.'}" FontSize="16" FontWeight="Medium" TextAlignment="Center" Margin="0,14,0,0"/>
       <TextBlock Text="{local:T 'Le compte connecté apparaîtra ici automatiquement.'}" Foreground="{DynamicResource MutedBrush}" FontSize="12" TextAlignment="Center" Margin="0,8,0,18"/>
       <Button Content="{local:T 'Détecter maintenant'}" Click="Import_Click" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center"/>
@@ -156,7 +156,7 @@
    <TabItem x:Name="SettingsTab" Header="{local:T 'Réglages'}" Tag="{StaticResource SettingsGeneralIcon}" Style="{StaticResource MainTabStyle}" AutomationProperties.Name="{local:T 'Réglages'}"/>
   </TabControl>
   <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Height="54" Margin="20,0,0,0" IsHitTestVisible="False">
-   <Border Width="24" Height="24" CornerRadius="7" Background="{DynamicResource PrimaryButtonBrush}" VerticalAlignment="Center"><Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="{StaticResource GaugeIcon}" Style="{StaticResource IconPath}" Stroke="{DynamicResource PrimaryButtonTextBrush}" StrokeThickness="2.6"/></Canvas></Viewbox></Border>
+   <Border Width="24" Height="24" CornerRadius="7" Background="{DynamicResource PrimaryButtonBrush}" VerticalAlignment="Center"><Rectangle Width="17" Height="17" Margin="0,1,0,0" Fill="{DynamicResource PrimaryButtonTextBrush}" OpacityMask="{StaticResource MascotMain}" IsHitTestVisible="False"/></Border>
    <TextBlock Text="Codex Tracker" FontSize="13" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,0,0"/>
   </StackPanel>
   <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Height="54" Margin="0,0,9,0" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">

@@ -21,6 +21,7 @@ Prérequis : Windows, SDK .NET 10, Python 3 (Pillow pour les visuels), `gh` conn
 ./scripts/dev.ps1 -Action Preview -View Canaux -Theme light -Size compact
 ./scripts/dev.ps1 -Action Preview -Matrix
 ./scripts/visuals.ps1                                    # captures, GIF, pastille, image de partage (données fictives)
+python scripts/brand.py                                  # logo hibou : icône, site, installateur et illustrations de l’app
 
 # Release (locale, pas de CI distante)
 ./scripts/bump.ps1 -Version 0.9.41                       # version + liens des deux README, committer ensemble

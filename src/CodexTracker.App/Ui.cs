@@ -87,6 +87,13 @@ internal static class Ui
     {
         var line = new Border { Height = 1, Margin = margin }; line.SetResourceReference(Border.BackgroundProperty, "LineBrush"); return line;
     }
+    /// <summary>A decorative owl (a Mascot… resource of App.xaml) painted with a theme brush, ignored by the mouse and screen readers.</summary>
+    public static System.Windows.Shapes.Rectangle Mascot(string resource, double size, string brush = "MutedBrush")
+    {
+        var owl = new System.Windows.Shapes.Rectangle { Width = size, Height = size, IsHitTestVisible = false, Focusable = false,
+            OpacityMask = (Brush)System.Windows.Application.Current.FindResource(resource) };
+        owl.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, brush); return owl;
+    }
     public static Viewbox Icon(string geometry, double size, string brush = "MutedBrush", double thickness = 1.8)
     {
         var path = new System.Windows.Shapes.Path { Data = (Geometry)System.Windows.Application.Current.FindResource(geometry), StrokeThickness = thickness,
