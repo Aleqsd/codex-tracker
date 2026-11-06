@@ -42,9 +42,12 @@ public static class RecoverableJsonFile
             // Preserve a damaged backup as evidence before establishing the first valid generation.
             AtomicWrite(backup + ".corrupt-" + Guid.NewGuid().ToString("N"), ReadBytes(backup));
         }
-        if (previous is not null) AtomicWrite(backup, previous);
+        var unchanged = previous is not null && previous.AsSpan().SequenceEqual(bytes);
+        // An unchanged observation must not replace either valid generation. A missing or
+        // damaged backup is still repaired, even when the current document is unchanged.
+        if (previous is not null && (!unchanged || !validBackup)) AtomicWrite(backup, previous);
         else if (!validBackup) AtomicWrite(backup, bytes);
-        AtomicWrite(path, bytes);
+        if (!unchanged) AtomicWrite(path, bytes);
     }
 
     private static bool TryRead<T>(string path, Func<byte[], T> parse, out T? value) where T : class

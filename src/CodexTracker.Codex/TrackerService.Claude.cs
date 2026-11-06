@@ -10,12 +10,13 @@ public sealed partial class TrackerService
     private readonly IAccountUsageReader _claudeReader;
     private readonly IReadOnlyList<string> _claudeDesktopUsagePaths;
     private readonly List<AuthFileMonitor> _claudeMonitors = [];
+    private ClaudeDesktopSourceMonitor? _claudeSourceMonitor;
     private CancellationTokenSource _claudeIdentityLifetime = new();
     private long _claudeGeneration;
     private long _claudeNotificationBaselineGeneration = -1;
     private string? _claudeKey;
     private string? _claudeAccountId;
-    private Task? _claudeRefresh;
+    private Task<ProviderRefreshStatus>? _claudeRefresh;
     private ActiveObservation? _claudeActiveObservation;
 
     private async Task DetectSourcesAsync(CancellationToken token)
@@ -24,14 +25,10 @@ public sealed partial class TrackerService
         if (_options.DetectClaudeCode) await DetectClaudeAsync(token);
     }
 
-    private async Task<Task> QueueBothRefreshesAsync(CancellationToken token)
+    private async Task<Task<ProviderRefreshStatus[]>> QueueBothRefreshesAsync(CancellationToken token, RefreshReason reason = RefreshReason.Manual)
     {
-        // Only the shared refresh advances the periodic schedule. Native Claude
-        // observations remain immediate without postponing the next Codex poll.
-        Interlocked.Exchange(ref _lastRefreshStarted, System.Diagnostics.Stopwatch.GetTimestamp());
-        var codex = await QueueRefreshAsync(token);
-        var claude = _options.DetectClaudeCode ? await QueueClaudeRefreshAsync(token) : Task.CompletedTask;
-        return Task.WhenAll(codex, claude);
+        var codex = await QueueRefreshAsync(token, reason);
+        return _options.DetectClaudeCode ? Task.WhenAll(codex, await QueueClaudeRefreshAsync(token, reason)) : Task.WhenAll(codex);
     }
 
     private void StartClaudeMonitors()
@@ -43,11 +40,17 @@ public sealed partial class TrackerService
             var monitor = new AuthFileMonitor(path, async token =>
             {
                 await DetectClaudeAsync(token);
-                _ = await QueueClaudeRefreshAsync(token);
-            }, _options.DetectionInterval);
+                _ = await QueueClaudeRefreshAsync(token, RefreshReason.SourceChanged);
+            }, _options.DetectionInterval, signalInitial: false);
             _claudeMonitors.Add(monitor);
             monitor.Start();
         }
+        _claudeSourceMonitor = new(_claudeDesktopUsagePaths, async token =>
+        {
+            await DetectClaudeAsync(token);
+            _ = await QueueClaudeRefreshAsync(token, RefreshReason.SourceChanged);
+        }, _options.DetectionInterval);
+        _claudeSourceMonitor.Start();
     }
 
     private void RestartClaudeObservation()
@@ -59,6 +62,8 @@ public sealed partial class TrackerService
         _claudeNotificationBaselineGeneration = -1;
         _claudeActiveObservation = null;
         _claudeRefresh = null;
+        _claudePending = false;
+        ResetSchedule(true);
     }
 
     private async Task DetectClaudeAsync(CancellationToken token)
@@ -78,7 +83,16 @@ public sealed partial class TrackerService
                     : Loc.T("La session locale Claude Code est illisible. Derniers comptes et relevés conservés ; vérifiez votre connexion dans Claude Code.");
             }
             var key = identity is null ? null : identity.Email.ToUpperInvariant() + "\n" + identity.AccountId;
-            if (key == _claudeKey) return;
+            if (key == _claudeKey)
+            {
+                if (identity is not null && State.Accounts.FirstOrDefault(a => a.IsActiveInClaudeCode) is { } active)
+                {
+                    var profile = active.Profile with { OrganizationName = identity.OrganizationName,
+                        ProviderPlanType = identity.PlanType, ProviderPlanMultiplier = identity.PlanMultiplier };
+                    if (profile != active.Profile) { Update(active.Profile.Id, a => a with { Profile = profile }); Save(); }
+                }
+                return;
+            }
             RestartClaudeObservation();
             _claudeKey = key;
             _claudeAccountId = identity?.AccountId;
@@ -109,20 +123,20 @@ public sealed partial class TrackerService
         finally { _gate.Release(); }
     }
 
-    private async Task<Task> QueueClaudeRefreshAsync(CancellationToken token)
+    private async Task<Task<ProviderRefreshStatus>> QueueClaudeRefreshAsync(CancellationToken token, RefreshReason reason = RefreshReason.Manual)
     {
         await _gate.WaitAsync(token);
         try
         {
-            if (_disposed || _suspended || _claudeKey is null || _claudeAccountId is null) return Task.CompletedTask;
-            if (_claudeRefresh is { IsCompleted: false }) return _claudeRefresh;
+            if (_disposed || _suspended) return Task.FromResult(StoppedStatus(true));
+            if (_claudeKey is null || _claudeAccountId is null) { MarkUnavailable(true, reason); return Task.FromResult(_claudeSchedule.Status); }
+            if (_claudeRefresh is { IsCompleted: false })
+            {
+                if (reason == RefreshReason.SourceChanged) _claudePending = true;
+                return _claudeRefresh;
+            }
             var active = State.Accounts.Single(a => a.IsActiveInClaudeCode);
-            var sequence = ++_requestSequence;
-            _claudeRefresh = RefreshClaudeCoreAsync(active.Profile, _claudeAccountId, _claudeGeneration, _claudeIdentityLifetime.Token);
-            _requests[sequence] = _claudeRefresh;
-            _ = _claudeRefresh.ContinueWith(completed => _requests.TryRemove(sequence, out _), CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            return _claudeRefresh;
+            return StartRefresh(active.Profile, _claudeAccountId, _claudeGeneration, _claudeIdentityLifetime.Token, true, reason);
         }
         finally { _gate.Release(); }
     }
@@ -141,8 +155,7 @@ public sealed partial class TrackerService
             try
             {
                 if (generation != _claudeGeneration) return;
-                Update(profile.Id, a => a with { IsRefreshing = true });
-                Set(State with { IsBusy = true, StatusMessage = Loc.T("Lecture des relevés Claude Code…") });
+                UpdateCollection(profile.Id, a => a with { IsRefreshing = true }, Loc.T("Lecture des relevés Claude Code…"));
             }
             finally { _gate.Release(); }
             var candidate = await _claudeReader.ReadAsync(profile, accountId, request.Token);
@@ -174,14 +187,17 @@ public sealed partial class TrackerService
                             var previous = State.Accounts.FirstOrDefault(a => a.Profile.Id == profile.Id)?.Snapshot;
                             if (snapshot is not null && previous is not null && snapshot.FetchedAt < previous.FetchedAt)
                             { snapshot = null; error = Loc.T("Un relevé Claude Code plus ancien a été ignoré. Les dernières données sont conservées."); }
-                            if (snapshot is not null) notifications = RecordObservation(profile, snapshot, generation, claude: true);
-                            Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsConnected = snapshot is not null || a.IsConnected, IsRefreshing = false, Error = error });
-                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? Loc.T("À jour · comptes Codex et Claude Code suivis automatiquement") });
+                            var unchanged = SnapshotContent.Equal(snapshot, previous);
+                            if (snapshot is not null && (!unchanged || _claudeNotificationBaselineGeneration != generation))
+                                notifications = RecordObservation(profile, snapshot, generation, claude: true);
+                            FinishRefresh(true, snapshot, previous, error is null ? null : "collection_failed");
+                            UpdateCollection(profile.Id, a => a with { Snapshot = unchanged ? a.Snapshot : snapshot ?? a.Snapshot, IsConnected = snapshot is not null || a.IsConnected, IsRefreshing = false, Error = error },
+                                error ?? Loc.T("À jour · comptes Codex et Claude Code suivis automatiquement"));
                             Save();
                         }
                     }
                     finally { _gate.Release(); }
-                    if (generation != _claudeGeneration && _claudeRefresh is null) _ = await QueueClaudeRefreshAsync(_lifetime.Token);
+                    if (generation != _claudeGeneration && _claudeSchedule.Started == 0) _ = await QueueClaudeRefreshAsync(_lifetime.Token);
                 }
                 catch (OperationCanceledException) { }
                 catch (Exception ex) when (IsRecoverable(ex)) { }

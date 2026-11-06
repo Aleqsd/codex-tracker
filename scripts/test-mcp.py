@@ -76,6 +76,19 @@ try:
     check(code == 0 and all(n in out for n in names), "CLI exposes every MCP tool by name")
     code, out = cli("get_status")
     check(code == 0 and json.loads(out)["result"]["revision"], "CLI reads status as JSON and exits")
+    def check_demo_refresh(result, label):
+        check(result["refreshed"] is False and result["status"] == "unavailable", label + " does not claim a real collection in demo")
+        check(result["providers"] and all(p["attemptedAt"] is None and p["outcome"] == "unavailable" for p in result["providers"]),
+              label + " separates historical observations from collection attempts")
+        check(all(isinstance(p["outcome"], str) and isinstance(p["reason"], str) and
+                  all(k in p for k in ("accountId", "completedAt", "observedAt", "durationMilliseconds", "nextAttemptAt", "errorCode"))
+                  for p in result["providers"]), label + " exposes the complete provider contract")
+    check_demo_refresh(a.tool("refresh_active_account")["result"], "MCP refresh")
+    code, out = cli("refresh_active_account")
+    check(code == 0, "CLI refresh returns its collection report")
+    check_demo_refresh(json.loads(out)["result"], "CLI refresh")
+    code, out = cli("refresh_active_account", "unexpected=true")
+    check(code == 1 and "error" in json.loads(out), "CLI refresh refuses unsupported arguments")
     code, out = cli("test_notification", "channel=Windows")
     check(code == 0 and json.loads(out)["result"]["status"] in ("completed", "pending"), "CLI change fetches the revision itself")
     code, out = cli("open_page", "page=Nope")
@@ -113,6 +126,23 @@ try:
     check(len(a.tool("list_resets")["result"]["resets"]) > 0, "reset types and dates readable")
     b = Client()
     check(b.tool("get_status")["result"]["connections"] == 2, "two clients share one tracker")
+    revision_before_refresh = a.tool("get_status")["result"]["revision"]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        refreshed = [pool.submit(client.tool, "refresh_active_account") for client in (a, b)]
+        cli_refreshed = [pool.submit(cli, "refresh_active_account") for _ in range(2)]
+        for index, request in enumerate(refreshed):
+            check_demo_refresh(request.result()["result"], f"Concurrent MCP refresh {index + 1}")
+        for index, request in enumerate(cli_refreshed):
+            code, out = request.result()
+            check(code == 0, f"Concurrent CLI refresh {index + 1} completes")
+            check_demo_refresh(json.loads(out)["result"], f"Concurrent CLI refresh {index + 1}")
+    check_demo_refresh(a.tool("refresh_active_account")["result"], "Repeated MCP refresh")
+    code, out = cli("refresh_active_account")
+    check(code == 0, "Repeated CLI refresh completes")
+    check_demo_refresh(json.loads(out)["result"], "Repeated CLI refresh")
+    refresh_status = a.tool("get_status")["result"]
+    check(refresh_status["revision"] == revision_before_refresh, "refresh requests preserve preference revision")
+    check_demo_refresh(refresh_status["refresh"], "get_status refresh diagnostics")
     revision_before_navigation = a.tool("get_status")["result"]["revision"]
     with ThreadPoolExecutor(max_workers=2) as pool:
         opened = [pool.submit(client.tool, "open_page", page="Comptes") for client in (a, b)]

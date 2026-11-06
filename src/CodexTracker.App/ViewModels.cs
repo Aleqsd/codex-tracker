@@ -166,9 +166,23 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     { _account = account; _state = state; _preferences = preferences; _forecast = forecast; _inCalendar = inCalendar; }
     private readonly Func<string, bool>? _inCalendar;
     private readonly Func<Guid, UsageForecast>? _forecast;
-    private UsageForecast? Forecast => IsActive ? _forecast?.Invoke(Id) : null;
+    private UsageForecast? _cachedForecast;
+    private bool _forecastRead;
+    private UsageForecast? Forecast
+    {
+        get
+        {
+            if (!IsActive) return null;
+            if (!_forecastRead) { _cachedForecast = _forecast?.Invoke(Id); _forecastRead = true; }
+            return _cachedForecast;
+        }
+    }
     public void Update(AccountState account, TrackerState state) { _account = account; _state = state; Tick(); }
-    public void Tick() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    public void Tick()
+    {
+        _forecastRead = false;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    }
     private TrackerState PresentationState => _state with { ManualCodexReset = _preferences.Current.ManualCodexReset };
     public bool HasManualWeeklyReset => PresentationState.ManualCodexReset?.Applies(_account, ResetKind.Weekly, PreviewClock.UtcNow) == true;
     public bool HasManualShortReset => PresentationState.ManualCodexReset?.Applies(_account, ResetKind.Short, PreviewClock.UtcNow) == true;
@@ -190,7 +204,11 @@ internal sealed class AccountViewModel : INotifyPropertyChanged
     public string ProviderCount { get; private set; } = "";
     internal void SetProviderHeader(bool show, int count, bool last)
     {
-        ShowProviderHeader = show; IsLastInSection = last; ProviderCount = count == 1 ? Loc.T("1 compte") : Loc.F("{0} comptes", count); Tick();
+        var label = count == 1 ? Loc.T("1 compte") : Loc.F("{0} comptes", count);
+        if (ShowProviderHeader == show && IsLastInSection == last && ProviderCount == label) return;
+        ShowProviderHeader = show; IsLastInSection = last; ProviderCount = label;
+        foreach (var property in new[] { nameof(ShowProviderHeader), nameof(IsLastInSection), nameof(ProviderCount) })
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
     }
     public bool HasReserves => _account.Profile.Provider == AccountProvider.Codex;
     public bool IsActive => _account.IsActive;

@@ -65,10 +65,23 @@ public interface ITrackerService : IAsyncDisposable
     event EventHandler? Changed;
     event EventHandler<QuotaNotification>? Notification;
     TrackerState State { get; }
+    IReadOnlyList<ProviderRefreshStatus> GetRefreshStatus() => Enum.GetValues<AccountProvider>().Select(provider =>
+    {
+        var account = State.ActiveAccounts.FirstOrDefault(a => a.Profile.Provider == provider);
+        return new ProviderRefreshStatus(provider, account?.Profile.Id,
+            account is null ? RefreshOutcome.Unavailable : account.Error is not null ? RefreshOutcome.Failed :
+                account.IsRefreshing ? RefreshOutcome.Refreshing : RefreshOutcome.Unchanged,
+            ObservedAt: account?.Snapshot?.FetchedAt, ErrorCode: account?.Error is null ? null : "collection_failed");
+    }).ToArray();
     IReadOnlyList<UsageSample> GetHistory(Guid accountId);
     UsageForecast GetForecast(Guid accountId);
     Task InitializeAsync(CancellationToken cancellationToken = default);
     Task RefreshAsync(CancellationToken cancellationToken = default);
+    async Task<IReadOnlyList<ProviderRefreshStatus>> RefreshWithResultAsync(CancellationToken cancellationToken = default)
+    {
+        await RefreshAsync(cancellationToken);
+        return GetRefreshStatus();
+    }
     Task CheckGlobalResetAnnouncementsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     void SynchronizeGlobalResetMonitoring() { }
     Task SuspendAsync(CancellationToken cancellationToken = default);

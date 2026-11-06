@@ -66,6 +66,8 @@ internal static class Program
                     finally { brandWindow.PrepareExit(); brandWindow.Close(); await brandService.DisposeAsync(); }
                     return;
                 }
+                if (args.Contains("--refresh-only")) { await RefreshUiChecks.Run(); return; }
+                if (args.Contains("--refresh-mcp-only")) { await RefreshMcpChecks.Run(); return; }
                 service = (ITrackerService)Activator.CreateInstance(Assembly.GetType("CodexTracker.App.DemoTrackerService")!, true)!;
                 var preferences = Activator.CreateInstance(Assembly.GetType("CodexTracker.App.PreferencesStore")!, Instance, null, [false, null], null)!;
                 window = (MainWindow)Activator.CreateInstance(typeof(MainWindow), Instance, null, [service, true, preferences, new UpdateService()], null)!;
@@ -108,6 +110,8 @@ internal static class Program
                 await UpdateStatusChecks.Run();
                 await ProviderChecks.Run();
                 await TrayChecks.Run();
+                await RefreshUiChecks.Run();
+                await RefreshMcpChecks.Run();
                 await TypographyChecks.Run(window);
                 ((System.Windows.Controls.Button)window.FindName("HideToTrayButton")).RaiseEvent(
                     new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));

@@ -191,6 +191,108 @@ public sealed class ClaudeDesktopSelectionTests
     }
 
     [Fact]
+    public void LargeSessionDirectoriesProgressPastTheFirstBatchAndRevalidateTheirCandidate()
+    {
+        using var directory = new TestDirectory();
+        var now = DateTimeOffset.UtcNow;
+        for (var i = 0; i < 1025; i++) Session(directory, ClaudeFixture.Second, Personal, now.AddDays(-31));
+        var sessions = directory.File($"claude-code-sessions/{ClaudeFixture.Second}/{Personal}");
+        var outsideFirstBatch = Directory.EnumerateFiles(sessions, "local_*.json").Skip(1024).First();
+        File.SetLastWriteTimeUtc(outsideFirstBatch, now.AddMinutes(-1).UtcDateTime);
+        try
+        {
+            Assert.Null(ClaudeDesktopSelection.Read(Paths(directory), now, default));
+            var selected = ClaudeDesktopSelection.Read(Paths(directory), now, default);
+            Assert.NotNull(selected);
+            Assert.Equal(ClaudeFixture.Second, selected.Account);
+            Assert.Equal(Personal, selected.Organization);
+
+            // Even while another bounded sweep is incomplete, a deleted or aged cached candidate
+            // must never keep its old organization selected.
+            File.SetLastWriteTimeUtc(outsideFirstBatch, now.AddDays(-31).UtcDateTime);
+            Assert.Null(ClaudeDesktopSelection.Read(Paths(directory), now, default));
+            File.SetLastWriteTimeUtc(outsideFirstBatch, now.AddMinutes(-1).UtcDateTime);
+            Assert.NotNull(ClaudeDesktopSelection.Read(Paths(directory), now, default));
+            File.Delete(outsideFirstBatch);
+            Assert.Null(ClaudeDesktopSelection.Read(Paths(directory), now, default));
+        }
+        finally { ClaudeDesktopSelection.Release(Paths(directory)); }
+    }
+
+    [Theory]
+    [InlineData(10, true)] [InlineData(30, true)] [InlineData(65, false)]
+    public void ProgressiveSessionScanSurvivesAdaptiveAndRetryIntervalsButStillExpires(int idleMinutes, bool resumes)
+    {
+        using var directory = new TestDirectory();
+        var now = DateTimeOffset.UtcNow;
+        for (var i = 0; i < 1025; i++) Session(directory, ClaudeFixture.Second, Personal, now.AddDays(-31));
+        var sessions = directory.File($"claude-code-sessions/{ClaudeFixture.Second}/{Personal}");
+        var beyondFirstBatch = Directory.EnumerateFiles(sessions, "local_*.json").Skip(1024).First();
+        File.SetLastWriteTimeUtc(beyondFirstBatch, now.AddMinutes(-1).UtcDateTime);
+        try
+        {
+            Assert.Null(ClaudeDesktopSelection.Read(Paths(directory), now, default));
+            AgeMetadataCursor(sessions, TimeSpan.FromMinutes(idleMinutes));
+            var next = ClaudeDesktopSelection.Read(Paths(directory), now, default);
+            if (!resumes)
+            {
+                Assert.Null(next); // An hour of inactivity releases the old enumeration.
+                next = ClaudeDesktopSelection.Read(Paths(directory), now, default);
+            }
+            Assert.NotNull(next);
+            Assert.Equal(ClaudeFixture.Second, next.Account);
+            Assert.Equal(Personal, next.Organization);
+        }
+        finally { ClaudeDesktopSelection.Release(Paths(directory)); }
+    }
+
+    [Theory]
+    [InlineData(10)] [InlineData(30)]
+    public async Task LargeAgentDirectoriesEventuallyReadConfigurationsBeyondTheFirstBatch(int idleMinutes)
+    {
+        using var directory = new TestDirectory();
+        var now = DateTimeOffset.UtcNow;
+        var root = Directory.CreateDirectory(directory.File($"local-agent-mode-sessions/{ClaudeFixture.Second}/{Personal}"));
+        for (var i = 0; i < 257; i++) Directory.CreateDirectory(Path.Combine(root.FullName, "local_" + Guid.NewGuid()));
+        var outsideFirstBatch = Directory.EnumerateDirectories(root.FullName, "local_*").Skip(256).First();
+        var config = Path.Combine(Directory.CreateDirectory(Path.Combine(outsideFirstBatch, ".claude")).FullName, ".claude.json");
+        File.WriteAllText(config, JsonSerializer.Serialize(new { oauthAccount = new { emailAddress = "later@example.test",
+            accountUuid = ClaudeFixture.Second, organizationUuid = Personal, organizationType = "claude_pro" } }));
+        Directory.SetLastWriteTimeUtc(outsideFirstBatch, now.UtcDateTime.AddSeconds(1));
+        var selection = new ClaudeDesktopSelection.Selection(ClaudeFixture.Second, Personal, now);
+        try
+        {
+            Assert.Null(await ClaudeDesktopSelection.ReadAgentIdentityAsync(Paths(directory), selection, default));
+            AgeMetadataCursor(root.FullName, TimeSpan.FromMinutes(idleMinutes));
+            var identity = await ClaudeDesktopSelection.ReadAgentIdentityAsync(Paths(directory), selection, default);
+            Assert.NotNull(identity);
+            Assert.Equal("later@example.test", identity.Email);
+            Assert.Equal(ClaudeFixture.Second + "/" + Personal, identity.AccountId);
+            File.Delete(config);
+            Assert.Null(await ClaudeDesktopSelection.ReadAgentIdentityAsync(Paths(directory), selection, default));
+        }
+        finally { ClaudeDesktopSelection.Release(Paths(directory)); }
+    }
+
+    private static void AgeMetadataCursor(string directory, TimeSpan idle)
+    {
+        const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.NonPublic;
+        var scan = typeof(ClaudeSessionMetadataScan);
+        var sync = scan.GetField("Sync", fields | System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+        lock (sync)
+        {
+            // Age only this fixture's cursor. A global fake clock could expire cursors belonging
+            // to other tests that run in parallel, and waiting ten real minutes is unnecessary.
+            var cursors = (System.Collections.IDictionary)scan.GetField("Cursors", fields | System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+            var cursor = cursors[Path.GetFullPath(directory)];
+            Assert.NotNull(cursor);
+            var lastUsed = cursor.GetType().GetField("LastUsed", fields | System.Reflection.BindingFlags.Instance)!;
+            lastUsed.SetValue(cursor, System.Diagnostics.Stopwatch.GetTimestamp() -
+                checked((long)(idle.TotalSeconds * System.Diagnostics.Stopwatch.Frequency)));
+        }
+    }
+
+    [Fact]
     public async Task TrackerFollowsADesktopSwitchWithItsOwnQuotasAndKeepsTheOtherAccount()
     {
         using var directory = new TestDirectory(); var observedAt = DateTimeOffset.UtcNow.AddMinutes(-5);

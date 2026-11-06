@@ -146,6 +146,7 @@ internal sealed partial class ProfileStore(string root) : IDisposable
 
     private static void AtomicWrite(string destination, byte[] data)
     {
+        if (HasSameContent(destination, data)) return;
         var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
@@ -154,6 +155,22 @@ internal sealed partial class ProfileStore(string root) : IDisposable
             File.Move(temporary, destination, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    private static bool HasSameContent(string path, ReadOnlySpan<byte> data)
+    {
+        if (!File.Exists(path)) return false;
+        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (file.Length != data.Length) return false;
+        Span<byte> buffer = stackalloc byte[4096];
+        while (!data.IsEmpty)
+        {
+            var chunk = buffer[..Math.Min(buffer.Length, data.Length)];
+            file.ReadExactly(chunk);
+            if (!chunk.SequenceEqual(data[..chunk.Length])) return false;
+            data = data[chunk.Length..];
+        }
+        return true;
     }
 
     public void Dispose() => _lease?.Dispose();

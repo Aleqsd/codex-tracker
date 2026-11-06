@@ -25,6 +25,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
     private bool _canClose, _refreshing;
+    private bool _initialized, _viewDirty, _calendarPresentationDirty;
+    private int _updateQueued, _syncCalendarPending;
     internal ThemeManager Theme { get; }
     internal PreferencesStore Preferences => _preferences;
     internal ITrackerService TrackerService => _service;
@@ -79,12 +81,25 @@ public partial class MainWindow : Window
         { if (ReferenceEquals(e.OriginalSource, MainTabs) && SettingsTab.IsSelected) _ = Settings; };
         if (demo) Title = "Codex Tracker (démo)";
         DataContext = _model;
-        UpdateModel();
+        UpdateModel(force: true);
         _service.Changed += Service_Changed;
         _preferences.Changed += Preferences_Changed;
         Theme.Changed += Theme_Changed;
-        _clockTimer.Tick += (_, _) => { _model.Tick(); _resets.Tick(); RefreshHealth(); };
-        Calendar.Changed += (_, _) => Dispatcher.InvokeAsync(() => { if (!_canClose) UpdateModel(); });
+        _clockTimer.Tick += (_, _) =>
+        {
+            if (AccountsTab.IsSelected) _model.Tick();
+            if (ResetsTab.IsSelected) _resets.Tick();
+            RefreshHealth();
+        };
+        IsVisibleChanged += (_, _) => UpdateVisualActivity();
+        StateChanged += (_, _) => UpdateVisualActivity();
+        MainTabs.SelectionChanged += (_, e) =>
+        {
+            if (!ReferenceEquals(e.OriginalSource, MainTabs)) return;
+            if (AccountsTab.IsSelected) _model.Tick();
+            if (ResetsTab.IsSelected) _resets.Tick();
+        };
+        Calendar.Changed += (_, _) => { _calendarPresentationDirty = true; QueueModelUpdate(); };
         _calendarTimer.Tick += (_, _) => _ = SyncCalendarAsync();
         Closing += OnClosing;
         SourceInitialized += (_, _) => { Ui.ConstrainInitialSize(this); ApplyChrome(); };
@@ -93,7 +108,7 @@ public partial class MainWindow : Window
     public async Task InitializeAsync()
     {
         await _service.InitializeAsync(_lifetime.Token);
-        UpdateModel(); _clockTimer.Start();
+        _initialized = true; UpdateModel(); UpdateVisualActivity();
         if (!_demo || GoogleCalendarSync.LiveDemo) { _calendarTimer.Start(); _ = SyncCalendarAsync(); }
         if (_automaticUpdates is not null)
         {
@@ -101,18 +116,38 @@ public partial class MainWindow : Window
             _ = _automaticUpdates.RunAsync();
         }
     }
-    private void UpdateModel()
+    private void UpdateModel(bool force = false)
     {
         if (_canClose) return;
-        _model.Update(_service.State); _resets.Update(_service.State);
+        if (!force && (!IsVisible || WindowState == WindowState.Minimized)) { _viewDirty = true; return; }
+        _viewDirty = false;
+        var state = _service.State;
+        _model.Update(state); _resets.Update(state, _calendarPresentationDirty);
+        _calendarPresentationDirty = false;
         RefreshHealth();
+    }
+    private void QueueModelUpdate(bool syncCalendar = false)
+    {
+        if (syncCalendar) Interlocked.Exchange(ref _syncCalendarPending, 1);
+        if (Interlocked.Exchange(ref _updateQueued, 1) != 0) return;
+        Dispatcher.InvokeAsync(() =>
+        {
+            Interlocked.Exchange(ref _updateQueued, 0); UpdateModel();
+            if (Interlocked.Exchange(ref _syncCalendarPending, 0) != 0 && !_service.State.IsBusy) _ = SyncCalendarAsync();
+        }, DispatcherPriority.Background);
+    }
+    private void UpdateVisualActivity()
+    {
+        if (_canClose || !_initialized || !IsVisible || WindowState == WindowState.Minimized) { _clockTimer.Stop(); return; }
+        if (_viewDirty) UpdateModel();
+        _model.Tick(); _resets.Tick(); RefreshHealth(); _clockTimer.Start();
     }
     private void RefreshHealth()
     {
         RecoveryBanner.Visibility = HealthWarnings().Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _settings?.RefreshHealth();
     }
-    private void Service_Changed(object? sender, EventArgs e) => Dispatcher.InvokeAsync(() => { UpdateModel(); _ = SyncCalendarAsync(); });
+    private void Service_Changed(object? sender, EventArgs e) => QueueModelUpdate(syncCalendar: true);
     internal Task SyncCalendarAsync() => _canClose || _demo && !GoogleCalendarSync.LiveDemo || _preferences.RecoveryRequired ? Task.CompletedTask
         : Calendar.SyncAsync(_service.State, _preferences.Current.GoogleCalendarAutoAdd, CalendarName);
     /// <summary>Opens the Google consent in the browser (from the MCP); the outcome shows in the calendar state.</summary>

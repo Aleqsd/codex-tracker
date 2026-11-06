@@ -13,6 +13,7 @@ public sealed record TrackerServiceOptions
     public IReadOnlyList<string>? ClaudeDesktopUsagePaths { get; init; }
     public TimeSpan RefreshInterval { get; init; } = TimeSpan.FromMinutes(2);
     public Func<TimeSpan>? RefreshIntervalProvider { get; init; }
+    public Func<TimeSpan>? ActiveRefreshIntervalProvider { get; init; }
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(35);
     public TimeSpan DetectionInterval { get; init; } = TimeSpan.FromSeconds(2);
     public bool AutomaticRefresh { get; init; } = true;
@@ -43,10 +44,9 @@ public sealed partial class TrackerService : ITrackerService
     private Task? _announcementTimer;
     private readonly HttpClient? _publicHttp;
     private readonly GlobalResetMonitor? _globalResets;
-    private Task? _refresh;
+    private Task<ProviderRefreshStatus>? _refresh;
     private long _generation;
     private long _requestSequence;
-    private long _lastRefreshStarted = System.Diagnostics.Stopwatch.GetTimestamp();
     private string? _activeKey;
     private string? _accountId;
     private bool _initialized;
@@ -120,8 +120,8 @@ public sealed partial class TrackerService : ITrackerService
                 _monitor = new(_authPath, async token =>
                 {
                     await DetectAsync(token);
-                    _ = await QueueRefreshAsync(token);
-                }, _options.DetectionInterval);
+                    _ = await QueueRefreshAsync(token, RefreshReason.SourceChanged);
+                }, _options.DetectionInterval, signalInitial: false);
                 _monitor.Start();
             }
             StartClaudeMonitors();
@@ -129,13 +129,18 @@ public sealed partial class TrackerService : ITrackerService
             if (_globalResets is not null) _announcementTimer = RunAnnouncementsAsync();
         }
         finally { _gate.Release(); }
-        await (await QueueBothRefreshesAsync(cancellationToken)).WaitAsync(cancellationToken);
+        // Establish the watchers' baseline before the final detection, so startup cannot miss a replacement.
+        await DetectSourcesAsync(cancellationToken);
+        await (await QueueBothRefreshesAsync(cancellationToken, RefreshReason.Startup)).WaitAsync(cancellationToken);
     }
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
+        => _ = await RefreshWithResultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ProviderRefreshStatus>> RefreshWithResultAsync(CancellationToken cancellationToken = default)
     {
         await DetectSourcesAsync(cancellationToken);
-        await (await QueueBothRefreshesAsync(cancellationToken)).WaitAsync(cancellationToken);
+        return await (await QueueBothRefreshesAsync(cancellationToken)).WaitAsync(cancellationToken);
     }
 
     public Task ImportCurrentAccountAsync(CancellationToken cancellationToken = default) => RefreshAsync(cancellationToken);
@@ -182,7 +187,8 @@ public sealed partial class TrackerService : ITrackerService
                 StatusMessage = Loc.T("Sortie de veille · vérification du compte Codex…") });
         }
         finally { _gate.Release(); }
-        await RefreshAsync(cancellationToken);
+        await DetectSourcesAsync(cancellationToken);
+        await (await QueueBothRefreshesAsync(cancellationToken, RefreshReason.Resume)).WaitAsync(cancellationToken);
     }
 
     private void RestartObservation()
@@ -194,6 +200,8 @@ public sealed partial class TrackerService : ITrackerService
         _notificationBaselineGeneration = -1;
         _activeObservation = null;
         _refresh = null;
+        _codexPending = false;
+        ResetSchedule(false);
     }
 
     public IReadOnlyList<UsageSample> GetHistory(Guid accountId) => _telemetry.TryGetValue(accountId, out var telemetry)
@@ -261,6 +269,8 @@ public sealed partial class TrackerService : ITrackerService
             _activeKey = key;
             _accountId = identity?.AccountId;
             _refresh = null;
+            _codexPending = false;
+            ResetSchedule(false);
             var accounts = State.Accounts.Select(a => a.Profile.Provider == AccountProvider.Codex
                 ? a with { IsActiveInCodex = false, IsRefreshing = false } : a).ToList();
             Guid? selected = null;
@@ -284,22 +294,21 @@ public sealed partial class TrackerService : ITrackerService
         finally { _gate.Release(); }
     }
 
-    private async Task<Task> QueueRefreshAsync(CancellationToken cancellationToken)
+    private async Task<Task<ProviderRefreshStatus>> QueueRefreshAsync(CancellationToken cancellationToken, RefreshReason reason = RefreshReason.Manual)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_disposed || _suspended) return Task.CompletedTask;
+            if (_disposed || _suspended) return Task.FromResult(StoppedStatus(false));
             PruneOldHistory(DateTimeOffset.UtcNow);
-            if (_activeKey is null || _accountId is null) return Task.CompletedTask;
-            if (_refresh is { IsCompleted: false }) return _refresh;
+            if (_activeKey is null || _accountId is null) { MarkUnavailable(false, reason); return Task.FromResult(_codexSchedule.Status); }
+            if (_refresh is { IsCompleted: false })
+            {
+                if (reason == RefreshReason.SourceChanged) _codexPending = true;
+                return _refresh;
+            }
             var active = State.Accounts.Single(a => a.IsActiveInCodex);
-            var sequence = ++_requestSequence;
-            _refresh = RefreshCoreAsync(active.Profile, _accountId, _generation, _identityLifetime.Token);
-            _requests[sequence] = _refresh;
-            _ = _refresh.ContinueWith(completed => _requests.TryRemove(sequence, out _), CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            return _refresh;
+            return StartRefresh(active.Profile, _accountId, _generation, _identityLifetime.Token, false, reason);
         }
         finally { _gate.Release(); }
     }
@@ -319,8 +328,7 @@ public sealed partial class TrackerService : ITrackerService
             try
             {
                 if (generation != _generation) return;
-                Update(profile.Id, a => a with { IsRefreshing = true });
-                Set(State with { IsBusy = true, StatusMessage = Loc.T("Actualisation du compte ouvert dans Codex…") });
+                UpdateCollection(profile.Id, a => a with { IsRefreshing = true }, Loc.T("Actualisation du compte ouvert dans Codex…"));
             }
             finally { _gate.Release(); }
             var candidate = await _reader.ReadAsync(profile, accountId, request.Token);
@@ -354,7 +362,9 @@ public sealed partial class TrackerService : ITrackerService
                                 error = Loc.T("Un relevé plus ancien a été ignoré. Les dernières données sont conservées.");
                                 failure = CodexFailureCode.Unknown;
                             }
-                            if (snapshot is not null) notifications = RecordObservation(profile, snapshot, generation);
+                            var unchanged = SnapshotContent.Equal(snapshot, previousSnapshot);
+                            if (snapshot is not null && (!unchanged || _notificationBaselineGeneration != generation))
+                                notifications = RecordObservation(profile, snapshot, generation);
                             _compatibility = _compatibility with
                             {
                                 Service = snapshot is not null ? CodexServiceStatus.Compatible : failure switch
@@ -368,13 +378,14 @@ public sealed partial class TrackerService : ITrackerService
                                 LastSuccessfulReadAt = snapshot?.FetchedAt ?? _compatibility.LastSuccessfulReadAt,
                                 CheckedAt = DateTimeOffset.UtcNow
                             };
-                            Update(profile.Id, a => a with { Snapshot = snapshot ?? a.Snapshot, IsRefreshing = false, Error = error });
-                            Set(State with { IsBusy = State.Accounts.Any(a => a.IsRefreshing), StatusMessage = error ?? Loc.T("À jour · changements de compte détectés automatiquement") });
+                            FinishRefresh(false, snapshot, previousSnapshot, error is null ? null : failure.ToString());
+                            UpdateCollection(profile.Id, a => a with { Snapshot = unchanged ? a.Snapshot : snapshot ?? a.Snapshot, IsRefreshing = false, Error = error },
+                                error ?? Loc.T("À jour · changements de compte détectés automatiquement"));
                             Save();
                         }
                     }
                     finally { _gate.Release(); }
-                    if (generation != _generation) _ = await QueueRefreshAsync(_lifetime.Token);
+                    if (generation != _generation && _codexSchedule.Started == 0) _ = await QueueRefreshAsync(_lifetime.Token);
                 }
                 catch (OperationCanceledException) { }
                 catch (Exception ex) when (IsRecoverable(ex)) { /* Retain the in-memory state if disk becomes unavailable. */ }
@@ -493,14 +504,18 @@ public sealed partial class TrackerService : ITrackerService
 
     private async Task RunTimerAsync()
     {
-        using var timer = new PeriodicTimer(_options.RefreshIntervalProvider is null ? _options.RefreshInterval : TimeSpan.FromSeconds(1));
+        using var timer = new PeriodicTimer(_options.RefreshInterval < TimeSpan.FromSeconds(1) && _options.RefreshIntervalProvider is null
+            ? _options.RefreshInterval : TimeSpan.FromSeconds(1));
         try
         {
             while (await timer.WaitForNextTickAsync(_lifetime.Token))
             {
-                if (_options.RefreshIntervalProvider is { } interval &&
-                    System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Read(ref _lastRefreshStarted)) < interval()) continue;
-                try { await RefreshAsync(_lifetime.Token); }
+                if (_suspended) continue;
+                try
+                {
+                    if (IsDue(false)) { await DetectAsync(_lifetime.Token); _ = await QueueRefreshAsync(_lifetime.Token, RefreshReason.Timer); }
+                    if (_options.DetectClaudeCode && IsDue(true)) { await DetectClaudeAsync(_lifetime.Token); _ = await QueueClaudeRefreshAsync(_lifetime.Token, RefreshReason.Timer); }
+                }
                 catch (Exception ex) when (IsRecoverable(ex)) { }
             }
         }
@@ -515,7 +530,11 @@ public sealed partial class TrackerService : ITrackerService
     }
     private void Update(Guid id, Func<AccountState, AccountState> update) => Set(State with
     { Accounts = State.Accounts.Select(a => a.Profile.Id == id ? update(a) : a).ToArray() });
-    private void Set(TrackerState state) { _state = state; Changed?.Invoke(this, EventArgs.Empty); }
+    private void Set(TrackerState state)
+    {
+        if (_state with { Accounts = state.Accounts } == state && _state.Accounts.SequenceEqual(state.Accounts)) return;
+        _state = state; Changed?.Invoke(this, EventArgs.Empty);
+    }
     private async Task RunAnnouncementsAsync()
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
@@ -573,10 +592,12 @@ public sealed partial class TrackerService : ITrackerService
         _lifetime.Cancel();
         if (_monitor is not null) await _monitor.DisposeAsync();
         foreach (var monitor in _claudeMonitors) await monitor.DisposeAsync();
+        if (_claudeSourceMonitor is not null) await _claudeSourceMonitor.DisposeAsync();
         if (_timer is not null) await _timer;
         if (_announcementTimer is not null) await _announcementTimer;
         _publicHttp?.Dispose();
         await Task.WhenAll(requests);
+        ClaudeDesktopSelection.Release(_claudeDesktopUsagePaths);
         _identityLifetime.Dispose();
         _claudeIdentityLifetime.Dispose();
         _lifetime.Dispose();

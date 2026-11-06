@@ -89,6 +89,70 @@ public sealed class AuthFileMonitorTests
         await AssertNoChangeAsync(changes);
     }
 
+    [Fact]
+    public async Task UnchangedPollingDoesNotReopenTheFileButExplicitChecksStillVerifyItsContent()
+    {
+        using var directory = new TestDirectory();
+        var path = directory.File("auth.json");
+        await File.WriteAllTextAsync(path, "fixture-a");
+        var changes = Channel.CreateUnbounded<bool>();
+        await using var monitor = new AuthFileMonitor(path, _ =>
+        {
+            changes.Writer.TryWrite(true);
+            return Task.CompletedTask;
+        }, PollInterval, true, TimeSpan.FromMinutes(1), watchFiles: false);
+        monitor.Start();
+        await NextChangeAsync(changes);
+
+        // Metadata remains readable while the content is exclusively held. Ordinary polling
+        // must not manufacture an "unavailable" change by opening an unchanged file again.
+        using (var held = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            await AssertNoChangeAsync(changes);
+            monitor.RequestCheck();
+            await NextChangeAsync(changes);
+        }
+        // A transient read failure is retried at the short cadence, not cached for a minute.
+        await NextChangeAsync(changes);
+    }
+
+    [Fact]
+    public async Task VerificationPollFindsChangedBytesEvenWhenMetadataAndWatcherEventsAreUnchanged()
+    {
+        using var directory = new TestDirectory();
+        var path = directory.File("auth.json");
+        await File.WriteAllTextAsync(path, "fixture-a");
+        var written = File.GetLastWriteTimeUtc(path);
+        var changes = Channel.CreateUnbounded<bool>();
+        await using var monitor = new AuthFileMonitor(path, _ =>
+        {
+            changes.Writer.TryWrite(true);
+            return Task.CompletedTask;
+        }, PollInterval, true, TimeSpan.FromMilliseconds(900), watchFiles: false);
+        monitor.Start();
+        await NextChangeAsync(changes);
+        await File.WriteAllTextAsync(path, "fixture-b");
+        File.SetLastWriteTimeUtc(path, written);
+
+        await NextChangeAsync(changes);
+        await AssertNoChangeAsync(changes);
+    }
+
+    [Fact]
+    public async Task OversizeFileIsBoundedAndBecomesReadableAgainAfterReplacement()
+    {
+        using var directory = new TestDirectory();
+        var path = directory.File("auth.json");
+        using (var oversized = File.Create(path)) oversized.SetLength(16L * 1024 * 1024);
+        var changes = Channel.CreateUnbounded<bool>();
+        await using var monitor = NewMonitor(path, changes);
+        monitor.Start();
+        await NextChangeAsync(changes);
+        await AssertNoChangeAsync(changes);
+        await File.WriteAllTextAsync(path, "fixture-small");
+        await NextChangeAsync(changes);
+    }
+
     private static AuthFileMonitor NewMonitor(string path, Channel<bool> changes) =>
         new(path, cancellationToken =>
         {

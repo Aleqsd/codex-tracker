@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Diagnostics;
 using System.Threading.Channels;
 
 namespace CodexTracker.Codex;
@@ -10,12 +11,15 @@ namespace CodexTracker.Codex;
 public sealed class AuthFileMonitor : IAsyncDisposable
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(300);
+    private const int MaximumBytes = 4 * 1024 * 1024;
     private static readonly AsyncLocal<AuthFileMonitor?> CallingMonitor = new();
     private readonly string _authPath;
     private readonly string _directory;
     private readonly Func<CancellationToken, Task> _onChanged;
     private readonly TimeSpan _pollInterval;
     private readonly bool _signalInitial;
+    private readonly TimeSpan _verificationInterval;
+    private readonly bool _watchFiles;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Channel<bool> _checks = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     {
@@ -31,19 +35,31 @@ public sealed class AuthFileMonitor : IAsyncDisposable
     private bool _watcherFailed;
     private bool _hasBaseline;
     private string? _fingerprint;
+    private FileStamp? _lastStamp;
+    private string? _lastProbe;
+    private long _lastVerified;
+    private int _forceVerification;
+    private sealed record FileStamp(long Length, DateTime LastWrite, DateTime Created);
 
     public AuthFileMonitor(string authPath, Func<CancellationToken, Task> onChanged,
         TimeSpan? pollInterval = null, bool signalInitial = true)
+        : this(authPath, onChanged, pollInterval ?? TimeSpan.FromSeconds(2), signalInitial, TimeSpan.FromMinutes(1), true) { }
+
+    internal AuthFileMonitor(string authPath, Func<CancellationToken, Task> onChanged,
+        TimeSpan pollInterval, bool signalInitial, TimeSpan verificationInterval, bool watchFiles)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(authPath);
         ArgumentNullException.ThrowIfNull(onChanged);
         _authPath = Path.GetFullPath(authPath);
         _directory = Path.GetDirectoryName(_authPath) ?? throw new ArgumentException("A full file path is required.", nameof(authPath));
         _onChanged = onChanged;
-        _pollInterval = pollInterval ?? TimeSpan.FromSeconds(2);
+        _pollInterval = pollInterval;
         if (_pollInterval <= TimeSpan.Zero || _pollInterval.TotalMilliseconds > uint.MaxValue - 1)
             throw new ArgumentOutOfRangeException(nameof(pollInterval));
         _signalInitial = signalInitial;
+        if (verificationInterval <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(verificationInterval));
+        _verificationInterval = verificationInterval;
+        _watchFiles = watchFiles;
     }
 
     /// <summary>Starts observation once. By default the first stable check also calls the callback.</summary>
@@ -57,6 +73,7 @@ public sealed class AuthFileMonitor : IAsyncDisposable
             {
                 // A silent start establishes its baseline before returning, so a subsequent write is observed.
                 _fingerprint = ReadInitialFingerprint();
+                _lastProbe = _fingerprint;
                 _hasBaseline = true;
             }
             _started = true;
@@ -64,18 +81,22 @@ public sealed class AuthFileMonitor : IAsyncDisposable
             _worker = Task.Run(() => ObserveAsync(token));
             _poller = Task.Run(() => PollAsync(token));
         }
-        RequestCheck();
+        _checks.Writer.TryWrite(true);
     }
 
     /// <summary>Queues one coalesced check; it never forces a callback for unchanged bytes.</summary>
-    public void RequestCheck() => _checks.Writer.TryWrite(true);
+    public void RequestCheck()
+    {
+        Interlocked.Exchange(ref _forceVerification, 1);
+        _checks.Writer.TryWrite(true);
+    }
 
     private async Task PollAsync(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(_pollInterval);
         try
         {
-            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) RequestCheck();
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) _checks.Writer.TryWrite(true);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
     }
@@ -90,7 +111,20 @@ public sealed class AuthFileMonitor : IAsyncDisposable
                 await Task.Delay(Debounce, cancellationToken).ConfigureAwait(false);
                 while (_checks.Reader.TryRead(out _)) { }
                 EnsureWatcher();
-                var next = await ReadFingerprintAsync(cancellationToken).ConfigureAwait(false);
+                var force = Interlocked.Exchange(ref _forceVerification, 0) != 0;
+                var stamp = ReadStamp();
+                string next;
+                if (!force && stamp is not null && stamp == _lastStamp && _lastProbe is not null and not "unavailable" &&
+                    Stopwatch.GetElapsedTime(_lastVerified) < _verificationInterval)
+                    next = _lastProbe;
+                else
+                {
+                    next = await ReadFingerprintAsync(cancellationToken).ConfigureAwait(false);
+                    // Keep the stamp from before reading: a concurrent write must be reconsidered.
+                    _lastStamp = stamp;
+                    _lastProbe = next;
+                    _lastVerified = Stopwatch.GetTimestamp();
+                }
                 if (_hasBaseline && string.Equals(_fingerprint, next, StringComparison.Ordinal)) continue;
                 if (!_hasBaseline && !_signalInitial)
                 {
@@ -125,9 +159,24 @@ public sealed class AuthFileMonitor : IAsyncDisposable
         {
             await using var stream = new FileStream(_authPath, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
-            var digest = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
-            try { return Convert.ToHexString(digest); }
-            finally { CryptographicOperations.ZeroMemory(digest); }
+            if (stream.Length > MaximumBytes) return "oversize";
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[8192];
+            try
+            {
+                var total = 0;
+                int count;
+                while ((count = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) != 0)
+                {
+                    total += count;
+                    if (total > MaximumBytes) return "oversize";
+                    hash.AppendData(buffer, 0, count);
+                }
+                var digest = hash.GetHashAndReset();
+                try { return Convert.ToHexString(digest); }
+                finally { CryptographicOperations.ZeroMemory(digest); }
+            }
+            finally { CryptographicOperations.ZeroMemory(buffer); }
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) { return "missing"; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return "unavailable"; }
@@ -135,20 +184,48 @@ public sealed class AuthFileMonitor : IAsyncDisposable
 
     private string ReadInitialFingerprint()
     {
+        _lastStamp = ReadStamp();
+        _lastVerified = Stopwatch.GetTimestamp();
         try
         {
             using var stream = new FileStream(_authPath, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.SequentialScan);
-            var digest = SHA256.HashData(stream);
-            try { return Convert.ToHexString(digest); }
-            finally { CryptographicOperations.ZeroMemory(digest); }
+            if (stream.Length > MaximumBytes) return "oversize";
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[8192];
+            try
+            {
+                var total = 0;
+                int count;
+                while ((count = stream.Read(buffer)) != 0)
+                {
+                    total += count;
+                    if (total > MaximumBytes) return "oversize";
+                    hash.AppendData(buffer, 0, count);
+                }
+                var digest = hash.GetHashAndReset();
+                try { return Convert.ToHexString(digest); }
+                finally { CryptographicOperations.ZeroMemory(digest); }
+            }
+            finally { CryptographicOperations.ZeroMemory(buffer); }
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) { return "missing"; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return "unavailable"; }
     }
 
+    private FileStamp? ReadStamp()
+    {
+        try
+        {
+            var file = new FileInfo(_authPath);
+            return file.Exists ? new(file.Length, file.LastWriteTimeUtc, file.CreationTimeUtc) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     private void EnsureWatcher()
     {
+        if (!_watchFiles) return;
         // Watch the nearest existing ancestor until the actual profile directory becomes available.
         var watchDirectory = _directory;
         while (!Directory.Exists(watchDirectory))

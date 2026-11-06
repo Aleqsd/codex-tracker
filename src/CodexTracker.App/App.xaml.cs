@@ -102,6 +102,7 @@ public partial class App : System.Windows.Application
                 RedirectedDataDirectories = Codex.DesktopEnvironment.FindRedirectedStores(),
                 GlobalResetMonitoringEnabled = () => preferences.Current.MonitorGlobalResets,
                 ManualCodexResetProvider = () => preferences.Current.ManualCodexReset,
+                ActiveRefreshIntervalProvider = () => TimeSpan.FromMinutes(RefreshPolicy.NormalizeMinutes(preferences.Current.RefreshMinutes)),
                 RefreshIntervalProvider = () =>
                 {
                     var p = preferences.Current;

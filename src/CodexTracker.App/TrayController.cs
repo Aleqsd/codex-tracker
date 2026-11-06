@@ -151,7 +151,7 @@ internal sealed class TrayController : IDisposable
         var background = dark ? Color.FromArgb(23, 24, 28) : Color.FromArgb(255, 255, 255);
         var foreground = dark ? Color.FromArgb(236, 237, 240) : Color.FromArgb(22, 23, 26);
         var menu = new Forms.ContextMenuStrip { Font = _menuFont.Font, BackColor = background, ForeColor = foreground, ShowImageMargin = false, Renderer = new DarkMenuRenderer(dark) };
-        menu.Opening += (_, _) => HidePeek();
+        menu.Opening += (_, _) => { HidePeek(); RefreshMenuSummary(menu); };
         menu.Closed += (_, _) => _window.Dispatcher.InvokeAsync(Update);
         // A quiet summary first: the menu answers "how much is left" before offering actions.
         foreach (var active in state.ActiveAccounts)
@@ -160,7 +160,7 @@ internal sealed class TrayController : IDisposable
             var reset = QuotaPresentation.ResetsAt(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
             var line = Loc.F("{0} · {1} semaine", active.Profile.ProviderName, Display.Percent(left)) + (reset is { } at ? " · " + Display.Countdown(at).ToLowerInvariant() : "");
             // A disabled item keeps the actions' text alignment; the renderer draws it in the muted colour.
-            menu.Items.Add(new Forms.ToolStripMenuItem(line) { Enabled = false });
+            menu.Items.Add(new Forms.ToolStripMenuItem(line) { Enabled = false, Tag = active.Profile.Id });
         }
         if (state.ActiveAccounts.Count > 0) menu.Items.Add(new Forms.ToolStripSeparator());
         var open = new Forms.ToolStripMenuItem(Loc.T("Ouvrir le suivi"), null, (_, _) => _window.ShowPanel());
@@ -198,6 +198,19 @@ internal sealed class TrayController : IDisposable
         foreach (var entry in menu.Items.OfType<Forms.ToolStripMenuItem>().Concat(menu.Items.OfType<Forms.ToolStripMenuItem>()
             .SelectMany(i => i.DropDownItems.OfType<Forms.ToolStripMenuItem>()))) entry.Padding = new Forms.Padding(4, 5, 4, 5);
         var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = menu; _toolTray.ContextMenuStrip = menu; oldMenu?.Dispose();
+    }
+    private void RefreshMenuSummary(Forms.ContextMenuStrip menu)
+    {
+        var state = _service.State with { ManualCodexReset = _preferences.Current.ManualCodexReset };
+        foreach (var item in menu.Items.OfType<Forms.ToolStripMenuItem>().Where(item => !item.Enabled && item.Tag is Guid))
+        {
+            var active = state.ActiveAccounts.FirstOrDefault(account => account.Profile.Id == (Guid)item.Tag!);
+            if (active is null) continue;
+            var left = QuotaPresentation.Remaining(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+            var reset = QuotaPresentation.ResetsAt(state, active, ResetKind.Weekly, PreviewClock.UtcNow);
+            item.Text = Loc.F("{0} · {1} semaine", active.Profile.ProviderName, Display.Percent(left)) +
+                (reset is { } at ? " · " + Display.Countdown(at).ToLowerInvariant() : "");
+        }
     }
     private void Draw(Forms.NotifyIcon tray, ref Icon? icon, ref string? iconKey, TrackerState state, AccountState? account, ResetKind window, bool dark, int iconSize, string text)
     {

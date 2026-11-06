@@ -57,7 +57,7 @@ internal sealed class TrackerControl : IDisposable
                     .Select(p => new { provider = p.Active.Profile.Provider.ToString(), fromAccountId = p.Active.Profile.Id, toAccountId = p.Best!.Account.Profile.Id, toAccount = p.Best.Account.Profile.Email, remaining = p.Best.Remaining, estimated = p.Best.Estimated }),
                 pill = _preferences.Current.ScreenPill ? ScreenPill.Current(state with { ManualCodexReset = _preferences.Current.ManualCodexReset }, DateTimeOffset.UtcNow, _preferences.Current.PillHidden)
                     .Select(p => new { p.Key, kind = p.Kind.ToString(), accountId = p.Account.Profile.Id, window = p.Window.ToString(), p.Remaining, p.At }) : null,
-                manualCodexReset = state.ManualCodexReset, state.IsBusy, connections = Connections, reminderError = _window.Reminders.Error,
+                manualCodexReset = state.ManualCodexReset, state.IsBusy, refresh = RefreshReport(_window.TrackerService, revision), connections = Connections, reminderError = _window.Reminders.Error,
                 onboardingComplete = state.OnboardingComplete, notices = AgentQueries.Notices(state, _preferences.Current, DateTimeOffset.UtcNow),
                 healthWarnings = _window.HealthWarnings(), recoveryPending = _preferences.RecoveryRequired,
                 windowsNotifications = WindowsNotificationDelivery.ReadState().ToString() };
@@ -85,7 +85,9 @@ internal sealed class TrackerControl : IDisposable
                     ntfy = new { s.Push.Enabled, s.Push.Server, hasTopic = s.Push.Topic.Length > 0, hasToken = s.Push.Token.Length > 0, mirrorWindows = _preferences.Current.PushMirror } };
             case "action": return Public(_actions.Find(Read<ActionQuery>(args).RequestId) ?? throw new ArgumentException("Action inconnue."));
             case "refresh":
-                await _window.TrackerService.RefreshAsync(); return new { refreshed = true, revision = Revision, observedAt = _window.TrackerService.State.ActiveAccount?.Snapshot?.FetchedAt };
+                if (args.ValueKind != JsonValueKind.Object || args.EnumerateObject().Any()) throw new ArgumentException("Cette commande ne prend aucun paramètre.");
+                var refreshed = await _window.TrackerService.RefreshWithResultAsync();
+                return RefreshReport(_window.TrackerService, Revision, refreshed);
             case "show": _window.OpenPage(Read<PageQuery>(args).Page); return new { opened = true };
             case "usage_history":
                 var history = Read<HistoryQuery>(args);
@@ -438,6 +440,34 @@ internal sealed class TrackerControl : IDisposable
         }
         catch { _window.AssistantError = Loc.T("MCP suspendu : journal local indisponible."); _timer.Stop(); _pending.Clear(); foreach (var dialog in _dialogs.Values.ToArray()) dialog.Close(); }
     }
+    internal static RefreshReply RefreshReport(ITrackerService service, string revision, IReadOnlyList<ProviderRefreshStatus>? completed = null)
+    {
+        var state = service.State;
+        var active = state.ActiveAccounts.Select(a => a.Profile.Id).ToHashSet();
+        var providers = (completed ?? service.GetRefreshStatus()).Select(status =>
+        {
+            // Demo/default implementations expose historical snapshots without performing a
+            // collection. Neither those snapshots nor an unfinished attempt prove success.
+            var outcome = (status.Outcome is RefreshOutcome.Updated or RefreshOutcome.Unchanged) &&
+                (status.AttemptedAt is null || status.CompletedAt is null) ? RefreshOutcome.Unavailable : status.Outcome;
+            var error = status.ErrorCode is null ? outcome == RefreshOutcome.Failed ? "collection_failed" : null :
+                status.ErrorCode == "account_changed" ? "accountChanged" :
+                Enum.TryParse<CodexFailureCode>(status.ErrorCode, out var code) && Enum.IsDefined(code) && code != CodexFailureCode.None
+                    ? Name(code) : "collection_failed";
+            return new ProviderRefreshReply(status.Provider.ToString(), status.AccountId, Name(outcome), Name(status.Reason),
+                status.AttemptedAt, status.CompletedAt, status.ObservedAt, status.DurationMilliseconds,
+                status.NextAttemptAt, status.ConsecutiveFailures, error);
+        }).ToArray();
+        var current = providers.Where(p => p.AccountId is { } id && active.Contains(id)).ToArray();
+        var succeeded = current.Count(p => p.Outcome is "updated" or "unchanged");
+        var suspended = providers.Any(p => p.Outcome == "suspended");
+        var failed = current.Any(p => p.Outcome == "failed");
+        var status = suspended ? "suspended" : succeeded > 0
+            ? succeeded == active.Count && !failed ? "success" : "partial"
+            : failed ? "failed" : "unavailable";
+        return new(status == "success", status, revision, state.ActiveAccount?.Snapshot?.FetchedAt, providers);
+        static string Name<T>(T value) where T : Enum => JsonNamingPolicy.CamelCase.ConvertName(value.ToString());
+    }
     /// <summary>Runs after the reply is on its way: quitting, restarting or installing ends this process.</summary>
     private void Later(Func<Task> action) => _ = _window.Dispatcher.InvokeAsync(async () => { await Task.Delay(800); await action(); });
     private static object Public(AssistantAction a) => new { requestId = a.Id, a.Status, a.ExpiresAt, a.Detail };
@@ -449,6 +479,11 @@ internal sealed class TrackerControl : IDisposable
     }
 }
 
+internal sealed record ProviderRefreshReply(string Provider, Guid? AccountId, string Outcome, string Reason,
+    DateTimeOffset? AttemptedAt, DateTimeOffset? CompletedAt, DateTimeOffset? ObservedAt,
+    double? DurationMilliseconds, DateTimeOffset? NextAttemptAt, int ConsecutiveFailures, string? ErrorCode);
+internal sealed record RefreshReply(bool Refreshed, string Status, string Revision, DateTimeOffset? ObservedAt,
+    IReadOnlyList<ProviderRefreshReply> Providers);
 internal sealed record ChangeRequest(string RequestId, string ExpectedRevision, JsonElement Value);
 internal sealed record ActionQuery(string RequestId);
 internal sealed record PageQuery(string Page);

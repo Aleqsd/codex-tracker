@@ -7,7 +7,7 @@ namespace CodexTracker.Codex;
 // every session under claude-code-sessions/{account}/{organization}: only these names and file dates are read.
 internal static class ClaudeDesktopSelection
 {
-    private const int MaximumDirectories = 256, MaximumFiles = 1024, MaximumAgentSessions = 32;
+    private const int MaximumDirectories = 256;
 
     internal sealed record Selection(Guid Account, Guid Organization, DateTimeOffset ActiveAt)
     {
@@ -25,19 +25,18 @@ internal static class ClaudeDesktopSelection
                     token.ThrowIfCancellationRequested();
                     try
                     {
-                        foreach (var file in directory.EnumerateFiles("local_*.json").Take(MaximumFiles))
-                        {
-                            var name = Path.GetFileNameWithoutExtension(file.Name);
-                            if (name.Length < 7 || !Guid.TryParseExact(name[6..], "D", out _) || (file.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                            var at = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
-                            if (at > now.AddMinutes(1) || at < now.AddDays(-30) || at <= latest?.ActiveAt) continue;
-                            latest = new(account, organization, at);
-                        }
+                        var at = ClaudeSessionMetadataScan.Read(directory, now, token);
+                        if (at is not null && !(at <= latest?.ActiveAt)) latest = new(account, organization, at.Value);
                     }
                     catch (Exception ex) when (Recoverable(ex)) { }
                 }
         return latest;
     }
+
+    /// <summary>Releases partial metadata enumerations when the owning tracker stops.</summary>
+    internal static void Release(IReadOnlyList<string> desktopPaths) =>
+        ClaudeSessionMetadataScan.Release(Roots(desktopPaths, "claude-code-sessions")
+            .Concat(Roots(desktopPaths, "local-agent-mode-sessions")).Select(root => root.FullName));
 
     /// <summary>
     /// Desktop's cached response of the profile endpoint that Claude Code reads to fill .claude.json. It names
@@ -93,13 +92,7 @@ internal static class ClaudeDesktopSelection
             {
                 foreach (var (_, directory) in Children(accountDirectory).OrderByDescending(c => c.Id == selection.Organization))
                 {
-                    DirectoryInfo[] sessions;
-                    try
-                    {
-                        sessions = directory.EnumerateDirectories("local_*").Take(MaximumDirectories)
-                            .OrderByDescending(d => d.LastWriteTimeUtc).Take(MaximumAgentSessions).ToArray();
-                    }
-                    catch (Exception ex) when (Recoverable(ex)) { continue; }
+                    var sessions = ClaudeSessionMetadataScan.ReadAgents(directory, token);
                     foreach (var session in sessions)
                     {
                         token.ThrowIfCancellationRequested();

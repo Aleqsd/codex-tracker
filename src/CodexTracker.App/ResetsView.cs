@@ -27,6 +27,8 @@ internal sealed class ResetsView : UserControl
     private readonly HashSet<string> _openAnnouncements = [];
     private readonly List<GlobalResetCard> _announcementCards = [];
     private TrackerState _state = new([], null);
+    private TrackerPreferences? _presentedPreferences;
+    private bool _renderDirty = true;
     private DateTimeOffset? _nextBoundary;
     private bool _syncing, _weekView, _showReached, _showUnknown, _showReserves, _showAnnouncements;
     private ResetKind? _kindFilter;
@@ -98,11 +100,19 @@ internal sealed class ResetsView : UserControl
         UiMotion.SetRise(_timeline, 10); UiMotion.SetStagger(_timeline, true);
         var scroll = new ScrollViewer { Content = _timeline, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 2); root.Children.Add(scroll); Content = root;
+        IsVisibleChanged += (_, _) => { if (IsVisible) Tick(); };
     }
 
-    internal void Update(TrackerState state)
+    internal void Update(TrackerState state, bool forceRender = false)
     {
-        _state = state with { ManualCodexReset = _preferences.Current.ManualCodexReset }; _refresh.IsEnabled = !state.IsBusy;
+        state = state with { ManualCodexReset = _preferences.Current.ManualCodexReset };
+        // Progress alone changes the refresh button, not the controls holding keyboard focus.
+        _renderDirty |= forceRender || !ReferenceEquals(_presentedPreferences, _preferences.Current) ||
+            _state.ManualCodexReset != state.ManualCodexReset || _state.GlobalResetFeed != state.GlobalResetFeed ||
+            !_state.Accounts.Select(a => a with { IsRefreshing = false }).SequenceEqual(state.Accounts.Select(a => a with { IsRefreshing = false }));
+        _presentedPreferences = _preferences.Current;
+        _state = state; _refresh.IsEnabled = !state.IsBusy;
+        if (!_renderDirty) { if (IsVisible) Tick(); return; }
         var selected = (_accounts.SelectedItem as ResetAccountChoice)?.Id;
         var choices = new[] { new ResetAccountChoice(null, Loc.T("Tous les comptes")) }
             .Concat(state.Accounts.Select(a => new ResetAccountChoice(a.Profile.Id, AccountName(a)))).ToArray();
@@ -133,6 +143,18 @@ internal sealed class ResetsView : UserControl
 
     private void Render(bool animate = false)
     {
+        if (!IsVisible) { _renderDirty = true; return; }
+        _renderDirty = false;
+        var focusScope = System.Windows.Input.FocusManager.GetFocusScope(_timeline);
+        var focused = System.Windows.Input.Keyboard.FocusedElement as FrameworkElement;
+        if (focused?.IsDescendantOf(_timeline) != true)
+            focused = System.Windows.Input.FocusManager.GetFocusedElement(focusScope) as FrameworkElement;
+        var hadKeyboardFocus = focused?.IsKeyboardFocusWithin == true;
+        var focusTag = focused?.IsDescendantOf(_timeline) == true ? focused.Tag as string : null;
+        string? focusEntry = null;
+        if (focused?.IsDescendantOf(_timeline) == true && focusTag is null)
+            for (DependencyObject? parent = focused; parent is not null && !ReferenceEquals(parent, _timeline); parent = VisualTreeHelper.GetParent(parent))
+                if (parent is Expander { Tag: ResetScheduleEntry entry }) { focusEntry = EntryKey(entry); break; }
         var accountId = (_accounts.SelectedItem as ResetAccountChoice)?.Id;
         var accounts = _state.Accounts.Where(a => accountId is null || a.Profile.Id == accountId).ToArray();
         var now = PreviewClock.UtcNow;
@@ -183,6 +205,28 @@ internal sealed class ResetsView : UserControl
         _summary.Visibility = _summary.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         UpdateTimes(now);
         if (animate) UiMotion.FadeIn(_timeline);
+        var displacedFocus = hadKeyboardFocus ? System.Windows.Input.Keyboard.FocusedElement : System.Windows.Input.FocusManager.GetFocusedElement(focusScope);
+        if (focusTag is not null || focusEntry is not null)
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, (Action)(() =>
+            {
+                // Do not take focus back if the user moved to another control during layout.
+                var current = hadKeyboardFocus ? System.Windows.Input.Keyboard.FocusedElement : System.Windows.Input.FocusManager.GetFocusedElement(focusScope);
+                if (current is not null && !ReferenceEquals(current, focused) && !ReferenceEquals(current, displacedFocus) &&
+                    (current is not FrameworkElement currentElement ||
+                        !currentElement.IsDescendantOf(_timeline) && !_timeline.IsDescendantOf(currentElement))) return;
+                _timeline.UpdateLayout();
+                var target = Descendants(_timeline).OfType<FrameworkElement>().FirstOrDefault(element =>
+                    focusTag is not null ? Equals(element.Tag, focusTag) : element is Expander { Tag: ResetScheduleEntry entry } && EntryKey(entry) == focusEntry);
+                if (target is Expander expander)
+                    target = Descendants(expander).OfType<System.Windows.Controls.Primitives.ToggleButton>().FirstOrDefault() ?? target;
+                target?.Focus();
+            }));
+    }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        yield return root;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            foreach (var child in Descendants(VisualTreeHelper.GetChild(root, index))) yield return child;
     }
     private void DismissDeclaration(Button dismiss)
     {
@@ -395,10 +439,11 @@ internal sealed class ResetsView : UserControl
     }
     internal void Tick()
     {
+        if (!IsVisible) return;
         var now = PreviewClock.UtcNow;
         if (_renderedDate != DateOnly.FromDateTime(now.LocalDateTime) && _week == ResetCalendar.Monday(_renderedDate))
         { _week = ResetCalendar.Monday(DateOnly.FromDateTime(now.LocalDateTime)); _day = null; }
-        if (_nextBoundary <= now || _renderedDate != DateOnly.FromDateTime(now.LocalDateTime)) Render(); else UpdateTimes(now);
+        if (_renderDirty || _nextBoundary <= now || _renderedDate != DateOnly.FromDateTime(now.LocalDateTime)) Render(); else UpdateTimes(now);
     }
     private void UpdateTimes(DateTimeOffset now)
     {

@@ -11,7 +11,7 @@ namespace CodexTracker.App;
 internal sealed class GoogleCalendarSync : IDisposable
 {
     private static readonly TimeSpan Verification = TimeSpan.FromMinutes(30), Retry = TimeSpan.FromMinutes(15);
-    private readonly HttpClient _http = GoogleCalendarClient.CreateHttpClient();
+    private readonly HttpClient _http;
     private readonly GoogleCalendarClient _client;
     private readonly GoogleCalendarSecretStore? _secrets;
     private readonly CalendarLinkStore _links;
@@ -21,6 +21,9 @@ internal sealed class GoogleCalendarSync : IDisposable
     private GoogleCalendarSecrets _current = new();
     private DateTimeOffset _nextVerification, _retryAfter;
     private bool _disposed;
+    private sealed record SyncRequest(TrackerState State, bool AutoAdd, Func<AccountProfile, string> Name);
+    private SyncRequest? _pendingSync;
+    private Task? _syncTask;
     /// <summary>The demonstration shows a connected calendar with every fictional credit in it; nothing is sent.</summary>
     private readonly bool _demo;
     internal event EventHandler? Changed;
@@ -58,9 +61,10 @@ internal sealed class GoogleCalendarSync : IDisposable
     /// </summary>
     internal static bool LiveDemo { get; } = Environment.GetCommandLineArgs().Contains("--demo") && Environment.GetCommandLineArgs().Contains("--demo-live-google");
 
-    internal GoogleCalendarSync(string dataDirectory, bool demo, Action<Uri>? openBrowser = null)
+    internal GoogleCalendarSync(string dataDirectory, bool demo, Action<Uri>? openBrowser = null, HttpClient? http = null)
     {
         if (LiveDemo) demo = false;
+        _http = http ?? GoogleCalendarClient.CreateHttpClient();
         _client = new(_http);
         _openBrowser = openBrowser ?? (uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }));
         // The recording opens the consent itself, in a browser tab it controls: the address is handed over in the demo folder.
@@ -223,9 +227,35 @@ internal sealed class GoogleCalendarSync : IDisposable
     /// Adds the credits that have no event yet (never one the user deleted or opened in the browser),
     /// then checks from time to time that the confirmed events still exist.
     /// </summary>
-    internal async Task SyncAsync(TrackerState state, bool autoAdd, Func<AccountProfile, string> name)
+    internal Task SyncAsync(TrackerState state, bool autoAdd, Func<AccountProfile, string> name)
     {
-        if (!IsAvailable || !IsConnected || _disposed || DateTimeOffset.UtcNow < _retryAfter || !await _gate.WaitAsync(0)) return;
+        if (!IsAvailable || !IsConnected || _disposed || DateTimeOffset.UtcNow < _retryAfter) return Task.CompletedTask;
+        _pendingSync = new(state, autoAdd, name);
+        if (_syncTask is null || _syncTask.IsCompleted) _syncTask = DrainSyncAsync();
+        return _syncTask;
+    }
+    private async Task DrainSyncAsync()
+    {
+        // Start after the task is assigned, including when the first pass completes synchronously.
+        await Task.Yield();
+        try
+        {
+            await _gate.WaitAsync(_lifetime.Token);
+            try
+            {
+                while (_pendingSync is { } request && !_disposed && IsConnected && DateTimeOffset.UtcNow >= _retryAfter)
+                {
+                    _pendingSync = null;
+                    await SyncCoreAsync(request);
+                }
+            }
+            finally { _pendingSync = null; _gate.Release(); }
+        }
+        catch (OperationCanceledException) { }
+    }
+    private async Task SyncCoreAsync(SyncRequest request)
+    {
+        var (state, autoAdd, name) = request;
         try
         {
             var now = DateTimeOffset.UtcNow;
@@ -236,10 +266,15 @@ internal sealed class GoogleCalendarSync : IDisposable
                 _links.Put(link with { AccountId = held[link.Key].AccountId, CreditId = held[link.Key].CreditId });
             if (autoAdd)
                 foreach (var entry in Credits(state, now, name).Where(e => _links.Get(CalendarExport.Key(e)) is null).Take(10))
+                {
+                    if (_pendingSync is not null || !IsConnected) return;
                     await InsertAsync(entry, held.GetValueOrDefault(CalendarExport.Key(entry)));
+                }
+            if (_pendingSync is not null || !IsConnected) return;
             // A spent credit leaves its account: its event and reminders would only mislead.
             foreach (var link in _links.Links.Values.Where(l => Spent(l, state, now)).Take(10).ToArray())
             {
+                if (_pendingSync is not null || !IsConnected) return;
                 await _client.DeleteAsync(_current, link.Key, _lifetime.Token);
                 _links.Put(link with { Status = CalendarLinkStatus.Used, UpdatedAt = DateTimeOffset.UtcNow });
                 Notify();
@@ -248,6 +283,7 @@ internal sealed class GoogleCalendarSync : IDisposable
             {
                 foreach (var link in _links.Links.Values.Where(l => l is { Source: CalendarLinkSource.Google, Status: CalendarLinkStatus.Confirmed } && l.At > now).Take(25).ToArray())
                 {
+                    if (_pendingSync is not null || !IsConnected) return;
                     var found = await _client.GetAsync(_current, link.Key, _lifetime.Token);
                     _links.Put(found is null || found.IsCancelled
                         ? link with { Status = CalendarLinkStatus.Deleted, UpdatedAt = DateTimeOffset.UtcNow }
@@ -266,7 +302,6 @@ internal sealed class GoogleCalendarSync : IDisposable
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { Error = Loc.T("Impossible d’enregistrer le suivi des événements d’agenda."); _retryAfter = DateTimeOffset.UtcNow + Retry; Notify(); }
-        finally { _gate.Release(); }
     }
 
     /// <summary>Calendar identity of each credit still held and not expired, with its account and credit.</summary>

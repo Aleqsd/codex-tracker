@@ -54,6 +54,14 @@ Google Agenda et Gmail : `get_google_calendar` donne l’état de connexion, l�
 
 Les mutations utilisent `expectedRevision`, obtenu par une lecture récente, et `requestId`, UUID conservé pour toute répétition de la même demande. Sur `revision_conflict`, relire et reconstruire l’action ; ne pas écraser aveuglément. Réutiliser un UUID avec des paramètres différents est refusé. Les réponses ont un objet `result` ou un code `error`.
 
+`refresh_active_account` actualise les comptes actifs de Codex et Claude Code. La commande ne prend aucun paramètre : les demandes simultanées partagent le passage en cours, et les nouveaux signaux locaux reçus pendant celui-ci sont regroupés en une relecture en arrière-plan. La réponse conserve les résultats du passage demandé, même si cette relecture a déjà commencé ; une source qui change continuellement ne prolonge donc pas indéfiniment l'attente de l'assistant. La commande ne change ni le compte utilisé ni les préférences.
+
+Le résultat contient `refreshed`, `status`, `revision`, `providers` et l’ancien champ `observedAt`, conservé pour compatibilité. `status` vaut `success`, `partial` (au moins une lecture réussie, un autre compte actif indisponible), `failed`, `unavailable` (aucune collecte disponible) ou `suspended` (veille). `refreshed` vaut `true` uniquement si les comptes actifs ont été lus avec succès. Un quota conservé après une erreur ne suffit donc pas à annoncer un succès.
+
+Chaque entrée de `providers` donne `provider`, `accountId`, `outcome` (`updated`, `unchanged`, `failed`, `unavailable`, `refreshing` ou `suspended`), `reason` (`startup`, `manual`, `sourceChanged`, `timer`, `retry`, `resume`), `attemptedAt`, `completedAt`, `observedAt`, `durationMilliseconds`, `nextAttemptAt`, `consecutiveFailures` et `errorCode`. Les dates inconnues valent `null`. `observedAt` reste la date de mesure du quota ; `completedAt` date la dernière collecte, même si le cache local n’a pas changé. `errorCode` est un code normalisé, jamais le texte brut d’une exception. `get_status.refresh` expose le même état sans lancer de collecte. En démonstration, aucune collecte réelle n’est annoncée : `refreshed: false`, `status: "unavailable"`, avec les dates des relevés fictifs conservées.
+
+En CLI, lire aussi `result.status` : le code de sortie 0 confirme la réception du rapport, y compris un résultat `partial`, `failed` ou `unavailable`. Un refus d’accès ou des paramètres non acceptés renvoient une erreur.
+
 Les réglages généraux, règles et connecteurs sont remplacés explicitement ; récupérer l’état avant modification. Pour `configure_channel`, fournir un seul de `twilio`, `sendGrid` ou `ntfy`, avec le `provider` correspondant. Omettre `enabled` le laisse à `false`. Les clés existantes ne sont jamais renvoyées : pour remplacer une configuration complète, fournir les identifiants nécessaires ou utiliser le formulaire local.
 
 ## Confidentialité et confirmations

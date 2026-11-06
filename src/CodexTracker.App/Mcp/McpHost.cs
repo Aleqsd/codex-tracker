@@ -44,7 +44,7 @@ internal sealed class TrackerTools(LocalClient client)
         try { return await client.Call(method, args, token); }
         catch { return JsonSerializer.SerializeToElement(new { error = "tracker_unavailable", detail = "Le tracker ne répond pas. Reconnectez le client MCP ; démarrage limité à 20 secondes." }); }
     }
-    [McpServerTool(Name = "get_status", ReadOnly = true), Description("État du tracker et révision à utiliser pour les modifications. MCP doit être activé dans les réglages.")]
+    [McpServerTool(Name = "get_status", ReadOnly = true), Description("État du tracker, diagnostics de collecte par fournisseur et révision à utiliser pour les modifications. MCP doit être activé dans les réglages.")]
     public Task<JsonElement> Status(CancellationToken token) => Call("status", new { }, token);
     [McpServerTool(Name = "list_accounts", ReadOnly = true), Description("Comptes et quotas observés, type d’abonnement, dates, réserves et ancienneté. Seul le compte actif est actualisé.")]
     public Task<JsonElement> Accounts(CancellationToken token) => Call("accounts", new { }, token);
@@ -60,7 +60,7 @@ internal sealed class TrackerTools(LocalClient client)
     public Task<JsonElement> Channels(CancellationToken token) => Call("channels", new { }, token);
     [McpServerTool(Name = "get_action_status", ReadOnly = true), Description("Consulter une demande : pending, completed, cancelled, expired ou unknown. Ne jamais répéter une action unknown avec un nouvel identifiant.")]
     public Task<JsonElement> Action(string requestId, CancellationToken token) => Call("action", new { requestId }, token);
-    [McpServerTool(Name = "refresh_active_account", Destructive = false), Description("Actualise uniquement le compte actif, sans basculer ni renouveler les comptes inactifs.")]
+    [McpServerTool(Name = "refresh_active_account", Destructive = false), Description("Actualise les comptes actifs de Codex et Claude Code sans basculer de compte. Renvoie status (success, partial, failed, unavailable, suspended) et les dates/résultats par fournisseur ; observedAt seul ne prouve pas une nouvelle lecture.")]
     public Task<JsonElement> Refresh(CancellationToken token) => Call("refresh", new { }, token);
     [McpServerTool(Name = "open_page", Destructive = false), Description("Ouvre Comptes, Resets, Général, Rappels, Canaux, Historique, Calendrier, Assistants ou Application.")]
     public Task<JsonElement> Show(string page, CancellationToken token) => Call("show", new { page }, token);
