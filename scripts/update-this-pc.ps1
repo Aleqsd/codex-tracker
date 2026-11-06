@@ -28,11 +28,11 @@ function Get-Tracker {
         Where-Object { $_.ExecutablePath -eq $Executable -and $_.CommandLine -notmatch '--(mcp|claude-)' }
 }
 function Restart-Tracker {
-    Start-Process -FilePath $Executable -ArgumentList '--exit' -Wait
+    Start-Process -FilePath $Executable -ArgumentList '--exit' -WindowStyle Hidden -Wait
     $deadline = (Get-Date).AddMinutes(1)
     while ((Get-Tracker) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
     if (Get-Tracker) { throw "Le tracker ne s’est pas arrêté." }
-    Start-Process -FilePath $Executable -ArgumentList '--background'
+    Start-Process -FilePath $Executable -ArgumentList '--background' -WindowStyle Hidden
 }
 function Wait-Until([scriptblock]$Condition, [string]$Failure) {
     $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
