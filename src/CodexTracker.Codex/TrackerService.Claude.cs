@@ -8,8 +8,11 @@ public sealed partial class TrackerService
     private readonly ClaudeCodeLocation _claudeLocation;
     private readonly ClaudeCodeObservations _claudeObservations;
     private readonly IAccountUsageReader _claudeReader;
-    private readonly IReadOnlyList<string> _claudeDesktopUsagePaths;
-    private readonly List<AuthFileMonitor> _claudeMonitors = [];
+    private IReadOnlyList<string> _claudeDesktopUsagePaths;
+    private readonly Func<IReadOnlyList<string>>? _claudeDesktopPathsProvider;
+    private long _claudePathsDiscoveredAt;
+    private readonly Dictionary<string, AuthFileMonitor> _claudeMonitors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<Task> _retiredClaudeMonitors = [];
     private ClaudeDesktopSourceMonitor? _claudeSourceMonitor;
     private CancellationTokenSource _claudeIdentityLifetime = new();
     private long _claudeGeneration;
@@ -22,7 +25,11 @@ public sealed partial class TrackerService
     private async Task DetectSourcesAsync(CancellationToken token)
     {
         await DetectAsync(token);
-        if (_options.DetectClaudeCode) await DetectClaudeAsync(token);
+        if (_options.DetectClaudeCode)
+        {
+            await RediscoverClaudeSourcesAsync(token);
+            await DetectClaudeAsync(token);
+        }
     }
 
     private async Task<Task<ProviderRefreshStatus[]>> QueueBothRefreshesAsync(CancellationToken token, RefreshReason reason = RefreshReason.Manual)
@@ -34,24 +41,69 @@ public sealed partial class TrackerService
     private void StartClaudeMonitors()
     {
         if (!_options.DetectClaudeCode || !_options.MonitorAuthChanges) return;
-        foreach (var path in new[] { _claudeLocation.ConfigPath, _claudeLocation.CredentialsPath, _claudeObservations.SignalPath }
-            .OfType<string>().Concat(_claudeDesktopUsagePaths).Distinct(StringComparer.OrdinalIgnoreCase))
+        var paths = new[] { _claudeLocation.ConfigPath, _claudeLocation.CredentialsPath, _claudeObservations.SignalPath }
+            .OfType<string>().Concat(_claudeDesktopUsagePaths).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var obsolete in _claudeMonitors.Keys.Where(path => !paths.Contains(path)).ToArray())
+        {
+            var monitor = _claudeMonitors[obsolete];
+            _claudeMonitors.Remove(obsolete);
+            // The callback can be waiting for _gate: never await its shutdown while holding that gate.
+            _retiredClaudeMonitors.Add(monitor.DisposeAsync().AsTask());
+        }
+        _retiredClaudeMonitors.RemoveAll(task => task.IsCompletedSuccessfully);
+        foreach (var path in paths.Where(path => !_claudeMonitors.ContainsKey(path)))
         {
             var monitor = new AuthFileMonitor(path, async token =>
             {
                 await DetectClaudeAsync(token);
                 _ = await QueueClaudeRefreshAsync(token, RefreshReason.SourceChanged);
             }, _options.DetectionInterval, signalInitial: false);
-            _claudeMonitors.Add(monitor);
+            _claudeMonitors.Add(path, monitor);
             monitor.Start();
         }
-        _claudeSourceMonitor = new(_claudeDesktopUsagePaths, async token =>
+        if (_claudeSourceMonitor is not null) { _claudeSourceMonitor.UpdatePaths(_claudeDesktopUsagePaths); return; }
+        _claudeSourceMonitor = new(_claudeDesktopUsagePaths, async (changes, token) =>
         {
+            var cacheOnly = (changes & ClaudeDesktopChange.Metadata) == 0;
+            // Chromium writes many entries unrelated to quota. Do not even rescan identities
+            // during failure backoff for those unclassified writes; explicit sources still wake us.
+            await _gate.WaitAsync(token);
+            try
+            {
+                if (_disposed || _suspended) return;
+                if (cacheOnly && _claudeRefresh is { IsCompleted: false }) { _claudeCachePending = true; return; }
+                if (cacheOnly && DeferClaudeCache()) return;
+            }
+            finally { _gate.Release(); }
             await DetectClaudeAsync(token);
-            _ = await QueueClaudeRefreshAsync(token, RefreshReason.SourceChanged);
+            _ = await QueueClaudeRefreshAsync(token, RefreshReason.SourceChanged, cacheOnly);
         }, _options.DetectionInterval);
         _claudeSourceMonitor.Start();
     }
+
+    private async Task<bool> RediscoverClaudeSourcesAsync(CancellationToken token, bool force = true)
+    {
+        if (_claudeDesktopPathsProvider is null) return false;
+        await _gate.WaitAsync(token);
+        try
+        {
+            RequireInitialized();
+            if (_suspended) return false;
+            var interval = _options.RefreshIntervalProvider?.Invoke() ?? _options.RefreshInterval;
+            if (!force && _claudePathsDiscoveredAt != 0 && System.Diagnostics.Stopwatch.GetElapsedTime(_claudePathsDiscoveredAt) < interval) return false;
+            var paths = _claudeDesktopPathsProvider().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            _claudePathsDiscoveredAt = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (paths.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(_claudeDesktopUsagePaths)) return false;
+            var previous = _claudeDesktopUsagePaths;
+            Volatile.Write(ref _claudeDesktopUsagePaths, paths);
+            ClaudeDesktopSelection.Release(previous.Where(path => !paths.Contains(path, StringComparer.OrdinalIgnoreCase)).ToArray());
+            if (_claudeSourceMonitor is not null) StartClaudeMonitors();
+            return true;
+        }
+        finally { _gate.Release(); }
+    }
+
+    private bool DeferClaudeCache() => _claudeSchedule.Status.ConsecutiveFailures > 0 && DelayUntilDue(_claudeSchedule) > TimeSpan.Zero;
 
     private void RestartClaudeObservation()
     {
@@ -63,6 +115,7 @@ public sealed partial class TrackerService
         _claudeActiveObservation = null;
         _claudeRefresh = null;
         _claudePending = false;
+        _claudeCachePending = false;
         ResetSchedule(true);
     }
 
@@ -123,7 +176,7 @@ public sealed partial class TrackerService
         finally { _gate.Release(); }
     }
 
-    private async Task<Task<ProviderRefreshStatus>> QueueClaudeRefreshAsync(CancellationToken token, RefreshReason reason = RefreshReason.Manual)
+    private async Task<Task<ProviderRefreshStatus>> QueueClaudeRefreshAsync(CancellationToken token, RefreshReason reason = RefreshReason.Manual, bool cacheOnly = false)
     {
         await _gate.WaitAsync(token);
         try
@@ -132,9 +185,11 @@ public sealed partial class TrackerService
             if (_claudeKey is null || _claudeAccountId is null) { MarkUnavailable(true, reason); return Task.FromResult(_claudeSchedule.Status); }
             if (_claudeRefresh is { IsCompleted: false })
             {
-                if (reason == RefreshReason.SourceChanged) _claudePending = true;
+                if (reason == RefreshReason.SourceChanged)
+                { if (cacheOnly) _claudeCachePending = true; else _claudePending = true; }
                 return _claudeRefresh;
             }
+            if (cacheOnly && DeferClaudeCache()) return Task.FromResult(_claudeSchedule.Status);
             var active = State.Accounts.Single(a => a.IsActiveInClaudeCode);
             return StartRefresh(active.Profile, _claudeAccountId, _claudeGeneration, _claudeIdentityLifetime.Token, true, reason);
         }
@@ -178,25 +233,7 @@ public sealed partial class TrackerService
             {
                 try
                 {
-                    await DetectClaudeAsync(_lifetime.Token);
-                    await _gate.WaitAsync(_lifetime.Token);
-                    try
-                    {
-                        if (generation == _claudeGeneration)
-                        {
-                            var previous = State.Accounts.FirstOrDefault(a => a.Profile.Id == profile.Id)?.Snapshot;
-                            if (snapshot is not null && previous is not null && snapshot.FetchedAt < previous.FetchedAt)
-                            { snapshot = null; error = Loc.T("Un relevé Claude Code plus ancien a été ignoré. Les dernières données sont conservées."); }
-                            var unchanged = SnapshotContent.Equal(snapshot, previous);
-                            if (snapshot is not null && (!unchanged || _claudeNotificationBaselineGeneration != generation))
-                                notifications = RecordObservation(profile, snapshot, generation, claude: true);
-                            FinishRefresh(true, snapshot, previous, error is null ? null : "collection_failed");
-                            UpdateCollection(profile.Id, a => a with { Snapshot = unchanged ? a.Snapshot : snapshot ?? a.Snapshot, IsConnected = snapshot is not null || a.IsConnected, IsRefreshing = false, Error = error },
-                                error ?? Loc.T("À jour · comptes Codex et Claude Code suivis automatiquement"));
-                            Save();
-                        }
-                    }
-                    finally { _gate.Release(); }
+                    notifications = await CompleteCollectionAsync(profile, generation, snapshot, error, CodexFailureCode.None, claude: true);
                     if (generation != _claudeGeneration && _claudeSchedule.Started == 0) _ = await QueueClaudeRefreshAsync(_lifetime.Token);
                 }
                 catch (OperationCanceledException) { }

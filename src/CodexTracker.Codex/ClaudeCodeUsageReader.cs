@@ -3,14 +3,17 @@ using CodexTracker.Core;
 namespace CodexTracker.Codex;
 
 internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeCodeObservations observations,
-    IReadOnlyList<string> desktopPaths, Func<Guid, IReadOnlyList<UsageSample>>? history = null) : IAccountUsageReader
+    IReadOnlyList<string> desktopPaths, Func<Guid, IReadOnlyList<UsageSample>>? history = null,
+    Func<IReadOnlyList<string>>? desktopPathsProvider = null) : IAccountUsageReader
 {
     public async Task<AccountSnapshot> ReadAsync(AccountProfile profile, string expectedAccountId, CancellationToken cancellationToken)
     {
-        var identity = await ClaudeCodeIdentity.ReadSelectedAsync(location, desktopPaths, [profile], cancellationToken);
+        // A pass keeps one immutable set even when a manual discovery finds another installation.
+        var paths = desktopPathsProvider?.Invoke() ?? desktopPaths;
+        var identity = await ClaudeCodeIdentity.ReadSelectedAsync(location, paths, [profile], cancellationToken);
         if (identity.AccountId != expectedAccountId || !string.Equals(identity.Email, profile.Email, StringComparison.OrdinalIgnoreCase))
             throw new TrackerException(Loc.T("Le compte Claude Code a changé. Le relevé a été ignoré."));
-        var desktop = await ClaudeDesktopUsageReader.ReadAsync(desktopPaths, identity, cancellationToken);
+        var desktop = await ClaudeDesktopUsageReader.ReadAsync(paths, identity, cancellationToken);
         AccountSnapshot? terminal = null;
         try { terminal = observations.Read(identity); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or TrackerException) { }
@@ -23,7 +26,7 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
         var now = DateTimeOffset.UtcNow;
         if (latest.Short is { } shortWindow && !(shortWindow.ResetsAt > now))
         {
-            var native = await Task.Run(() => ClaudeCodeNativeResetReader.Read(location, desktopPaths, identity, now, cancellationToken), cancellationToken);
+            var native = await Task.Run(() => ClaudeCodeNativeResetReader.Read(location, paths, identity, now, cancellationToken), cancellationToken);
             latest = ClaudeCodeNativeResetReader.Apply(latest, native, now);
         }
         if (latest.Weekly is { ResetsAt: null })
@@ -32,7 +35,7 @@ internal sealed class ClaudeCodeUsageReader(ClaudeCodeLocation location, ClaudeC
             if (PendingExactWeeklyReset(samples, latest.FetchedAt) is { } pending) return WithKnownWeeklyReset(latest, pending);
             var observed = samples.Where(s => s.WeeklyRemaining is not null)
                 .Select(s => (s.Timestamp, 100 - s.WeeklyRemaining!.Value))
-                .Concat(await ClaudeDesktopUsageReader.ReadWeeklyAsync(desktopPaths, identity, cancellationToken));
+                .Concat(await ClaudeDesktopUsageReader.ReadWeeklyAsync(paths, identity, cancellationToken));
             var anchor = WeeklyResetInference.Anchor(WeeklyResetInference.LatestReset(observed), LastExactWeeklyReset(samples, terminal, latest.FetchedAt));
             latest = WithWeeklyReset(latest, WeeklyResetInference.Next(anchor, latest.FetchedAt));
         }

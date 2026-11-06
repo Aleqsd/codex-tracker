@@ -256,6 +256,7 @@ internal sealed class GoogleCalendarSync : IDisposable
     private async Task SyncCoreAsync(SyncRequest request)
     {
         var (state, autoAdd, name) = request;
+        var changed = false;
         try
         {
             var now = DateTimeOffset.UtcNow;
@@ -277,31 +278,35 @@ internal sealed class GoogleCalendarSync : IDisposable
                 if (_pendingSync is not null || !IsConnected) return;
                 await _client.DeleteAsync(_current, link.Key, _lifetime.Token);
                 _links.Put(link with { Status = CalendarLinkStatus.Used, UpdatedAt = DateTimeOffset.UtcNow });
-                Notify();
+                changed = true;
             }
             if (now >= _nextVerification)
             {
-                foreach (var link in _links.Links.Values.Where(l => l is { Source: CalendarLinkSource.Google, Status: CalendarLinkStatus.Confirmed } && l.At > now).Take(25).ToArray())
+                // Recently checked links must yield to older/unverified ones, even when their expiry is earlier.
+                foreach (var link in _links.Links.Values.Where(l => l is { Source: CalendarLinkSource.Google, Status: CalendarLinkStatus.Confirmed } && l.At > now)
+                    .OrderBy(l => l.VerifiedAt ?? DateTimeOffset.MinValue).ThenBy(l => l.At).ThenBy(l => l.Key, StringComparer.Ordinal).Take(25).ToArray())
                 {
                     if (_pendingSync is not null || !IsConnected) return;
                     var found = await _client.GetAsync(_current, link.Key, _lifetime.Token);
                     _links.Put(found is null || found.IsCancelled
                         ? link with { Status = CalendarLinkStatus.Deleted, UpdatedAt = DateTimeOffset.UtcNow }
                         : link with { HtmlLink = found.HtmlLink ?? link.HtmlLink, VerifiedAt = DateTimeOffset.UtcNow });
+                    changed = true;
                 }
                 _nextVerification = DateTimeOffset.UtcNow + Verification;
             }
-            if (Error is not null) { Error = null; Problem = null; Notify(); }
+            if (Error is not null) { Error = null; Problem = null; changed = true; }
         }
         catch (GoogleCalendarException ex)
         {
             // A freshly enabled API usually answers within minutes: try again soon rather than in a quarter of an hour.
             Error = ex.Message; Problem = ex.Problem;
-            _retryAfter = DateTimeOffset.UtcNow + (ex.Problem == GoogleCalendarProblem.ApiDisabled ? TimeSpan.FromMinutes(2) : Retry); Notify();
+            _retryAfter = DateTimeOffset.UtcNow + (ex.Problem == GoogleCalendarProblem.ApiDisabled ? TimeSpan.FromMinutes(2) : Retry); changed = true;
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        { Error = Loc.T("Impossible d’enregistrer le suivi des événements d’agenda."); _retryAfter = DateTimeOffset.UtcNow + Retry; Notify(); }
+        { Error = Loc.T("Impossible d’enregistrer le suivi des événements d’agenda."); _retryAfter = DateTimeOffset.UtcNow + Retry; changed = true; }
+        finally { if (changed) Notify(); }
     }
 
     /// <summary>Calendar identity of each credit still held and not expired, with its account and credit.</summary>

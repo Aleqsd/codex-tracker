@@ -2,6 +2,9 @@ using System.Threading.Channels;
 
 namespace CodexTracker.Codex;
 
+[Flags]
+internal enum ClaudeDesktopChange { None = 0, Metadata = 1, Cache = 2 }
+
 /// <summary>
 /// Invalidates passive Desktop readings from native metadata/cache file events. No file content is opened.
 /// The ordinary tracker cadence remains the fallback for a dropped filesystem event.
@@ -10,16 +13,18 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(300);
     private static readonly AsyncLocal<ClaudeDesktopSourceMonitor?> CallingMonitor = new();
-    private readonly Func<CancellationToken, Task> _onChanged;
+    private readonly Func<ClaudeDesktopChange, CancellationToken, Task> _onChanged;
     private readonly TimeSpan _pollInterval;
-    private readonly Target[] _targets;
+    private readonly List<Target> _targets = [];
     private readonly object _sync = new();
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Channel<bool> _changes = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.DropWrite, AllowSynchronousContinuations = false });
     private Task? _worker;
     private Task? _poller;
-    private bool _started, _disposed, _retry;
+    private bool _started, _disposed;
+    private int _pendingChanges;
+    private ClaudeDesktopChange _retryChanges;
 
     private enum Kind { Sessions, AgentConfigurations, Cache }
     private sealed class Target(string path, Kind kind)
@@ -30,7 +35,7 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
         internal bool Failed;
     }
 
-    internal ClaudeDesktopSourceMonitor(IReadOnlyList<string> historyPaths, Func<CancellationToken, Task> onChanged,
+    internal ClaudeDesktopSourceMonitor(IReadOnlyList<string> historyPaths, Func<ClaudeDesktopChange, CancellationToken, Task> onChanged,
         TimeSpan? pollInterval = null)
     {
         ArgumentNullException.ThrowIfNull(onChanged);
@@ -38,10 +43,25 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
         _pollInterval = pollInterval ?? TimeSpan.FromSeconds(2);
         if (_pollInterval <= TimeSpan.Zero || _pollInterval.TotalMilliseconds > uint.MaxValue - 1)
             throw new ArgumentOutOfRangeException(nameof(pollInterval));
-        _targets = historyPaths.Select(p => Path.GetDirectoryName(Path.GetFullPath(p))!).Distinct(StringComparer.OrdinalIgnoreCase)
+        UpdatePaths(historyPaths);
+    }
+
+    internal void UpdatePaths(IReadOnlyList<string> historyPaths)
+    {
+        var next = historyPaths.Select(p => Path.GetDirectoryName(Path.GetFullPath(p))!).Distinct(StringComparer.OrdinalIgnoreCase)
             .SelectMany(root => new[] { new Target(Path.Combine(root, "claude-code-sessions"), Kind.Sessions),
                 new Target(Path.Combine(root, "local-agent-mode-sessions"), Kind.AgentConfigurations),
                 new Target(Path.Combine(root, "Cache", "Cache_Data"), Kind.Cache) }).ToArray();
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            foreach (var old in _targets.Where(old => !next.Any(t => t.Kind == old.Kind &&
+                string.Equals(t.Path, old.Path, StringComparison.OrdinalIgnoreCase))).ToArray())
+            { old.Watcher?.Dispose(); _targets.Remove(old); }
+            foreach (var target in next.Where(t => !_targets.Any(old => old.Kind == t.Kind &&
+                string.Equals(old.Path, t.Path, StringComparison.OrdinalIgnoreCase)))) _targets.Add(target);
+            if (_started) EnsureWatchers();
+        }
     }
 
     internal void Start()
@@ -67,7 +87,12 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
             {
                 // Only repair watcher attachment. Do not enumerate sessions or read Chromium data here.
                 lock (_sync)
-                    if (!_disposed && (EnsureWatchers() || _retry)) _changes.Writer.TryWrite(true);
+                    if (!_disposed)
+                    {
+                        var repaired = EnsureWatchers();
+                        if (repaired != ClaudeDesktopChange.None || _retryChanges != ClaudeDesktopChange.None)
+                            Signal(_retryChanges | repaired);
+                    }
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -81,18 +106,20 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
             {
                 await Task.Delay(Debounce, token).ConfigureAwait(false);
                 while (_changes.Reader.TryRead(out _)) { }
+                var changes = (ClaudeDesktopChange)Interlocked.Exchange(ref _pendingChanges, 0);
+                if (changes == ClaudeDesktopChange.None) continue;
                 var previous = CallingMonitor.Value;
                 try
                 {
                     CallingMonitor.Value = this;
-                    await _onChanged(token).ConfigureAwait(false);
-                    lock (_sync) _retry = false;
+                    await _onChanged(changes, token).ConfigureAwait(false);
+                    lock (_sync) _retryChanges = ClaudeDesktopChange.None;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
                 catch (Exception ex) when (ex is not OutOfMemoryException)
                 {
                     // No native path, payload or consumer exception is retained.
-                    lock (_sync) _retry = true;
+                    lock (_sync) _retryChanges |= changes;
                 }
                 finally { CallingMonitor.Value = previous; }
             }
@@ -101,9 +128,9 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
     }
 
     // Called under _sync. Missing roots are observed from their nearest existing ancestor.
-    private bool EnsureWatchers()
+    private ClaudeDesktopChange EnsureWatchers()
     {
-        var changed = false;
+        var changed = ClaudeDesktopChange.None;
         foreach (var target in _targets)
         {
             var directory = target.Path;
@@ -131,11 +158,11 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
                 watcher.Error += (_, _) =>
                 {
                     lock (_sync) target.Failed = true;
-                    _changes.Writer.TryWrite(true);
+                    Signal(target.Kind == Kind.Cache ? ClaudeDesktopChange.Cache : ClaudeDesktopChange.Metadata);
                 };
                 target.Watcher = watcher;
                 watcher.EnableRaisingEvents = true;
-                changed = true;
+                changed |= target.Kind == Kind.Cache ? ClaudeDesktopChange.Cache : ClaudeDesktopChange.Metadata;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             {
@@ -148,7 +175,14 @@ internal sealed class ClaudeDesktopSourceMonitor : IAsyncDisposable
 
     private void Changed(Target target, string path, bool structural)
     {
-        if (Affects(target, path, structural)) _changes.Writer.TryWrite(true);
+        if (Affects(target, path, structural))
+            Signal(target.Kind == Kind.Cache ? ClaudeDesktopChange.Cache : ClaudeDesktopChange.Metadata);
+    }
+
+    private void Signal(ClaudeDesktopChange changes)
+    {
+        Interlocked.Or(ref _pendingChanges, (int)changes);
+        _changes.Writer.TryWrite(true);
     }
 
     private static bool Affects(Target target, string path, bool structural)

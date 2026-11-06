@@ -13,7 +13,7 @@ public sealed partial class TrackerService
 
     private readonly CollectionSchedule _codexSchedule = new(AccountProvider.Codex);
     private readonly CollectionSchedule _claudeSchedule = new(AccountProvider.ClaudeCode);
-    private bool _codexPending, _claudePending;
+    private bool _codexPending, _claudePending, _claudeCachePending;
 
     public IReadOnlyList<ProviderRefreshStatus> GetRefreshStatus() => (_options.DetectClaudeCode
         ? new[] { _codexSchedule, _claudeSchedule } : [_codexSchedule]).Select(schedule =>
@@ -75,8 +75,8 @@ public sealed partial class TrackerService
                     NextAttemptAt = _options.AutomaticRefresh && !_suspended && !_disposed
                         ? DateTimeOffset.UtcNow + DelayUntilDue(schedule) : null
                 };
-                var pending = claude ? _claudePending : _codexPending;
-                if (claude) _claudePending = false; else _codexPending = false;
+                var pending = claude ? _claudePending || _claudeCachePending && schedule.Status.ConsecutiveFailures == 0 : _codexPending;
+                if (claude) { _claudePending = false; _claudeCachePending = false; } else _codexPending = false;
                 if (claude) _claudeRefresh = null; else _refresh = null;
                 if (pending && !_suspended && !_disposed)
                 {

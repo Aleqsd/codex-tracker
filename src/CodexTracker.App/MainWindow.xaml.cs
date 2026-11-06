@@ -25,7 +25,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly CancellationTokenSource _lifetime = new();
     private bool _canClose, _refreshing;
-    private bool _initialized, _viewDirty, _calendarPresentationDirty;
+    private bool _initialized, _viewDirty, _calendarPresentationDirty, _calendarAutoAdd;
     private int _updateQueued, _syncCalendarPending;
     internal ThemeManager Theme { get; }
     internal PreferencesStore Preferences => _preferences;
@@ -50,11 +50,15 @@ public partial class MainWindow : Window
     }
 
     internal MainWindow(ITrackerService service, bool demo, PreferencesStore preferences, UpdateService updates)
+        : this(service, demo, preferences, updates, null) { }
+
+    internal MainWindow(ITrackerService service, bool demo, PreferencesStore preferences, UpdateService updates, GoogleCalendarSync? calendar)
     {
         _service = service; _preferences = preferences; _updates = updates; _demo = demo;
+        _calendarAutoAdd = preferences.Current.GoogleCalendarAutoAdd;
         _updates.SetIncludePrereleases(preferences.Current.IncludePrereleaseUpdates);
         if (!demo && UpdateService.CanSelfUpdate) _automaticUpdates = new(updates);
-        Calendar = new(preferences.DataDirectory, demo);
+        Calendar = calendar ?? new(preferences.DataDirectory, demo);
         Reminders = new(service, preferences, demo, Calendar);
         Commands = new(preferences, Reminders.Secrets);
         Theme = new ThemeManager(preferences);
@@ -182,6 +186,9 @@ public partial class MainWindow : Window
     private void Preferences_Changed(object? sender, EventArgs e)
     {
         _service.SynchronizeGlobalResetMonitoring();
+        // Revoke the remaining additions before an in-flight HTTP continuation can start the next one.
+        if (Dispatcher.CheckAccess()) SynchronizeCalendarPreference();
+        else Dispatcher.InvokeAsync(SynchronizeCalendarPreference);
         Dispatcher.InvokeAsync(async () =>
         {
             var changed = _updates.IncludePrereleases != _preferences.Current.IncludePrereleaseUpdates;
@@ -194,6 +201,12 @@ public partial class MainWindow : Window
                 catch (OperationCanceledException) { }
             }
         });
+    }
+    private void SynchronizeCalendarPreference()
+    {
+        if (_canClose || _calendarAutoAdd == _preferences.Current.GoogleCalendarAutoAdd) return;
+        _calendarAutoAdd = _preferences.Current.GoogleCalendarAutoAdd;
+        _ = SyncCalendarAsync();
     }
     private void Theme_Changed(object? sender, EventArgs e) { ApplyChrome(); UpdateModel(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!_canClose) { e.Cancel = true; HideToTray(); } }

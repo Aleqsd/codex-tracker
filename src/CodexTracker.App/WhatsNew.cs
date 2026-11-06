@@ -14,6 +14,7 @@ internal static class WhatsNew
 {
     internal static IReadOnlyList<WhatsNewItem> Items() =>
     [
+        new("1.0.5", Loc.T("Actualisation et synchronisation Google Agenda plus fiables"), "Comptes"),
         new("1.0.4", Loc.T("Actualisation des quotas plus fiable et plus légère"), "Comptes"),
         new("1.0.3", Loc.T("Projection de la semaine plus claire : ce qui restera au reset et combien utiliser par jour"), "Comptes"),
         new("1.0.2", Loc.T("Logo hibou redessiné, net à toutes les tailles")),

@@ -11,6 +11,7 @@ public sealed record TrackerServiceOptions
     public bool DetectClaudeCode { get; init; } = true;
     public ClaudeCodeLocation? ClaudeLocation { get; init; }
     public IReadOnlyList<string>? ClaudeDesktopUsagePaths { get; init; }
+    internal Func<IReadOnlyList<string>>? ClaudeDesktopUsagePathsProvider { get; init; }
     public TimeSpan RefreshInterval { get; init; } = TimeSpan.FromMinutes(2);
     public Func<TimeSpan>? RefreshIntervalProvider { get; init; }
     public Func<TimeSpan>? ActiveRefreshIntervalProvider { get; init; }
@@ -76,9 +77,12 @@ public sealed partial class TrackerService : ITrackerService
         _claudeLocation = _options.ClaudeLocation ?? ClaudeCodeLocation.Resolve(Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR"),
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
         _claudeObservations = new(_options.DataDirectory, _claudeLocation);
-        _claudeDesktopUsagePaths = _options.ClaudeDesktopUsagePaths ?? ClaudeDesktopUsageReader.ResolvePaths(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-        _claudeReader = claudeReader ?? new ClaudeCodeUsageReader(_claudeLocation, _claudeObservations, _claudeDesktopUsagePaths, GetHistory);
+        _claudeDesktopPathsProvider = _options.ClaudeDesktopUsagePaths is not null ? null :
+            _options.ClaudeDesktopUsagePathsProvider ?? (() => ClaudeDesktopUsageReader.ResolvePaths(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)));
+        _claudeDesktopUsagePaths = _options.ClaudeDesktopUsagePaths ?? _claudeDesktopPathsProvider!();
+        _claudeReader = claudeReader ?? new ClaudeCodeUsageReader(_claudeLocation, _claudeObservations, _claudeDesktopUsagePaths, GetHistory,
+            () => Volatile.Read(ref _claudeDesktopUsagePaths));
         if (_options.GlobalResetMonitoringEnabled is { } enabled)
         {
             _publicHttp = GlobalResetReader.CreateHttpClient();
@@ -98,7 +102,11 @@ public sealed partial class TrackerService : ITrackerService
             _store.RecoverRedirectedStores(_options.RedirectedDataDirectories);
             var settings = _store.LoadSettings();
             var snapshots = _store.LoadSnapshots();
-            foreach (var profile in settings.Accounts) _telemetry[profile.Id] = _store.LoadTelemetry(profile.Id, DateTimeOffset.UtcNow);
+            foreach (var profile in settings.Accounts)
+            {
+                _telemetry[profile.Id] = _store.LoadTelemetry(profile.Id, DateTimeOffset.UtcNow, out var hadFutureObservations);
+                if (hadFutureObservations) _clockRecoveryNeeded.Add(profile.Id);
+            }
             Set(State with
             {
                 Accounts = settings.Accounts.Select(p => new AccountState(p,
@@ -348,43 +356,7 @@ public sealed partial class TrackerService : ITrackerService
             {
                 try
                 {
-                    // Re-read even if the watcher has not delivered an atomic replacement yet.
-                    await DetectAsync(_lifetime.Token);
-                    await _gate.WaitAsync(_lifetime.Token);
-                    try
-                    {
-                        if (generation == _generation)
-                        {
-                            var previousSnapshot = State.Accounts.FirstOrDefault(a => a.Profile.Id == profile.Id)?.Snapshot;
-                            if (snapshot is not null && previousSnapshot is not null && snapshot.FetchedAt < previousSnapshot.FetchedAt)
-                            {
-                                snapshot = null;
-                                error = Loc.T("Un relevé plus ancien a été ignoré. Les dernières données sont conservées.");
-                                failure = CodexFailureCode.Unknown;
-                            }
-                            var unchanged = SnapshotContent.Equal(snapshot, previousSnapshot);
-                            if (snapshot is not null && (!unchanged || _notificationBaselineGeneration != generation))
-                                notifications = RecordObservation(profile, snapshot, generation);
-                            _compatibility = _compatibility with
-                            {
-                                Service = snapshot is not null ? CodexServiceStatus.Compatible : failure switch
-                                {
-                                    CodexFailureCode.CodexNotFound => CodexServiceStatus.Missing,
-                                    CodexFailureCode.ProtocolUnsupported => CodexServiceStatus.Incompatible,
-                                    CodexFailureCode.SessionExpired => _compatibility.Service,
-                                    _ => CodexServiceStatus.Unavailable
-                                },
-                                LastFailure = failure,
-                                LastSuccessfulReadAt = snapshot?.FetchedAt ?? _compatibility.LastSuccessfulReadAt,
-                                CheckedAt = DateTimeOffset.UtcNow
-                            };
-                            FinishRefresh(false, snapshot, previousSnapshot, error is null ? null : failure.ToString());
-                            UpdateCollection(profile.Id, a => a with { Snapshot = unchanged ? a.Snapshot : snapshot ?? a.Snapshot, IsRefreshing = false, Error = error },
-                                error ?? Loc.T("À jour · changements de compte détectés automatiquement"));
-                            Save();
-                        }
-                    }
-                    finally { _gate.Release(); }
+                    notifications = await CompleteCollectionAsync(profile, generation, snapshot, error, failure, claude: false);
                     if (generation != _generation && _codexSchedule.Started == 0) _ = await QueueRefreshAsync(_lifetime.Token);
                 }
                 catch (OperationCanceledException) { }
@@ -398,11 +370,23 @@ public sealed partial class TrackerService : ITrackerService
         }
     }
 
-    private IReadOnlyList<QuotaNotification> RecordObservation(AccountProfile profile, AccountSnapshot snapshot, long generation, bool claude = false)
+    private IReadOnlyList<QuotaNotification> RecordObservation(AccountProfile profile, AccountSnapshot snapshot, long generation, out bool persisted, bool claude = false, bool clockRecovery = false)
     {
         var previous = _telemetry.GetValueOrDefault(profile.Id) ?? AccountTelemetry.Empty;
+        if (clockRecovery)
+        {
+            var now = DateTimeOffset.UtcNow;
+            previous = previous with
+            {
+                Samples = previous.Samples.Where(s => !IsFutureObservation(s.Timestamp, now)).ToArray(),
+                Alerts = new(RebaseAlert(previous.Alerts.Weekly, snapshot.Weekly, snapshot.FetchedAt),
+                    RebaseAlert(previous.Alerts.Short, snapshot.Short, snapshot.FetchedAt))
+            };
+            if (claude) _claudeActiveObservation = new(profile.Id, now); else _activeObservation = new(profile.Id, now);
+            _clockRecoveryNeeded.Remove(profile.Id);
+        }
         var samples = UsageAnalytics.Append(previous.Samples, UsageAnalytics.FromSnapshot(profile.Id, snapshot));
-        var suppress = (claude ? _claudeNotificationBaselineGeneration : _notificationBaselineGeneration) != generation;
+        var suppress = clockRecovery || (claude ? _claudeNotificationBaselineGeneration : _notificationBaselineGeneration) != generation;
         var evaluation = QuotaAlertEvaluator.Observe(profile, snapshot, previous.Alerts, suppress);
         if (claude) _claudeNotificationBaselineGeneration = generation; else _notificationBaselineGeneration = generation;
         // Same one-hour window as the details forecast; gaps and resets already split the trend.
@@ -414,9 +398,16 @@ public sealed partial class TrackerService : ITrackerService
         {
             // Persist deduplication before publishing events: restarting cannot replay an alert.
             _store.SaveTelemetry(profile.Id, current);
-            return warning is null ? evaluation.Notifications : [.. evaluation.Notifications, warning];
+            persisted = true;
+            _unpersistedTelemetry.Remove(profile.Id);
+            return clockRecovery ? [] : warning is null ? evaluation.Notifications : [.. evaluation.Notifications, warning];
         }
-        catch (Exception ex) when (IsRecoverable(ex)) { return Array.Empty<QuotaNotification>(); }
+        catch (Exception ex) when (IsRecoverable(ex))
+        {
+            persisted = false;
+            _unpersistedTelemetry.Add(profile.Id);
+            return [];
+        }
     }
 
     private void PruneOldHistory(DateTimeOffset now)
@@ -426,8 +417,15 @@ public sealed partial class TrackerService : ITrackerService
         {
             if (telemetry.Samples.Count == 0 || telemetry.Samples[0].Timestamp >= cutoff) continue;
             var pruned = telemetry with { Samples = telemetry.Samples.Where(s => s.Timestamp >= cutoff).ToList().AsReadOnly() };
-            _telemetry[id] = pruned;
-            try { _store.SaveTelemetry(id, pruned); }
+            try
+            {
+                // Loading filters future samples from working history. Preserve those original bytes
+                // before maintenance can rewrite an inactive account that has not yet recovered.
+                if (_clockRecoveryNeeded.Contains(id) || HasFutureTelemetry(telemetry, now))
+                    _store.PreserveClockRecovery(id, State.Accounts.FirstOrDefault(a => a.Profile.Id == id)?.Snapshot);
+                _store.SaveTelemetry(id, pruned);
+                _telemetry[id] = pruned;
+            }
             catch (Exception ex) when (IsRecoverable(ex)) { }
         }
     }
@@ -514,7 +512,12 @@ public sealed partial class TrackerService : ITrackerService
                 try
                 {
                     if (IsDue(false)) { await DetectAsync(_lifetime.Token); _ = await QueueRefreshAsync(_lifetime.Token, RefreshReason.Timer); }
-                    if (_options.DetectClaudeCode && IsDue(true)) { await DetectClaudeAsync(_lifetime.Token); _ = await QueueClaudeRefreshAsync(_lifetime.Token, RefreshReason.Timer); }
+                    var rootsChanged = _options.DetectClaudeCode && await RediscoverClaudeSourcesAsync(_lifetime.Token, force: false);
+                    if (_options.DetectClaudeCode && (rootsChanged || IsDue(true)))
+                    {
+                        await DetectClaudeAsync(_lifetime.Token);
+                        _ = await QueueClaudeRefreshAsync(_lifetime.Token, rootsChanged ? RefreshReason.SourceChanged : RefreshReason.Timer);
+                    }
                 }
                 catch (Exception ex) when (IsRecoverable(ex)) { }
             }
@@ -591,7 +594,8 @@ public sealed partial class TrackerService : ITrackerService
         finally { _gate.Release(); }
         _lifetime.Cancel();
         if (_monitor is not null) await _monitor.DisposeAsync();
-        foreach (var monitor in _claudeMonitors) await monitor.DisposeAsync();
+        foreach (var monitor in _claudeMonitors.Values) await monitor.DisposeAsync();
+        await Task.WhenAll(_retiredClaudeMonitors);
         if (_claudeSourceMonitor is not null) await _claudeSourceMonitor.DisposeAsync();
         if (_timer is not null) await _timer;
         if (_announcementTimer is not null) await _announcementTimer;

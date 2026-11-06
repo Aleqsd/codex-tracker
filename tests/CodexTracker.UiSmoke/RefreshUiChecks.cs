@@ -100,6 +100,7 @@ internal static class RefreshUiChecks
         }
         finally { window.PrepareExit(); window.Close(); }
         await CalendarLatestRequest(root);
+        await RefreshCalendarChecks.Run(root);
     }
 
     private static async Task CalendarLatestRequest(string root)

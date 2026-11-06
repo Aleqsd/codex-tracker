@@ -88,8 +88,11 @@ internal sealed partial class ProfileStore(string root) : IDisposable
         return values;
     }
 
-    public AccountTelemetry LoadTelemetry(Guid accountId, DateTimeOffset now)
+    public AccountTelemetry LoadTelemetry(Guid accountId, DateTimeOffset now) => LoadTelemetry(accountId, now, out _);
+
+    internal AccountTelemetry LoadTelemetry(Guid accountId, DateTimeOffset now, out bool hadFutureObservations)
     {
+        hadFutureObservations = false;
         var path = Path.Combine(Usage, $"{accountId:D}.json");
         if (!File.Exists(path)) return AccountTelemetry.Empty;
         try
@@ -101,6 +104,9 @@ internal sealed partial class ProfileStore(string root) : IDisposable
                     s.Timestamp >= now - UsageAnalytics.Retention && s.Timestamp <= now + TimeSpan.FromMinutes(1))
                 .OrderBy(s => s.Timestamp).DistinctBy(s => s.Timestamp).TakeLast(UsageAnalytics.MaximumSamplesPerAccount).ToList().AsReadOnly();
             var alerts = telemetry.Samples.All(s => s is not null && s.AccountId == accountId) ? telemetry.Alerts ?? new() : new();
+            var latestAllowed = now + TimeSpan.FromMinutes(1);
+            hadFutureObservations = telemetry.Samples.Any(s => s is not null && s.AccountId == accountId && UsageAnalytics.IsValid(s) && s.Timestamp > latestAllowed) ||
+                alerts.Weekly?.ObservedAt > latestAllowed || alerts.Short?.ObservedAt > latestAllowed;
             return new(samples, new(ValidateAlertState(alerts.Weekly), ValidateAlertState(alerts.Short)), accountId);
         }
         catch (JsonException) { return AccountTelemetry.Empty; }
@@ -109,7 +115,11 @@ internal sealed partial class ProfileStore(string root) : IDisposable
     public void SaveTelemetry(Guid accountId, AccountTelemetry telemetry) =>
         AtomicWrite(Path.Combine(Usage, $"{accountId:D}.json"), JsonSerializer.SerializeToUtf8Bytes(telemetry with { AccountId = accountId }, Json));
 
-    public void DeleteTelemetry(Guid accountId) => File.Delete(Path.Combine(Usage, $"{accountId:D}.json"));
+    public void DeleteTelemetry(Guid accountId)
+    {
+        File.Delete(Path.Combine(Usage, $"{accountId:D}.json"));
+        DeleteClockRecovery(accountId);
+    }
 
     private static QuotaWindowAlertState? ValidateAlertState(QuotaWindowAlertState? state) => state is not null &&
         double.IsFinite(state.Remaining) && state.Remaining is >= 0 and <= 100 ? state with { NotifiedThresholdMask = state.NotifiedThresholdMask & 7 } : null;

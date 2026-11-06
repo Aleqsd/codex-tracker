@@ -93,6 +93,8 @@ internal static class EnglishCore
         ("Codex met trop de temps à répondre. Dernier relevé conservé.", "Codex is taking too long to respond. Last reading kept."),
         ("Un relevé plus ancien a été ignoré. Les dernières données sont conservées.", "An older reading was ignored. The latest data is kept."),
         ("Les données ne sont pas disponibles. Dernier relevé conservé ; réessayez depuis Codex.", "Data is unavailable. Last reading kept; try again from Codex."),
+        ("Relevé conservé en mémoire ; enregistrement local indisponible.", "Reading kept in memory; local saving is unavailable."),
+        ("La date du relevé est incohérente. Les dernières données sont conservées.", "The reading date is inconsistent. The latest data is kept."),
         ("Aucune session locale détectée. Ouvrez Codex et connectez-vous avec votre compte ChatGPT.", "No local session detected. Open Codex and sign in with your ChatGPT account."),
         ("La session Codex est momentanément illisible. Fermez puis rouvrez Codex et actualisez le tracker.", "The Codex session is temporarily unreadable. Close and reopen Codex, then refresh the tracker."),
         ("Le dossier CODEX_HOME est invalide. Corrigez cette variable puis relancez le tracker.", "The CODEX_HOME folder is invalid. Fix this variable, then restart the tracker."),

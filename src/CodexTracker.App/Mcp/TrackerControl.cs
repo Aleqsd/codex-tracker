@@ -45,9 +45,7 @@ internal sealed class TrackerControl : IDisposable
     }
     internal async Task<object> HandleAsync(string method, JsonElement args)
     {
-        if (_disposed) throw new InvalidOperationException("tracker_stopping");
-        if (_window.AssistantError is not null) throw new InvalidOperationException("assistant_unavailable");
-        if (!_preferences.Current.McpEnabled) throw new InvalidOperationException("mcp_disabled: activez Assistants dans les réglages du tracker.");
+        RequireAccess();
         var revision = Revision;
         var state = _window.TrackerService.State with { ManualCodexReset = _preferences.Current.ManualCodexReset };
         switch (method)
@@ -87,6 +85,9 @@ internal sealed class TrackerControl : IDisposable
             case "refresh":
                 if (args.ValueKind != JsonValueKind.Object || args.EnumerateObject().Any()) throw new ArgumentException("Cette commande ne prend aucun paramètre.");
                 var refreshed = await _window.TrackerService.RefreshWithResultAsync();
+                // Collection is shared with the tracker and other callers. Revoke this reply,
+                // without cancelling that collection, if access changed while it was awaited.
+                RequireAccess();
                 return RefreshReport(_window.TrackerService, Revision, refreshed);
             case "show": _window.OpenPage(Read<PageQuery>(args).Page); return new { opened = true };
             case "usage_history":
@@ -440,6 +441,12 @@ internal sealed class TrackerControl : IDisposable
         }
         catch { _window.AssistantError = Loc.T("MCP suspendu : journal local indisponible."); _timer.Stop(); _pending.Clear(); foreach (var dialog in _dialogs.Values.ToArray()) dialog.Close(); }
     }
+    private void RequireAccess()
+    {
+        if (_disposed) throw new InvalidOperationException("tracker_stopping");
+        if (_window.AssistantError is not null) throw new InvalidOperationException("assistant_unavailable");
+        if (!_preferences.Current.McpEnabled) throw new InvalidOperationException("mcp_disabled: activez Assistants dans les réglages du tracker.");
+    }
     internal static RefreshReply RefreshReport(ITrackerService service, string revision, IReadOnlyList<ProviderRefreshStatus>? completed = null)
     {
         var state = service.State;
@@ -451,6 +458,7 @@ internal sealed class TrackerControl : IDisposable
             var outcome = (status.Outcome is RefreshOutcome.Updated or RefreshOutcome.Unchanged) &&
                 (status.AttemptedAt is null || status.CompletedAt is null) ? RefreshOutcome.Unavailable : status.Outcome;
             var error = status.ErrorCode is null ? outcome == RefreshOutcome.Failed ? "collection_failed" : null :
+                status.ErrorCode == "persistence_failed" ? "persistence_failed" :
                 status.ErrorCode == "account_changed" ? "accountChanged" :
                 Enum.TryParse<CodexFailureCode>(status.ErrorCode, out var code) && Enum.IsDefined(code) && code != CodexFailureCode.None
                     ? Name(code) : "collection_failed";

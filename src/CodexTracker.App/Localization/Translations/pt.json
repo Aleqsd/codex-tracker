@@ -1,4 +1,6 @@
 {
+"Relevé conservé en mémoire ; enregistrement local indisponible.": "Leitura mantida na memória; não é possível salvar localmente.",
+"La date du relevé est incohérente. Les dernières données sont conservées.": "A data da leitura é inconsistente. Os últimos dados são mantidos.",
 "## Ce qui s’est passé": "## O que aconteceu",
 "## Diagnostic (sans compte ni secret)": "## Diagnóstico (sem conta, sem segredo)",
 "+{0} autre alerte": "+{0} outro alerta",
@@ -45,6 +47,7 @@
 "Activé · {0} connexion(s) locale(s)": "Ativado · {0} conexão(ões) local(is)",
 "Actualisation": "Atualização",
 "Actualisation des quotas plus fiable et plus légère": "Atualização de cotas mais confiável e leve",
+"Actualisation et synchronisation Google Agenda plus fiables": "Atualização e sincronização com o Google Agenda mais confiáveis",
 "Actualisation du compte ouvert dans Codex…": "Atualizando a conta aberta no Codex…",
 "Actualisation en cours…": "Atualizando…",
 "Actualisation indisponible": "Atualização indisponível",

@@ -1,4 +1,6 @@
 {
+"Relevé conservé en mémoire ; enregistrement local indisponible.": "取得データはメモリに保持されています。ローカルには保存できません。",
+"La date du relevé est incohérente. Les dernières données sont conservées.": "取得日時に矛盾があります。最新のデータは保持されます。",
 "## Ce qui s’est passé": "## 発生した内容",
 "## Diagnostic (sans compte ni secret)": "## 診断情報（アカウントや秘密情報なし）",
 "+{0} autre alerte": "+ほか{0}件のアラート",
@@ -45,6 +47,7 @@
 "Activé · {0} connexion(s) locale(s)": "オン · ローカル接続{0}件",
 "Actualisation": "更新",
 "Actualisation des quotas plus fiable et plus légère": "使用量の更新がより確実になり、動作も軽くなりました",
+"Actualisation et synchronisation Google Agenda plus fiables": "更新とGoogle カレンダーの同期がより確実になりました",
 "Actualisation du compte ouvert dans Codex…": "Codexで開いているアカウントを更新中…",
 "Actualisation en cours…": "更新中…",
 "Actualisation indisponible": "更新できません",

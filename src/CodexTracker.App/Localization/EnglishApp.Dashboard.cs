@@ -218,6 +218,7 @@ internal static partial class EnglishApp
         ("Découvrir", "See what's new"),
         ("Voir les nouveautés", "See what's new"),
         ("Masquer les nouveautés", "Hide what's new"),
+        ("Actualisation et synchronisation Google Agenda plus fiables", "More reliable refreshes and Google Calendar sync"),
         ("Actualisation des quotas plus fiable et plus légère", "More reliable quota refreshes that use fewer resources"),
         ("Projection de la semaine plus claire : ce qui restera au reset et combien utiliser par jour", "Clearer weekly projection: what will be left at the reset and how much to use per day"),
         ("Logo hibou redessiné, net à toutes les tailles", "Owl logo redrawn, sharp at every size"),

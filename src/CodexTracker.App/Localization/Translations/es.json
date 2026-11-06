@@ -1,4 +1,6 @@
 {
+"Relevé conservé en mémoire ; enregistrement local indisponible.": "Lectura conservada en memoria; no se puede guardar localmente.",
+"La date du relevé est incohérente. Les dernières données sont conservées.": "La fecha de la lectura es incoherente. Se conservan los últimos datos.",
 "## Ce qui s’est passé": "## Qué ha pasado",
 "## Diagnostic (sans compte ni secret)": "## Diagnóstico (sin cuentas ni secretos)",
 "+{0} autre alerte": "+{0} alerta más",
@@ -47,6 +49,7 @@
 "Actualisation des quotas plus fiable et plus légère": "Actualización de cuotas más fiable y ligera",
 "Actualisation du compte ouvert dans Codex…": "Actualizando la cuenta abierta en Codex…",
 "Actualisation en cours…": "Actualizando…",
+"Actualisation et synchronisation Google Agenda plus fiables": "Actualización y sincronización con Google Calendar más fiables",
 "Actualisation indisponible": "Actualización no disponible",
 "Actualiser": "Actualizar",
 "Actualiser et détecter les comptes Codex et Claude Code": "Actualizar y detectar cuentas de Codex y Claude Code",

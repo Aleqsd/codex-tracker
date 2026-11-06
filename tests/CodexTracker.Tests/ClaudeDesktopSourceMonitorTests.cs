@@ -73,11 +73,62 @@ public sealed class ClaudeDesktopSourceMonitorTests
     }
 
     private static ClaudeDesktopSourceMonitor Monitor(TestDirectory directory, Channel<bool> changes) =>
-        new([directory.File("plan-usage-history.json")], _ =>
+        new([directory.File("plan-usage-history.json")], (_, _) =>
         {
             changes.Writer.TryWrite(true);
             return Task.CompletedTask;
         }, TimeSpan.FromMilliseconds(30));
+
+    [Fact]
+    public async Task CacheSignalsStayDistinctAndUpdatingRootsDetachesOldWatchers()
+    {
+        using var directory = new TestDirectory();
+        using var replacement = new TestDirectory();
+        foreach (var root in new[] { directory, replacement })
+        {
+            Directory.CreateDirectory(root.File($"claude-code-sessions/{Account}/{Organization}"));
+            Directory.CreateDirectory(root.File("local-agent-mode-sessions"));
+            Directory.CreateDirectory(root.File("Cache/Cache_Data"));
+        }
+        var changes = Channel.CreateUnbounded<ClaudeDesktopChange>();
+        await using var monitor = new ClaudeDesktopSourceMonitor([directory.File("plan-usage-history.json")], (kind, _) =>
+        { changes.Writer.TryWrite(kind); return Task.CompletedTask; }, TimeSpan.FromMilliseconds(30));
+        monitor.Start();
+        await File.WriteAllTextAsync(directory.File("Cache/Cache_Data/data_0"), "cache-only");
+        Assert.Equal(ClaudeDesktopChange.Cache, await NextKind());
+        await File.WriteAllTextAsync(directory.File($"claude-code-sessions/{Account}/{Organization}/{Session}.json"), "metadata");
+        await File.WriteAllTextAsync(directory.File("Cache/Cache_Data/data_0"), "mixed-cache");
+        Assert.Equal(ClaudeDesktopChange.Metadata | ClaudeDesktopChange.Cache, await NextKind());
+
+        monitor.UpdatePaths([replacement.File("plan-usage-history.json")]);
+        await File.WriteAllTextAsync(directory.File("Cache/Cache_Data/data_0"), "old-detached-cache");
+        await Task.Delay(500);
+        Assert.False(changes.Reader.TryRead(out _));
+        await File.WriteAllTextAsync(replacement.File("Cache/Cache_Data/data_0"), "new-cache");
+        Assert.Equal(ClaudeDesktopChange.Cache, await NextKind());
+        MarkWatcherFailed("Cache_Data");
+        Assert.Equal(ClaudeDesktopChange.Cache, await NextKind());
+        MarkWatcherFailed("claude-code-sessions");
+        Assert.Equal(ClaudeDesktopChange.Metadata, await NextKind());
+
+        void MarkWatcherFailed(string suffix)
+        {
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var sync = typeof(ClaudeDesktopSourceMonitor).GetField("_sync", flags)!.GetValue(monitor)!;
+            lock (sync)
+            {
+                var targets = (System.Collections.IEnumerable)typeof(ClaudeDesktopSourceMonitor).GetField("_targets", flags)!.GetValue(monitor)!;
+                var target = targets.Cast<object>().Single(t => ((string)t.GetType().GetProperty("Path", flags)!.GetValue(t)!).EndsWith(suffix));
+                target.GetType().GetField("Failed", flags)!.SetValue(target, true);
+            }
+        }
+
+        async Task<ClaudeDesktopChange> NextKind()
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            return await changes.Reader.ReadAsync(timeout.Token);
+        }
+    }
 
     private static async Task Next(Channel<bool> changes)
     {
